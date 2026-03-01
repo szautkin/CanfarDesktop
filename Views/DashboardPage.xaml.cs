@@ -14,6 +14,7 @@ public sealed partial class DashboardPage : Page
     private readonly PlatformLoadControl _platformLoad;
     private readonly StorageQuotaControl _storageQuota;
     private readonly SessionListViewModel _sessionListVm;
+    private readonly SessionLaunchViewModel _sessionLaunchVm;
 
     public DashboardPage(
         SessionListViewModel sessionListVm,
@@ -24,6 +25,7 @@ public sealed partial class DashboardPage : Page
         InitializeComponent();
 
         _sessionListVm = sessionListVm;
+        _sessionLaunchVm = sessionLaunchVm;
         _sessionList = new SessionListControl(sessionListVm);
         _launchForm = new LaunchFormControl(sessionLaunchVm);
         _platformLoad = new PlatformLoadControl(platformLoadVm);
@@ -38,12 +40,18 @@ public sealed partial class DashboardPage : Page
         sessionLaunchVm.SetSessionCounter(type =>
             _sessionListVm.Sessions.Count(s => s.SessionType == type));
 
+        // Wire up total session counter for launch limit
+        sessionLaunchVm.SetTotalSessionCounter(() => _sessionListVm.Sessions.Count);
+
         // Wire up events
         _sessionList.SessionOpenRequested += OnSessionOpen;
         _sessionList.SessionDeleteRequested += OnSessionDelete;
         _sessionList.SessionRenewRequested += OnSessionRenew;
         _sessionList.SessionEventsRequested += OnSessionEvents;
         _launchForm.SessionLaunched += OnSessionLaunched;
+
+        // Update session limit whenever sessions are refreshed (including by polling)
+        _sessionListVm.SessionsRefreshed += (_, _) => _sessionLaunchVm.UpdateSessionLimit();
     }
 
     public async Task LoadDataAsync(string? username)

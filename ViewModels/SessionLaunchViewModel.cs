@@ -82,7 +82,15 @@ public partial class SessionLaunchViewModel : ObservableObject
     [ObservableProperty]
     private bool _useCustomImage;
 
+    [ObservableProperty]
+    private bool _isAtSessionLimit;
+
+    [ObservableProperty]
+    private string _sessionLimitMessage = string.Empty;
+
+    private const int MaxConcurrentSessions = 3;
     private Func<string, int>? _sessionCounter;
+    private Func<int>? _totalSessionCounter;
 
     public ObservableCollection<string> SessionTypes { get; } =
         ["notebook", "desktop", "carta", "contributed", "firefly"];
@@ -119,6 +127,8 @@ public partial class SessionLaunchViewModel : ObservableObject
                 Ram = context.MemoryGB.Default;
 
                 GpuOptions.Clear();
+                if (!context.Gpus.Options.Contains(0))
+                    GpuOptions.Add(0);
                 foreach (var g in context.Gpus.Options) GpuOptions.Add(g);
             }
 
@@ -218,6 +228,14 @@ public partial class SessionLaunchViewModel : ObservableObject
     [RelayCommand]
     private async Task LaunchAsync()
     {
+        UpdateSessionLimit();
+        if (IsAtSessionLimit)
+        {
+            ErrorMessage = SessionLimitMessage;
+            HasError = true;
+            return;
+        }
+
         string imageToLaunch;
 
         if (UseCustomImage)
@@ -294,6 +312,20 @@ public partial class SessionLaunchViewModel : ObservableObject
     public void SetSessionCounter(Func<string, int> counter)
     {
         _sessionCounter = counter;
+    }
+
+    public void SetTotalSessionCounter(Func<int> counter)
+    {
+        _totalSessionCounter = counter;
+    }
+
+    public void UpdateSessionLimit()
+    {
+        var count = _totalSessionCounter?.Invoke() ?? 0;
+        IsAtSessionLimit = count >= MaxConcurrentSessions;
+        SessionLimitMessage = IsAtSessionLimit
+            ? $"Session limit reached ({count}/{MaxConcurrentSessions}). Delete a session to launch a new one."
+            : string.Empty;
     }
 
     public void GenerateSessionName()

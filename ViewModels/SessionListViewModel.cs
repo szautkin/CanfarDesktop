@@ -9,6 +9,8 @@ namespace CanfarDesktop.ViewModels;
 public partial class SessionListViewModel : ObservableObject
 {
     private readonly ISessionService _sessionService;
+    private CancellationTokenSource? _pollCts;
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(1);
 
     [ObservableProperty]
     private bool _isLoading;
@@ -22,7 +24,15 @@ public partial class SessionListViewModel : ObservableObject
     [ObservableProperty]
     private Session? _selectedSession;
 
+    [ObservableProperty]
+    private bool _isPolling;
+
+    [ObservableProperty]
+    private int _pollCountdown;
+
     public ObservableCollection<Session> Sessions { get; } = [];
+
+    public event EventHandler? SessionsRefreshed;
 
     public SessionListViewModel(ISessionService sessionService)
     {
@@ -42,6 +52,14 @@ public partial class SessionListViewModel : ObservableObject
             Sessions.Clear();
             foreach (var session in sessions)
                 Sessions.Add(session);
+
+            SessionsRefreshed?.Invoke(this, EventArgs.Empty);
+
+            // Auto-start polling if any session is pending
+            if (HasPendingSessions())
+                StartPolling();
+            else
+                StopPolling();
         }
         catch (HttpRequestException ex)
         {
@@ -57,6 +75,50 @@ public partial class SessionListViewModel : ObservableObject
         {
             IsLoading = false;
         }
+    }
+
+    public bool HasPendingSessions() =>
+        Sessions.Any(s => s.Status is "Pending" or "Terminating");
+
+    public void StartPolling()
+    {
+        if (_pollCts is not null) return; // already polling
+        _pollCts = new CancellationTokenSource();
+        IsPolling = true;
+        _ = PollLoopAsync(_pollCts.Token);
+    }
+
+    public void StopPolling()
+    {
+        if (_pollCts is null) return;
+        _pollCts.Cancel();
+        _pollCts.Dispose();
+        _pollCts = null;
+        IsPolling = false;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                PollCountdown = (int)PollInterval.TotalSeconds;
+                while (PollCountdown > 0 && !ct.IsCancellationRequested)
+                {
+                    await Task.Delay(1000, ct);
+                    PollCountdown--;
+                }
+
+                if (ct.IsCancellationRequested) break;
+
+                await LoadSessionsAsync();
+
+                // LoadSessionsAsync will call StopPolling if no pending sessions remain
+                if (!HasPendingSessions()) break;
+            }
+        }
+        catch (TaskCanceledException) { }
     }
 
     [RelayCommand]

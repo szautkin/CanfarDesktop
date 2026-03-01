@@ -19,6 +19,19 @@ public sealed partial class SessionListControl : UserControl
         ViewModel = viewModel;
         InitializeComponent();
         ViewModel.Sessions.CollectionChanged += (_, _) => RebuildCards();
+        ViewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ViewModel.IsPolling))
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                    PollingIndicator.Visibility = ViewModel.IsPolling ? Visibility.Visible : Visibility.Collapsed);
+            }
+            else if (e.PropertyName == nameof(ViewModel.PollCountdown))
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                    CountdownText.Text = $"{ViewModel.PollCountdown}s");
+            }
+        };
     }
 
     private void RebuildCards()

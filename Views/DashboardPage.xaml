@@ -36,7 +36,7 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Grid.Column="0" x:Name="LaunchFormContainer" />
-                <Border Grid.Column="1" x:Name="PlatformLoadContainer" />
+                <Border Grid.Column="1" x:Name="PlatformLoadContainer" VerticalAlignment="Top" />
             </Grid>
         </Grid>
     </ScrollViewer>

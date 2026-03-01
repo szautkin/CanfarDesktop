@@ -16,18 +16,29 @@ public sealed partial class LaunchFormControl : UserControl
         InitializeComponent();
         ViewModel.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(ViewModel.IsLaunching))
+            if (e.PropertyName is nameof(ViewModel.IsLaunching) or nameof(ViewModel.IsAtSessionLimit))
             {
                 DispatcherQueue.TryEnqueue(() =>
                 {
-                    LaunchButton.IsEnabled = !ViewModel.IsLaunching;
-                    AdvancedLaunchButton.IsEnabled = !ViewModel.IsLaunching;
+                    var canLaunch = !ViewModel.IsLaunching && !ViewModel.IsAtSessionLimit;
+                    LaunchButton.IsEnabled = canLaunch;
+                    AdvancedLaunchButton.IsEnabled = canLaunch;
                 });
             }
             else if (e.PropertyName == nameof(ViewModel.IsLoading))
             {
                 DispatcherQueue.TryEnqueue(() =>
                     LoadingBar.Visibility = ViewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed);
+            }
+
+            if (e.PropertyName is nameof(ViewModel.IsAtSessionLimit) or nameof(ViewModel.SessionLimitMessage))
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    SessionLimitBar.IsOpen = ViewModel.IsAtSessionLimit;
+                    SessionLimitBar.Visibility = ViewModel.IsAtSessionLimit ? Visibility.Visible : Visibility.Collapsed;
+                    SessionLimitBar.Message = ViewModel.SessionLimitMessage;
+                });
             }
         };
     }
@@ -43,7 +54,7 @@ public sealed partial class LaunchFormControl : UserControl
         {
             var tag = selected.Tag?.ToString() ?? "flexible";
             ViewModel.ResourceType = tag;
-            ResourcePanel.Visibility = tag == "fixed" ? Visibility.Visible : Visibility.Collapsed;
+            StdResourcePanel.Visibility = tag == "fixed" ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
@@ -53,16 +64,15 @@ public sealed partial class LaunchFormControl : UserControl
         {
             var tag = selected.Tag?.ToString() ?? "flexible";
             ViewModel.ResourceType = tag;
-            AdvancedResourcePanel.Visibility = tag == "fixed" ? Visibility.Visible : Visibility.Collapsed;
+            AdvResourcePanel.Visibility = tag == "fixed" ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
     private async void OnLaunchClick(object sender, RoutedEventArgs e)
     {
-        if (CoresCombo.SelectedItem is int cores) ViewModel.Cores = cores;
-        if (RamCombo.SelectedItem is int ram) ViewModel.Ram = ram;
-        if (GpuCombo.SelectedItem is int gpus) ViewModel.Gpus = gpus;
-
+        ViewModel.Cores = StdResourcePanel.Cores;
+        ViewModel.Ram = StdResourcePanel.Ram;
+        ViewModel.Gpus = StdResourcePanel.Gpus;
         ViewModel.UseCustomImage = false;
 
         await ViewModel.LaunchCommand.ExecuteAsync(null);
@@ -73,15 +83,13 @@ public sealed partial class LaunchFormControl : UserControl
 
     private async void OnAdvancedLaunchClick(object sender, RoutedEventArgs e)
     {
-        if (AdvCoresCombo.SelectedItem is int cores) ViewModel.Cores = cores;
-        if (AdvRamCombo.SelectedItem is int ram) ViewModel.Ram = ram;
-        if (AdvGpuCombo.SelectedItem is int gpus) ViewModel.Gpus = gpus;
+        ViewModel.Cores = AdvResourcePanel.Cores;
+        ViewModel.Ram = AdvResourcePanel.Ram;
+        ViewModel.Gpus = AdvResourcePanel.Gpus;
 
-        // Sync registry host from combo
         if (RegistryHostCombo.SelectedItem is string host)
             ViewModel.RepositoryHost = host;
 
-        // Sync repo secret (PasswordBox not bindable)
         ViewModel.RepositorySecret = RepoSecretBox.Password;
         ViewModel.UseCustomImage = true;
 
@@ -91,8 +99,43 @@ public sealed partial class LaunchFormControl : UserControl
             SessionLaunched?.Invoke(this, EventArgs.Empty);
     }
 
+    private void OnHelpClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn) return;
+
+        // Toggle the TeachingTip associated with this help button
+        TeachingTip? tip = btn.Name switch
+        {
+            nameof(StdTypeHelpBtn) => StdTypeTip,
+            nameof(StdProjectHelpBtn) => StdProjectTip,
+            nameof(StdImageHelpBtn) => StdImageTip,
+            nameof(StdNameHelpBtn) => StdNameTip,
+            nameof(StdResTypeHelpBtn) => StdResTypeTip,
+            nameof(AdvTypeHelpBtn) => AdvTypeTip,
+            nameof(AdvImageHelpBtn) => AdvImageTip,
+            nameof(AdvAuthHelpBtn) => AdvAuthTip,
+            nameof(AdvNameHelpBtn) => AdvNameTip,
+            nameof(AdvResTypeHelpBtn) => AdvResTypeTip,
+            _ => null
+        };
+
+        if (tip is not null)
+            tip.IsOpen = !tip.IsOpen;
+    }
+
     public async Task LoadAsync()
     {
         await ViewModel.LoadImagesAndContextAsync();
+        ConfigureResourcePanels();
+    }
+
+    private void ConfigureResourcePanels()
+    {
+        var coreOpts = ViewModel.CoreOptions.ToArray();
+        var ramOpts = ViewModel.RamOptions.ToArray();
+        var gpuOpts = ViewModel.GpuOptions.ToArray();
+
+        StdResourcePanel.Configure(coreOpts, ViewModel.Cores, ramOpts, ViewModel.Ram, gpuOpts);
+        AdvResourcePanel.Configure(coreOpts, ViewModel.Cores, ramOpts, ViewModel.Ram, gpuOpts);
     }
 }
