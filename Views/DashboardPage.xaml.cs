@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CanfarDesktop.Models;
+using CanfarDesktop.Services;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views.Controls;
 using CanfarDesktop.Views.Dialogs;
@@ -13,6 +14,7 @@ public sealed partial class DashboardPage : Page
     private readonly LaunchFormControl _launchForm;
     private readonly PlatformLoadControl _platformLoad;
     private readonly StorageQuotaControl _storageQuota;
+    private readonly RecentLaunchesControl _recentLaunches;
     private readonly SessionListViewModel _sessionListVm;
     private readonly SessionLaunchViewModel _sessionLaunchVm;
 
@@ -20,7 +22,8 @@ public sealed partial class DashboardPage : Page
         SessionListViewModel sessionListVm,
         SessionLaunchViewModel sessionLaunchVm,
         PlatformLoadViewModel platformLoadVm,
-        StorageViewModel storageVm)
+        StorageViewModel storageVm,
+        IRecentLaunchService recentLaunchService)
     {
         InitializeComponent();
 
@@ -30,11 +33,13 @@ public sealed partial class DashboardPage : Page
         _launchForm = new LaunchFormControl(sessionLaunchVm);
         _platformLoad = new PlatformLoadControl(platformLoadVm);
         _storageQuota = new StorageQuotaControl(storageVm);
+        _recentLaunches = new RecentLaunchesControl(recentLaunchService);
 
         SessionListContainer.Child = _sessionList;
         LaunchFormContainer.Child = _launchForm;
         PlatformLoadContainer.Child = _platformLoad;
         StorageContainer.Child = _storageQuota;
+        RecentLaunchesContainer.Child = _recentLaunches;
 
         // Wire up session counter for name generation
         sessionLaunchVm.SetSessionCounter(type =>
@@ -48,10 +53,15 @@ public sealed partial class DashboardPage : Page
         _sessionList.SessionDeleteRequested += OnSessionDelete;
         _sessionList.SessionRenewRequested += OnSessionRenew;
         _sessionList.SessionEventsRequested += OnSessionEvents;
-        _launchForm.SessionLaunched += OnSessionLaunched;
+        _launchForm.LaunchRequested += OnLaunchRequested;
+        _recentLaunches.RelaunchRequested += OnRelaunchRequested;
 
         // Update session limit whenever sessions are refreshed (including by polling)
-        _sessionListVm.SessionsRefreshed += (_, _) => _sessionLaunchVm.UpdateSessionLimit();
+        _sessionListVm.SessionsRefreshed += (_, _) =>
+        {
+            _sessionLaunchVm.UpdateSessionLimit();
+            _recentLaunches.UpdateSessionLimit(_sessionLaunchVm.IsAtSessionLimit);
+        };
     }
 
     public async Task LoadDataAsync(string? username)
@@ -115,9 +125,123 @@ public sealed partial class DashboardPage : Page
         }
     }
 
-    private async void OnSessionLaunched(object? sender, EventArgs e)
+    private async void OnLaunchRequested(object? sender, EventArgs e)
     {
-        await Task.Delay(1000);
-        await _sessionList.LoadAsync();
+        var name = _sessionLaunchVm.SessionName;
+        var imageLabel = _sessionLaunchVm.UseCustomImage
+            ? _sessionLaunchVm.CustomImageUrl
+            : _sessionLaunchVm.SelectedImage?.Label ?? "";
+        var resourceType = _sessionLaunchVm.ResourceType;
+        var cores = _sessionLaunchVm.Cores;
+        var ram = _sessionLaunchVm.Ram;
+        var gpus = _sessionLaunchVm.Gpus;
+
+        await ShowLaunchDialogAsync(
+            title: "Launch Session",
+            name: name,
+            imageLabel: imageLabel,
+            resourceType: resourceType,
+            cores: cores,
+            ram: ram,
+            gpus: gpus,
+            launchFunc: async () =>
+            {
+                await _sessionLaunchVm.LaunchCommand.ExecuteAsync(null);
+                return _sessionLaunchVm.LaunchSuccess;
+            });
+    }
+
+    private async void OnRelaunchRequested(object? sender, RecentLaunch launch)
+    {
+        await ShowLaunchDialogAsync(
+            title: "Relaunch Session",
+            name: launch.Name,
+            imageLabel: launch.ImageLabel,
+            resourceType: launch.ResourceType,
+            cores: launch.Cores,
+            ram: launch.Ram,
+            gpus: launch.Gpus,
+            launchFunc: () => _sessionLaunchVm.RelaunchAsync(launch));
+    }
+
+    private async Task ShowLaunchDialogAsync(
+        string title, string name, string imageLabel,
+        string resourceType, int cores, int ram, int gpus,
+        Func<Task<bool>> launchFunc)
+    {
+        var statusText = new TextBlock
+        {
+            Text = $"Launching {name}...",
+            Style = (Style)Application.Current.Resources["BodyTextBlockStyle"],
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var progressRing = new ProgressRing { IsActive = true, Width = 20, Height = 20 };
+
+        var statusRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        statusRow.Children.Add(progressRing);
+        statusRow.Children.Add(statusText);
+
+        var resourceSummary = resourceType == "fixed"
+            ? $"CPU: {cores}  \u00B7  RAM: {ram}GB" + (gpus > 0 ? $"  \u00B7  GPU: {gpus}" : "")
+            : "Flexible resources";
+        var detailText = new TextBlock
+        {
+            Text = $"{imageLabel}  \u00B7  {resourceSummary}",
+            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+            Opacity = 0.6
+        };
+
+        var resultBar = new InfoBar
+        {
+            IsOpen = false,
+            IsClosable = false,
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+
+        var panel = new StackPanel { Spacing = 8 };
+        panel.Children.Add(statusRow);
+        panel.Children.Add(detailText);
+        panel.Children.Add(resultBar);
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = panel,
+            XamlRoot = XamlRoot,
+            CloseButtonText = "Close"
+        };
+
+        var launchTask = launchFunc();
+        var dialogTask = dialog.ShowAsync();
+
+        var success = await launchTask;
+
+        progressRing.IsActive = false;
+        statusRow.Children.Remove(progressRing);
+
+        if (success)
+        {
+            statusText.Text = $"{name} launched successfully!";
+            resultBar.Severity = InfoBarSeverity.Success;
+            resultBar.Title = "Session is starting";
+            resultBar.Message = "It will appear in Active Sessions shortly.";
+            resultBar.IsOpen = true;
+
+            _recentLaunches.Refresh();
+
+            await Task.Delay(2000);
+            dialog.Hide();
+
+            await Task.Delay(1000);
+            await _sessionList.LoadAsync();
+        }
+        else
+        {
+            statusText.Text = "Launch failed";
+            resultBar.Severity = InfoBarSeverity.Error;
+            resultBar.Title = "Error";
+            resultBar.Message = _sessionLaunchVm.ErrorMessage;
+            resultBar.IsOpen = true;
+        }
     }
 }

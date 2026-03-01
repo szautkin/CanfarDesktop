@@ -8,7 +8,7 @@ public sealed partial class LaunchFormControl : UserControl
 {
     public SessionLaunchViewModel ViewModel { get; }
 
-    public event EventHandler? SessionLaunched;
+    public event EventHandler? LaunchRequested;
 
     public LaunchFormControl(SessionLaunchViewModel viewModel)
     {
@@ -68,20 +68,17 @@ public sealed partial class LaunchFormControl : UserControl
         }
     }
 
-    private async void OnLaunchClick(object sender, RoutedEventArgs e)
+    private void OnLaunchClick(object sender, RoutedEventArgs e)
     {
         ViewModel.Cores = StdResourcePanel.Cores;
         ViewModel.Ram = StdResourcePanel.Ram;
         ViewModel.Gpus = StdResourcePanel.Gpus;
         ViewModel.UseCustomImage = false;
 
-        await ViewModel.LaunchCommand.ExecuteAsync(null);
-
-        if (ViewModel.LaunchSuccess)
-            SessionLaunched?.Invoke(this, EventArgs.Empty);
+        LaunchRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    private async void OnAdvancedLaunchClick(object sender, RoutedEventArgs e)
+    private void OnAdvancedLaunchClick(object sender, RoutedEventArgs e)
     {
         ViewModel.Cores = AdvResourcePanel.Cores;
         ViewModel.Ram = AdvResourcePanel.Ram;
@@ -93,10 +90,7 @@ public sealed partial class LaunchFormControl : UserControl
         ViewModel.RepositorySecret = RepoSecretBox.Password;
         ViewModel.UseCustomImage = true;
 
-        await ViewModel.LaunchCommand.ExecuteAsync(null);
-
-        if (ViewModel.LaunchSuccess)
-            SessionLaunched?.Invoke(this, EventArgs.Empty);
+        LaunchRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnHelpClick(object sender, RoutedEventArgs e)

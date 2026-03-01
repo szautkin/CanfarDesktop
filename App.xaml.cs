@@ -60,6 +60,9 @@ public partial class App : Application
         // Settings
         services.AddSingleton<ISettingsService, SettingsService>();
 
+        // Recent launches
+        services.AddSingleton<IRecentLaunchService, RecentLaunchService>();
+
         // ViewModels
         services.AddTransient<MainViewModel>();
         services.AddTransient<LoginViewModel>();

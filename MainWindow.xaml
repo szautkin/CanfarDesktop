@@ -3,7 +3,7 @@
     x:Class="CanfarDesktop.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="CANFAR Science Portal">
+    Title="Verbinal - a CANFAR Science Portal">
 
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -25,8 +25,8 @@
 
             <!-- App title -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Image Source="Assets/canfar-logo.png" Height="28" />
-                <TextBlock Text="- Science Portal" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <Image Source="Assets/session-desktop.png" Height="28" />
+                <TextBlock Text="Verbinal - a CANFAR Science Portal" Style="{StaticResource SubtitleTextBlockStyle}" />
             </StackPanel>
 
             <!-- Status -->
@@ -36,6 +36,10 @@
 
             <!-- Auth area -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Click="OnAboutClick" ToolTipService.ToolTip="About" Padding="6,4"
+                        Background="Transparent" BorderThickness="0">
+                    <FontIcon Glyph="&#xE946;" FontSize="16" />
+                </Button>
                 <ProgressRing x:Name="AuthProgress" IsActive="False" Width="20" Height="20" />
                 <Button x:Name="LoginButton" Content="Login" Click="OnLoginClick" />
                 <DropDownButton x:Name="UserButton" Visibility="Collapsed">

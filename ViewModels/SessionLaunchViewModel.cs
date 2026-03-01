@@ -11,6 +11,7 @@ public partial class SessionLaunchViewModel : ObservableObject
 {
     private readonly ISessionService _sessionService;
     private readonly IImageService _imageService;
+    private readonly IRecentLaunchService _recentLaunchService;
 
     private Dictionary<string, Dictionary<string, List<ParsedImage>>> _imagesByTypeAndProject = new();
 
@@ -101,10 +102,11 @@ public partial class SessionLaunchViewModel : ObservableObject
     public ObservableCollection<int> RamOptions { get; } = [];
     public ObservableCollection<int> GpuOptions { get; } = [];
 
-    public SessionLaunchViewModel(ISessionService sessionService, IImageService imageService)
+    public SessionLaunchViewModel(ISessionService sessionService, IImageService imageService, IRecentLaunchService recentLaunchService)
     {
         _sessionService = sessionService;
         _imageService = imageService;
+        _recentLaunchService = recentLaunchService;
     }
 
     public async Task LoadImagesAndContextAsync()
@@ -284,12 +286,31 @@ public partial class SessionLaunchViewModel : ObservableObject
                 RegistrySecret = UseCustomImage ? RepositorySecret : null
             };
 
+            // Snapshot config before the async call — user may change the form while awaiting
+            var recentLaunch = new Models.RecentLaunch
+            {
+                Name = SessionName,
+                Type = SelectedType,
+                Image = imageToLaunch,
+                ImageLabel = UseCustomImage
+                    ? CustomImageUrl
+                    : SelectedImage?.Label ?? imageToLaunch,
+                Project = UseCustomImage ? "" : SelectedProject,
+                ResourceType = ResourceType,
+                Cores = Cores,
+                Ram = Ram,
+                Gpus = Gpus,
+                LaunchedAt = DateTime.Now
+            };
+
             var sessionId = await _sessionService.LaunchSessionAsync(launchParams);
             if (sessionId is not null)
             {
                 LaunchStatus = "Session launched successfully!";
                 LaunchSuccess = true;
                 GenerateSessionName();
+
+                _recentLaunchService.Save(recentLaunch);
             }
             else
             {
@@ -332,5 +353,118 @@ public partial class SessionLaunchViewModel : ObservableObject
     {
         var count = _sessionCounter?.Invoke(SelectedType) ?? 0;
         SessionName = $"{SelectedType}{count + 1}";
+    }
+
+    public async Task<bool> RelaunchAsync(Models.RecentLaunch launch)
+    {
+        UpdateSessionLimit();
+        if (IsAtSessionLimit)
+        {
+            ErrorMessage = SessionLimitMessage;
+            HasError = true;
+            return false;
+        }
+
+        IsLaunching = true;
+        LaunchStatus = "Requesting session...";
+        HasError = false;
+        LaunchSuccess = false;
+
+        try
+        {
+            var launchParams = new SessionLaunchParams
+            {
+                Type = launch.Type,
+                Name = launch.Name,
+                Image = launch.Image,
+                Cores = launch.ResourceType == "fixed" ? launch.Cores : 0,
+                Ram = launch.ResourceType == "fixed" ? launch.Ram : 0,
+                Gpus = launch.ResourceType == "fixed" ? launch.Gpus : 0
+            };
+
+            var recentEntry = new Models.RecentLaunch
+            {
+                Name = launch.Name,
+                Type = launch.Type,
+                Image = launch.Image,
+                ImageLabel = launch.ImageLabel,
+                Project = launch.Project,
+                ResourceType = launch.ResourceType,
+                Cores = launch.Cores,
+                Ram = launch.Ram,
+                Gpus = launch.Gpus,
+                LaunchedAt = DateTime.Now
+            };
+
+            var sessionId = await _sessionService.LaunchSessionAsync(launchParams);
+            if (sessionId is not null)
+            {
+                LaunchStatus = "Session launched successfully!";
+                LaunchSuccess = true;
+                _recentLaunchService.Save(recentEntry);
+                return true;
+            }
+
+            LaunchStatus = "Failed to launch session.";
+            HasError = true;
+            return false;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            LaunchStatus = "Launch failed.";
+            HasError = true;
+            return false;
+        }
+        finally
+        {
+            IsLaunching = false;
+        }
+    }
+
+    public void ApplyRecentLaunch(Models.RecentLaunch launch)
+    {
+        SelectedType = launch.Type;
+        ResourceType = launch.ResourceType;
+        Cores = launch.Cores;
+        Ram = launch.Ram;
+        Gpus = launch.Gpus;
+
+        // Try saved project first, then scan all projects
+        UseCustomImage = false;
+        if (_imagesByTypeAndProject.TryGetValue(launch.Type, out var projects))
+        {
+            // Prefer the saved project
+            if (!string.IsNullOrEmpty(launch.Project)
+                && projects.TryGetValue(launch.Project, out var projectImages))
+            {
+                var match = projectImages.FirstOrDefault(img => img.Id == launch.Image);
+                if (match is not null)
+                {
+                    SelectedProject = launch.Project;
+                    SelectedImage = match;
+                    GenerateSessionName();
+                    return;
+                }
+            }
+
+            // Fall back to scanning all projects
+            foreach (var (project, images) in projects)
+            {
+                var match = images.FirstOrDefault(img => img.Id == launch.Image);
+                if (match is not null)
+                {
+                    SelectedProject = project;
+                    SelectedImage = match;
+                    GenerateSessionName();
+                    return;
+                }
+            }
+        }
+
+        // Image not found in standard list — use as custom image
+        UseCustomImage = true;
+        CustomImageUrl = launch.Image;
+        GenerateSessionName();
     }
 }

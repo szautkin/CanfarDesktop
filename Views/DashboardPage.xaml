@@ -36,7 +36,14 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Grid.Column="0" x:Name="LaunchFormContainer" />
-                <Border Grid.Column="1" x:Name="PlatformLoadContainer" VerticalAlignment="Top" />
+                <Grid Grid.Column="1" RowSpacing="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" x:Name="RecentLaunchesContainer" />
+                    <Border Grid.Row="1" x:Name="PlatformLoadContainer" />
+                </Grid>
             </Grid>
         </Grid>
     </ScrollViewer>

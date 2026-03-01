@@ -10,7 +10,9 @@
       "Bash(ls:*)",
       "WebFetch(domain:www.canfar.net)",
       "Bash(curl:*)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(grep:*)",
+      "WebFetch(domain:www.gnu.org)"
     ]
   }
 }
