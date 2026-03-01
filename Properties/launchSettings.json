@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "CanfarDesktop (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "CanfarDesktop (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
