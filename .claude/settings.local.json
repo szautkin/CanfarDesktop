@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:ws-uv.canfar.net)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(mkdir:*)",
+      "Bash(dotnet add:*)",
+      "Bash(dotnet build:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:www.canfar.net)",
+      "Bash(curl:*)",
+      "WebFetch(domain:api.github.com)"
+    ]
+  }
+}

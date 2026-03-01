@@ -1,50 +1,76 @@
-﻿using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using Microsoft.UI.Xaml.Shapes;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.ApplicationModel;
-using Windows.ApplicationModel.Activation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
+using CanfarDesktop.Helpers;
+using CanfarDesktop.Services;
+using CanfarDesktop.Services.HttpClients;
+using CanfarDesktop.ViewModels;
+using CanfarDesktop.Views;
 
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+namespace CanfarDesktop;
 
-namespace CanfarDesktop
+public partial class App : Application
 {
-    /// <summary>
-    /// Provides application-specific behavior to supplement the default Application class.
-    /// </summary>
-    public partial class App : Application
+    private Window? _window;
+
+    public static IServiceProvider Services { get; private set; } = null!;
+
+    public App()
     {
-        private Window? _window;
+        InitializeComponent();
+        UnhandledException += OnUnhandledException;
+        Services = ConfigureServices();
+    }
 
-        /// <summary>
-        /// Initializes the singleton application object.  This is the first line of authored code
-        /// executed, and as such is the logical equivalent of main() or WinMain().
-        /// </summary>
-        public App()
-        {
-            InitializeComponent();
-        }
+    private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        e.Handled = true;
+        System.Diagnostics.Debug.WriteLine($"Unhandled exception: {e.Exception}");
+    }
 
-        /// <summary>
-        /// Invoked when the application is launched.
-        /// </summary>
-        /// <param name="args">Details about the launch request and process.</param>
-        protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
-        {
-            _window = new MainWindow();
-            _window.Activate();
-        }
+    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    {
+        _window = new MainWindow();
+        _window.Activate();
+    }
+
+    private static IServiceProvider ConfigureServices()
+    {
+        var services = new ServiceCollection();
+
+        // Helpers
+        services.AddSingleton<ApiEndpoints>();
+        services.AddSingleton<TokenStorage>();
+
+        // Shared auth token (singleton — all HttpClients read from this)
+        services.AddSingleton<AuthTokenProvider>();
+        services.AddTransient<AuthTokenHandler>();
+
+        // HttpClients — all use AuthTokenHandler to inject Bearer token
+        services.AddHttpClient<IAuthService, AuthService>()
+            .AddHttpMessageHandler<AuthTokenHandler>();
+        services.AddHttpClient<ISessionService, SessionService>()
+            .AddHttpMessageHandler<AuthTokenHandler>();
+        services.AddHttpClient<IImageService, ImageService>()
+            .AddHttpMessageHandler<AuthTokenHandler>();
+        services.AddHttpClient<IPlatformService, PlatformService>()
+            .AddHttpMessageHandler<AuthTokenHandler>();
+        services.AddHttpClient<IStorageService, StorageService>()
+            .AddHttpMessageHandler<AuthTokenHandler>();
+
+        // Settings
+        services.AddSingleton<ISettingsService, SettingsService>();
+
+        // ViewModels
+        services.AddTransient<MainViewModel>();
+        services.AddTransient<LoginViewModel>();
+        services.AddTransient<SessionListViewModel>();
+        services.AddTransient<SessionLaunchViewModel>();
+        services.AddTransient<PlatformLoadViewModel>();
+        services.AddTransient<StorageViewModel>();
+
+        // Pages
+        services.AddTransient<DashboardPage>();
+
+        return services.BuildServiceProvider();
     }
 }

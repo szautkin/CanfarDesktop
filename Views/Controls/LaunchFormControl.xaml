@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="CanfarDesktop.Views.Controls.LaunchFormControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:CanfarDesktop.Converters">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    </UserControl.Resources>
+
+    <Border Padding="16" CornerRadius="8"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1">
+        <Grid RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <TextBlock Grid.Row="0" Text="Launch Session" Style="{StaticResource SubtitleTextBlockStyle}" />
+
+            <!-- Loading -->
+            <ProgressBar Grid.Row="1" x:Name="LoadingBar" IsIndeterminate="True" Visibility="Collapsed" />
+
+            <!-- Tabs: Standard + Advanced -->
+            <Pivot Grid.Row="2">
+                <PivotItem Header="Standard">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
+                        <StackPanel Spacing="12">
+                            <!-- Session Type -->
+                            <ComboBox x:Name="TypeCombo" Header="Session Type" HorizontalAlignment="Stretch"
+                                      ItemsSource="{x:Bind ViewModel.SessionTypes}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedType, Mode=TwoWay}" />
+
+                            <!-- Project -->
+                            <ComboBox x:Name="ProjectCombo" Header="Project" HorizontalAlignment="Stretch"
+                                      ItemsSource="{x:Bind ViewModel.Projects}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedProject, Mode=TwoWay}" />
+
+                            <!-- Image -->
+                            <ComboBox x:Name="ImageCombo" Header="Container Image" HorizontalAlignment="Stretch"
+                                      ItemsSource="{x:Bind ViewModel.Images}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedImage, Mode=TwoWay}"
+                                      DisplayMemberPath="Label" />
+
+                            <!-- Session Name -->
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Header="Session Name"
+                                         Text="{x:Bind ViewModel.SessionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="1" VerticalAlignment="Bottom" Click="OnGenerateNameClick"
+                                        ToolTipService.ToolTip="Generate Name">
+                                    <FontIcon Glyph="&#xE8EE;" FontSize="14" />
+                                </Button>
+                            </Grid>
+
+                            <!-- Resource Type -->
+                            <RadioButtons Header="Resource Type" SelectedIndex="0" SelectionChanged="OnResourceTypeChanged">
+                                <RadioButton Content="Flexible (platform-managed)" Tag="flexible" />
+                                <RadioButton Content="Fixed" Tag="fixed" />
+                            </RadioButtons>
+
+                            <!-- Resource options (visible when Fixed) -->
+                            <StackPanel x:Name="ResourcePanel" Spacing="8" Visibility="Collapsed">
+                                <ComboBox x:Name="CoresCombo" Header="CPU Cores" HorizontalAlignment="Stretch"
+                                          ItemsSource="{x:Bind ViewModel.CoreOptions}" />
+                                <ComboBox x:Name="RamCombo" Header="RAM (GB)" HorizontalAlignment="Stretch"
+                                          ItemsSource="{x:Bind ViewModel.RamOptions}" />
+                                <ComboBox x:Name="GpuCombo" Header="GPUs" HorizontalAlignment="Stretch"
+                                          ItemsSource="{x:Bind ViewModel.GpuOptions}" />
+                            </StackPanel>
+
+                            <!-- Error -->
+                            <InfoBar x:Name="StandardErrorBar" IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                                     Severity="Error" Title="Error"
+                                     Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+
+                            <!-- Launch button -->
+                            <Button Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch"
+                                    Click="OnLaunchClick" x:Name="LaunchButton">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE768;" FontSize="14" />
+                                    <TextBlock Text="Launch" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </PivotItem>
+
+                <PivotItem Header="Advanced">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
+                        <StackPanel Spacing="12">
+                            <!-- Session Type -->
+                            <ComboBox Header="Session Type" HorizontalAlignment="Stretch"
+                                      ItemsSource="{x:Bind ViewModel.SessionTypes}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedType, Mode=TwoWay}" />
+
+                            <!-- Container Image: Host + Image in one row -->
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" MinWidth="180" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" x:Name="RegistryHostCombo" Header="Repository Host"
+                                          HorizontalAlignment="Stretch" SelectedIndex="0">
+                                    <x:String>images.canfar.net</x:String>
+                                    <x:String>harbor.canfar.net</x:String>
+                                    <x:String>ghcr.io</x:String>
+                                    <x:String>docker.io</x:String>
+                                </ComboBox>
+                                <TextBox Grid.Column="1" x:Name="CustomImageBox" Header="Image (project/name:tag)"
+                                         PlaceholderText="project/example-image:1.0.0"
+                                         Text="{x:Bind ViewModel.CustomImageUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+
+                            <!-- Registry Auth: Username + Secret in one row -->
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" x:Name="RepoUsernameBox" Header="Repository Username"
+                                         PlaceholderText="username"
+                                         Text="{x:Bind ViewModel.RepositoryUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <PasswordBox Grid.Column="1" x:Name="RepoSecretBox" Header="Repository Secret"
+                                             PlaceholderText="token or password" />
+                            </Grid>
+
+                            <!-- Session Name -->
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Header="Session Name"
+                                         Text="{x:Bind ViewModel.SessionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="1" VerticalAlignment="Bottom" Click="OnGenerateNameClick"
+                                        ToolTipService.ToolTip="Generate Name">
+                                    <FontIcon Glyph="&#xE8EE;" FontSize="14" />
+                                </Button>
+                            </Grid>
+
+                            <!-- Resource Type -->
+                            <RadioButtons Header="Resource Type" SelectedIndex="0" SelectionChanged="OnAdvancedResourceTypeChanged">
+                                <RadioButton Content="Flexible (platform-managed)" Tag="flexible" />
+                                <RadioButton Content="Fixed" Tag="fixed" />
+                            </RadioButtons>
+
+                            <!-- Resource options -->
+                            <StackPanel x:Name="AdvancedResourcePanel" Spacing="8" Visibility="Collapsed">
+                                <ComboBox Header="CPU Cores" HorizontalAlignment="Stretch"
+                                          ItemsSource="{x:Bind ViewModel.CoreOptions}" x:Name="AdvCoresCombo" />
+                                <ComboBox Header="RAM (GB)" HorizontalAlignment="Stretch"
+                                          ItemsSource="{x:Bind ViewModel.RamOptions}" x:Name="AdvRamCombo" />
+                                <ComboBox Header="GPUs" HorizontalAlignment="Stretch"
+                                          ItemsSource="{x:Bind ViewModel.GpuOptions}" x:Name="AdvGpuCombo" />
+                            </StackPanel>
+
+                            <!-- Error -->
+                            <InfoBar x:Name="AdvancedErrorBar" IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                                     Severity="Error" Title="Error"
+                                     Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+
+                            <!-- Launch button -->
+                            <Button Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch"
+                                    Click="OnAdvancedLaunchClick" x:Name="AdvancedLaunchButton">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE768;" FontSize="14" />
+                                    <TextBlock Text="Launch (Custom Image)" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </PivotItem>
+            </Pivot>
+        </Grid>
+    </Border>
+</UserControl>
