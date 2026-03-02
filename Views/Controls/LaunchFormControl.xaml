@@ -54,6 +54,23 @@
                                           SelectedItem="{x:Bind ViewModel.SelectedType, Mode=TwoWay}" />
                             </StackPanel>
 
+                            <!-- Image Registry -->
+                            <StackPanel Spacing="2">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="Image Registry" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <Button x:Name="StdRegistryHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
+                                            Background="Transparent" BorderThickness="0" Click="OnHelpClick">
+                                        <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
+                                    </Button>
+                                    <TeachingTip x:Name="StdRegistryTip" Target="{x:Bind StdRegistryHelpBtn}"
+                                                 Title="Image Registry"
+                                                 Subtitle="The container image registry hosting the session images." />
+                                </StackPanel>
+                                <ComboBox x:Name="StdRegistryCombo" HorizontalAlignment="Stretch"
+                                          ItemsSource="{x:Bind ViewModel.Repositories}"
+                                          SelectedItem="{x:Bind ViewModel.RepositoryHost, Mode=TwoWay}" />
+                            </StackPanel>
+
                             <!-- Project -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
@@ -168,7 +185,7 @@
                                                  Title="Session Type"
                                                  Subtitle="Choose a session type." />
                                 </StackPanel>
-                                <ComboBox HorizontalAlignment="Stretch"
+                                <ComboBox x:Name="AdvTypeCombo" HorizontalAlignment="Stretch"
                                           ItemsSource="{x:Bind ViewModel.SessionTypes}"
                                           SelectedItem="{x:Bind ViewModel.SelectedType, Mode=TwoWay}" />
                             </StackPanel>
@@ -191,12 +208,9 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <ComboBox Grid.Column="0" x:Name="RegistryHostCombo"
-                                              HorizontalAlignment="Stretch" SelectedIndex="0">
-                                        <x:String>images.canfar.net</x:String>
-                                        <x:String>harbor.canfar.net</x:String>
-                                        <x:String>ghcr.io</x:String>
-                                        <x:String>docker.io</x:String>
-                                    </ComboBox>
+                                              HorizontalAlignment="Stretch"
+                                              ItemsSource="{x:Bind ViewModel.Repositories}"
+                                              SelectedItem="{x:Bind ViewModel.RepositoryHost, Mode=TwoWay}" />
                                     <TextBox Grid.Column="1" x:Name="CustomImageBox"
                                              PlaceholderText="project/example-image:1.0.0"
                                              Text="{x:Bind ViewModel.CustomImageUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

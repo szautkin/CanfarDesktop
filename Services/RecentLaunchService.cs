@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Windows.Storage;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Services;
@@ -28,8 +29,20 @@ public class RecentLaunchService : IRecentLaunchService
 
     public void Save(RecentLaunch launch)
     {
-        // Prepend new entry
-        _launches.Insert(0, launch);
+        // If an entry with the same Type+Image already exists, update its date and move to top
+        var existing = _launches.FindIndex(l => l.Type == launch.Type && l.Image == launch.Image);
+        if (existing >= 0)
+        {
+            _launches[existing].LaunchedAt = launch.LaunchedAt;
+            _launches[existing].Name = launch.Name;
+            var entry = _launches[existing];
+            _launches.RemoveAt(existing);
+            _launches.Insert(0, entry);
+        }
+        else
+        {
+            _launches.Insert(0, launch);
+        }
 
         // Cap at max entries
         if (_launches.Count > MaxEntries)
@@ -78,10 +91,7 @@ public class RecentLaunchService : IRecentLaunchService
 
         try
         {
-            var json = JsonSerializer.Serialize(_launches, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+            var json = JsonSerializer.Serialize(_launches, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(_filePath, json);
         }
         catch

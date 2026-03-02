@@ -9,15 +9,15 @@
   IgnorableNamespaces="uap rescap systemai">
 
   <Identity
-    Name="2c35eee0-661b-4cd3-a93d-b5fb6368df9d"
-    Publisher="CN=szaut"
+    Name="CodeBG.Verbinal"
+    Publisher="CN=45CD1C64-9326-4D91-B9AD-2046234A42A3"
     Version="1.0.0.0" />
 
-  <mp:PhoneIdentity PhoneProductId="2c35eee0-661b-4cd3-a93d-b5fb6368df9d" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="6cd0bff1-2d7f-4790-85ab-052a586a6531" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>Verbinal</DisplayName>
-    <PublisherDisplayName>szaut</PublisherDisplayName>
+    <PublisherDisplayName>CodeBG</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 

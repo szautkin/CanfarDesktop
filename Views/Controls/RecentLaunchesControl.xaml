@@ -40,10 +40,10 @@
             <TextBlock Grid.Row="2" x:Name="EmptyText" Text="No recent launches"
                        Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5" />
 
-            <!-- Scrollable launch cards (sized to show ~3 cards) -->
+            <!-- Scrollable launch cards (sized to show ~2 cards) -->
             <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
-                          MaxHeight="400">
+                          MaxHeight="260">
                 <StackPanel x:Name="LaunchList" Spacing="8" />
             </ScrollViewer>
         </Grid>

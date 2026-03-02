@@ -12,7 +12,8 @@
       "Bash(curl:*)",
       "WebFetch(domain:api.github.com)",
       "Bash(grep:*)",
-      "WebFetch(domain:www.gnu.org)"
+      "WebFetch(domain:www.gnu.org)",
+      "Bash(dotnet package:*)"
     ]
   }
 }

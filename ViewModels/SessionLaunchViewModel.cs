@@ -101,6 +101,7 @@ public partial class SessionLaunchViewModel : ObservableObject
     public ObservableCollection<int> CoreOptions { get; } = [];
     public ObservableCollection<int> RamOptions { get; } = [];
     public ObservableCollection<int> GpuOptions { get; } = [];
+    public ObservableCollection<string> Repositories { get; } = [];
 
     public SessionLaunchViewModel(ISessionService sessionService, IImageService imageService, IRecentLaunchService recentLaunchService)
     {
@@ -116,6 +117,12 @@ public partial class SessionLaunchViewModel : ObservableObject
         {
             var rawImages = await _imageService.GetImagesAsync();
             _imagesByTypeAndProject = ImageParser.GroupByTypeAndProject(rawImages);
+
+            var repos = await _imageService.GetRepositoriesAsync();
+            Repositories.Clear();
+            foreach (var r in repos) Repositories.Add(r);
+            if (Repositories.Count > 0 && string.IsNullOrEmpty(RepositoryHost))
+                RepositoryHost = Repositories[0];
 
             var context = await _imageService.GetContextAsync();
             if (context is not null)

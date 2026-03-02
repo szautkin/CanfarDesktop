@@ -84,9 +84,6 @@ public sealed partial class LaunchFormControl : UserControl
         ViewModel.Ram = AdvResourcePanel.Ram;
         ViewModel.Gpus = AdvResourcePanel.Gpus;
 
-        if (RegistryHostCombo.SelectedItem is string host)
-            ViewModel.RepositoryHost = host;
-
         ViewModel.RepositorySecret = RepoSecretBox.Password;
         ViewModel.UseCustomImage = true;
 
@@ -101,6 +98,7 @@ public sealed partial class LaunchFormControl : UserControl
         TeachingTip? tip = btn.Name switch
         {
             nameof(StdTypeHelpBtn) => StdTypeTip,
+            nameof(StdRegistryHelpBtn) => StdRegistryTip,
             nameof(StdProjectHelpBtn) => StdProjectTip,
             nameof(StdImageHelpBtn) => StdImageTip,
             nameof(StdNameHelpBtn) => StdNameTip,
