@@ -22,7 +22,7 @@ public sealed partial class MainWindow : Window
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
         var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
-        appWindow.SetIcon("Assets/session-desktop.png");
+        appWindow.SetIcon("Assets/Verbinal.ico");
         appWindow.Title = "Verbinal - a CANFAR Science Portal";
 
         _viewModel = App.Services.GetRequiredService<MainViewModel>();
@@ -87,7 +87,7 @@ public sealed partial class MainWindow : Window
     {
         var logo = new Image
         {
-            Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri("ms-appx:///Assets/session-desktop.png")),
+            Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri("ms-appx:///Assets/Verbinal_icon.png")),
             Width = 64,
             Height = 64,
             HorizontalAlignment = HorizontalAlignment.Center
@@ -162,7 +162,7 @@ public sealed partial class MainWindow : Window
 
         var copyright = new TextBlock
         {
-            Text = "\u00a9 2025 Serhii Zautkin. All rights reserved.",
+            Text = "\u00a9 2025 Serhii Zautkin",
             Style = (Microsoft.UI.Xaml.Style)Application.Current.Resources["CaptionTextBlockStyle"],
             HorizontalAlignment = HorizontalAlignment.Center,
             Opacity = 0.4

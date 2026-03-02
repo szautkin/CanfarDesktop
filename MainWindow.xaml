@@ -25,7 +25,7 @@
 
             <!-- App title -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Image Source="Assets/session-desktop.png" Height="28" />
+                <Image Source="Assets/Verbinal_icon.png" Height="28" />
                 <TextBlock Text="Verbinal - a CANFAR Science Portal" Style="{StaticResource SubtitleTextBlockStyle}" />
             </StackPanel>
 

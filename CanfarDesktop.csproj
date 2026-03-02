@@ -17,15 +17,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Assets\SplashScreen.scale-200.png" />
-    <Content Include="Assets\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
-    <Content Include="Assets\canfar-logo.png" />
-    <Content Include="Assets\canfar.ico" />
+    <!-- Verbinal branded logos (all scales auto-selected by Windows) -->
+    <Content Include="Assets\Square44x44Logo.scale-*.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-*.png" />
+    <Content Include="Assets\Square150x150Logo.scale-*.png" />
+    <Content Include="Assets\Square310x310Logo.scale-*.png" />
+    <Content Include="Assets\Wide310x150Logo.scale-*.png" />
+    <Content Include="Assets\SplashScreen.scale-*.png" />
+    <Content Include="Assets\StoreLogo.scale-*.png" />
+    <Content Include="Assets\Verbinal.ico" />
+    <Content Include="Assets\Verbinal_icon.png" />
+    <!-- Session type images -->
     <Content Include="Assets\session-notebook.jpg" />
     <Content Include="Assets\session-desktop.png" />
     <Content Include="Assets\session-carta.png" />
