@@ -93,7 +93,8 @@ public class SessionService : ISessionService
 
     public async Task<bool> RenewSessionAsync(string id)
     {
-        var response = await _httpClient.PostAsync(_endpoints.SessionRenewUrl(id), null);
+        var content = new FormUrlEncodedContent([new KeyValuePair<string, string>("dummy", "")]);
+        var response = await _httpClient.PostAsync(_endpoints.SessionRenewUrl(id), content);
         return response.IsSuccessStatusCode;
     }
 
