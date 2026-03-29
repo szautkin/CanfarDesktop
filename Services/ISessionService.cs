@@ -8,7 +8,7 @@ public interface ISessionService
     Task<Session?> GetSessionAsync(string id);
     Task<string?> LaunchSessionAsync(SessionLaunchParams launchParams);
     Task<bool> DeleteSessionAsync(string id);
-    Task<bool> RenewSessionAsync(string id);
+    Task RenewSessionAsync(string id);
     Task<string?> GetSessionEventsAsync(string id);
     Task<string?> GetSessionLogsAsync(string id);
 }

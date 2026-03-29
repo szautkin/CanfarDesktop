@@ -17,6 +17,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="CanfarDesktop.Tests\**" />
+    <Content Remove="CanfarDesktop.Tests\**" />
+    <None Remove="CanfarDesktop.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Verbinal branded logos (all scales auto-selected by Windows) -->
     <Content Include="Assets\Square44x44Logo.scale-*.png" />
     <Content Include="Assets\Square44x44Logo.targetsize-*.png" />

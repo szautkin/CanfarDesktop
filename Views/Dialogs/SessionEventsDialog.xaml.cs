@@ -1,4 +1,6 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using CanfarDesktop.ViewModels;
 
 namespace CanfarDesktop.Views.Dialogs;
 
@@ -9,9 +11,18 @@ public sealed partial class SessionEventsDialog : ContentDialog
         InitializeComponent();
     }
 
-    public void SetContent(string events, string title = "Session Events")
+    public async Task LoadAsync(string sessionId, SessionListViewModel vm)
     {
-        Title = title;
-        EventsText.Text = events;
+        var eventsTask = vm.GetSessionEventsAsync(sessionId);
+        var logsTask = vm.GetSessionLogsAsync(sessionId);
+
+        await Task.WhenAll(eventsTask, logsTask);
+
+        EventsText.Text = eventsTask.Result ?? "No events available";
+        LogsText.Text = logsTask.Result ?? "No logs available";
+
+        LoadingPanel.Visibility = Visibility.Collapsed;
+        ContentPivot.Visibility = Visibility.Visible;
+        ContentPivot.IsEnabled = true;
     }
 }

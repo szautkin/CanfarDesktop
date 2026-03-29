@@ -91,10 +91,17 @@ public class SessionService : ISessionService
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<bool> RenewSessionAsync(string id)
+    public async Task RenewSessionAsync(string id)
     {
-        var response = await _httpClient.PostAsync(_endpoints.SessionRenewUrl(id), null);
-        return response.IsSuccessStatusCode;
+        var content = new FormUrlEncodedContent([]);
+        var response = await _httpClient.PostAsync(_endpoints.SessionRenewUrl(id), content);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(
+                $"Renew failed: {(int)response.StatusCode} {response.ReasonPhrase} - {errorBody}");
+        }
     }
 
     public async Task<string?> GetSessionEventsAsync(string id)

@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>CanfarDesktop.Tests</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <!-- Disable WinUI auto-init in test context -->
+    <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
+    <WindowsAppSdkDeploymentManagerInitialize>false</WindowsAppSdkDeploymentManagerInitialize>
+    <WindowsAppSdkUndockedRegFreeWinRTInitialize>false</WindowsAppSdkUndockedRegFreeWinRTInitialize>
+    <UseWinUI>false</UseWinUI>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <!-- Link only the source files we need to test (avoids loading WinUI module initializer) -->
+  <ItemGroup>
+    <Compile Include="..\Services\SessionService.cs" Link="Linked\SessionService.cs" />
+    <Compile Include="..\Services\ISessionService.cs" Link="Linked\ISessionService.cs" />
+    <Compile Include="..\Helpers\ApiEndpoints.cs" Link="Linked\ApiEndpoints.cs" />
+    <Compile Include="..\Models\Session.cs" Link="Linked\Session.cs" />
+    <Compile Include="..\Models\SessionLaunchParams.cs" Link="Linked\SessionLaunchParams.cs" />
+    <Compile Include="..\ViewModels\SessionListViewModel.cs" Link="Linked\SessionListViewModel.cs" />
+  </ItemGroup>
+</Project>

@@ -136,12 +136,28 @@ public partial class SessionListViewModel : ObservableObject
         }
     }
 
+    public async Task<(bool Success, string? ErrorMessage)> TryRenewSessionAsync(string sessionId)
+    {
+        try
+        {
+            await _sessionService.RenewSessionAsync(sessionId);
+            await LoadSessionsAsync();
+            return (true, null);
+        }
+        catch (HttpRequestException ex)
+        {
+            return (false, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Unexpected error: {ex.Message}");
+        }
+    }
+
     [RelayCommand]
     private async Task RenewSessionAsync(string sessionId)
     {
-        var success = await _sessionService.RenewSessionAsync(sessionId);
-        if (success)
-            await LoadSessionsAsync();
+        await TryRenewSessionAsync(sessionId);
     }
 
     public async Task<string?> GetSessionEventsAsync(string sessionId)

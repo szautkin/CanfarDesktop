@@ -16,7 +16,7 @@ public class ApiEndpoints
     // Skaha Sessions
     public string SessionsUrl => $"{SkahaBaseUrl}/v1/session";
     public string SessionUrl(string id) => $"{SkahaBaseUrl}/v1/session/{id}";
-    public string SessionRenewUrl(string id) => $"{SkahaBaseUrl}/v1/session/{id}/renew";
+    public string SessionRenewUrl(string id) => $"{SkahaBaseUrl}/v1/session/{id}?action=renew";
     public string SessionEventsUrl(string id) => $"{SkahaBaseUrl}/v1/session/{id}?view=events";
     public string SessionLogsUrl(string id) => $"{SkahaBaseUrl}/v1/session/{id}?view=logs";
 

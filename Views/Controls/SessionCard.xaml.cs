@@ -58,6 +58,7 @@ public sealed partial class SessionCard : UserControl
         TypeImage.Source = new BitmapImage(new Uri($"ms-appx:///Assets/{typeImageFile}"));
 
         OpenButton.IsEnabled = session.Status == "Running";
+        RenewButton.IsEnabled = session.Status == "Running";
     }
 
     private static string ParseImageLabel(string imageId)

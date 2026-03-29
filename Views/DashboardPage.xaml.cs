@@ -111,18 +111,18 @@ public sealed partial class DashboardPage : Page
 
     private async void OnSessionRenew(object? sender, string sessionId)
     {
-        await _sessionListVm.RenewSessionCommand.ExecuteAsync(sessionId);
+        var session = _sessionListVm.Sessions.FirstOrDefault(s => s.Id == sessionId);
+        var sessionName = session?.SessionName ?? sessionId;
+
+        await ShowRenewDialogAsync(sessionName, sessionId);
     }
 
     private async void OnSessionEvents(object? sender, string sessionId)
     {
-        var events = await _sessionListVm.GetSessionEventsAsync(sessionId);
-        if (events is not null)
-        {
-            var dialog = new SessionEventsDialog { XamlRoot = XamlRoot };
-            dialog.SetContent(events);
-            await dialog.ShowAsync();
-        }
+        var dialog = new SessionEventsDialog { XamlRoot = XamlRoot };
+        var loadTask = dialog.LoadAsync(sessionId, _sessionListVm);
+        _ = dialog.ShowAsync();
+        await loadTask;
     }
 
     private async void OnLaunchRequested(object? sender, EventArgs e)
@@ -241,6 +241,68 @@ public sealed partial class DashboardPage : Page
             resultBar.Severity = InfoBarSeverity.Error;
             resultBar.Title = "Error";
             resultBar.Message = _sessionLaunchVm.ErrorMessage;
+            resultBar.IsOpen = true;
+        }
+    }
+
+    private async Task ShowRenewDialogAsync(string sessionName, string sessionId)
+    {
+        var statusText = new TextBlock
+        {
+            Text = $"Renewing '{sessionName}'...",
+            Style = (Style)Application.Current.Resources["BodyTextBlockStyle"],
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var progressRing = new ProgressRing { IsActive = true, Width = 20, Height = 20 };
+
+        var statusRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        statusRow.Children.Add(progressRing);
+        statusRow.Children.Add(statusText);
+
+        var resultBar = new InfoBar
+        {
+            IsOpen = false,
+            IsClosable = false,
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+
+        var panel = new StackPanel { Spacing = 8 };
+        panel.Children.Add(statusRow);
+        panel.Children.Add(resultBar);
+
+        var dialog = new ContentDialog
+        {
+            Title = "Renew Session",
+            Content = panel,
+            XamlRoot = XamlRoot,
+            CloseButtonText = "Close"
+        };
+
+        var renewTask = _sessionListVm.TryRenewSessionAsync(sessionId);
+        var dialogTask = dialog.ShowAsync();
+
+        var (success, errorMessage) = await renewTask;
+
+        progressRing.IsActive = false;
+        statusRow.Children.Remove(progressRing);
+
+        if (success)
+        {
+            statusText.Text = $"'{sessionName}' renewed successfully!";
+            resultBar.Severity = InfoBarSeverity.Success;
+            resultBar.Title = "Session renewed";
+            resultBar.Message = "The session expiry time has been extended.";
+            resultBar.IsOpen = true;
+
+            await Task.Delay(2000);
+            dialog.Hide();
+        }
+        else
+        {
+            statusText.Text = "Renew failed";
+            resultBar.Severity = InfoBarSeverity.Error;
+            resultBar.Title = "Error";
+            resultBar.Message = errorMessage ?? "Unknown error";
             resultBar.IsOpen = true;
         }
     }
