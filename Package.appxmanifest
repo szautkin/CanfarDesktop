@@ -10,7 +10,7 @@
   <Identity
     Name="CodeBG.Verbinal"
     Publisher="CN=45CD1C64-9326-4D91-B9AD-2046234A42A3"
-    Version="1.0.5.0" />
+    Version="1.0.6.0" />
 
   <mp:PhoneIdentity PhoneProductId="6cd0bff1-2d7f-4790-85ab-052a586a6531" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 

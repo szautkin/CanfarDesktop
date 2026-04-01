@@ -14,6 +14,7 @@ public sealed partial class DashboardPage : Page
     private readonly LaunchFormControl _launchForm;
     private readonly PlatformLoadControl _platformLoad;
     private readonly StorageQuotaControl _storageQuota;
+    private readonly BatchJobsControl _batchJobs;
     private readonly RecentLaunchesControl _recentLaunches;
     private readonly SessionListViewModel _sessionListVm;
     private readonly SessionLaunchViewModel _sessionLaunchVm;
@@ -33,12 +34,14 @@ public sealed partial class DashboardPage : Page
         _launchForm = new LaunchFormControl(sessionLaunchVm);
         _platformLoad = new PlatformLoadControl(platformLoadVm);
         _storageQuota = new StorageQuotaControl(storageVm);
+        _batchJobs = new BatchJobsControl(sessionListVm);
         _recentLaunches = new RecentLaunchesControl(recentLaunchService);
 
         SessionListContainer.Child = _sessionList;
         LaunchFormContainer.Child = _launchForm;
         PlatformLoadContainer.Child = _platformLoad;
         StorageContainer.Child = _storageQuota;
+        BatchJobsContainer.Child = _batchJobs;
         RecentLaunchesContainer.Child = _recentLaunches;
 
         // Wire up session counter for name generation

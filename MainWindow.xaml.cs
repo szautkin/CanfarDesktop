@@ -110,7 +110,7 @@ public sealed partial class MainWindow : Window
 
         var version = new TextBlock
         {
-            Text = $"Version 1.0.0",
+            Text = $"Version {GetAppVersion()}",
             Style = (Microsoft.UI.Xaml.Style)Application.Current.Resources["CaptionTextBlockStyle"],
             HorizontalAlignment = HorizontalAlignment.Center,
             Opacity = 0.5
@@ -162,7 +162,7 @@ public sealed partial class MainWindow : Window
 
         var copyright = new TextBlock
         {
-            Text = "\u00a9 2025 Serhii Zautkin",
+            Text = "\u00a9 2026 Serhii Zautkin",
             Style = (Microsoft.UI.Xaml.Style)Application.Current.Resources["CaptionTextBlockStyle"],
             HorizontalAlignment = HorizontalAlignment.Center,
             Opacity = 0.4
@@ -240,6 +240,15 @@ public sealed partial class MainWindow : Window
         {
             System.Diagnostics.Debug.WriteLine($"Logout error: {ex}");
         }
+    }
+
+    private static string GetAppVersion()
+    {
+        var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+        var version = assembly.GetName().Version;
+        return version is not null
+            ? $"{version.Major}.{version.Minor}.{version.Build}"
+            : "0.0.0";
     }
 
     private async Task NavigateToDashboard()

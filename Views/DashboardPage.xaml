@@ -25,7 +25,14 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Grid.Column="0" x:Name="SessionListContainer" MinHeight="200" />
-                <Border Grid.Column="1" x:Name="StorageContainer" />
+                <Grid Grid.Column="1" RowSpacing="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" x:Name="StorageContainer" />
+                    <Border Grid.Row="1" x:Name="BatchJobsContainer" />
+                </Grid>
             </Grid>
 
             <!-- Bottom row: Launch Form + Platform Load -->

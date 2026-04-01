@@ -16,7 +16,11 @@
       "Bash(dotnet package:*)",
       "Bash(wc:*)",
       "Bash(cp:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(gh api:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet test:*)",
+      "mcp__claude_ai_CADC-MCP-SERVER__canfar_help"
     ]
   }
 }

@@ -121,7 +121,7 @@ public partial class SessionLaunchViewModel : ObservableObject
             var repos = await _imageService.GetRepositoriesAsync();
             Repositories.Clear();
             foreach (var r in repos) Repositories.Add(r);
-            if (Repositories.Count > 0 && string.IsNullOrEmpty(RepositoryHost))
+            if (Repositories.Count > 0)
                 RepositoryHost = Repositories[0];
 
             var context = await _imageService.GetContextAsync();

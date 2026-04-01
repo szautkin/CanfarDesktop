@@ -32,5 +32,6 @@
     <Compile Include="..\Models\Session.cs" Link="Linked\Session.cs" />
     <Compile Include="..\Models\SessionLaunchParams.cs" Link="Linked\SessionLaunchParams.cs" />
     <Compile Include="..\ViewModels\SessionListViewModel.cs" Link="Linked\SessionListViewModel.cs" />
+    <Compile Include="..\Helpers\BatchJobsHelper.cs" Link="Linked\BatchJobsHelper.cs" />
   </ItemGroup>
 </Project>

@@ -32,6 +32,11 @@ public partial class SessionListViewModel : ObservableObject
 
     public ObservableCollection<Session> Sessions { get; } = [];
 
+    public List<Session> HeadlessSessions { get; private set; } = [];
+
+    private static bool IsHeadless(Session s) =>
+        string.Equals(s.SessionType, "headless", StringComparison.OrdinalIgnoreCase);
+
     public event EventHandler? SessionsRefreshed;
 
     public SessionListViewModel(ISessionService sessionService)
@@ -48,9 +53,12 @@ public partial class SessionListViewModel : ObservableObject
 
         try
         {
-            var sessions = await _sessionService.GetSessionsAsync();
+            var allSessions = await _sessionService.GetSessionsAsync();
+
+            HeadlessSessions = allSessions.Where(IsHeadless).ToList();
+
             Sessions.Clear();
-            foreach (var session in sessions)
+            foreach (var session in allSessions.Where(s => !IsHeadless(s)))
                 Sessions.Add(session);
 
             SessionsRefreshed?.Invoke(this, EventArgs.Empty);
