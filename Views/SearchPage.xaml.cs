@@ -14,7 +14,7 @@ public sealed partial class SearchPage : Page
 {
     public SearchViewModel ViewModel { get; }
     private readonly DataLinkService _dataLinkService;
-    private bool _suppressDataTrainEvents;
+    private readonly DataTrainManager _dataTrainMgr = new();
     private bool _dataTrainLoaded;
 
     public string[] SpectralUnits => UnitConverter.SpectralUnits;
@@ -26,9 +26,6 @@ public sealed partial class SearchPage : Page
         ViewModel = viewModel;
         _dataLinkService = dataLinkService;
         InitializeComponent();
-
-        Loaded += (_, _) => System.Diagnostics.Debug.WriteLine($">>> SearchPage.Loaded (dataTrainLoaded={_dataTrainLoaded})");
-        Unloaded += (_, _) => System.Diagnostics.Debug.WriteLine(">>> SearchPage.Unloaded");
 
         // Ctrl+Enter to search
         var accelerator = new KeyboardAccelerator
@@ -44,38 +41,59 @@ public sealed partial class SearchPage : Page
     {
         ViewModel.LoadRecentSearchesFromStore();
         ViewModel.LoadSavedQueriesFromStore();
-        // Data train loaded lazily when user expands "Additional Constraints"
+
+        if (!_dataTrainLoaded)
+        {
+            _dataTrainLoaded = true;
+            _ = LoadDataTrainInBackground();
+        }
     }
 
-    private async void OnDataTrainExpanding(Expander sender, ExpanderExpandingEventArgs args)
+    private async Task LoadDataTrainInBackground()
     {
-        if (_dataTrainLoaded) return;
-        _dataTrainLoaded = true;
-
         try
         {
             await ViewModel.LoadDataTrainAsync();
+            var rows = ViewModel.AllDataTrainRows.ToList();
 
-            // Wait for expander content to be in visual tree
-            await Task.Delay(100);
-
-            _suppressDataTrainEvents = true;
-            RebuildAllCheckColumns();
-            _suppressDataTrainEvents = false;
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                _dataTrainMgr.Load(rows);
+                RebuildAllCheckColumns();
+            });
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Data train load error: {ex.Message}");
-            _dataTrainLoaded = false; // allow retry
+            System.Diagnostics.Debug.WriteLine($"Data train background load: {ex.Message}");
+            _dataTrainLoaded = false;
         }
     }
 
     #region Search actions
 
+    private void SyncDataTrainToViewModel()
+    {
+        // Copy DataTrainManager selections to ViewModel for ADQL building
+        CopySet(ViewModel.SelectedBands, _dataTrainMgr.SelectedBands);
+        CopySet(ViewModel.SelectedCollections, _dataTrainMgr.SelectedCollections);
+        CopySet(ViewModel.SelectedInstruments, _dataTrainMgr.SelectedInstruments);
+        CopySet(ViewModel.SelectedFilters, _dataTrainMgr.SelectedFilters);
+        CopySet(ViewModel.SelectedCalLevels, _dataTrainMgr.SelectedCalLevels);
+        CopySet(ViewModel.SelectedDataTypes, _dataTrainMgr.SelectedDataTypes);
+        CopySet(ViewModel.SelectedObsTypes, _dataTrainMgr.SelectedObsTypes);
+    }
+
+    private static void CopySet(System.Collections.ObjectModel.ObservableCollection<string> target, HashSet<string> source)
+    {
+        target.Clear();
+        foreach (var v in source) target.Add(v);
+    }
+
     private async void OnSearchClick(object sender, RoutedEventArgs e)
     {
         try
         {
+            SyncDataTrainToViewModel();
             await ViewModel.SearchCommand.ExecuteAsync(null);
             if (ViewModel.Results is not null)
             {
@@ -92,16 +110,9 @@ public sealed partial class SearchPage : Page
 
     private void OnClearClick(object sender, RoutedEventArgs e)
     {
-        _suppressDataTrainEvents = true;
-        try
-        {
-            ViewModel.ClearForm();
-            RebuildAllCheckColumns();
-        }
-        finally
-        {
-            _suppressDataTrainEvents = false;
-        }
+        ViewModel.ClearForm();
+        _dataTrainMgr.ClearAll();
+        if (_dataTrainUIBuilt) SyncAllTrainLists();
     }
 
     private async void OnExecuteAdqlClick(object sender, RoutedEventArgs e)
@@ -124,98 +135,81 @@ public sealed partial class SearchPage : Page
 
     #endregion
 
-    #region Data train (checkbox-based cascade)
+    #region Data train (ListView-based cascade via DataTrainManager)
 
-    // Track which values each panel was built for, to avoid unnecessary rebuilds
-    private readonly Dictionary<StackPanel, HashSet<string>> _panelValues = new();
-
-    private void OnCheckToggle(string value, bool isChecked,
-        System.Collections.ObjectModel.ObservableCollection<string> selected)
-    {
-        if (_suppressDataTrainEvents) return;
-        _suppressDataTrainEvents = true;
-
-        try
-        {
-            if (isChecked && !selected.Contains(value))
-                selected.Add(value);
-            else if (!isChecked)
-                selected.Remove(value);
-
-            ViewModel.RefreshDataTrainOptions();
-            SyncAllCheckColumns();
-        }
-        finally
-        {
-            _suppressDataTrainEvents = false;
-        }
-    }
+    private bool _dataTrainUIBuilt;
+    private bool _suppressTrainEvents;
+    private ListView[] _trainLists = [];
 
     private void RebuildAllCheckColumns()
     {
-        _panelValues.Clear();
-        SyncAllCheckColumns();
+        if (!_dataTrainMgr.IsLoaded || _dataTrainUIBuilt) return;
+        _dataTrainUIBuilt = true;
+        _trainLists = [BandList, CollectionList, InstrumentList, FilterList, CalLevelList, DataTypeList, ObsTypeList];
+        SyncAllTrainLists();
     }
 
-    private void SyncAllCheckColumns()
+    private void SyncAllTrainLists()
     {
-        SyncCheckColumn(BandChecks, ViewModel.AvailableBands, ViewModel.SelectedBands);
-        SyncCheckColumn(CollectionChecks, ViewModel.AvailableCollections, ViewModel.SelectedCollections);
-        SyncCheckColumn(InstrumentChecks, ViewModel.AvailableInstruments, ViewModel.SelectedInstruments);
-        SyncCheckColumn(FilterChecks, ViewModel.AvailableFilters, ViewModel.SelectedFilters);
-        SyncCheckColumn(CalLevelChecks, ViewModel.AvailableCalLevels, ViewModel.SelectedCalLevels);
-        SyncCheckColumn(DataTypeChecks, ViewModel.AvailableDataTypes, ViewModel.SelectedDataTypes);
-        SyncCheckColumn(ObsTypeChecks, ViewModel.AvailableObsTypes, ViewModel.SelectedObsTypes);
+        _suppressTrainEvents = true;
+        SyncTrainList(BandList, _dataTrainMgr.AvailableBands, _dataTrainMgr.SelectedBands);
+        SyncTrainList(CollectionList, _dataTrainMgr.AvailableCollections, _dataTrainMgr.SelectedCollections);
+        SyncTrainList(InstrumentList, _dataTrainMgr.AvailableInstruments, _dataTrainMgr.SelectedInstruments);
+        SyncTrainList(FilterList, _dataTrainMgr.AvailableFilters, _dataTrainMgr.SelectedFilters);
+        SyncTrainList(CalLevelList, _dataTrainMgr.AvailableCalLevels, _dataTrainMgr.SelectedCalLevels);
+        SyncTrainList(DataTypeList, _dataTrainMgr.AvailableDataTypes, _dataTrainMgr.SelectedDataTypes);
+        SyncTrainList(ObsTypeList, _dataTrainMgr.AvailableObsTypes, _dataTrainMgr.SelectedObsTypes);
+        _suppressTrainEvents = false;
     }
 
-    private void SyncCheckColumn(
-        StackPanel panel,
-        System.Collections.ObjectModel.ObservableCollection<string> available,
-        System.Collections.ObjectModel.ObservableCollection<string> selected)
+    private static void SyncTrainList(ListView list, HashSet<string> available, HashSet<string> selected)
     {
-        var currentValues = new HashSet<string>(available);
+        var sorted = available.OrderBy(v => v).ToList();
+        list.ItemsSource = sorted;
 
-        // Only rebuild checkboxes if the available options changed
-        if (_panelValues.TryGetValue(panel, out var prev) && prev.SetEquals(currentValues))
+        // Restore selections
+        foreach (var value in selected)
         {
-            // Just update IsChecked on existing checkboxes (suppress events!)
-            var wasSuppressed = _suppressDataTrainEvents;
-            _suppressDataTrainEvents = true;
-            foreach (var child in panel.Children)
-            {
-                if (child is CheckBox cb && cb.Content is string val)
-                    cb.IsChecked = selected.Contains(val);
-            }
-            _suppressDataTrainEvents = wasSuppressed;
+            var idx = sorted.IndexOf(value);
+            if (idx >= 0) list.SelectedItems.Add(sorted[idx]);
+        }
+    }
+
+    private void OnTrainSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressTrainEvents) return;
+        if (sender is not ListView list || list.Tag is not string tagStr || !int.TryParse(tagStr, out var colIdx))
             return;
-        }
 
-        // Available options changed — rebuild
-        var wasSuppressed2 = _suppressDataTrainEvents;
-        _suppressDataTrainEvents = true;
+        // Read current selections from the ListView
+        var newSelected = new HashSet<string>();
+        foreach (var item in list.SelectedItems)
+            if (item is string s) newSelected.Add(s);
 
-        _panelValues[panel] = currentValues;
-        panel.Children.Clear();
-
-        foreach (var value in available)
+        // Determine what changed
+        var mgr = _dataTrainMgr;
+        var oldSelected = colIdx switch
         {
-            var cb = new CheckBox
-            {
-                Content = value,
-                IsChecked = selected.Contains(value),
-                Padding = new Thickness(4, 1, 4, 1),
-                MinHeight = 0,
-                MinWidth = 0,
-                FontSize = 12
-            };
-            var capturedValue = value;
-            var capturedSelected = selected;
-            cb.Checked += (_, _) => OnCheckToggle(capturedValue, true, capturedSelected);
-            cb.Unchecked += (_, _) => OnCheckToggle(capturedValue, false, capturedSelected);
-            panel.Children.Add(cb);
-        }
+            0 => mgr.SelectedBands,
+            1 => mgr.SelectedCollections,
+            2 => mgr.SelectedInstruments,
+            3 => mgr.SelectedFilters,
+            4 => mgr.SelectedCalLevels,
+            5 => mgr.SelectedDataTypes,
+            6 => mgr.SelectedObsTypes,
+            _ => new HashSet<string>()
+        };
 
-        _suppressDataTrainEvents = wasSuppressed2;
+        // Find the toggled item (added or removed)
+        foreach (var added in e.AddedItems)
+            if (added is string s && !oldSelected.Contains(s))
+                mgr.Toggle(colIdx, s);
+
+        foreach (var removed in e.RemovedItems)
+            if (removed is string s && oldSelected.Contains(s))
+                mgr.Toggle(colIdx, s);
+
+        SyncAllTrainLists();
     }
 
     #endregion

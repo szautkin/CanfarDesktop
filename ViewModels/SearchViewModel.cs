@@ -12,6 +12,7 @@ public partial class SearchViewModel : ObservableObject
     private readonly ITAPService _tapService;
     private readonly ISearchStoreService _storeService;
     private List<DataTrainRow> _allDataTrainRows = [];
+    public IReadOnlyList<DataTrainRow> AllDataTrainRows => _allDataTrainRows;
     private CancellationTokenSource? _resolverCts;
 
     #region Observation
@@ -220,7 +221,6 @@ public partial class SearchViewModel : ObservableObject
 
     public void RefreshDataTrainOptions()
     {
-        System.Diagnostics.Debug.WriteLine($">>> RefreshDataTrainOptions: {_allDataTrainRows.Count} rows, stack={Environment.StackTrace[..200]}");
         var rows = _allDataTrainRows;
 
         // Bands always show all

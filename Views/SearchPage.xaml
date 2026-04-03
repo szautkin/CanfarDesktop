@@ -194,8 +194,7 @@
 
                             <!-- Data Train (below the 4 columns) — lazy loaded on expand -->
                             <Expander Header="Additional Constraints" IsExpanded="False"
-                                      HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                                      x:Name="DataTrainExpander" Expanding="OnDataTrainExpanding">
+                                      HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                                 <StackPanel Spacing="8">
                                     <Grid ColumnSpacing="8">
                                         <Grid.ColumnDefinitions>
@@ -207,48 +206,20 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Spacing="0">
-                                            <TextBlock Text="Band" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
-                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
-                                                <StackPanel x:Name="BandChecks" Spacing="0" />
-                                            </ScrollViewer>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Spacing="0">
-                                            <TextBlock Text="Collection" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
-                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
-                                                <StackPanel x:Name="CollectionChecks" Spacing="0" />
-                                            </ScrollViewer>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2" Spacing="0">
-                                            <TextBlock Text="Instrument" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
-                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
-                                                <StackPanel x:Name="InstrumentChecks" Spacing="0" />
-                                            </ScrollViewer>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="3" Spacing="0">
-                                            <TextBlock Text="Filter" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
-                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
-                                                <StackPanel x:Name="FilterChecks" Spacing="0" />
-                                            </ScrollViewer>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="4" Spacing="0">
-                                            <TextBlock Text="Cal. Level" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
-                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
-                                                <StackPanel x:Name="CalLevelChecks" Spacing="0" />
-                                            </ScrollViewer>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="5" Spacing="0">
-                                            <TextBlock Text="Data Type" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
-                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
-                                                <StackPanel x:Name="DataTypeChecks" Spacing="0" />
-                                            </ScrollViewer>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="6" Spacing="0">
-                                            <TextBlock Text="Obs. Type" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
-                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
-                                                <StackPanel x:Name="ObsTypeChecks" Spacing="0" />
-                                            </ScrollViewer>
-                                        </StackPanel>
+                                        <StackPanel Grid.Column="0"><TextBlock Text="Band" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                            <ListView x:Name="BandList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="0" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Text="Collection" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                            <ListView x:Name="CollectionList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="1" /></StackPanel>
+                                        <StackPanel Grid.Column="2"><TextBlock Text="Instrument" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                            <ListView x:Name="InstrumentList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="2" /></StackPanel>
+                                        <StackPanel Grid.Column="3"><TextBlock Text="Filter" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                            <ListView x:Name="FilterList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="3" /></StackPanel>
+                                        <StackPanel Grid.Column="4"><TextBlock Text="Cal. Level" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                            <ListView x:Name="CalLevelList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="4" /></StackPanel>
+                                        <StackPanel Grid.Column="5"><TextBlock Text="Data Type" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                            <ListView x:Name="DataTypeList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="5" /></StackPanel>
+                                        <StackPanel Grid.Column="6"><TextBlock Text="Obs. Type" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                            <ListView x:Name="ObsTypeList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="6" /></StackPanel>
                                     </Grid>
                                 </StackPanel>
                             </Expander>

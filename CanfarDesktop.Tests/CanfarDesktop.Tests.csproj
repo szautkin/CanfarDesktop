@@ -39,6 +39,7 @@
     <Compile Include="..\Models\SearchModels.cs" Link="Linked\SearchModels.cs" />
     <Compile Include="..\Models\DataLinkResult.cs" Link="Linked\DataLinkResult.cs" />
     <Compile Include="..\Helpers\CellFormatter.cs" Link="Linked\CellFormatter.cs" />
+    <Compile Include="..\Helpers\DataTrainManager.cs" Link="Linked\DataTrainManager.cs" />
     <Compile Include="..\Services\TAPService.cs" Link="Linked\TAPService.cs" />
     <Compile Include="..\Services\DataLinkService.cs" Link="Linked\DataLinkService.cs" />
   </ItemGroup>

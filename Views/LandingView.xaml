@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="CanfarDesktop.Views.LandingView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
+        <StackPanel Spacing="32" HorizontalAlignment="Center">
+
+            <!-- Branding -->
+            <StackPanel Spacing="12" HorizontalAlignment="Center">
+                <Image Source="Assets/Verbinal_icon.png" Width="80" Height="80" HorizontalAlignment="Center" />
+                <TextBlock Text="Verbinal" Style="{StaticResource TitleLargeTextBlockStyle}"
+                           HorizontalAlignment="Center" FontWeight="Bold" />
+                <TextBlock Text="A CANFAR Science Portal Companion"
+                           Style="{StaticResource SubtitleTextBlockStyle}"
+                           HorizontalAlignment="Center" Opacity="0.6" />
+            </StackPanel>
+
+            <!-- Tiles -->
+            <StackPanel Orientation="Horizontal" Spacing="24" HorizontalAlignment="Center">
+
+                <!-- Portal tile -->
+                <Border x:Name="PortalTile" Width="200" Height="180" CornerRadius="16"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                        Background="Transparent" Tapped="OnPortalTapped"
+                        PointerEntered="OnTilePointerEntered" PointerExited="OnTilePointerExited">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
+                        <FontIcon Glyph="&#xE7F4;" FontSize="48" Opacity="0.7" HorizontalAlignment="Center" />
+                        <StackPanel Spacing="4" HorizontalAlignment="Center">
+                            <TextBlock Text="Portal" Style="{StaticResource SubtitleTextBlockStyle}"
+                                       FontWeight="Bold" HorizontalAlignment="Center" />
+                            <TextBlock Text="Manage sessions &amp; data"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Opacity="0.6" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Search tile -->
+                <Border x:Name="SearchTile" Width="200" Height="180" CornerRadius="16"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                        Background="Transparent" Tapped="OnSearchTapped"
+                        PointerEntered="OnTilePointerEntered" PointerExited="OnTilePointerExited">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
+                        <FontIcon Glyph="&#xE721;" FontSize="48" Opacity="0.7" HorizontalAlignment="Center" />
+                        <StackPanel Spacing="4" HorizontalAlignment="Center">
+                            <TextBlock Text="Search" Style="{StaticResource SubtitleTextBlockStyle}"
+                                       FontWeight="Bold" HorizontalAlignment="Center" />
+                            <TextBlock Text="Explore the CADC archive"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Opacity="0.6" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Status -->
+            <TextBlock x:Name="StatusText" HorizontalAlignment="Center"
+                       Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.4" />
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -15,7 +15,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- TitleBar area -->
+        <!-- Title bar -->
         <Grid Grid.Row="0" Padding="16,8" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -23,25 +23,22 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- App title -->
+            <!-- Left: branding + home -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <Image Source="Assets/Verbinal_icon.png" Height="28" />
-                <TextBlock Text="Verbinal - a CANFAR Science Portal" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <TextBlock Text="Verbinal" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
+                <Button Click="OnHomeClick" ToolTipService.ToolTip="Home" Padding="6,4"
+                        Background="Transparent" BorderThickness="0">
+                    <FontIcon Glyph="&#xE80F;" FontSize="16" />
+                </Button>
             </StackPanel>
 
-            <!-- Navigation + Status -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"
-                        HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Button x:Name="PortalNavButton" Content="Portal" Click="OnNavigatePortal"
-                        Style="{StaticResource AccentButtonStyle}" Padding="12,4" />
-                <Button x:Name="SearchNavButton" Content="Search" Click="OnNavigateSearch"
-                        Padding="12,4" />
-                <TextBlock x:Name="StatusText" VerticalAlignment="Center"
-                           Opacity="0.6" Margin="12,0,0,0"
-                           Style="{StaticResource CaptionTextBlockStyle}" />
-            </StackPanel>
+            <!-- Center: status -->
+            <TextBlock Grid.Column="1" x:Name="StatusText" VerticalAlignment="Center"
+                       HorizontalAlignment="Center" Opacity="0.6"
+                       Style="{StaticResource CaptionTextBlockStyle}" />
 
-            <!-- Auth area -->
+            <!-- Right: auth area -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <Button Click="OnAboutClick" ToolTipService.ToolTip="About" Padding="6,4"
                         Background="Transparent" BorderThickness="0">
@@ -63,9 +60,10 @@
             </StackPanel>
         </Grid>
 
-        <!-- Main content — both pages live here, visibility-toggled -->
+        <!-- Content: 3 overlapping containers, visibility-toggled -->
         <Grid Grid.Row="1">
-            <Border x:Name="PortalContainer" />
+            <Border x:Name="LandingContainer" />
+            <Border x:Name="PortalContainer" Visibility="Collapsed" />
             <Border x:Name="SearchContainer" Visibility="Collapsed" />
         </Grid>
     </Grid>
