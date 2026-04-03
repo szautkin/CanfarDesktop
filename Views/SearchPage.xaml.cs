@@ -300,7 +300,14 @@ public sealed partial class SearchPage : Page
             var row = pageRows[i];
             var rowBorder = BuildRow(visibleKeys, isHeader: false, row: row, rowIndex: i);
             var capturedRow = row;
-            rowBorder.Tapped += (_, _) => ShowRowDetail(capturedRow);
+            rowBorder.Tapped += (_, e) =>
+            {
+                // Don't open detail if user clicked download/preview button
+                if (e.OriginalSource is FrameworkElement fe &&
+                    (fe.Tag as string == "action" || FrameworkElementExtensions.FindParentWithTag(fe, "action") is not null))
+                    return;
+                ShowRowDetail(capturedRow);
+            };
             rowBorder.PointerEntered += (s, _) => ((Border)s).Opacity = 0.7;
             rowBorder.PointerExited += (s, _) => ((Border)s).Opacity = 1.0;
             ResultsPanel.Children.Add(rowBorder);
@@ -326,7 +333,7 @@ public sealed partial class SearchPage : Page
 
             if (!isHeader && key == "download" && !string.IsNullOrEmpty(publisherID))
             {
-                var dlUrl = _dataLinkService.GetDownloadUrl(publisherID);
+                var capturedPubId = publisherID;
                 var dlBtn = new Button
                 {
                     Padding = new Thickness(2),
@@ -334,34 +341,97 @@ public sealed partial class SearchPage : Page
                     BorderThickness = new Thickness(0),
                     Width = width,
                     VerticalAlignment = VerticalAlignment.Center,
-                    Content = new FontIcon { Glyph = "\uE896", FontSize = 13 }
+                    Content = new FontIcon { Glyph = "\uE896", FontSize = 13 },
+                    Tag = "action" // marks as action cell — prevents row detail
                 };
-                dlBtn.Click += (_, _) =>
-                {
-                    if (Uri.TryCreate(dlUrl, UriKind.Absolute, out var uri))
-                        _ = Windows.System.Launcher.LaunchUriAsync(uri);
-                };
+                dlBtn.Click += async (_, _) => await DownloadFileAsync(capturedPubId);
                 sp.Children.Add(dlBtn);
             }
             else if (!isHeader && key == "preview" && !string.IsNullOrEmpty(publisherID))
             {
-                var img = new Image { Width = width - 4, Height = 24, Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform };
                 var capturedPubId = publisherID;
-                var loaded = false;
-                img.PointerEntered += async (s, _) =>
+
+                // Container button with flyout for preview
+                var previewBtn = new Button
                 {
-                    if (loaded) return;
-                    loaded = true;
+                    Padding = new Thickness(2),
+                    Background = null,
+                    BorderThickness = new Thickness(0),
+                    Width = width,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Content = new FontIcon { Glyph = "\uE8B9", FontSize = 13 },
+                    Tag = "action"
+                };
+
+                // Flyout with preview image — loads on open
+                var flyoutPanel = new StackPanel { MinWidth = 200, MinHeight = 100 };
+                var spinner = new ProgressRing { IsActive = true, Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Center };
+                flyoutPanel.Children.Add(spinner);
+
+                var flyout = new Flyout { Content = flyoutPanel };
+                var flyoutLoaded = false;
+
+                flyout.Opened += async (_, _) =>
+                {
+                    if (flyoutLoaded) return;
+                    flyoutLoaded = true;
+
                     try
                     {
                         var links = await _dataLinkService.GetLinksAsync(capturedPubId);
-                        var thumbUrl = links.Thumbnails.FirstOrDefault() ?? links.Previews.FirstOrDefault();
-                        if (thumbUrl is not null)
-                            ((Image)s).Source = new BitmapImage(new Uri(thumbUrl));
+                        var imageUrl = links.Thumbnails.FirstOrDefault() ?? links.Previews.FirstOrDefault();
+
+                        if (imageUrl is not null)
+                        {
+                            try
+                            {
+                                using var imgResponse = await _dataLinkService.DownloadAsync(imageUrl);
+                                using var imgStream = await imgResponse.Content.ReadAsStreamAsync();
+                                var memStream = new System.IO.MemoryStream();
+                                await imgStream.CopyToAsync(memStream);
+                                memStream.Position = 0;
+
+                                var bitmap = new BitmapImage();
+                                await bitmap.SetSourceAsync(memStream.AsRandomAccessStream());
+
+                                flyoutPanel.Children.Clear();
+                                flyoutPanel.Children.Add(new Image
+                                {
+                                    Source = bitmap,
+                                    MaxWidth = 300,
+                                    MaxHeight = 300,
+                                    Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform
+                                });
+                            }
+                            catch (Exception imgEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Image download failed: {imgEx.Message}");
+                                flyoutPanel.Children.Clear();
+                                flyoutPanel.Children.Add(new TextBlock { Text = "Image load failed", Opacity = 0.6 });
+                            }
+                        }
+                        else
+                        {
+                            flyoutPanel.Children.Clear();
+                            flyoutPanel.Children.Add(new TextBlock { Text = "No preview available", Opacity = 0.6 });
+                        }
                     }
-                    catch { /* non-critical */ }
+                    catch
+                    {
+                        flyoutPanel.Children.Clear();
+                        flyoutPanel.Children.Add(new TextBlock { Text = "Preview failed", Opacity = 0.6 });
+                        flyoutLoaded = false;
+                    }
                 };
-                sp.Children.Add(img);
+
+                // Open flyout on hover
+                previewBtn.PointerEntered += (s, _) =>
+                {
+                    flyout.ShowAt((FrameworkElement)s);
+                };
+
+                previewBtn.Flyout = flyout;
+                sp.Children.Add(previewBtn);
             }
             else
             {
@@ -475,12 +545,8 @@ public sealed partial class SearchPage : Page
                         Children = { new FontIcon { Glyph = "\uE896", FontSize = 14 }, new TextBlock { Text = "Download" } }
                     }
                 };
-                downloadBtn.Click += (_, _) =>
-                {
-                    var url = _dataLinkService.GetDownloadUrl(publisherID);
-                    if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
-                        _ = Windows.System.Launcher.LaunchUriAsync(uri);
-                };
+                var capturedPubIdForDl = publisherID;
+                downloadBtn.Click += async (_, _) => await DownloadFileAsync(capturedPubIdForDl);
 
                 var viewBtn = new Button { Content = "View on CADC" };
                 viewBtn.Click += (_, _) =>
@@ -579,6 +645,84 @@ public sealed partial class SearchPage : Page
 
     #endregion
 
+    #region Download + Preview
+
+    private async Task DownloadFileAsync(string publisherID)
+    {
+        try
+        {
+            var url = _dataLinkService.GetDownloadUrl(publisherID);
+
+            var hWnd = nint.Zero;
+            if (WindowHelper.ActiveWindows.Count > 0)
+                hWnd = WinRT.Interop.WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0]);
+            if (hWnd == nint.Zero) return;
+
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
+            picker.SuggestedFileName = ExtractFilenameFromPublisherID(publisherID);
+            picker.FileTypeChoices.Add("All Files", new List<string> { "." });
+
+            var file = await picker.PickSaveFileAsync();
+            if (file is null) return;
+
+            // Download
+            using var response = await _dataLinkService.DownloadAsync(url);
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var fileStream = await file.OpenStreamForWriteAsync();
+            await stream.CopyToAsync(fileStream);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Download error: {ex.Message}");
+        }
+    }
+
+    private static string ExtractFilenameFromPublisherID(string publisherID)
+    {
+        // e.g. "ivo://cadc.nrc.ca/CFHT?1100689/1100689o" → "1100689o"
+        var lastSlash = publisherID.LastIndexOf('/');
+        if (lastSlash >= 0 && lastSlash < publisherID.Length - 1)
+            return publisherID[(lastSlash + 1)..];
+        var lastQuestion = publisherID.LastIndexOf('?');
+        if (lastQuestion >= 0 && lastQuestion < publisherID.Length - 1)
+            return publisherID[(lastQuestion + 1)..];
+        return "observation";
+    }
+
+    private async Task LoadPreviewFlyout(Flyout flyout, string publisherID)
+    {
+        try
+        {
+            var spinner = new ProgressRing { IsActive = true, Width = 24, Height = 24 };
+            flyout.Content = spinner;
+
+            var links = await _dataLinkService.GetLinksAsync(publisherID);
+            var imageUrl = links.Previews.FirstOrDefault() ?? links.Thumbnails.FirstOrDefault();
+
+            if (imageUrl is not null)
+            {
+                flyout.Content = new Image
+                {
+                    Source = new BitmapImage(new Uri(imageUrl)),
+                    MaxWidth = 300,
+                    MaxHeight = 300,
+                    Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform
+                };
+            }
+            else
+            {
+                flyout.Content = new TextBlock { Text = "No preview available", Opacity = 0.6 };
+            }
+        }
+        catch
+        {
+            flyout.Content = new TextBlock { Text = "Preview failed", Opacity = 0.6 };
+        }
+    }
+
+    #endregion
+
     #region Export
 
     private async void OnExportCsvClick(object sender, RoutedEventArgs e)
@@ -628,5 +772,20 @@ internal static class WindowHelper
     {
         window.Closed += (_, _) => ActiveWindows.Remove(window);
         ActiveWindows.Add(window);
+    }
+}
+
+internal static class FrameworkElementExtensions
+{
+    /// <summary>Walk up the visual tree looking for an element with the given Tag value.</summary>
+    internal static FrameworkElement? FindParentWithTag(this FrameworkElement element, string tag)
+    {
+        var parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(element) as FrameworkElement;
+        while (parent is not null)
+        {
+            if (parent.Tag as string == tag) return parent;
+            parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(parent) as FrameworkElement;
+        }
+        return null;
     }
 }

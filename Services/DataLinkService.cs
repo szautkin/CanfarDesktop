@@ -48,13 +48,20 @@ public class DataLinkService
 
     public string GetDownloadUrl(string publisherID) => _endpoints.DownloadUrl(publisherID);
 
+    public async Task<HttpResponseMessage> DownloadAsync(string url)
+    {
+        var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+        return response;
+    }
+
     private DataLinkResult CacheAndReturn(string key, DataLinkResult result)
     {
         _cache.TryAdd(key, result);
         return result;
     }
 
-    private static DataLinkResult ParseVOTable(string xml)
+    internal static DataLinkResult ParseVOTable(string xml)
     {
         var result = new DataLinkResult();
 
@@ -70,13 +77,10 @@ public class DataLinkService
 
         if (accessUrlIdx < 0 || semanticsIdx < 0) return result;
 
-        // Extract rows
+        // Extract rows — handle both <TD>value</TD> and <TD/> (self-closing empty)
         foreach (Match rowMatch in Regex.Matches(xml, @"<TR>(.*?)</TR>", RegexOptions.Singleline | RegexOptions.IgnoreCase))
         {
-            var cells = new List<string>();
-            foreach (Match tdMatch in Regex.Matches(rowMatch.Groups[1].Value, @"<TD>(.*?)</TD>", RegexOptions.Singleline | RegexOptions.IgnoreCase))
-                cells.Add(tdMatch.Groups[1].Value.Trim());
-
+            var cells = ParseTDCells(rowMatch.Groups[1].Value);
             if (cells.Count <= Math.Max(accessUrlIdx, semanticsIdx)) continue;
 
             // Skip error rows
@@ -95,6 +99,24 @@ public class DataLinkService
                 result.Previews.Add(url);
         }
 
+        System.Diagnostics.Debug.WriteLine($"DataLink parsed: {result.Thumbnails.Count} thumbnails, {result.Previews.Count} previews");
         return result;
+    }
+
+    /// <summary>
+    /// Parse TD cells handling both <TD>value</TD> and <TD/> (self-closing empty).
+    /// </summary>
+    private static List<string> ParseTDCells(string rowContent)
+    {
+        var cells = new List<string>();
+        // Match <TD>content</TD> or <TD/> or <TD />
+        foreach (Match m in Regex.Matches(rowContent, @"<TD\s*/\s*>|<TD>(.*?)</TD>", RegexOptions.Singleline | RegexOptions.IgnoreCase))
+        {
+            if (m.Value.Contains("/>"))
+                cells.Add(""); // self-closing = empty cell
+            else
+                cells.Add(m.Groups[1].Value.Trim());
+        }
+        return cells;
     }
 }

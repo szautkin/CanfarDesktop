@@ -93,6 +93,37 @@ public class DataLinkServiceTests
     }
 
     [Fact]
+    public void ParseVOTable_SelfClosingTD_HandlesProperly()
+    {
+        // Real CADC response has <TD/> for empty cells
+        var xml = """
+            <VOTABLE>
+            <RESOURCE><TABLE>
+            <FIELD name="ID"/>
+            <FIELD name="access_url"/>
+            <FIELD name="service_def"/>
+            <FIELD name="error_message"/>
+            <FIELD name="semantics"/>
+            <FIELD name="local_semantics"/>
+            <FIELD name="description"/>
+            <FIELD name="content_type"/>
+            <DATA><TABLEDATA>
+            <TR><TD>ivo://cadc/CFHT</TD><TD>https://example.com/preview.jpg</TD><TD/><TD/><TD>#preview</TD><TD/><TD>desc</TD><TD>image/jpeg</TD></TR>
+            <TR><TD>ivo://cadc/CFHT</TD><TD>https://example.com/thumb.jpg</TD><TD/><TD/><TD>#thumbnail</TD><TD/><TD>desc</TD><TD>image/jpeg</TD></TR>
+            </TABLEDATA></DATA>
+            </TABLE></RESOURCE>
+            </VOTABLE>
+            """;
+
+        var result = ParseVOTable(xml);
+
+        Assert.Single(result.Previews);
+        Assert.Equal("https://example.com/preview.jpg", result.Previews[0]);
+        Assert.Single(result.Thumbnails);
+        Assert.Equal("https://example.com/thumb.jpg", result.Thumbnails[0]);
+    }
+
+    [Fact]
     public void ParseVOTable_EmptyXml_ReturnsEmptyResult()
     {
         var result = ParseVOTable("<VOTABLE></VOTABLE>");
