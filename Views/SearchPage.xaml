@@ -1,0 +1,452 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="CanfarDesktop.Views.SearchPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:CanfarDesktop.Converters"
+    >
+
+    <Page.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    </Page.Resources>
+
+    <Grid Padding="24" ColumnSpacing="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="260" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Main content -->
+        <Grid Grid.Column="0" RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Text="CADC Archive Search" Style="{StaticResource TitleTextBlockStyle}" />
+
+            <Pivot Grid.Row="1" x:Name="MainPivot">
+                <!-- SEARCH FORM -->
+                <PivotItem Header="Search Form">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
+                        <StackPanel Spacing="12">
+                            <!-- 4 constraint columns side-by-side (matches CADC web) -->
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Col 1: Observation -->
+                                <StackPanel Grid.Column="0" Spacing="8">
+                                    <TextBlock Text="Observation" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <TextBox Header="Observation ID" PlaceholderText="e.g. jw01345*"
+                                             Text="{x:Bind ViewModel.ObservationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Header="PI Name" PlaceholderText="e.g. Smith"
+                                             Text="{x:Bind ViewModel.ProposalPi, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Header="Proposal ID"
+                                             Text="{x:Bind ViewModel.ProposalId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Header="Proposal Title"
+                                             Text="{x:Bind ViewModel.ProposalTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Header="Keywords"
+                                             Text="{x:Bind ViewModel.ProposalKeywords, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Header="Data Release" PlaceholderText="e.g. > 2023-01-01"
+                                             Text="{x:Bind ViewModel.DataRelease, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <CheckBox Content="Public only" IsChecked="{x:Bind ViewModel.PublicOnly, Mode=TwoWay}" />
+                                    <ComboBox Header="Intent" HorizontalAlignment="Stretch"
+                                              SelectedItem="{x:Bind ViewModel.Intent, Mode=TwoWay}">
+                                        <x:String></x:String>
+                                        <x:String>science</x:String>
+                                        <x:String>calibration</x:String>
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <!-- Col 2: Spatial -->
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <TextBlock Text="Spatial" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <TextBox Header="Target or Coordinates" PlaceholderText="e.g. M31, NGC 1234"
+                                             Text="{x:Bind ViewModel.Target, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <ComboBox Header="Resolver" HorizontalAlignment="Stretch"
+                                              ItemsSource="{x:Bind ViewModel.ResolverServices}"
+                                              SelectedItem="{x:Bind ViewModel.ResolverService, Mode=TwoWay}" />
+                                    <!-- Resolver status -->
+                                    <Border Padding="8,6" CornerRadius="4"
+                                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                            Visibility="{x:Bind ViewModel.IsResolving, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <ProgressRing IsActive="True" Width="14" Height="14" />
+                                            <TextBlock Text="Resolving..." Style="{StaticResource CaptionTextBlockStyle}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock x:Name="ResolverStatusText" Text="{x:Bind ViewModel.ResolverStatus, Mode=OneWay}"
+                                               Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" TextWrapping="Wrap" />
+                                    <NumberBox Header="Radius (deg)" Value="{x:Bind ViewModel.SearchRadius, Mode=TwoWay}"
+                                               Minimum="0" SmallChange="0.01" SpinButtonPlacementMode="Compact" />
+                                    <Grid ColumnSpacing="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Header="Pixel Scale" PlaceholderText="e.g. 0.1..1.0"
+                                                 Text="{x:Bind ViewModel.PixelScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ComboBox Grid.Column="1" Width="90" VerticalAlignment="Bottom"
+                                                  ItemsSource="{x:Bind PixelScaleUnits}"
+                                                  SelectedItem="{x:Bind ViewModel.PixelScaleUnit, Mode=TwoWay}" />
+                                    </Grid>
+                                    <CheckBox Content="Spatial cutout" IsChecked="{x:Bind ViewModel.SpatialCutout, Mode=TwoWay}" />
+                                </StackPanel>
+
+                                <!-- Col 3: Temporal -->
+                                <StackPanel Grid.Column="2" Spacing="8">
+                                    <TextBlock Text="Temporal" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <Grid ColumnSpacing="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Header="Observation Date" PlaceholderText="e.g. 2020..2021"
+                                                 Text="{x:Bind ViewModel.ObservationDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ComboBox Grid.Column="1" Width="110" VerticalAlignment="Bottom"
+                                                  SelectedItem="{x:Bind ViewModel.DatePreset, Mode=TwoWay}">
+                                            <x:String></x:String>
+                                            <x:String>Last24h</x:String>
+                                            <x:String>LastWeek</x:String>
+                                            <x:String>LastMonth</x:String>
+                                        </ComboBox>
+                                    </Grid>
+                                    <Grid ColumnSpacing="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Header="Integration Time" PlaceholderText="e.g. 100..3600"
+                                                 Text="{x:Bind ViewModel.IntegrationTimeMin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ComboBox Grid.Column="1" Width="60" VerticalAlignment="Bottom"
+                                                  ItemsSource="{x:Bind TimeUnits}"
+                                                  SelectedItem="{x:Bind ViewModel.IntegrationTimeUnit, Mode=TwoWay}" />
+                                    </Grid>
+                                    <Grid ColumnSpacing="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Header="Time Span" PlaceholderText="e.g. 1..10"
+                                                 Text="{x:Bind ViewModel.TimeSpan, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ComboBox Grid.Column="1" Width="60" VerticalAlignment="Bottom"
+                                                  ItemsSource="{x:Bind TimeUnits}"
+                                                  SelectedItem="{x:Bind ViewModel.TimeSpanUnit, Mode=TwoWay}" />
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- Col 4: Spectral -->
+                                <StackPanel Grid.Column="3" Spacing="8">
+                                    <TextBlock Text="Spectral" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <Grid ColumnSpacing="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Header="Spectral Coverage" PlaceholderText="e.g. 400..700"
+                                                 Text="{x:Bind ViewModel.SpectralCoverage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ComboBox Grid.Column="1" Width="80" VerticalAlignment="Bottom"
+                                                  ItemsSource="{x:Bind SpectralUnits}"
+                                                  SelectedItem="{x:Bind ViewModel.SpectralCoverageUnit, Mode=TwoWay}" />
+                                    </Grid>
+                                    <Grid ColumnSpacing="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Header="Spectral Sampling"
+                                                 Text="{x:Bind ViewModel.SpectralSampling, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ComboBox Grid.Column="1" Width="80" VerticalAlignment="Bottom"
+                                                  ItemsSource="{x:Bind SpectralUnits}"
+                                                  SelectedItem="{x:Bind ViewModel.SpectralSamplingUnit, Mode=TwoWay}" />
+                                    </Grid>
+                                    <TextBox Header="Resolving Power" PlaceholderText="e.g. 1000..5000"
+                                             Text="{x:Bind ViewModel.ResolvingPower, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Grid ColumnSpacing="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Header="Bandpass Width"
+                                                 Text="{x:Bind ViewModel.BandpassWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ComboBox Grid.Column="1" Width="80" VerticalAlignment="Bottom"
+                                                  ItemsSource="{x:Bind SpectralUnits}"
+                                                  SelectedItem="{x:Bind ViewModel.BandpassWidthUnit, Mode=TwoWay}" />
+                                    </Grid>
+                                    <Grid ColumnSpacing="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Header="Rest Frame Energy"
+                                                 Text="{x:Bind ViewModel.RestFrameEnergy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ComboBox Grid.Column="1" Width="80" VerticalAlignment="Bottom"
+                                                  ItemsSource="{x:Bind SpectralUnits}"
+                                                  SelectedItem="{x:Bind ViewModel.RestFrameEnergyUnit, Mode=TwoWay}" />
+                                    </Grid>
+                                    <CheckBox Content="Spectral cutout" IsChecked="{x:Bind ViewModel.SpectralCutout, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Data Train (below the 4 columns) — lazy loaded on expand -->
+                            <Expander Header="Additional Constraints" IsExpanded="False"
+                                      HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                      x:Name="DataTrainExpander" Expanding="OnDataTrainExpanding">
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Spacing="0">
+                                            <TextBlock Text="Band" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
+                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                                                <StackPanel x:Name="BandChecks" Spacing="0" />
+                                            </ScrollViewer>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Spacing="0">
+                                            <TextBlock Text="Collection" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
+                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                                                <StackPanel x:Name="CollectionChecks" Spacing="0" />
+                                            </ScrollViewer>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Spacing="0">
+                                            <TextBlock Text="Instrument" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
+                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                                                <StackPanel x:Name="InstrumentChecks" Spacing="0" />
+                                            </ScrollViewer>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="3" Spacing="0">
+                                            <TextBlock Text="Filter" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
+                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                                                <StackPanel x:Name="FilterChecks" Spacing="0" />
+                                            </ScrollViewer>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4" Spacing="0">
+                                            <TextBlock Text="Cal. Level" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
+                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                                                <StackPanel x:Name="CalLevelChecks" Spacing="0" />
+                                            </ScrollViewer>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="5" Spacing="0">
+                                            <TextBlock Text="Data Type" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
+                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                                                <StackPanel x:Name="DataTypeChecks" Spacing="0" />
+                                            </ScrollViewer>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="6" Spacing="0">
+                                            <TextBlock Text="Obs. Type" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,4" />
+                                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                                                <StackPanel x:Name="ObsTypeChecks" Spacing="0" />
+                                            </ScrollViewer>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- Actions bar -->
+                            <Grid ColumnSpacing="12" Padding="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Style="{StaticResource AccentButtonStyle}" Click="OnSearchClick">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE721;" FontSize="14" />
+                                        <TextBlock Text="Search" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" Click="OnClearClick" Content="Reset" />
+                                <NumberBox Grid.Column="2" Header="Max" Width="120"
+                                           Value="{x:Bind ViewModel.MaxRecords, Mode=TwoWay}"
+                                           Minimum="1" Maximum="30000" SpinButtonPlacementMode="Compact" />
+                                <ProgressRing Grid.Column="3" IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}" Width="24" Height="24" />
+                            </Grid>
+
+                            <InfoBar IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}" Severity="Error"
+                                     Title="Error" Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </PivotItem>
+
+                <!-- RESULTS -->
+                <PivotItem Header="Results">
+                    <Grid RowSpacing="8" Padding="0,8,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Toolbar -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                                       Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                            <Button Click="OnColumnsClick" Content="Columns" Padding="8,4" />
+                            <Button Click="OnExportCsvClick" Content="CSV" Padding="8,4" />
+                            <Button Click="OnExportTsvClick" Content="TSV" Padding="8,4" />
+                        </StackPanel>
+
+                        <!-- Table -->
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="ResultsPanel" Spacing="0" />
+                        </ScrollViewer>
+
+                        <!-- Pagination -->
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12"
+                                    Padding="0,8" VerticalAlignment="Center">
+                            <TextBlock x:Name="PageStatusText" VerticalAlignment="Center"
+                                       Style="{StaticResource CaptionTextBlockStyle}" />
+                            <Button Click="OnFirstPage" Padding="8,4" ToolTipService.ToolTip="First page">
+                                <FontIcon Glyph="&#xEB9D;" FontSize="12" />
+                            </Button>
+                            <Button Click="OnPrevPage" Padding="8,4" ToolTipService.ToolTip="Previous page">
+                                <FontIcon Glyph="&#xE70E;" FontSize="12" />
+                            </Button>
+                            <TextBlock x:Name="PageNumberText" VerticalAlignment="Center"
+                                       Style="{StaticResource BodyTextBlockStyle}" Margin="4,0" />
+                            <Button Click="OnNextPage" Padding="8,4" ToolTipService.ToolTip="Next page">
+                                <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                            </Button>
+                            <Button Click="OnLastPage" Padding="8,4" ToolTipService.ToolTip="Last page">
+                                <FontIcon Glyph="&#xEB9E;" FontSize="12" />
+                            </Button>
+                            <ComboBox x:Name="RowsPerPageCombo" Header="Rows" Width="90"
+                                      ItemsSource="{x:Bind ViewModel.RowsPerPageOptions}"
+                                      SelectionChanged="OnRowsPerPageChanged" />
+                        </StackPanel>
+                    </Grid>
+                </PivotItem>
+
+                <!-- ADQL EDITOR -->
+                <PivotItem Header="ADQL Editor">
+                    <Grid RowSpacing="8" Padding="0,8,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBox Grid.Row="0" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
+                                 Text="{x:Bind ViewModel.AdqlText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 PlaceholderText="Enter ADQL query..." />
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                            <Button Style="{StaticResource AccentButtonStyle}" Click="OnExecuteAdqlClick">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE768;" FontSize="14" />
+                                    <TextBlock Text="Execute" />
+                                </StackPanel>
+                            </Button>
+                            <ProgressRing IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}" Width="20" Height="20" />
+                        </StackPanel>
+                    </Grid>
+                </PivotItem>
+            </Pivot>
+        </Grid>
+
+        <!-- Side panel -->
+        <Grid Grid.Column="1" RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Recent Searches -->
+            <Border Grid.Row="0" Padding="12" CornerRadius="8"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <Grid RowSpacing="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Recent Searches" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <ListView Grid.Row="1" x:Name="RecentSearchList" SelectionMode="Single"
+                              ItemsSource="{x:Bind ViewModel.RecentSearches}" SelectionChanged="OnRecentSearchSelected">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Padding="2,4" ColumnSpacing="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding Summary}" TextTrimming="CharacterEllipsis" FontSize="12" />
+                                        <TextBlock Text="{Binding ResultCount}" FontSize="10" Opacity="0.5" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Click="OnRemoveRecentSearch" Tag="{Binding}"
+                                            Padding="4" Background="Transparent" BorderThickness="0">
+                                        <FontIcon Glyph="&#xE74D;" FontSize="10" />
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <Button Grid.Row="2" Content="Clear All" Click="OnClearRecentSearches" HorizontalAlignment="Right" Padding="8,4" />
+                </Grid>
+            </Border>
+
+            <!-- Saved Queries -->
+            <Border Grid.Row="1" Padding="12" CornerRadius="8"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <Grid RowSpacing="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Saved Queries" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <Grid Grid.Row="1" ColumnSpacing="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" x:Name="SaveQueryName" PlaceholderText="Query name..." />
+                        <Button Grid.Column="1" Click="OnSaveQuery" ToolTipService.ToolTip="Save current ADQL">
+                            <FontIcon Glyph="&#xE74E;" FontSize="14" />
+                        </Button>
+                    </Grid>
+                    <ListView Grid.Row="2" ItemsSource="{x:Bind ViewModel.SavedQueries}" SelectionMode="None">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Padding="2,4" ColumnSpacing="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding Name}" FontSize="12" />
+                                        <TextBlock Text="{Binding Adql}" FontSize="10" Opacity="0.5" MaxLines="2"
+                                                   TextTrimming="CharacterEllipsis" FontFamily="Consolas" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Click="OnLoadSavedQuery" Tag="{Binding}" Padding="4"
+                                            Background="Transparent" BorderThickness="0" ToolTipService.ToolTip="Load">
+                                        <FontIcon Glyph="&#xE768;" FontSize="10" />
+                                    </Button>
+                                    <Button Grid.Column="2" Click="OnDeleteSavedQuery" Tag="{Binding}" Padding="4"
+                                            Background="Transparent" BorderThickness="0" ToolTipService.ToolTip="Delete">
+                                        <FontIcon Glyph="&#xE74D;" FontSize="10" />
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

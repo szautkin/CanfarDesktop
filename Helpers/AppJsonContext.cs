@@ -20,5 +20,10 @@ namespace CanfarDesktop.Helpers;
 [JsonSerializable(typeof(ResourceOptions))]
 [JsonSerializable(typeof(GpuOptions))]
 [JsonSerializable(typeof(List<string>))]
+[JsonSerializable(typeof(List<RecentSearch>))]
+[JsonSerializable(typeof(List<SavedQuery>))]
+[JsonSerializable(typeof(SearchFormState))]
+[JsonSerializable(typeof(InstanceStats))]
+[JsonSerializable(typeof(List<DataTrainRow>))]
 [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
 public partial class AppJsonContext : JsonSerializerContext;

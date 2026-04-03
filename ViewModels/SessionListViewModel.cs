@@ -10,7 +10,7 @@ public partial class SessionListViewModel : ObservableObject
 {
     private readonly ISessionService _sessionService;
     private CancellationTokenSource? _pollCts;
-    private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(15);
 
     [ObservableProperty]
     private bool _isLoading;
@@ -32,8 +32,6 @@ public partial class SessionListViewModel : ObservableObject
 
     public ObservableCollection<Session> Sessions { get; } = [];
 
-    public List<Session> HeadlessSessions { get; private set; } = [];
-
     private static bool IsHeadless(Session s) =>
         string.Equals(s.SessionType, "headless", StringComparison.OrdinalIgnoreCase);
 
@@ -54,8 +52,6 @@ public partial class SessionListViewModel : ObservableObject
         try
         {
             var allSessions = await _sessionService.GetSessionsAsync();
-
-            HeadlessSessions = allSessions.Where(IsHeadless).ToList();
 
             Sessions.Clear();
             foreach (var session in allSessions.Where(s => !IsHeadless(s)))
@@ -180,10 +176,11 @@ public partial class SessionListViewModel : ObservableObject
 
     public void OpenSessionInBrowser(Session session)
     {
-        if (!string.IsNullOrEmpty(session.ConnectUrl) && session.Status == "Running")
-        {
-            var uri = new Uri(session.ConnectUrl);
+        if (string.IsNullOrEmpty(session.ConnectUrl) || session.Status != "Running") return;
+
+        if (Uri.TryCreate(session.ConnectUrl, UriKind.Absolute, out var uri))
             _ = Windows.System.Launcher.LaunchUriAsync(uri);
-        }
+        else
+            System.Diagnostics.Debug.WriteLine($"Invalid session URL: {session.ConnectUrl}");
     }
 }

@@ -7,13 +7,23 @@ public class TokenStorage
     private const string ResourceName = "CanfarDesktop";
     private const string TokenKey = "AuthToken";
     private const string UsernameKey = "Username";
+    private const string PasswordKey = "Password";
 
     public void SaveToken(string token, string username)
     {
         var vault = new PasswordVault();
-        ClearToken(); // remove old first
+        ClearToken();
         vault.Add(new PasswordCredential(ResourceName, UsernameKey, username));
         vault.Add(new PasswordCredential(ResourceName, TokenKey, token));
+    }
+
+    public void SaveCredentials(string token, string username, string password)
+    {
+        var vault = new PasswordVault();
+        ClearToken();
+        vault.Add(new PasswordCredential(ResourceName, UsernameKey, username));
+        vault.Add(new PasswordCredential(ResourceName, TokenKey, token));
+        vault.Add(new PasswordCredential(ResourceName, PasswordKey, password));
     }
 
     public (string? token, string? username) LoadToken()
@@ -33,6 +43,23 @@ public class TokenStorage
         }
     }
 
+    public (string? username, string? password) LoadCredentials()
+    {
+        var vault = new PasswordVault();
+        try
+        {
+            var userCred = vault.Retrieve(ResourceName, UsernameKey);
+            var passCred = vault.Retrieve(ResourceName, PasswordKey);
+            userCred.RetrievePassword();
+            passCred.RetrievePassword();
+            return (userCred.Password, passCred.Password);
+        }
+        catch
+        {
+            return (null, null);
+        }
+    }
+
     public void ClearToken()
     {
         var vault = new PasswordVault();
@@ -44,7 +71,7 @@ public class TokenStorage
         }
         catch
         {
-            // No credentials found, that's fine
+            // No credentials found
         }
     }
 }

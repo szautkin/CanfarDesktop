@@ -9,11 +9,12 @@
 
     <ContentDialog.Resources>
         <DataTemplate x:Key="JobRowTemplate">
-            <Grid Padding="4,8" ColumnSpacing="12">
+            <Grid Padding="4,6" ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding Id}" Opacity="0.6"
                            FontFamily="Consolas" FontSize="12" VerticalAlignment="Center" />
@@ -21,6 +22,23 @@
                            Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="2" Text="{Binding ImageLabel}" Opacity="0.7"
                            FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Button Tag="{Binding Id}" Click="OnEventsClick"
+                            ToolTipService.ToolTip="Events" Padding="6,4"
+                            Background="Transparent" BorderThickness="0">
+                        <FontIcon Glyph="&#xE81C;" FontSize="12" />
+                    </Button>
+                    <Button Tag="{Binding Id}" Click="OnLogsClick"
+                            ToolTipService.ToolTip="Logs" Padding="6,4"
+                            Background="Transparent" BorderThickness="0">
+                        <FontIcon Glyph="&#xE756;" FontSize="12" />
+                    </Button>
+                    <Button Tag="{Binding Id}" Click="OnDeleteClick"
+                            ToolTipService.ToolTip="Delete" Padding="6,4"
+                            Background="Transparent" BorderThickness="0">
+                        <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="#FFF44336" />
+                    </Button>
+                </StackPanel>
             </Grid>
         </DataTemplate>
     </ContentDialog.Resources>

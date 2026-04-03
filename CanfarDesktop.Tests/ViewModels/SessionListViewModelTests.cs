@@ -46,7 +46,7 @@ public class SessionListViewModelTests
     }
 
     [Fact]
-    public async Task LoadSessions_PopulatesHeadlessSessions()
+    public async Task LoadSessions_OnlyIncludesNonHeadless()
     {
         var (vm, mock) = CreateViewModel();
         mock.GetSessionsAsync().Returns(new List<Session>
@@ -58,8 +58,8 @@ public class SessionListViewModelTests
 
         await vm.LoadSessionsCommand.ExecuteAsync(null);
 
-        Assert.Equal(2, vm.HeadlessSessions.Count);
-        Assert.All(vm.HeadlessSessions, s => Assert.Equal("headless", s.SessionType));
+        Assert.Single(vm.Sessions);
+        Assert.Equal("notebook", vm.Sessions[0].SessionType);
     }
 
     [Fact]
@@ -77,11 +77,10 @@ public class SessionListViewModelTests
 
         Assert.Single(vm.Sessions);
         Assert.Equal("notebook", vm.Sessions[0].SessionType);
-        Assert.Equal(2, vm.HeadlessSessions.Count);
     }
 
     [Fact]
-    public async Task LoadSessions_NoHeadless_HeadlessSessionsIsEmpty()
+    public async Task LoadSessions_NoHeadless_AllSessionsIncluded()
     {
         var (vm, mock) = CreateViewModel();
         mock.GetSessionsAsync().Returns(new List<Session>
@@ -92,7 +91,6 @@ public class SessionListViewModelTests
 
         await vm.LoadSessionsCommand.ExecuteAsync(null);
 
-        Assert.Empty(vm.HeadlessSessions);
         Assert.Equal(2, vm.Sessions.Count);
     }
 
@@ -109,7 +107,6 @@ public class SessionListViewModelTests
         await vm.LoadSessionsCommand.ExecuteAsync(null);
 
         Assert.Empty(vm.Sessions);
-        Assert.Equal(2, vm.HeadlessSessions.Count);
     }
 
     #endregion

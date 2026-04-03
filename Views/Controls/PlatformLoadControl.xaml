@@ -28,6 +28,14 @@
             <controls:MetricBar x:Name="CpuBar" Label="CPU Cores" Unit="cores" />
             <controls:MetricBar x:Name="RamBar" Label="RAM" Unit="GB" />
 
+            <!-- Instances -->
+            <StackPanel x:Name="InstancesPanel" Visibility="Collapsed" Spacing="4">
+                <TextBlock Text="Instances" Style="{StaticResource BodyTextBlockStyle}" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock x:Name="InstancesText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
+                </StackPanel>
+            </StackPanel>
+
             <!-- Last updated -->
             <TextBlock x:Name="LastUpdateText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5" />
 

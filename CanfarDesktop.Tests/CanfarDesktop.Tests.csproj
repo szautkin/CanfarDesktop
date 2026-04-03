@@ -33,5 +33,13 @@
     <Compile Include="..\Models\SessionLaunchParams.cs" Link="Linked\SessionLaunchParams.cs" />
     <Compile Include="..\ViewModels\SessionListViewModel.cs" Link="Linked\SessionListViewModel.cs" />
     <Compile Include="..\Helpers\BatchJobsHelper.cs" Link="Linked\BatchJobsHelper.cs" />
+    <Compile Include="..\Helpers\RangeParser.cs" Link="Linked\RangeParser.cs" />
+    <Compile Include="..\Helpers\UnitConverter.cs" Link="Linked\UnitConverter.cs" />
+    <Compile Include="..\Helpers\ADQLBuilder.cs" Link="Linked\ADQLBuilder.cs" />
+    <Compile Include="..\Models\SearchModels.cs" Link="Linked\SearchModels.cs" />
+    <Compile Include="..\Models\DataLinkResult.cs" Link="Linked\DataLinkResult.cs" />
+    <Compile Include="..\Helpers\CellFormatter.cs" Link="Linked\CellFormatter.cs" />
+    <Compile Include="..\Services\TAPService.cs" Link="Linked\TAPService.cs" />
+    <Compile Include="..\Services\DataLinkService.cs" Link="Linked\DataLinkService.cs" />
   </ItemGroup>
 </Project>

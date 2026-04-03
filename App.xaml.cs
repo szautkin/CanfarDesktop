@@ -29,6 +29,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        NotificationService.Initialize();
         _window = new MainWindow();
         _window.Activate();
     }
@@ -63,6 +64,11 @@ public partial class App : Application
         // Recent launches
         services.AddSingleton<IRecentLaunchService, RecentLaunchService>();
 
+        // Search (TAP is public, no auth needed)
+        services.AddHttpClient<ITAPService, TAPService>();
+        services.AddSingleton<ISearchStoreService, SearchStoreService>();
+        services.AddHttpClient<DataLinkService>();
+
         // ViewModels
         services.AddTransient<MainViewModel>();
         services.AddTransient<LoginViewModel>();
@@ -70,9 +76,11 @@ public partial class App : Application
         services.AddTransient<SessionLaunchViewModel>();
         services.AddTransient<PlatformLoadViewModel>();
         services.AddTransient<StorageViewModel>();
+        services.AddTransient<SearchViewModel>();
 
         // Pages
         services.AddTransient<DashboardPage>();
+        services.AddTransient<SearchPage>();
 
         return services.BuildServiceProvider();
     }

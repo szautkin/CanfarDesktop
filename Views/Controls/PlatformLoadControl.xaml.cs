@@ -29,6 +29,15 @@ public sealed partial class PlatformLoadControl : UserControl
             RamBar.MaxValue = ViewModel.RamAvailableGB;
             RamBar.Percent = ViewModel.RamPercent;
 
+            if (ViewModel.HasInstances)
+            {
+                InstancesPanel.Visibility = Visibility.Visible;
+                InstancesText.Text = $"{ViewModel.InstancesTotal} total  ·  " +
+                    $"{ViewModel.InstancesSessions} sessions  ·  " +
+                    $"{ViewModel.InstancesDesktopApp} desktop  ·  " +
+                    $"{ViewModel.InstancesHeadless} headless";
+            }
+
             LastUpdateText.Text = string.IsNullOrEmpty(ViewModel.LastUpdate)
                 ? "" : $"Last updated: {ViewModel.LastUpdate}";
 

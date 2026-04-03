@@ -28,4 +28,14 @@ public class ApiEndpoints
 
     // Storage (VOSpace/ARC)
     public string StorageUrl(string username) => $"{StorageBaseUrl}/{username}";
+
+    // CADC TAP / Search (public, no auth)
+    public string TapBaseUrl { get; set; } = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus";
+    public string TapSyncUrl => $"{TapBaseUrl}/sync";
+    public string ResolverUrl => "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cadc-target-resolver/find";
+
+    // CADC DataLink / Download
+    public string Caom2OpsBaseUrl { get; set; } = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops";
+    public string DataLinkUrl(string publisherID) => $"{Caom2OpsBaseUrl}/datalink?id={Uri.EscapeDataString(publisherID)}&request=downloads-only";
+    public string DownloadUrl(string publisherID) => $"{Caom2OpsBaseUrl}/pkg?ID={Uri.EscapeDataString(publisherID)}";
 }

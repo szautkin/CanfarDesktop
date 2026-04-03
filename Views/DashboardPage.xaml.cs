@@ -24,7 +24,8 @@ public sealed partial class DashboardPage : Page
         SessionLaunchViewModel sessionLaunchVm,
         PlatformLoadViewModel platformLoadVm,
         StorageViewModel storageVm,
-        IRecentLaunchService recentLaunchService)
+        IRecentLaunchService recentLaunchService,
+        ISessionService sessionService)
     {
         InitializeComponent();
 
@@ -34,7 +35,7 @@ public sealed partial class DashboardPage : Page
         _launchForm = new LaunchFormControl(sessionLaunchVm);
         _platformLoad = new PlatformLoadControl(platformLoadVm);
         _storageQuota = new StorageQuotaControl(storageVm);
-        _batchJobs = new BatchJobsControl(sessionListVm);
+        _batchJobs = new BatchJobsControl(sessionService);
         _recentLaunches = new RecentLaunchesControl(recentLaunchService);
 
         SessionListContainer.Child = _sessionList;
@@ -73,7 +74,8 @@ public sealed partial class DashboardPage : Page
         {
             SafeLoadAsync(_sessionList.LoadAsync(), "sessions"),
             SafeLoadAsync(_launchForm.LoadAsync(), "launch form"),
-            SafeLoadAsync(_platformLoad.LoadAsync(), "platform stats")
+            SafeLoadAsync(_platformLoad.LoadAsync(), "platform stats"),
+            SafeLoadAsync(_batchJobs.LoadAsync(), "batch jobs")
         };
 
         if (!string.IsNullOrEmpty(username))

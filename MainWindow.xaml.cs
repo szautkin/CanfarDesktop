@@ -2,9 +2,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CanfarDesktop.Models;
+using CanfarDesktop.Services.HttpClients;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views;
 using CanfarDesktop.Views.Dialogs;
+using static CanfarDesktop.Views.WindowHelper;
 
 namespace CanfarDesktop;
 
@@ -12,11 +14,14 @@ public sealed partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private DashboardPage? _dashboardPage;
+    private SearchPage? _searchPage;
     private bool _loginSucceeded;
+    private string _currentNav = "portal";
 
     public MainWindow()
     {
         InitializeComponent();
+        TrackWindow(this);
 
         // Set window icon
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
@@ -27,6 +32,11 @@ public sealed partial class MainWindow : Window
 
         _viewModel = App.Services.GetRequiredService<MainViewModel>();
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.TokenExpired += OnTokenExpired;
+
+        // Subscribe to 401 detection from any HttpClient
+        var tokenProvider = App.Services.GetRequiredService<AuthTokenProvider>();
+        tokenProvider.Unauthorized += OnUnauthorized;
 
         Activated += OnWindowActivated;
     }
@@ -200,18 +210,16 @@ public sealed partial class MainWindow : Window
 
     private async void OnLoginClick(object sender, RoutedEventArgs e)
     {
+        LoginViewModel? loginVm = null;
         try
         {
-            var loginVm = App.Services.GetRequiredService<LoginViewModel>();
+            loginVm = App.Services.GetRequiredService<LoginViewModel>();
             _loginSucceeded = false;
             loginVm.LoginSucceeded += OnLoginSucceeded;
 
             var dialog = new LoginDialog(loginVm) { XamlRoot = Content.XamlRoot };
             await dialog.ShowAsync();
 
-            loginVm.LoginSucceeded -= OnLoginSucceeded;
-
-            // Navigate after dialog is fully closed
             if (_loginSucceeded)
                 await NavigateToDashboard();
         }
@@ -219,6 +227,11 @@ public sealed partial class MainWindow : Window
         {
             StatusText.Text = $"Login error: {ex.Message}";
             System.Diagnostics.Debug.WriteLine($"OnLoginClick error: {ex}");
+        }
+        finally
+        {
+            if (loginVm is not null)
+                loginVm.LoginSucceeded -= OnLoginSucceeded;
         }
     }
 
@@ -234,12 +247,44 @@ public sealed partial class MainWindow : Window
         {
             await _viewModel.LogoutCommand.ExecuteAsync(null);
             _dashboardPage = null;
-            ContentFrame.Content = null;
+            PortalContainer.Child = null;
+            PortalContainer.Visibility = Visibility.Visible;
+            SearchContainer.Visibility = Visibility.Collapsed;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Logout error: {ex}");
         }
+    }
+
+    private bool _isHandlingUnauthorized;
+
+    private async void OnUnauthorized(object? sender, EventArgs e)
+    {
+        if (_isHandlingUnauthorized) return;
+        _isHandlingUnauthorized = true;
+
+        try
+        {
+            await _viewModel.HandleTokenExpiredAsync();
+        }
+        finally
+        {
+            _isHandlingUnauthorized = false;
+        }
+    }
+
+    private async void OnTokenExpired(object? sender, EventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            _dashboardPage = null;
+            PortalContainer.Child = null;
+            PortalContainer.Visibility = Visibility.Visible;
+            SearchContainer.Visibility = Visibility.Collapsed;
+            await Task.Delay(100);
+            OnLoginClick(this, new RoutedEventArgs());
+        });
     }
 
     private static string GetAppVersion()
@@ -255,14 +300,68 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            _dashboardPage = App.Services.GetRequiredService<DashboardPage>();
-            ContentFrame.Content = _dashboardPage;
-            await _dashboardPage.LoadDataAsync(_viewModel.Username);
+            if (_dashboardPage is null)
+            {
+                _dashboardPage = App.Services.GetRequiredService<DashboardPage>();
+                PortalContainer.Child = _dashboardPage;
+                await _dashboardPage.LoadDataAsync(_viewModel.Username);
+            }
+
+            PortalContainer.Visibility = Visibility.Visible;
+            SearchContainer.Visibility = Visibility.Collapsed;
+            UpdateNavButtons("portal");
         }
         catch (Exception ex)
         {
             StatusText.Text = $"Dashboard error: {ex.Message}";
             System.Diagnostics.Debug.WriteLine($"NavigateToDashboard error: {ex}");
         }
+    }
+
+    private async void OnNavigatePortal(object sender, RoutedEventArgs e)
+    {
+        if (_currentNav == "portal") return;
+        if (!_viewModel.IsAuthenticated)
+        {
+            StatusText.Text = "Please log in to access Portal.";
+            return;
+        }
+        await NavigateToDashboard();
+    }
+
+    private async void OnNavigateSearch(object sender, RoutedEventArgs e)
+    {
+        if (_currentNav == "search") return;
+        try
+        {
+            if (_searchPage is null)
+            {
+                _searchPage = App.Services.GetRequiredService<SearchPage>();
+                SearchContainer.Child = _searchPage;
+                _searchPage.LoadAsync();
+            }
+
+            SearchContainer.Visibility = Visibility.Visible;
+            PortalContainer.Visibility = Visibility.Collapsed;
+            UpdateNavButtons("search");
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Search error: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"OnNavigateSearch error: {ex}");
+        }
+    }
+
+    private void UpdateNavButtons(string active)
+    {
+        _currentNav = active;
+        var accent = (Style)Application.Current.Resources["AccentButtonStyle"];
+
+        // Reset to default by clearing the explicit style
+        PortalNavButton.ClearValue(FrameworkElement.StyleProperty);
+        SearchNavButton.ClearValue(FrameworkElement.StyleProperty);
+
+        if (active == "portal") PortalNavButton.Style = accent;
+        else if (active == "search") SearchNavButton.Style = accent;
     }
 }

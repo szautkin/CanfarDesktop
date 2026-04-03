@@ -33,6 +33,21 @@ public partial class PlatformLoadViewModel : ObservableObject
     private string _lastUpdate = string.Empty;
 
     [ObservableProperty]
+    private int _instancesTotal;
+
+    [ObservableProperty]
+    private int _instancesSessions;
+
+    [ObservableProperty]
+    private int _instancesDesktopApp;
+
+    [ObservableProperty]
+    private int _instancesHeadless;
+
+    [ObservableProperty]
+    private bool _hasInstances;
+
+    [ObservableProperty]
     private string _errorMessage = string.Empty;
 
     [ObservableProperty]
@@ -62,6 +77,15 @@ public partial class PlatformLoadViewModel : ObservableObject
                 RamAvailableGB = ParseRamGB(stats.Ram.RamAvailable);
                 RamPercent = RamAvailableGB > 0 ? RamUsedGB / RamAvailableGB * 100 : 0;
 
+                if (stats.Instances is not null)
+                {
+                    InstancesTotal = stats.Instances.Total;
+                    InstancesSessions = stats.Instances.Session;
+                    InstancesDesktopApp = stats.Instances.DesktopApp;
+                    InstancesHeadless = stats.Instances.Headless;
+                    HasInstances = true;
+                }
+
                 LastUpdate = DateTime.Now.ToString("HH:mm:ss");
             }
         }
@@ -76,10 +100,27 @@ public partial class PlatformLoadViewModel : ObservableObject
         }
     }
 
-    private static double ParseRamGB(string ramString)
+    internal static double ParseRamGB(string ramString)
     {
         if (string.IsNullOrEmpty(ramString)) return 0;
-        var numeric = ramString.TrimEnd('G', 'g', 'B', 'b', ' ');
-        return double.TryParse(numeric, out var value) ? value : 0;
+        var s = ramString.Trim();
+
+        if (TryStripSuffix(s, ["GB", "Gi", "G"], out var gb)) return gb;
+        if (TryStripSuffix(s, ["TB", "Ti", "T"], out var tb)) return tb * 1024;
+        if (TryStripSuffix(s, ["MB", "Mi", "M"], out var mb)) return mb / 1024;
+
+        return double.TryParse(s, out var raw) ? raw : 0;
+    }
+
+    private static bool TryStripSuffix(string s, string[] suffixes, out double value)
+    {
+        foreach (var suffix in suffixes)
+        {
+            if (s.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)
+                && double.TryParse(s[..^suffix.Length], out value))
+                return true;
+        }
+        value = 0;
+        return false;
     }
 }

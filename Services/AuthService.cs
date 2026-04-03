@@ -53,7 +53,7 @@ public class AuthService : IAuthService
             IsAuthenticated = true;
 
             if (rememberMe)
-                _tokenStorage.SaveToken(token, username);
+                _tokenStorage.SaveCredentials(token, username, password);
             else
                 _tokenStorage.ClearToken();
 

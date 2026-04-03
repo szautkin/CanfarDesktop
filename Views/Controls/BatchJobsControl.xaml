@@ -9,7 +9,24 @@
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="1">
         <StackPanel Spacing="10">
-            <TextBlock Text="Batch Jobs" Style="{StaticResource SubtitleTextBlockStyle}" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="Batch Jobs" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <StackPanel x:Name="CountdownIndicator" Orientation="Horizontal" Spacing="4"
+                                VerticalAlignment="Center" Opacity="0.6">
+                        <ProgressRing IsActive="True" Width="14" Height="14" />
+                        <TextBlock x:Name="CountdownText" Style="{StaticResource CaptionTextBlockStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+                <Button Grid.Column="1" Click="OnRefreshClick" ToolTipService.ToolTip="Refresh">
+                    <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                </Button>
+            </Grid>
 
             <Grid x:Name="StatsGrid" ColumnSpacing="12" RowSpacing="6">
                 <Grid.ColumnDefinitions>

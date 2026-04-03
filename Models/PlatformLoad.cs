@@ -12,6 +12,24 @@ public class SkahaStatsResponse
 
     [JsonPropertyName("ram")]
     public RamStats Ram { get; set; } = new();
+
+    [JsonPropertyName("instances")]
+    public InstanceStats? Instances { get; set; }
+}
+
+public class InstanceStats
+{
+    [JsonPropertyName("session")]
+    public int Session { get; set; }
+
+    [JsonPropertyName("desktopApp")]
+    public int DesktopApp { get; set; }
+
+    [JsonPropertyName("headless")]
+    public int Headless { get; set; }
+
+    [JsonPropertyName("total")]
+    public int Total { get; set; }
 }
 
 public class CoreStats

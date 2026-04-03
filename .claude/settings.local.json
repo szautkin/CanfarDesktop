@@ -20,7 +20,11 @@
       "Bash(gh api:*)",
       "Bash(dotnet restore:*)",
       "Bash(dotnet test:*)",
-      "mcp__claude_ai_CADC-MCP-SERVER__canfar_help"
+      "mcp__claude_ai_CADC-MCP-SERVER__canfar_help",
+      "Bash(find src/app/[locale]/search -type f -name \"*.tsx\" -o -name \"*.ts\")",
+      "Bash(\"C:/Users/szaut/.nuget/packages/microsoft.windowsappsdk.winui/1.8.260204000/tools/net472/XamlCompiler.exe\" \"obj/ARM64/Debug/net8.0-windows10.0.19041.0/win-arm64/input.json\" \"obj/ARM64/Debug/net8.0-windows10.0.19041.0/win-arm64/output.json\")",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('obj/ARM64/Debug/net8.0-windows10.0.19041.0/win-arm64/output.json'\\)\\); [print\\(e\\) for e in d.get\\('XamlDiagnostics',[]\\)]\")",
+      "WebFetch(domain:www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca)"
     ]
   }
 }
