@@ -38,21 +38,30 @@
                            HorizontalAlignment="Center" />
             </StackPanel>
 
-            <!-- Source editor -->
-            <TextBox x:Name="SourceEditor"
-                     Grid.Column="2" Grid.Row="0"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     FontFamily="Consolas"
-                     FontSize="13"
-                     MinHeight="36"
-                     Padding="12,8"
-                     BorderThickness="0"
-                     Background="Transparent"
-                     PlaceholderText="Type Python code here..."
-                     GotFocus="OnEditorGotFocus"
-                     LostFocus="OnEditorLostFocus"
-                     TextChanged="OnSourceTextChanged" />
+            <!-- Source editor + syntax highlight overlay -->
+            <Grid Grid.Column="2" Grid.Row="0">
+                <!-- Syntax-highlighted view (shown when not editing) -->
+                <RichTextBlock x:Name="SyntaxView"
+                               FontFamily="Consolas" FontSize="13"
+                               Padding="12,8" IsTextSelectionEnabled="False"
+                               TextWrapping="Wrap" Visibility="Visible"
+                               Tapped="OnSyntaxViewTapped" />
+                <!-- TextBox editor (shown when editing) -->
+                <TextBox x:Name="SourceEditor"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         FontFamily="Consolas"
+                         FontSize="13"
+                         MinHeight="36"
+                         Padding="12,8"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         PlaceholderText="Type Python code here..."
+                         Visibility="Collapsed"
+                         GotFocus="OnEditorGotFocus"
+                         LostFocus="OnEditorLostFocus"
+                         TextChanged="OnSourceTextChanged" />
+            </Grid>
 
             <!-- Output area -->
             <Border x:Name="OutputArea"

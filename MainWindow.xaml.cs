@@ -172,14 +172,10 @@ public sealed partial class MainWindow : Window
             NotebookContainer.Child = _notebookTabHost;
 
             // Check for crash recovery on first open
-            _notebookTabHost.AddNewTab();
             await _notebookTabHost.CheckRecoveryAsync();
         }
-        else if (filePath is null)
-        {
-            _notebookTabHost.AddNewTab();
-        }
 
+        // Open specific file or show welcome page (user picks New/Open from there)
         if (filePath is not null)
             await _notebookTabHost.AddTabForFileAsync(filePath);
 

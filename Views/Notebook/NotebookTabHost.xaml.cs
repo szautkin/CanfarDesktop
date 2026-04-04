@@ -22,6 +22,12 @@ public sealed partial class NotebookTabHost : UserControl
     {
         ViewModel = viewModel;
         InitializeComponent();
+
+        Welcome.NewRequested += () => AddNewTab();
+        Welcome.OpenPickerRequested += () => OnOpenFile(this, new RoutedEventArgs());
+        Welcome.OpenFileRequested += async path => await AddTabForFileAsync(path);
+
+        UpdateWelcomeVisibility();
     }
 
     #region Tab lifecycle
@@ -127,6 +133,7 @@ public sealed partial class NotebookTabHost : UserControl
         }
 
         ViewModel.CloseTab(tabItem);
+        UpdateWelcomeVisibility();
 
         if (TabViewControl.TabItems.Count == 0)
             AllTabsClosed?.Invoke();
@@ -138,6 +145,15 @@ public sealed partial class NotebookTabHost : UserControl
     {
         if (TabViewControl.SelectedItem is TabViewItem { Tag: NotebookTabItem tabItem })
             ViewModel.ActiveTab = tabItem;
+        UpdateWelcomeVisibility();
+    }
+
+    private void UpdateWelcomeVisibility()
+    {
+        var hasTabs = TabViewControl.TabItems.Count > 0;
+        Welcome.Visibility = hasTabs ? Visibility.Collapsed : Visibility.Visible;
+        TabViewControl.Visibility = hasTabs ? Visibility.Visible : Visibility.Collapsed;
+        if (!hasTabs) Welcome.RefreshRecent();
     }
 
     #endregion
@@ -221,12 +237,32 @@ public sealed partial class NotebookTabHost : UserControl
 
     #region Keyboard shortcuts (tab-level)
 
+    /// <summary>
+    /// True when a TextBox has focus (edit mode). False = command mode.
+    /// In command mode, single keys trigger cell commands (A/B/DD/Y/M/Escape/arrows).
+    /// </summary>
+    private bool IsEditMode => FocusManager.GetFocusedElement(XamlRoot) is TextBox;
+
+    // For double-key commands (DD, II, 00)
+    private Windows.System.VirtualKey _lastCommandKey;
+    private DateTime _lastCommandKeyTime;
+
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
         var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
                        .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
         var shift = InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
                         .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        // Command-mode shortcuts (when no TextBox has focus)
+        if (!IsEditMode && !ctrl && !shift && ActiveVM is not null)
+        {
+            if (HandleCommandModeKey(e.Key))
+            {
+                e.Handled = true;
+                return;
+            }
+        }
 
         switch (e.Key)
         {
@@ -262,6 +298,103 @@ public sealed partial class NotebookTabHost : UserControl
                 if (ActiveVM is not null) _ = ActiveVM.RunAllCellsCommand.ExecuteAsync(null);
                 e.Handled = true;
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Handle command-mode single-key shortcuts (Jupyter-compatible).
+    /// Returns true if the key was handled.
+    /// </summary>
+    private bool HandleCommandModeKey(Windows.System.VirtualKey key)
+    {
+        var vm = ActiveVM!;
+        var now = DateTime.UtcNow;
+        var isDoubleKey = key == _lastCommandKey && (now - _lastCommandKeyTime).TotalMilliseconds < 500;
+
+        switch (key)
+        {
+            // Navigation
+            case Windows.System.VirtualKey.Up or Windows.System.VirtualKey.K:
+                if (vm.SelectedCellIndex > 0)
+                    vm.SelectCell(vm.SelectedCellIndex - 1);
+                return true;
+
+            case Windows.System.VirtualKey.Down or Windows.System.VirtualKey.J:
+                if (vm.SelectedCellIndex < vm.Cells.Count - 1)
+                    vm.SelectCell(vm.SelectedCellIndex + 1);
+                return true;
+
+            // Enter edit mode
+            case Windows.System.VirtualKey.Enter:
+                if (vm.SelectedCell is ViewModels.Notebook.MarkdownCellViewModel md)
+                    md.EnterEditMode();
+                // For code cells, focus the TextBox (handled by cell control)
+                return true;
+
+            // Cell operations
+            case Windows.System.VirtualKey.A:
+                vm.AddCellAboveCommand.Execute("code");
+                return true;
+
+            case Windows.System.VirtualKey.B:
+                vm.AddCellBelowCommand.Execute("code");
+                return true;
+
+            case Windows.System.VirtualKey.D:
+                if (isDoubleKey) // DD = delete
+                {
+                    vm.DeleteSelectedCellCommand.Execute(null);
+                    _lastCommandKey = default;
+                    return true;
+                }
+                _lastCommandKey = key;
+                _lastCommandKeyTime = now;
+                return true;
+
+            // Cell type
+            case Windows.System.VirtualKey.Y:
+                vm.ChangeCellTypeCommand.Execute("code");
+                return true;
+
+            case Windows.System.VirtualKey.M:
+                vm.ChangeCellTypeCommand.Execute("markdown");
+                return true;
+
+            // Copy/paste cell
+            case Windows.System.VirtualKey.C:
+                // TODO: copy cell to clipboard
+                return true;
+
+            case Windows.System.VirtualKey.V:
+                // TODO: paste cell
+                return true;
+
+            // Kernel
+            case Windows.System.VirtualKey.I:
+                if (isDoubleKey) // II = interrupt
+                {
+                    _ = vm.InterruptKernelCommand.ExecuteAsync(null);
+                    _lastCommandKey = default;
+                    return true;
+                }
+                _lastCommandKey = key;
+                _lastCommandKeyTime = now;
+                return true;
+
+            case Windows.System.VirtualKey.Number0:
+                if (isDoubleKey) // 00 = restart
+                {
+                    _ = vm.RestartKernelCommand.ExecuteAsync(null);
+                    _lastCommandKey = default;
+                    return true;
+                }
+                _lastCommandKey = key;
+                _lastCommandKeyTime = now;
+                return true;
+
+            default:
+                _lastCommandKey = default;
+                return false;
         }
     }
 

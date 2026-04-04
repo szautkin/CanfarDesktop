@@ -38,6 +38,7 @@ public sealed partial class CodeCellControl : UserControl
 
         ExecutionLabel.Text = _viewModel.ExecutionStatus;
         UpdateAccentBorder();
+        RenderSyntax();
         RenderOutputs();
     }
 
@@ -75,6 +76,20 @@ public sealed partial class CodeCellControl : UserControl
         _viewModel?.RequestSelection();
     }
 
+    private void OnSyntaxViewTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        // Enter edit mode — show TextBox, hide syntax view
+        if (_viewModel is null) return;
+        SyntaxView.Visibility = Visibility.Collapsed;
+        SourceEditor.Visibility = Visibility.Visible;
+
+        _suppressTextChanged = true;
+        SourceEditor.Text = _viewModel.Source ?? "";
+        _suppressTextChanged = false;
+
+        SourceEditor.Focus(FocusState.Programmatic);
+    }
+
     private void OnEditorGotFocus(object sender, RoutedEventArgs e)
     {
         if (_viewModel is null) return;
@@ -88,6 +103,40 @@ public sealed partial class CodeCellControl : UserControl
         if (_viewModel is null) return;
         _viewModel.IsEditing = false;
         _viewModel.IsFocused = false;
+
+        // Return to syntax-highlighted view
+        RenderSyntax();
+        SyntaxView.Visibility = Visibility.Visible;
+        SourceEditor.Visibility = Visibility.Collapsed;
+    }
+
+    private void RenderSyntax()
+    {
+        SyntaxView.Blocks.Clear();
+        var source = _viewModel?.Source ?? "";
+        if (string.IsNullOrEmpty(source))
+        {
+            var p = new Microsoft.UI.Xaml.Documents.Paragraph();
+            p.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run
+            {
+                Text = "Type Python code here...",
+                Foreground = ThemeHelper.GetBrush("TextFillColorTertiaryBrush"),
+            });
+            SyntaxView.Blocks.Add(p);
+            return;
+        }
+
+        var isDark = Application.Current.RequestedTheme == ApplicationTheme.Dark;
+        var spans = PythonSyntaxHighlighter.Highlight(source);
+        var paragraph = new Microsoft.UI.Xaml.Documents.Paragraph();
+        foreach (var span in spans)
+        {
+            var run = new Microsoft.UI.Xaml.Documents.Run { Text = span.Text };
+            if (span.Type != TokenType.Plain)
+                run.Foreground = new SolidColorBrush(PythonSyntaxHighlighter.GetColor(span.Type, isDark));
+            paragraph.Inlines.Add(run);
+        }
+        SyntaxView.Blocks.Add(paragraph);
     }
 
     private void OnSourceTextChanged(object sender, TextChangedEventArgs e)

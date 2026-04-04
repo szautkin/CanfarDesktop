@@ -3,6 +3,7 @@
     x:Class="CanfarDesktop.Views.Notebook.NotebookTabHost"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:CanfarDesktop.Views.Notebook"
     KeyDown="OnKeyDown">
 
     <Grid RowDefinitions="Auto,*">
@@ -88,6 +89,9 @@
                 </StackPanel>
             </Button>
         </StackPanel>
+
+        <!-- Welcome page (shown when no tabs open) -->
+        <local:WelcomePage x:Name="Welcome" Grid.Row="1" Visibility="Collapsed" />
 
         <!-- Tab view -->
         <TabView x:Name="TabViewControl" Grid.Row="1"
