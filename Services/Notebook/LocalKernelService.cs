@@ -55,7 +55,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
             var psi = new ProcessStartInfo
             {
                 FileName = pythonPath,
-                Arguments = $"\"{_harnessPath}\"",
+                Arguments = $"-u \"{_harnessPath}\"", // -u = unbuffered stdout/stderr
                 WorkingDirectory = workingDirectory ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
@@ -65,6 +65,9 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
             };
+            // Force UTF-8 on all Python I/O — avoids encoding mismatch with .NET's stdin
+            psi.Environment["PYTHONIOENCODING"] = "utf-8";
+            psi.Environment["PYTHONUNBUFFERED"] = "1";
 
             _process = Process.Start(psi);
             if (_process is null || _process.HasExited)
@@ -73,8 +76,10 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
                 throw new InvalidOperationException("Failed to start Python process.");
             }
 
-            // Force UTF-8 on stdin to match harness's sys.stdin.reconfigure(encoding="utf-8")
-            _stdin = new StreamWriter(_process.StandardInput.BaseStream, new UTF8Encoding(false)) { AutoFlush = true };
+            // Use the process's own StandardInput — do NOT create a second StreamWriter
+            // on the same BaseStream (causes buffer corruption / lost bytes)
+            _stdin = _process.StandardInput;
+            _stdin.AutoFlush = true;
             _executionCount = 0;
 
             _process.EnableRaisingEvents = true;

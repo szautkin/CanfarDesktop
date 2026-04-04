@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using CanfarDesktop.Helpers.Notebook;
 using CanfarDesktop.ViewModels.Notebook;
@@ -109,31 +110,117 @@ public sealed partial class CodeCellControl : UserControl
         foreach (var output in _viewModel.Outputs)
         {
             if (output.IsError)
-            {
-                var tb = new TextBlock
-                {
-                    Text = output.Traceback,
-                    FontFamily = new FontFamily("Consolas"),
-                    FontSize = 12,
-                    TextWrapping = TextWrapping.Wrap,
-                    IsTextSelectionEnabled = true,
-                    Foreground = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"]
-                };
-                OutputStack.Children.Add(tb);
-            }
+                OutputStack.Children.Add(BuildErrorOutput(output));
+            else if (output.HasImage)
+                OutputStack.Children.Add(BuildImageOutput(output));
             else if (!string.IsNullOrEmpty(output.TextContent))
-            {
-                var tb = new TextBlock
-                {
-                    Text = output.TextContent,
-                    FontFamily = new FontFamily("Consolas"),
-                    FontSize = 13,
-                    TextWrapping = TextWrapping.Wrap,
-                    IsTextSelectionEnabled = true,
-                    Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
-                };
-                OutputStack.Children.Add(tb);
-            }
+                OutputStack.Children.Add(BuildTextOutput(output));
         }
+    }
+
+    private static UIElement BuildTextOutput(CellOutputViewModel output)
+    {
+        var isStderr = output.OutputType == "stream" && output.Model.Name == "stderr";
+        return new TextBlock
+        {
+            Text = output.TextContent,
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap,
+            IsTextSelectionEnabled = true,
+            Foreground = isStderr
+                ? ThemeHelper.GetBrush("SystemFillColorCautionBrush")
+                : ThemeHelper.GetBrush("TextFillColorPrimaryBrush"),
+        };
+    }
+
+    private static UIElement BuildErrorOutput(CellOutputViewModel output)
+    {
+        var panel = new StackPanel { Spacing = 4 };
+
+        // Error name (bold, red)
+        panel.Children.Add(new TextBlock
+        {
+            Text = output.ErrorName,
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 13,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = ThemeHelper.GetBrush("SystemFillColorCriticalBrush"),
+        });
+
+        // Traceback with ANSI colors
+        if (!string.IsNullOrEmpty(output.Traceback))
+        {
+            var rtb = new RichTextBlock
+            {
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+                IsTextSelectionEnabled = true,
+            };
+
+            var paragraph = new Paragraph();
+            var spans = AnsiParser.Parse(output.Traceback);
+            foreach (var span in spans)
+            {
+                var run = new Run { Text = span.Text };
+                if (span.Foreground is not null)
+                    run.Foreground = new SolidColorBrush(span.Foreground.Value);
+                if (span.IsBold)
+                    run.FontWeight = Microsoft.UI.Text.FontWeights.Bold;
+                paragraph.Inlines.Add(run);
+            }
+            rtb.Blocks.Add(paragraph);
+            panel.Children.Add(rtb);
+        }
+
+        return new Border
+        {
+            Child = panel,
+            Background = ThemeHelper.GetBrush("SystemFillColorCriticalBackgroundBrush"),
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(8, 4, 8, 4),
+        };
+    }
+
+    private UIElement BuildImageOutput(CellOutputViewModel output)
+    {
+        var image = new Image
+        {
+            MaxWidth = 800,
+            MaxHeight = 600,
+            Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+
+        // Async load the base64 image
+        _ = LoadImageAsync(image, output.ImageBase64);
+
+        var panel = new StackPanel();
+        panel.Children.Add(image);
+
+        // Fallback text/plain below image
+        if (!string.IsNullOrEmpty(output.TextContent))
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = output.TextContent,
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 12,
+                Foreground = ThemeHelper.GetBrush("TextFillColorTertiaryBrush"),
+                TextWrapping = TextWrapping.Wrap,
+                IsTextSelectionEnabled = true,
+                Margin = new Thickness(0, 4, 0, 0),
+            });
+        }
+
+        return panel;
+    }
+
+    private static async Task LoadImageAsync(Image imageControl, string base64)
+    {
+        var bitmap = await Base64ImageHelper.DecodeAsync(base64);
+        if (bitmap is not null)
+            imageControl.Source = bitmap;
     }
 }
