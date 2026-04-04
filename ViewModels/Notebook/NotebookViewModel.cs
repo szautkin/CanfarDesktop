@@ -295,13 +295,20 @@ public partial class NotebookViewModel : ObservableObject
     [RelayCommand]
     public void DeleteSelectedCell()
     {
+        System.Diagnostics.Debug.WriteLine(
+            $"[Delete] SelectedCellIndex={SelectedCellIndex}, Cells.Count={Cells.Count}, " +
+            $"SelectedCell={SelectedCell?.CellType ?? "null"}");
+
         if (SelectedCellIndex < 0 || Cells.Count <= 1) return;
 
         var index = SelectedCellIndex;
+        if (index >= Cells.Count) index = Cells.Count - 1; // safety clamp
+
         var cell = Cells[index];
         cell.ContentChanged -= OnCellContentChanged;
         Cells.RemoveAt(index);
         _dirtyTracker.MarkDirty();
+        UpdateCellSnapshot();
         SelectCell(Math.Min(index, Cells.Count - 1));
     }
 

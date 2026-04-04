@@ -90,6 +90,11 @@ public sealed partial class MarkdownCellControl : UserControl
             AccentBorder.Background = ThemeHelper.Transparent;
     }
 
+    private void OnCellTapped(object sender, TappedRoutedEventArgs e)
+    {
+        _viewModel?.RequestSelection();
+    }
+
     private void OnRenderedTapped(object sender, TappedRoutedEventArgs e)
     {
         _viewModel?.RequestSelection();
