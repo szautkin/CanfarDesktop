@@ -10,6 +10,7 @@ public sealed partial class LandingView : UserControl
     public event EventHandler? SearchRequested;
     public event EventHandler? ResearchRequested;
     public event EventHandler? StorageRequested;
+    public event EventHandler? NotebookRequested;
 
     public string StatusMessage
     {
@@ -31,6 +32,7 @@ public sealed partial class LandingView : UserControl
         new() { Title = "Search", Glyph = "\uE721", Subtitle = "Explore the CADC archive", Key = "search" },
         new() { Title = "Research", Glyph = "\uE8B7", Subtitle = "Downloaded observations", Key = "research" },
         new() { Title = "Storage", Glyph = "\uEDA2", Subtitle = "Browse VOSpace files", Key = "storage" },
+        new() { Title = "Notebook", Glyph = "\uE70B", Subtitle = "Open & run .ipynb files", Key = "notebook" },
     ];
 
     public LandingView()
@@ -49,6 +51,7 @@ public sealed partial class LandingView : UserControl
                 case "search": SearchRequested?.Invoke(this, EventArgs.Empty); break;
                 case "research": ResearchRequested?.Invoke(this, EventArgs.Empty); break;
                 case "storage": StorageRequested?.Invoke(this, EventArgs.Empty); break;
+                case "notebook": NotebookRequested?.Invoke(this, EventArgs.Empty); break;
             }
         }
     }

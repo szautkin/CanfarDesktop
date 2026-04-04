@@ -49,5 +49,27 @@
     <Compile Include="..\Services\DataLinkService.cs" Link="Linked\DataLinkService.cs" />
     <Compile Include="..\Models\DownloadedObservation.cs" Link="Linked\DownloadedObservation.cs" />
     <Compile Include="..\Services\ObservationStore.cs" Link="Linked\ObservationStore.cs" />
+    <!-- Notebook document core (Milestone 2) -->
+    <Compile Include="..\Models\Notebook\NotebookDocument.cs" Link="Linked\Notebook\NotebookDocument.cs" />
+    <Compile Include="..\Models\Notebook\NotebookCell.cs" Link="Linked\Notebook\NotebookCell.cs" />
+    <Compile Include="..\Models\Notebook\CellOutput.cs" Link="Linked\Notebook\CellOutput.cs" />
+    <Compile Include="..\Helpers\Notebook\NotebookParser.cs" Link="Linked\Notebook\NotebookParser.cs" />
+    <Compile Include="..\Services\Notebook\IDirtyTracker.cs" Link="Linked\Notebook\IDirtyTracker.cs" />
+    <Compile Include="..\Services\Notebook\DirtyTracker.cs" Link="Linked\Notebook\DirtyTracker.cs" />
+    <Compile Include="..\Services\Notebook\IAutoSaveService.cs" Link="Linked\Notebook\IAutoSaveService.cs" />
+    <Compile Include="..\Services\Notebook\AutoSaveService.cs" Link="Linked\Notebook\AutoSaveService.cs" />
+    <Compile Include="..\Services\Notebook\IRecoveryService.cs" Link="Linked\Notebook\IRecoveryService.cs" />
+    <Compile Include="..\Services\Notebook\RecoveryService.cs" Link="Linked\Notebook\RecoveryService.cs" />
+    <!-- Notebook execution services (Milestone 4) -->
+    <Compile Include="..\Services\Notebook\KernelState.cs" Link="Linked\Notebook\KernelState.cs" />
+    <Compile Include="..\Services\Notebook\IKernelService.cs" Link="Linked\Notebook\IKernelService.cs" />
+    <Compile Include="..\Services\Notebook\PythonDiscoveryService.cs" Link="Linked\Notebook\PythonDiscoveryService.cs" />
+    <Compile Include="..\Services\Notebook\LocalKernelService.cs" Link="Linked\Notebook\LocalKernelService.cs" />
+    <!-- Notebook ViewModels (Milestone 3) -->
+    <Compile Include="..\ViewModels\Notebook\CellViewModel.cs" Link="Linked\Notebook\CellViewModel.cs" />
+    <Compile Include="..\ViewModels\Notebook\CodeCellViewModel.cs" Link="Linked\Notebook\CodeCellViewModel.cs" />
+    <Compile Include="..\ViewModels\Notebook\MarkdownCellViewModel.cs" Link="Linked\Notebook\MarkdownCellViewModel.cs" />
+    <Compile Include="..\ViewModels\Notebook\CellOutputViewModel.cs" Link="Linked\Notebook\CellOutputViewModel.cs" />
+    <Compile Include="..\ViewModels\Notebook\NotebookViewModel.cs" Link="Linked\Notebook\NotebookViewModel.cs" />
   </ItemGroup>
 </Project>

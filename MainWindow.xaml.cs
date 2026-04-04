@@ -6,13 +6,14 @@ using CanfarDesktop.Services.HttpClients;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views;
 using CanfarDesktop.Views.Dialogs;
+using CanfarDesktop.Views.Notebook;
 using static CanfarDesktop.Views.WindowHelper;
 
 namespace CanfarDesktop;
 
 public sealed partial class MainWindow : Window
 {
-    private enum AppMode { Landing, Portal, Search, Research, Storage }
+    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook }
 
     private readonly MainViewModel _viewModel;
     private readonly LandingView _landingView;
@@ -20,6 +21,7 @@ public sealed partial class MainWindow : Window
     private SearchPage? _searchPage;
     private ResearchPage? _researchPage;
     private StorageBrowserPage? _storagePage;
+    private NotebookPage? _notebookPage;
     private AppMode _currentMode = AppMode.Landing;
     private bool _loginSucceeded;
 
@@ -48,6 +50,7 @@ public sealed partial class MainWindow : Window
         _landingView.SearchRequested += OnSearchRequested;
         _landingView.ResearchRequested += OnResearchRequested;
         _landingView.StorageRequested += (_, _) => OpenStorageBrowser();
+        _landingView.NotebookRequested += (_, _) => OpenNotebook();
         LandingContainer.Child = _landingView;
 
         Activated += OnWindowActivated;
@@ -91,6 +94,7 @@ public sealed partial class MainWindow : Window
         SearchContainer.Visibility = mode == AppMode.Search ? Visibility.Visible : Visibility.Collapsed;
         ResearchContainer.Visibility = mode == AppMode.Research ? Visibility.Visible : Visibility.Collapsed;
         StorageContainer.Visibility = mode == AppMode.Storage ? Visibility.Visible : Visibility.Collapsed;
+        NotebookContainer.Visibility = mode == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnHomeClick(object sender, RoutedEventArgs e)
@@ -155,6 +159,16 @@ public sealed partial class MainWindow : Window
         }
 
         NavigateTo(AppMode.Storage);
+    }
+
+    public void OpenNotebook()
+    {
+        if (_notebookPage is null)
+        {
+            _notebookPage = App.Services.GetRequiredService<NotebookPage>();
+            NotebookContainer.Child = _notebookPage;
+        }
+        NavigateTo(AppMode.Notebook);
     }
 
     private void EnsureResearchPage()

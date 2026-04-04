@@ -3,8 +3,11 @@ using Microsoft.UI.Xaml;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.HttpClients;
+using CanfarDesktop.Services.Notebook;
 using CanfarDesktop.ViewModels;
+using CanfarDesktop.ViewModels.Notebook;
 using CanfarDesktop.Views;
+using CanfarDesktop.Views.Notebook;
 
 namespace CanfarDesktop;
 
@@ -73,6 +76,13 @@ public partial class App : Application
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddHttpClient<DataLinkService>();
 
+        // Notebook services
+        services.AddTransient<IDirtyTracker, DirtyTracker>();
+        services.AddTransient<IAutoSaveService, AutoSaveService>();
+        services.AddSingleton<IRecoveryService, RecoveryService>();
+        services.AddSingleton<PythonDiscoveryService>();
+        services.AddTransient<IKernelService, LocalKernelService>();
+
         // ViewModels
         services.AddTransient<MainViewModel>();
         services.AddTransient<LoginViewModel>();
@@ -83,12 +93,14 @@ public partial class App : Application
         services.AddTransient<SearchViewModel>();
         services.AddTransient<ResearchViewModel>();
         services.AddTransient<StorageBrowserViewModel>();
+        services.AddTransient<NotebookViewModel>();
 
         // Pages
         services.AddTransient<DashboardPage>();
         services.AddTransient<SearchPage>();
         services.AddTransient<ResearchPage>();
         services.AddTransient<StorageBrowserPage>();
+        services.AddTransient<NotebookPage>();
 
         return services.BuildServiceProvider();
     }

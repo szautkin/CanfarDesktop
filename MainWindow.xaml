@@ -68,6 +68,7 @@
             <Border x:Name="SearchContainer" Visibility="Collapsed" />
             <Border x:Name="ResearchContainer" Visibility="Collapsed" />
             <Border x:Name="StorageContainer" Visibility="Collapsed" />
+            <Border x:Name="NotebookContainer" Visibility="Collapsed" />
         </Grid>
     </Grid>
 </Window>
