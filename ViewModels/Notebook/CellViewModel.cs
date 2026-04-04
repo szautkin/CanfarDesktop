@@ -20,6 +20,9 @@ public abstract partial class CellViewModel : ObservableObject
     [ObservableProperty] private bool _isFocused;
 
     public event Action? ContentChanged;
+    public event Action? SelectionRequested;
+
+    public void RequestSelection() => SelectionRequested?.Invoke();
 
     protected CellViewModel(NotebookCell model)
     {

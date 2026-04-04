@@ -75,6 +75,7 @@ public sealed partial class CodeCellControl : UserControl
         if (_viewModel is null) return;
         _viewModel.IsEditing = true;
         _viewModel.IsFocused = true;
+        _viewModel.RequestSelection();
     }
 
     private void OnEditorLostFocus(object sender, RoutedEventArgs e)

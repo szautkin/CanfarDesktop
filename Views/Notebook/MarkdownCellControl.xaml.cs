@@ -90,6 +90,11 @@ public sealed partial class MarkdownCellControl : UserControl
             AccentBorder.Background = ThemeHelper.Transparent;
     }
 
+    private void OnRenderedTapped(object sender, TappedRoutedEventArgs e)
+    {
+        _viewModel?.RequestSelection();
+    }
+
     private void OnRenderedDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
         _viewModel?.EnterEditMode();
@@ -100,6 +105,7 @@ public sealed partial class MarkdownCellControl : UserControl
         if (_viewModel is null) return;
         _viewModel.IsEditing = true;
         _viewModel.IsFocused = true;
+        _viewModel.RequestSelection();
     }
 
     private void OnEditorLostFocus(object sender, RoutedEventArgs e)

@@ -25,8 +25,8 @@
                 <!-- Rendered markdown (placeholder: plain text) -->
                 <TextBlock x:Name="RenderedView"
                            TextWrapping="Wrap"
-                           IsTextSelectionEnabled="True"
                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                           Tapped="OnRenderedTapped"
                            DoubleTapped="OnRenderedDoubleTapped"
                            Visibility="Visible" />
 

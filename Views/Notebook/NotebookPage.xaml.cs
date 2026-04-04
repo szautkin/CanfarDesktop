@@ -13,6 +13,7 @@ namespace CanfarDesktop.Views.Notebook;
 public sealed partial class NotebookPage : UserControl
 {
     public NotebookViewModel ViewModel { get; }
+    public event Action? NewTabRequested;
 
     public NotebookPage(NotebookViewModel viewModel)
     {
@@ -50,6 +51,15 @@ public sealed partial class NotebookPage : UserControl
 
         // Wire SaveAs for unsaved notebooks
         ViewModel.SaveAsRequested += async () => OnSaveAs(this, new RoutedEventArgs());
+
+        // Wire cell selection: clicking a cell's editor updates SelectedCellIndex
+        WireCellSelection(ViewModel.Cells);
+        ViewModel.Cells.CollectionChanged += (_, args) =>
+        {
+            if (args.NewItems is not null)
+                foreach (CellViewModel cell in args.NewItems)
+                    cell.SelectionRequested += () => ViewModel.SelectCell(ViewModel.Cells.IndexOf(cell));
+        };
 
         // Initial state
         TitleText.Text = ViewModel.Title;
@@ -104,6 +114,12 @@ public sealed partial class NotebookPage : UserControl
             recovery.DiscardAll();
             ViewModel.StatusMessage = "Recovery files discarded";
         }
+    }
+
+    private void WireCellSelection(IEnumerable<CellViewModel> cells)
+    {
+        foreach (var cell in cells)
+            cell.SelectionRequested += () => ViewModel.SelectCell(ViewModel.Cells.IndexOf(cell));
     }
 
     #region File operations
@@ -170,7 +186,7 @@ public sealed partial class NotebookPage : UserControl
 
     private void OnNewNotebook(object s, RoutedEventArgs e)
     {
-        ViewModel.LoadNew();
+        NewTabRequested?.Invoke();
     }
 
     private static nint GetWindowHandle()
