@@ -36,7 +36,7 @@
             </StackPanel>
 
             <!-- Recent files (scrollable) -->
-            <StackPanel x:Name="RecentSection" Spacing="8" Visibility="Collapsed">
+            <StackPanel x:Name="RecentSection" Spacing="8" Visibility="Collapsed" MinWidth="400">
                 <TextBlock Text="Recent Notebooks"
                            Style="{StaticResource SubtitleTextBlockStyle}" />
                 <ScrollViewer MaxHeight="400"
