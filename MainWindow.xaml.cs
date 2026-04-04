@@ -161,12 +161,14 @@ public sealed partial class MainWindow : Window
         NavigateTo(AppMode.Storage);
     }
 
-    public void OpenNotebook()
+    public async void OpenNotebook()
     {
         if (_notebookPage is null)
         {
             _notebookPage = App.Services.GetRequiredService<NotebookPage>();
             NotebookContainer.Child = _notebookPage;
+            // Check for crash recovery on first open
+            await _notebookPage.CheckRecoveryAsync();
         }
         NavigateTo(AppMode.Notebook);
     }

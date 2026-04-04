@@ -112,12 +112,20 @@ public partial class NotebookViewModel : ObservableObject
 
     #region Save
 
+    /// <summary>
+    /// Raised when Save is called on an unsaved notebook, so the View can show a SaveAs picker.
+    /// </summary>
+    public event Func<Task>? SaveAsRequested;
+
     [RelayCommand]
     public async Task SaveAsync()
     {
         if (_filePath is null)
         {
-            StatusMessage = "Use File > Save As for new notebooks";
+            if (SaveAsRequested is not null)
+                await SaveAsRequested.Invoke();
+            else
+                StatusMessage = "Use File > Save As for new notebooks";
             return;
         }
 

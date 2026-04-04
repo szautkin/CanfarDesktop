@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -47,6 +48,9 @@ public sealed partial class NotebookPage : UserControl
             CellCountLabel.Text = $"{ViewModel.Cells.Count} cells";
         });
 
+        // Wire SaveAs for unsaved notebooks
+        ViewModel.SaveAsRequested += async () => OnSaveAs(this, new RoutedEventArgs());
+
         // Initial state
         TitleText.Text = ViewModel.Title;
         KernelLabel.Text = ViewModel.KernelDisplayName;
@@ -68,6 +72,42 @@ public sealed partial class NotebookPage : UserControl
         };
     }
 
+    /// <summary>
+    /// Check for recovery files and prompt the user. Call once after page loads.
+    /// </summary>
+    public async Task CheckRecoveryAsync()
+    {
+        var recovery = App.Services.GetRequiredService<IRecoveryService>();
+        var orphaned = await Task.Run(() => recovery.DetectOrphanedFiles());
+        if (orphaned.Count == 0) return;
+
+        var dialog = new ContentDialog
+        {
+            Title = "Recover unsaved notebooks?",
+            Content = $"{orphaned.Count} unsaved notebook(s) found from a previous session.",
+            PrimaryButtonText = "Recover",
+            SecondaryButtonText = "Discard",
+            CloseButtonText = "Later",
+            XamlRoot = XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            // Open the most recent recovery file
+            var latest = orphaned.OrderByDescending(c => c.LastModifiedUtc).First();
+            await OpenFileAsync(latest.AutoSavePath);
+            ViewModel.StatusMessage = "[Recovered] " + (latest.OriginalPath ?? latest.DisplayName);
+        }
+        else if (result == ContentDialogResult.Secondary)
+        {
+            recovery.DiscardAll();
+            ViewModel.StatusMessage = "Recovery files discarded";
+        }
+    }
+
+    #region File operations
+
     public async Task OpenFileAsync(string filePath)
     {
         try
@@ -81,6 +121,66 @@ public sealed partial class NotebookPage : UserControl
             ViewModel.StatusMessage = $"Open failed: {ex.Message}";
         }
     }
+
+    private async void OnOpenFile(object s, RoutedEventArgs e)
+    {
+        try
+        {
+            var hWnd = GetWindowHandle();
+            if (hWnd == nint.Zero) return;
+
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
+            picker.FileTypeFilter.Add(".ipynb");
+            picker.FileTypeFilter.Add("*");
+
+            var file = await picker.PickSingleFileAsync();
+            if (file is null) return;
+
+            await OpenFileAsync(file.Path);
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = $"Open error: {ex.Message}";
+        }
+    }
+
+    private async void OnSaveAs(object s, RoutedEventArgs e)
+    {
+        try
+        {
+            var hWnd = GetWindowHandle();
+            if (hWnd == nint.Zero) return;
+
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
+            picker.SuggestedFileName = ViewModel.Title.Replace(".ipynb", "") + ".ipynb";
+            picker.FileTypeChoices.Add("Jupyter Notebook", [".ipynb"]);
+
+            var file = await picker.PickSaveFileAsync();
+            if (file is null) return;
+
+            await ViewModel.SaveAsCommand.ExecuteAsync(file.Path);
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = $"Save As error: {ex.Message}";
+        }
+    }
+
+    private void OnNewNotebook(object s, RoutedEventArgs e)
+    {
+        ViewModel.LoadNew();
+    }
+
+    private static nint GetWindowHandle()
+    {
+        if (WindowHelper.ActiveWindows.Count > 0)
+            return WinRT.Interop.WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0]);
+        return nint.Zero;
+    }
+
+    #endregion
 
     #region Toolbar handlers
 
@@ -109,8 +209,20 @@ public sealed partial class NotebookPage : UserControl
 
         switch (e.Key)
         {
-            case Windows.System.VirtualKey.S when ctrl:
+            case Windows.System.VirtualKey.S when ctrl && !shift:
                 ViewModel.SaveCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Windows.System.VirtualKey.S when ctrl && shift:
+                OnSaveAs(sender, e);
+                e.Handled = true;
+                break;
+            case Windows.System.VirtualKey.O when ctrl:
+                OnOpenFile(sender, e);
+                e.Handled = true;
+                break;
+            case Windows.System.VirtualKey.N when ctrl:
+                OnNewNotebook(sender, e);
                 e.Handled = true;
                 break;
             case Windows.System.VirtualKey.Enter when ctrl && !shift:

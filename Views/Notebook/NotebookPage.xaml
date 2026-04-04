@@ -49,9 +49,24 @@
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="0,0,0,1">
+            <Button Click="OnNewNotebook" ToolTipService.ToolTip="New Notebook (Ctrl+N)" Padding="8,4"
+                    AutomationProperties.Name="New notebook">
+                <FontIcon Glyph="&#xE8A5;" FontSize="14" />
+            </Button>
+            <Button Click="OnOpenFile" ToolTipService.ToolTip="Open (Ctrl+O)" Padding="8,4"
+                    AutomationProperties.Name="Open notebook">
+                <FontIcon Glyph="&#xE8E5;" FontSize="14" />
+            </Button>
             <Button Click="OnSave" ToolTipService.ToolTip="Save (Ctrl+S)" Padding="8,4"
                     AutomationProperties.Name="Save">
                 <FontIcon Glyph="&#xE74E;" FontSize="14" />
+            </Button>
+            <Button Click="OnSaveAs" ToolTipService.ToolTip="Save As (Ctrl+Shift+S)" Padding="8,4"
+                    AutomationProperties.Name="Save as">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <FontIcon Glyph="&#xE792;" FontSize="14" />
+                    <TextBlock Text="Save As" />
+                </StackPanel>
             </Button>
             <AppBarSeparator />
             <Button Click="OnAddCodeCell" ToolTipService.ToolTip="Add Code Cell" Padding="8,4">
