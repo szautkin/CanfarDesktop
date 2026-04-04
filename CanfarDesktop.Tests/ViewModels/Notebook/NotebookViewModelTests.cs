@@ -97,7 +97,7 @@ public class NotebookViewModelTests : IDisposable
     }
 
     [Fact]
-    public void DeleteCell_PreventsDeletingLastCell()
+    public void DeleteCell_LastCell_ReplacesWithEmptyCodeCell()
     {
         _vm.LoadNew();
         Assert.Single(_vm.Cells);
@@ -105,7 +105,10 @@ public class NotebookViewModelTests : IDisposable
         _vm.SelectCell(0);
         _vm.DeleteSelectedCellCommand.Execute(null);
 
-        Assert.Single(_vm.Cells); // still 1 cell
+        // Deleting last cell creates a fresh empty code cell (Jupyter behavior)
+        Assert.Single(_vm.Cells);
+        Assert.IsType<CodeCellViewModel>(_vm.Cells[0]);
+        Assert.Equal("", _vm.Cells[0].Source);
     }
 
     [Fact]

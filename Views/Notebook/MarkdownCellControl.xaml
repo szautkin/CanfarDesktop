@@ -8,7 +8,8 @@
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="1"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            Tapped="OnCellTapped">
+            PointerPressed="OnCellPointerPressed"
+            MinHeight="40">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="4" />

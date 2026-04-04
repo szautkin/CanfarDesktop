@@ -295,21 +295,23 @@ public partial class NotebookViewModel : ObservableObject
     [RelayCommand]
     public void DeleteSelectedCell()
     {
-        System.Diagnostics.Debug.WriteLine(
-            $"[Delete] SelectedCellIndex={SelectedCellIndex}, Cells.Count={Cells.Count}, " +
-            $"SelectedCell={SelectedCell?.CellType ?? "null"}");
-
-        if (SelectedCellIndex < 0 || Cells.Count <= 1) return;
+        if (SelectedCellIndex < 0) return;
 
         var index = SelectedCellIndex;
-        if (index >= Cells.Count) index = Cells.Count - 1; // safety clamp
+        if (index >= Cells.Count) index = Cells.Count - 1;
 
         var cell = Cells[index];
         cell.ContentChanged -= OnCellContentChanged;
         Cells.RemoveAt(index);
         _dirtyTracker.MarkDirty();
+
+        // If last cell was deleted, insert a fresh empty code cell (matches Jupyter behavior)
+        if (Cells.Count == 0)
+            InsertCell(0, "code");
+        else
+            SelectCell(Math.Min(index, Cells.Count - 1));
+
         UpdateCellSnapshot();
-        SelectCell(Math.Min(index, Cells.Count - 1));
     }
 
     [RelayCommand]

@@ -70,7 +70,7 @@ public sealed partial class CodeCellControl : UserControl
             AccentBorder.Background = ThemeHelper.Transparent;
     }
 
-    private void OnCellTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    private void OnCellPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         _viewModel?.RequestSelection();
     }
