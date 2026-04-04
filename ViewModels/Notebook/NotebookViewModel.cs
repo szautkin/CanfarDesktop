@@ -461,7 +461,12 @@ public partial class NotebookViewModel : ObservableObject
 
         try
         {
+            // Start a timeout warning timer
+            using var timeoutCts = new CancellationTokenSource();
+            var timeoutTask = WarnAfterDelayAsync(60, timeoutCts.Token);
+
             var result = await _kernelService.ExecuteAsync(codeCell.Source);
+            timeoutCts.Cancel(); // cancel the warning — execution completed
             codeCell.ExecutionCount = result.ExecutionCount;
 
             foreach (var output in result.Outputs)
@@ -482,6 +487,16 @@ public partial class NotebookViewModel : ObservableObject
         {
             codeCell.IsExecuting = false;
         }
+    }
+
+    private async Task WarnAfterDelayAsync(int seconds, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(seconds), ct);
+            StatusMessage = $"Cell running for over {seconds}s — use Interrupt (II) to stop";
+        }
+        catch (OperationCanceledException) { /* execution completed before timeout */ }
     }
 
     private static void ShowCellError(CodeCellViewModel cell, string errorName, string errorMessage)

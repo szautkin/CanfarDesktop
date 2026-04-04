@@ -39,6 +39,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
         }
 
         var pythonPath = await _pythonDiscovery.FindPythonAsync();
+        NotebookLogger.Info($"Kernel start: Python={pythonPath ?? "NOT FOUND"}, WorkDir={workingDirectory}");
         if (pythonPath is null)
         {
             SetState(KernelState.Dead);
@@ -114,7 +115,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
             // Normalize line endings for Python
             code = code.Replace("\r\n", "\n").Replace("\r", "\n");
 
-            Debug.WriteLine($"[Kernel] Execute ({code.Length} chars): {code[..Math.Min(80, code.Length)]}...");
+            NotebookLogger.Info($"Execute ({code.Length} chars): {code[..Math.Min(80, code.Length)]}...");
 
             var request = JsonSerializer.Serialize(new
             {
@@ -266,7 +267,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Shutdown error: {ex.Message}");
+            NotebookLogger.Error("Kernel shutdown error", ex);
             try { _process.Kill(entireProcessTree: true); } catch { }
         }
         finally

@@ -16,12 +16,23 @@ public partial class App : Application
     private Window? _window;
 
     public static IServiceProvider Services { get; private set; } = null!;
+    private static Mutex? _singleInstanceMutex;
 
     public App()
     {
         InitializeComponent();
         UnhandledException += OnUnhandledException;
         Services = ConfigureServices();
+    }
+
+    /// <summary>
+    /// Attempt single-instance. Call before app launch in Program.Main or OnLaunched.
+    /// Returns false if another instance is running.
+    /// </summary>
+    public static bool EnsureSingleInstance()
+    {
+        _singleInstanceMutex = new Mutex(true, "Verbinal_CanfarDesktop_SingleInstance", out var isNew);
+        return isNew;
     }
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
@@ -32,6 +43,16 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        // Single instance check
+        _singleInstanceMutex = new Mutex(true, "Verbinal_CanfarDesktop_SingleInstance", out var isNew);
+        if (!isNew)
+        {
+            // Another instance is running — exit silently
+            System.Diagnostics.Debug.WriteLine("Another instance is already running.");
+            Environment.Exit(0);
+            return;
+        }
+
         NotificationService.Initialize();
         _window = new MainWindow();
         _window.Activate();
