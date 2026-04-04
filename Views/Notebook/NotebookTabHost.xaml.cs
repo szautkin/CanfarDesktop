@@ -372,6 +372,12 @@ public sealed partial class NotebookTabHost : UserControl
                 vm.ChangeCellTypeCommand.Execute("markdown");
                 return true;
 
+            // Toggle output collapse
+            case Windows.System.VirtualKey.O:
+                if (vm.SelectedCell is ViewModels.Notebook.CodeCellViewModel codeVm)
+                    codeVm.IsOutputCollapsed = !codeVm.IsOutputCollapsed;
+                return true;
+
             // Copy/paste cell
             case Windows.System.VirtualKey.C:
                 // TODO: copy cell to clipboard
@@ -402,6 +408,11 @@ public sealed partial class NotebookTabHost : UserControl
                 }
                 _lastCommandKey = key;
                 _lastCommandKeyTime = now;
+                return true;
+
+            // Help (H key in command mode)
+            case Windows.System.VirtualKey.H:
+                _ = ShortcutReferenceDialog.ShowAsync(XamlRoot);
                 return true;
 
             default:

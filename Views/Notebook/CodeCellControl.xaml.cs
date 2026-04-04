@@ -161,6 +161,17 @@ public sealed partial class CodeCellControl : UserControl
         _viewModel.Source = SourceEditor.Text;
     }
 
+    private void OnToggleOutputCollapse(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel is null) return;
+        _viewModel.IsOutputCollapsed = !_viewModel.IsOutputCollapsed;
+        OutputStack.Visibility = _viewModel.IsOutputCollapsed ? Visibility.Collapsed : Visibility.Visible;
+        CollapseIcon.Glyph = _viewModel.IsOutputCollapsed ? "\uE76C" : "\uE76B"; // ChevronRight vs ChevronDown
+        CollapseLabel.Text = _viewModel.IsOutputCollapsed
+            ? $"Output collapsed ({_viewModel.Outputs.Count} items)"
+            : "Output";
+    }
+
     private void OnOutputsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
         DispatcherQueue.TryEnqueue(RenderOutputs);

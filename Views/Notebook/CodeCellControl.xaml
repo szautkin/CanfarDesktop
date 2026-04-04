@@ -71,8 +71,23 @@
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="0,1,0,0"
                     CornerRadius="0,0,8,8"
-                    Padding="12,8">
-                <StackPanel x:Name="OutputStack" Spacing="4" />
+                    Padding="0">
+                <StackPanel>
+                    <!-- Collapse toggle -->
+                    <Button x:Name="CollapseToggle" Click="OnToggleOutputCollapse"
+                            Padding="8,2" Background="Transparent" BorderThickness="0"
+                            HorizontalAlignment="Left"
+                            AutomationProperties.Name="Toggle output">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <FontIcon x:Name="CollapseIcon" Glyph="&#xE76B;" FontSize="10" />
+                            <TextBlock x:Name="CollapseLabel" Text="Output"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Output content -->
+                    <StackPanel x:Name="OutputStack" Spacing="4" Padding="12,4,12,8" />
+                </StackPanel>
             </Border>
         </Grid>
     </Border>

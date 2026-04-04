@@ -11,6 +11,7 @@ public partial class CodeCellViewModel : CellViewModel
 {
     [ObservableProperty] private int? _executionCount;
     [ObservableProperty] private bool _isExecuting;
+    [ObservableProperty] private bool _isOutputCollapsed;
     [ObservableProperty] private string _executionStatus = string.Empty;
 
     public ObservableCollection<CellOutputViewModel> Outputs { get; } = [];
