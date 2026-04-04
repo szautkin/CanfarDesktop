@@ -425,6 +425,7 @@ public partial class SearchViewModel : ObservableObject
         try
         {
             Results = await _tapService.ExecuteQueryAsync(query, MaxRecords);
+            ResetFiltersAndSort();
             BuildColumns();
             CurrentPage = 1;
             UpdatePagination();
@@ -551,6 +552,26 @@ public partial class SearchViewModel : ObservableObject
         _columnFilters.TryGetValue(columnKey, out var v) ? v : string.Empty;
 
     public void InvalidateFilterCache() => _filteredRowsCache = null;
+
+    public void ResetFiltersAndSort()
+    {
+        _columnFilters.Clear();
+        _sortColumnKey = null;
+        _sortAscending = true;
+        _filteredRowsCache = null;
+    }
+
+    public bool HasActiveFilters => _columnFilters.Count > 0;
+
+    /// <summary>
+    /// Convert active per-column filters into ADQL WHERE clauses and append to the original query.
+    /// Returns the modified ADQL, or null if no filters active.
+    /// </summary>
+    public string? BuildFilteredAdql()
+    {
+        if (_columnFilters.Count == 0 || string.IsNullOrWhiteSpace(AdqlText)) return null;
+        return FilterToAdqlConverter.AppendToQuery(AdqlText, _columnFilters);
+    }
 
     private List<SearchResultRow> GetProcessedRows()
     {

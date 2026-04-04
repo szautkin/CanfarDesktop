@@ -1,0 +1,2 @@
+- [Project Architecture](project_architecture.md) -- CanfarDesktop search/results pipeline: ADQLBuilder, TAP service, per-column client-side filters, Pivot-based layout
+- [User Profile](user_profile.md) -- Developer building a WinUI 3 CADC archive search app for astronomers

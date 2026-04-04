@@ -294,13 +294,19 @@
                             <Button Click="OnColumnsClick" Content="Columns" Padding="8,4" />
                             <Button Click="OnExportCsvClick" Content="CSV" Padding="8,4" />
                             <Button Click="OnExportTsvClick" Content="TSV" Padding="8,4" />
+                            <Button x:Name="ApplyFiltersBtn" Click="OnApplyFiltersToAdql" Padding="8,4"
+                                    Visibility="Collapsed" ToolTipService.ToolTip="Convert active filters to ADQL query">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE71C;" FontSize="12" />
+                                    <TextBlock Text="Apply to ADQL" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
 
                         <!-- Sticky header (pinned, never scrolls vertically) -->
                         <ScrollViewer Grid.Row="1" x:Name="HeaderScroll"
                                       HorizontalScrollBarVisibility="Hidden"
-                                      VerticalScrollBarVisibility="Disabled"
-                                      IsHitTestVisible="False">
+                                      VerticalScrollBarVisibility="Disabled">
                             <StackPanel x:Name="HeaderPanel" Spacing="0" />
                         </ScrollViewer>
 
@@ -321,12 +327,12 @@
                                 <FontIcon Glyph="&#xEB9E;" FontSize="12" />
                             </Button>
                             <Button Click="OnPrevPage" Padding="8,4" ToolTipService.ToolTip="Previous page">
-                                <FontIcon Glyph="&#xE70E;" FontSize="12" />
+                                <FontIcon Glyph="&#xE76B;" FontSize="12" />
                             </Button>
                             <TextBlock x:Name="PageNumberText" VerticalAlignment="Center"
                                        Style="{StaticResource BodyTextBlockStyle}" Margin="4,0" />
                             <Button Click="OnNextPage" Padding="8,4" ToolTipService.ToolTip="Next page">
-                                <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                                <FontIcon Glyph="&#xE76C;" FontSize="12" />
                             </Button>
                             <Button Click="OnLastPage" Padding="8,4" ToolTipService.ToolTip="Last page">
                                 <FontIcon Glyph="&#xEB9D;" FontSize="12" />

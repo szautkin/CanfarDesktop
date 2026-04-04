@@ -409,7 +409,7 @@ public sealed partial class SearchPage : Page
                 Height = 24,
                 FontSize = 11,
                 Padding = new Thickness(4, 2, 4, 2),
-                PlaceholderText = "\uE721",
+                PlaceholderText = "Filter...",
                 Text = ViewModel.GetColumnFilter(key)
             };
 
@@ -424,6 +424,7 @@ public sealed partial class SearchPage : Page
                         ViewModel.SetColumnFilter(capturedKey, ((TextBox)s).Text);
                         ViewModel.UpdatePagination();
                         RenderResultsPage(rebuildHeader: false);
+                        UpdateApplyFiltersButton();
                     });
                 }, null, 300, Timeout.Infinite);
                 debounce = timer;
@@ -527,12 +528,6 @@ public sealed partial class SearchPage : Page
                         flyoutPanel.Children.Add(new TextBlock { Text = "Preview failed", Opacity = 0.6 });
                         flyoutLoaded = false;
                     }
-                };
-
-                // Open flyout on hover
-                previewBtn.PointerEntered += (s, _) =>
-                {
-                    flyout.ShowAt((FrameworkElement)s);
                 };
 
                 previewBtn.Flyout = flyout;
@@ -868,6 +863,20 @@ public sealed partial class SearchPage : Page
     }
 
     #endregion
+
+    private void OnApplyFiltersToAdql(object sender, RoutedEventArgs e)
+    {
+        var filteredAdql = ViewModel.BuildFilteredAdql();
+        if (filteredAdql is null) return;
+
+        ViewModel.AdqlText = filteredAdql;
+        MainPivot.SelectedIndex = 2; // Navigate to ADQL Editor
+    }
+
+    private void UpdateApplyFiltersButton()
+    {
+        ApplyFiltersBtn.Visibility = ViewModel.HasActiveFilters ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     #region Export
 
