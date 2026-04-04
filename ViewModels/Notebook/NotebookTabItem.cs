@@ -1,5 +1,6 @@
 namespace CanfarDesktop.ViewModels.Notebook;
 
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 /// <summary>
@@ -12,17 +13,24 @@ public partial class NotebookTabItem : ObservableObject
 
     [ObservableProperty] private string _header;
 
+    private readonly PropertyChangedEventHandler _vmHandler;
+
     public NotebookTabItem(NotebookViewModel viewModel)
     {
         ViewModel = viewModel;
         _header = viewModel.Title;
 
-        viewModel.PropertyChanged += (_, e) =>
+        _vmHandler = (_, e) =>
         {
             if (e.PropertyName is nameof(NotebookViewModel.Title) or nameof(NotebookViewModel.IsDirty))
                 Header = viewModel.IsDirty ? $"{viewModel.Title} *" : viewModel.Title;
         };
+        viewModel.PropertyChanged += _vmHandler;
     }
 
-    public void Close() => ViewModel.Close();
+    public void Close()
+    {
+        ViewModel.PropertyChanged -= _vmHandler;
+        ViewModel.Close();
+    }
 }

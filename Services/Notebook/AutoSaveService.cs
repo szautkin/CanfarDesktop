@@ -103,7 +103,9 @@ public class AutoSaveService : IAutoSaveService
         if (originalPath is not null)
         {
             var name = Path.GetFileNameWithoutExtension(originalPath);
-            return Path.Combine(dir, $"{name}.autosave.ipynb");
+            // Include a hash of the full path to avoid collisions for same-name files in different dirs
+            var hash = originalPath.GetHashCode().ToString("x8");
+            return Path.Combine(dir, $"{name}-{hash}.autosave.ipynb");
         }
         return Path.Combine(dir, $"untitled-{Guid.NewGuid():N}.autosave.ipynb");
     }

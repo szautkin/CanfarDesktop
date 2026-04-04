@@ -34,7 +34,7 @@ public sealed partial class NotebookTabHost : UserControl
 
     public async Task<NotebookPage> AddTabForFileAsync(string filePath)
     {
-        var tabItem = ViewModel.AddTabForFile(filePath);
+        var tabItem = ViewModel.AddTabForFile();
         var page = CreateTabViewItem(tabItem);
         await page.OpenFileAsync(filePath);
         return page;
@@ -99,7 +99,15 @@ public sealed partial class NotebookTabHost : UserControl
     private async void OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
         if (args.Tab.Tag is not NotebookTabItem tabItem) return;
+        if (!await TryCloseTabAsync(tabItem)) return;
+        sender.TabItems.Remove(args.Tab);
+    }
 
+    /// <summary>
+    /// Prompt save if dirty, then close. Returns false if user cancels.
+    /// </summary>
+    private async Task<bool> TryCloseTabAsync(NotebookTabItem tabItem)
+    {
         if (tabItem.ViewModel.IsDirty)
         {
             var dialog = new ContentDialog
@@ -115,14 +123,15 @@ public sealed partial class NotebookTabHost : UserControl
             if (result == ContentDialogResult.Primary)
                 await tabItem.ViewModel.SaveCommand.ExecuteAsync(null);
             else if (result == ContentDialogResult.None)
-                return; // Cancel
+                return false;
         }
 
         ViewModel.CloseTab(tabItem);
-        sender.TabItems.Remove(args.Tab);
 
-        if (sender.TabItems.Count == 0)
+        if (TabViewControl.TabItems.Count == 0)
             AllTabsClosed?.Invoke();
+
+        return true;
     }
 
     private void OnTabSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -259,30 +268,8 @@ public sealed partial class NotebookTabHost : UserControl
     private async void CloseActiveTab()
     {
         if (TabViewControl.SelectedItem is not TabViewItem { Tag: NotebookTabItem tabItem }) return;
-
-        if (tabItem.ViewModel.IsDirty)
-        {
-            var dialog = new ContentDialog
-            {
-                Title = "Unsaved changes",
-                Content = $"Save changes to {tabItem.ViewModel.Title}?",
-                PrimaryButtonText = "Save",
-                SecondaryButtonText = "Don't Save",
-                CloseButtonText = "Cancel",
-                XamlRoot = XamlRoot,
-            };
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
-                await tabItem.ViewModel.SaveCommand.ExecuteAsync(null);
-            else if (result == ContentDialogResult.None)
-                return;
-        }
-
-        ViewModel.CloseTab(tabItem);
+        if (!await TryCloseTabAsync(tabItem)) return;
         TabViewControl.TabItems.Remove(TabViewControl.SelectedItem);
-
-        if (TabViewControl.TabItems.Count == 0)
-            AllTabsClosed?.Invoke();
     }
 
     #endregion

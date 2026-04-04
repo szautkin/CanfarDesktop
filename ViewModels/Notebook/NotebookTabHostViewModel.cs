@@ -38,12 +38,12 @@ public partial class NotebookTabHostViewModel : ObservableObject
         return tab;
     }
 
-    public NotebookTabItem AddTabForFile(string filePath)
+    /// <summary>
+    /// Create a new tab (file loading happens in the View layer via OpenFileAsync).
+    /// </summary>
+    public NotebookTabItem AddTabForFile()
     {
-        var tab = _tabFactory.CreateTab();
-        Tabs.Add(tab);
-        ActiveTab = tab;
-        return tab;
+        return AddNewTab();
     }
 
     public void CloseTab(NotebookTabItem tab)

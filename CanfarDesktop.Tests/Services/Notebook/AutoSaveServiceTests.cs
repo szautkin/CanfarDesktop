@@ -120,7 +120,8 @@ public class AutoSaveServiceTests : IDisposable
 
         service.Start("analysis.ipynb", () => NotebookParser.CreateEmpty());
 
-        Assert.Contains("analysis.autosave.ipynb", service.AutoSavePath);
+        Assert.Contains("analysis-", service.AutoSavePath);
+        Assert.Contains(".autosave.ipynb", service.AutoSavePath);
     }
 
     [Fact]

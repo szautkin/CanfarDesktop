@@ -585,6 +585,9 @@ public partial class NotebookViewModel : ObservableObject
         _dirtyTracker.DirtyChanged -= OnDirtyChanged;
         foreach (var cell in Cells)
             cell.ContentChanged -= OnCellContentChanged;
+
+        // Shut down the Python kernel process
+        _kernelService.Dispose();
     }
 
     #endregion
