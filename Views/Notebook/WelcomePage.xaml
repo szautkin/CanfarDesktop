@@ -4,9 +4,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                    MaxWidth="500" Padding="40" Spacing="24">
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                MaxWidth="500" Padding="40" Spacing="24">
 
             <!-- Logo + title -->
             <FontIcon Glyph="&#xE70B;" FontSize="48"
@@ -36,12 +35,15 @@
                 </Button>
             </StackPanel>
 
-            <!-- Recent files -->
+            <!-- Recent files (scrollable) -->
             <StackPanel x:Name="RecentSection" Spacing="8" Visibility="Collapsed">
                 <TextBlock Text="Recent Notebooks"
                            Style="{StaticResource SubtitleTextBlockStyle}" />
-                <StackPanel x:Name="RecentList" Spacing="4" />
+                <ScrollViewer MaxHeight="400"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="RecentList" Spacing="4" />
+                </ScrollViewer>
             </StackPanel>
-        </StackPanel>
-    </ScrollViewer>
+    </StackPanel>
 </UserControl>
