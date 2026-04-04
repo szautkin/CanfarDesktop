@@ -19,7 +19,7 @@
                        HorizontalAlignment="Center" />
 
             <!-- Action buttons -->
-            <StackPanel Spacing="8" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="8" HorizontalAlignment="Stretch" MinWidth="400">
                 <Button Click="OnNewNotebook" HorizontalAlignment="Stretch"
                         Style="{StaticResource AccentButtonStyle}" Padding="16,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
