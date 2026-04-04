@@ -155,6 +155,12 @@ public sealed partial class CodeCellControl : UserControl
         SyntaxView.Blocks.Add(paragraph);
     }
 
+    /// <summary>
+    /// Raised when Up/Down at cell boundary should navigate to adjacent cell.
+    /// Int parameter: -1 for previous, +1 for next.
+    /// </summary>
+    public static event Action<int>? NavigateRequested;
+
     private void OnEditorKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
         switch (e.Key)
@@ -164,22 +170,20 @@ public sealed partial class CodeCellControl : UserControl
                 e.Handled = true;
                 break;
 
-            // Arrow Up at first line → exit to previous cell
             case Windows.System.VirtualKey.Up:
                 if (IsAtFirstLine())
                 {
                     ExitEditMode();
-                    _viewModel?.RequestSelection();
+                    NavigateRequested?.Invoke(-1);
                     e.Handled = true;
                 }
                 break;
 
-            // Arrow Down at last line → exit to next cell
             case Windows.System.VirtualKey.Down:
                 if (IsAtLastLine())
                 {
                     ExitEditMode();
-                    _viewModel?.RequestSelection();
+                    NavigateRequested?.Invoke(+1);
                     e.Handled = true;
                 }
                 break;

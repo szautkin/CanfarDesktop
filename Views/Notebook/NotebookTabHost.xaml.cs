@@ -27,6 +27,15 @@ public sealed partial class NotebookTabHost : UserControl
         Welcome.OpenPickerRequested += () => OnOpenFile(this, new RoutedEventArgs());
         Welcome.OpenFileRequested += async path => await AddTabForFileAsync(path);
 
+        // Wire cell navigation from editor boundary (Up at first line, Down at last line)
+        CodeCellControl.NavigateRequested += delta =>
+        {
+            if (ActiveVM is null) return;
+            var newIndex = ActiveVM.SelectedCellIndex + delta;
+            if (newIndex >= 0 && newIndex < ActiveVM.Cells.Count)
+                ActiveVM.SelectCell(newIndex);
+        };
+
         UpdateWelcomeVisibility();
     }
 
