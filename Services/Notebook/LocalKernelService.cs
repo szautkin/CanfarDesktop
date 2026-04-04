@@ -196,7 +196,8 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
                 }
             }
 
-            SetState(success ? KernelState.Idle : KernelState.Error);
+            // Errors are normal execution results — kernel stays alive and idle
+            SetState(KernelState.Idle);
 
             return new ExecutionResult
             {

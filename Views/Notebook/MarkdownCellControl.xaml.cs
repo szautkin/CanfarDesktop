@@ -16,6 +16,14 @@ public sealed partial class MarkdownCellControl : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        Unloaded += (_, _) => DetachViewModel();
+    }
+
+    private void DetachViewModel()
+    {
+        if (_viewModel is null) return;
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _viewModel = null;
     }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)

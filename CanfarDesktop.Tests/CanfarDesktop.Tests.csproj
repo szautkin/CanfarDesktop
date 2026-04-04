@@ -55,6 +55,7 @@
     <Compile Include="..\Models\Notebook\CellOutput.cs" Link="Linked\Notebook\CellOutput.cs" />
     <Compile Include="..\Helpers\Notebook\NotebookParser.cs" Link="Linked\Notebook\NotebookParser.cs" />
     <Compile Include="..\Helpers\Notebook\AnsiParser.cs" Link="Linked\Notebook\AnsiParser.cs" />
+    <Compile Include="..\Helpers\Notebook\PythonSyntaxHighlighter.cs" Link="Linked\Notebook\PythonSyntaxHighlighter.cs" />
     <Compile Include="..\Services\Notebook\IDirtyTracker.cs" Link="Linked\Notebook\IDirtyTracker.cs" />
     <Compile Include="..\Services\Notebook\DirtyTracker.cs" Link="Linked\Notebook\DirtyTracker.cs" />
     <Compile Include="..\Services\Notebook\IAutoSaveService.cs" Link="Linked\Notebook\IAutoSaveService.cs" />

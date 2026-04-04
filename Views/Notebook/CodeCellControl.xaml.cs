@@ -16,6 +16,15 @@ public sealed partial class CodeCellControl : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        Unloaded += (_, _) => DetachViewModel();
+    }
+
+    private void DetachViewModel()
+    {
+        if (_viewModel is null) return;
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _viewModel.Outputs.CollectionChanged -= OnOutputsChanged;
+        _viewModel = null;
     }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
@@ -110,10 +119,17 @@ public sealed partial class CodeCellControl : UserControl
         SourceEditor.Visibility = Visibility.Collapsed;
     }
 
+    private string? _lastHighlightedSource;
+
     private void RenderSyntax()
     {
         SyntaxView.Blocks.Clear();
         var source = _viewModel?.Source ?? "";
+
+        // Skip re-highlight if source unchanged
+        if (source == _lastHighlightedSource && SyntaxView.Blocks.Count > 0) return;
+        _lastHighlightedSource = source;
+
         if (string.IsNullOrEmpty(source))
         {
             var p = new Microsoft.UI.Xaml.Documents.Paragraph();
