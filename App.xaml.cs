@@ -82,11 +82,13 @@ public partial class App : Application
         services.AddTransient<StorageViewModel>();
         services.AddTransient<SearchViewModel>();
         services.AddTransient<ResearchViewModel>();
+        services.AddTransient<StorageBrowserViewModel>();
 
         // Pages
         services.AddTransient<DashboardPage>();
         services.AddTransient<SearchPage>();
         services.AddTransient<ResearchPage>();
+        services.AddTransient<StorageBrowserPage>();
 
         return services.BuildServiceProvider();
     }

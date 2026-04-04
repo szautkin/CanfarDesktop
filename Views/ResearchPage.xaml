@@ -24,7 +24,7 @@
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
                     <TextBlock Text="Downloads" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <TextBlock x:Name="CountText" Style="{StaticResource CaptionTextBlockStyle}"
-                               Opacity="0.5" VerticalAlignment="Center" />
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                 </StackPanel>
 
                 <TextBox Grid.Row="1" x:Name="FilterBox" PlaceholderText="Filter..."
@@ -42,13 +42,13 @@
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="{Binding TargetName}" FontSize="13"
                                                TextTrimming="CharacterEllipsis" />
-                                    <TextBlock FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis">
+                                    <TextBlock FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis">
                                         <Run Text="{Binding Collection}" /> —
                                         <Run Text="{Binding Instrument}" />
                                     </TextBlock>
                                 </StackPanel>
                                 <TextBlock Grid.Column="1" Text="{Binding FormattedSize}"
-                                           FontSize="11" Opacity="0.4" VerticalAlignment="Center" />
+                                           FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>
@@ -63,11 +63,11 @@
             <Grid>
                 <!-- Empty state -->
                 <StackPanel x:Name="EmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
-                    <FontIcon Glyph="&#xE8B7;" FontSize="48" Opacity="0.3" HorizontalAlignment="Center" />
+                    <FontIcon Glyph="&#xE8B7;" FontSize="48" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" />
                     <TextBlock Text="Select an observation" Style="{StaticResource SubtitleTextBlockStyle}"
-                               Opacity="0.5" HorizontalAlignment="Center" />
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
                     <TextBlock Text="Downloaded observations from CADC archive search appear here."
-                               Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.4"
+                               Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="300" />
                 </StackPanel>
 

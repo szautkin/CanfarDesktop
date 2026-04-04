@@ -12,13 +12,14 @@ namespace CanfarDesktop;
 
 public sealed partial class MainWindow : Window
 {
-    private enum AppMode { Landing, Portal, Search, Research }
+    private enum AppMode { Landing, Portal, Search, Research, Storage }
 
     private readonly MainViewModel _viewModel;
     private readonly LandingView _landingView;
     private DashboardPage? _dashboardPage;
     private SearchPage? _searchPage;
     private ResearchPage? _researchPage;
+    private StorageBrowserPage? _storagePage;
     private AppMode _currentMode = AppMode.Landing;
     private bool _loginSucceeded;
 
@@ -46,6 +47,7 @@ public sealed partial class MainWindow : Window
         _landingView.PortalRequested += OnPortalRequested;
         _landingView.SearchRequested += OnSearchRequested;
         _landingView.ResearchRequested += OnResearchRequested;
+        _landingView.StorageRequested += (_, _) => OpenStorageBrowser();
         LandingContainer.Child = _landingView;
 
         Activated += OnWindowActivated;
@@ -88,6 +90,7 @@ public sealed partial class MainWindow : Window
         PortalContainer.Visibility = mode == AppMode.Portal ? Visibility.Visible : Visibility.Collapsed;
         SearchContainer.Visibility = mode == AppMode.Search ? Visibility.Visible : Visibility.Collapsed;
         ResearchContainer.Visibility = mode == AppMode.Research ? Visibility.Visible : Visibility.Collapsed;
+        StorageContainer.Visibility = mode == AppMode.Storage ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnHomeClick(object sender, RoutedEventArgs e)
@@ -134,6 +137,24 @@ public sealed partial class MainWindow : Window
         _searchPage = App.Services.GetRequiredService<SearchPage>();
         SearchContainer.Child = _searchPage;
         _searchPage.LoadAsync();
+    }
+
+    public async void OpenStorageBrowser()
+    {
+        if (!_viewModel.IsAuthenticated)
+        {
+            await ShowLoginThenPortalAsync();
+            if (!_viewModel.IsAuthenticated) return;
+        }
+
+        if (_storagePage is null)
+        {
+            _storagePage = App.Services.GetRequiredService<StorageBrowserPage>();
+            StorageContainer.Child = _storagePage;
+            await _storagePage.LoadAsync(_viewModel.Username);
+        }
+
+        NavigateTo(AppMode.Storage);
     }
 
     private void EnsureResearchPage()
@@ -229,7 +250,9 @@ public sealed partial class MainWindow : Window
         {
             await _viewModel.LogoutCommand.ExecuteAsync(null);
             _dashboardPage = null;
+            _storagePage = null;
             PortalContainer.Child = null;
+            StorageContainer.Child = null;
             NavigateTo(AppMode.Landing);
         }
         catch (Exception ex)

@@ -27,7 +27,17 @@ public class ApiEndpoints
     public string RepositoryUrl => $"{SkahaBaseUrl}/v1/repository";
 
     // Storage (VOSpace/ARC)
-    public string StorageUrl(string username) => $"{StorageBaseUrl}/{username}";
+    public string StorageUrl(string username) => $"{StorageBaseUrl}/{username}?limit=0";
+    public string StorageNodeUrl(string path) => $"{StorageBaseUrl}/{path}";
+    public string StorageNodeListUrl(string path, int? limit = null, string? startUri = null)
+    {
+        var url = $"{StorageBaseUrl}/{path}?detail=max";
+        if (limit.HasValue) url += $"&limit={limit.Value}";
+        if (startUri is not null) url += $"&uri={Uri.EscapeDataString(startUri)}";
+        return url;
+    }
+    public string StorageFilesBaseUrl { get; set; } = "https://ws-uv.canfar.net/arc/files/home";
+    public string StorageFilesUrl(string path) => $"{StorageFilesBaseUrl}/{path}";
 
     // CADC TAP / Search (public, no auth)
     public string TapBaseUrl { get; set; } = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus";

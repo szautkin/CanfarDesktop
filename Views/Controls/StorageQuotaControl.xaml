@@ -22,15 +22,15 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                        <TextBlock Text="Used" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center" />
+                        <TextBlock Text="Used" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
                         <TextBlock x:Name="UsedText" Style="{StaticResource BodyStrongTextBlockStyle}" HorizontalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" HorizontalAlignment="Center">
-                        <TextBlock Text="Quota" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center" />
+                        <TextBlock Text="Quota" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
                         <TextBlock x:Name="QuotaText" Style="{StaticResource BodyStrongTextBlockStyle}" HorizontalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                        <TextBlock Text="Usage" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center" />
+                        <TextBlock Text="Usage" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
                         <TextBlock x:Name="UsageText" Style="{StaticResource BodyStrongTextBlockStyle}" HorizontalAlignment="Center" />
                     </StackPanel>
                 </Grid>

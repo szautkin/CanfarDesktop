@@ -14,67 +14,46 @@
                            HorizontalAlignment="Center" FontWeight="Bold" />
                 <TextBlock Text="A CANFAR Science Portal Companion"
                            Style="{StaticResource SubtitleTextBlockStyle}"
-                           HorizontalAlignment="Center" Opacity="0.6" />
+                           HorizontalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
 
-            <!-- Tiles -->
-            <StackPanel Orientation="Horizontal" Spacing="24" HorizontalAlignment="Center">
-
-                <!-- Portal tile -->
-                <Border x:Name="PortalTile" Width="180" Height="170" CornerRadius="16"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                        Background="Transparent" Tapped="OnPortalTapped"
-                        PointerEntered="OnTilePointerEntered" PointerExited="OnTilePointerExited">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
-                        <FontIcon Glyph="&#xE7F4;" FontSize="48" Opacity="0.7" HorizontalAlignment="Center" />
-                        <StackPanel Spacing="4" HorizontalAlignment="Center">
-                            <TextBlock Text="Portal" Style="{StaticResource SubtitleTextBlockStyle}"
-                                       FontWeight="Bold" HorizontalAlignment="Center" />
-                            <TextBlock Text="Manage sessions &amp; data"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       Opacity="0.6" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Search tile -->
-                <Border x:Name="SearchTile" Width="180" Height="170" CornerRadius="16"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                        Background="Transparent" Tapped="OnSearchTapped"
-                        PointerEntered="OnTilePointerEntered" PointerExited="OnTilePointerExited">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
-                        <FontIcon Glyph="&#xE721;" FontSize="48" Opacity="0.7" HorizontalAlignment="Center" />
-                        <StackPanel Spacing="4" HorizontalAlignment="Center">
-                            <TextBlock Text="Search" Style="{StaticResource SubtitleTextBlockStyle}"
-                                       FontWeight="Bold" HorizontalAlignment="Center" />
-                            <TextBlock Text="Explore the CADC archive"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       Opacity="0.6" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Research tile -->
-                <Border x:Name="ResearchTile" Width="180" Height="170" CornerRadius="16"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                        Background="Transparent" Tapped="OnResearchTapped"
-                        PointerEntered="OnTilePointerEntered" PointerExited="OnTilePointerExited">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
-                        <FontIcon Glyph="&#xE8B7;" FontSize="48" Opacity="0.7" HorizontalAlignment="Center" />
-                        <StackPanel Spacing="4" HorizontalAlignment="Center">
-                            <TextBlock Text="Research" Style="{StaticResource SubtitleTextBlockStyle}"
-                                       FontWeight="Bold" HorizontalAlignment="Center" />
-                            <TextBlock Text="Downloaded observations"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       Opacity="0.6" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
+            <!-- Tiles (responsive wrapping: 4 across → 2x2 → vertical as window narrows) -->
+            <ItemsRepeater x:Name="TilesRepeater" HorizontalAlignment="Center">
+                <ItemsRepeater.Layout>
+                    <UniformGridLayout Orientation="Horizontal"
+                                       MinItemWidth="170" MinItemHeight="160"
+                                       MinColumnSpacing="20" MinRowSpacing="20"
+                                       MaximumRowsOrColumns="4" />
+                </ItemsRepeater.Layout>
+                <ItemsRepeater.ItemTemplate>
+                    <DataTemplate>
+                        <Border Width="170" Height="160" CornerRadius="8"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                Background="Transparent" Tag="{Binding Key}"
+                                Tapped="OnTileTapped"
+                                PointerEntered="OnTilePointerEntered" PointerExited="OnTilePointerExited">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14">
+                                <FontIcon Glyph="{Binding Glyph}" FontSize="44" HorizontalAlignment="Center"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" Style="{StaticResource SubtitleTextBlockStyle}"
+                                               FontWeight="Bold" HorizontalAlignment="Center" />
+                                    <TextBlock Text="{Binding Subtitle}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
 
             <!-- Status -->
             <TextBlock x:Name="StatusText" HorizontalAlignment="Center"
-                       Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.4" />
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
         </StackPanel>
     </Grid>
 </UserControl>

@@ -42,19 +42,19 @@
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     <Border Grid.Column="1" x:Name="StatusBadge" CornerRadius="10" Padding="8,2">
                         <TextBlock x:Name="StatusText" Style="{StaticResource CaptionTextBlockStyle}"
-                                   Foreground="White" />
+                                   Foreground="{ThemeResource TextFillColorInverseBrush}" />
                     </Border>
                 </Grid>
 
                 <!-- Row 1: Type label -->
                 <Border Grid.Row="1" x:Name="TypeBadge" CornerRadius="4" Padding="6,1" HorizontalAlignment="Left">
                     <TextBlock x:Name="TypeText" Style="{StaticResource CaptionTextBlockStyle}"
-                               Foreground="White" FontSize="11" />
+                               Foreground="{ThemeResource TextFillColorInverseBrush}" FontSize="11" />
                 </Border>
 
                 <!-- Row 2: Image name -->
                 <TextBlock Grid.Row="2" x:Name="ImageText" Style="{StaticResource CaptionTextBlockStyle}"
-                           Opacity="0.6" TextTrimming="CharacterEllipsis" />
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
 
                 <!-- Row 3: Times + Resources -->
                 <Grid Grid.Row="3" ColumnSpacing="16">
@@ -63,12 +63,12 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock x:Name="StartText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5" FontSize="11" />
-                        <TextBlock x:Name="ExpiryText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5" FontSize="11" />
+                        <TextBlock x:Name="StartText" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="11" />
+                        <TextBlock x:Name="ExpiryText" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="11" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Spacing="2">
-                        <TextBlock x:Name="CpuText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5" FontSize="11" />
-                        <TextBlock x:Name="RamText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5" FontSize="11" />
+                        <TextBlock x:Name="CpuText" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="11" />
+                        <TextBlock x:Name="RamText" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="11" />
                     </StackPanel>
                 </Grid>
 

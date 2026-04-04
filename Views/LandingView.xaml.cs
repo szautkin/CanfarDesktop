@@ -9,6 +9,7 @@ public sealed partial class LandingView : UserControl
     public event EventHandler? PortalRequested;
     public event EventHandler? SearchRequested;
     public event EventHandler? ResearchRequested;
+    public event EventHandler? StorageRequested;
 
     public string StatusMessage
     {
@@ -16,33 +17,49 @@ public sealed partial class LandingView : UserControl
         set => StatusText.Text = value;
     }
 
+    public class TileData
+    {
+        public string Title { get; set; } = "";
+        public string Glyph { get; set; } = "";
+        public string Subtitle { get; set; } = "";
+        public string Key { get; set; } = "";
+    }
+
+    public List<TileData> Tiles { get; } =
+    [
+        new() { Title = "Portal", Glyph = "\uE7F4", Subtitle = "Manage sessions & data", Key = "portal" },
+        new() { Title = "Search", Glyph = "\uE721", Subtitle = "Explore the CADC archive", Key = "search" },
+        new() { Title = "Research", Glyph = "\uE8B7", Subtitle = "Downloaded observations", Key = "research" },
+        new() { Title = "Storage", Glyph = "\uEDA2", Subtitle = "Browse VOSpace files", Key = "storage" },
+    ];
+
     public LandingView()
     {
         InitializeComponent();
+        TilesRepeater.ItemsSource = Tiles;
     }
 
-    private void OnPortalTapped(object sender, TappedRoutedEventArgs e)
+    private void OnTileTapped(object sender, TappedRoutedEventArgs e)
     {
-        PortalRequested?.Invoke(this, EventArgs.Empty);
+        if (sender is FrameworkElement fe && fe.Tag is string key)
+        {
+            switch (key)
+            {
+                case "portal": PortalRequested?.Invoke(this, EventArgs.Empty); break;
+                case "search": SearchRequested?.Invoke(this, EventArgs.Empty); break;
+                case "research": ResearchRequested?.Invoke(this, EventArgs.Empty); break;
+                case "storage": StorageRequested?.Invoke(this, EventArgs.Empty); break;
+            }
+        }
     }
 
-    private void OnSearchTapped(object sender, TappedRoutedEventArgs e)
-    {
-        SearchRequested?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void OnResearchTapped(object sender, TappedRoutedEventArgs e)
-    {
-        ResearchRequested?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void OnTilePointerEntered(object sender, PointerRoutedEventArgs e)
+    private void OnTilePointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         if (sender is Border border)
             border.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
     }
 
-    private void OnTilePointerExited(object sender, PointerRoutedEventArgs e)
+    private void OnTilePointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         if (sender is Border border)
             border.Background = null;

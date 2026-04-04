@@ -17,7 +17,7 @@
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <TextBlock Text="Batch Jobs" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <StackPanel x:Name="CountdownIndicator" Orientation="Horizontal" Spacing="4"
-                                VerticalAlignment="Center" Opacity="0.6">
+                                VerticalAlignment="Center">
                         <ProgressRing IsActive="True" Width="14" Height="14" />
                         <TextBlock x:Name="CountdownText" Style="{StaticResource CaptionTextBlockStyle}"
                                    VerticalAlignment="Center" />
@@ -48,7 +48,7 @@
                                  Fill="#FFFF9800" />
                         <TextBlock x:Name="PendingCount" Style="{StaticResource BodyStrongTextBlockStyle}"
                                    VerticalAlignment="Center" />
-                        <TextBlock Text="Pending" Opacity="0.7" VerticalAlignment="Center"
+                        <TextBlock Text="Pending" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
                 </Button>
@@ -63,7 +63,7 @@
                                  Fill="#FF4CAF50" />
                         <TextBlock x:Name="RunningCount" Style="{StaticResource BodyStrongTextBlockStyle}"
                                    VerticalAlignment="Center" />
-                        <TextBlock Text="Running" Opacity="0.7" VerticalAlignment="Center"
+                        <TextBlock Text="Running" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
                 </Button>
@@ -78,7 +78,7 @@
                                  Fill="#FF2196F3" />
                         <TextBlock x:Name="CompletedCount" Style="{StaticResource BodyStrongTextBlockStyle}"
                                    VerticalAlignment="Center" />
-                        <TextBlock Text="Completed" Opacity="0.7" VerticalAlignment="Center"
+                        <TextBlock Text="Completed" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
                 </Button>
@@ -93,7 +93,7 @@
                                  Fill="#FFF44336" />
                         <TextBlock x:Name="FailedCount" Style="{StaticResource BodyStrongTextBlockStyle}"
                                    VerticalAlignment="Center" />
-                        <TextBlock Text="Failed" Opacity="0.7" VerticalAlignment="Center"
+                        <TextBlock Text="Failed" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
                 </Button>

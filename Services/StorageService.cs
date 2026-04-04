@@ -19,17 +19,65 @@ public class StorageService : IStorageService
     {
         var request = new HttpRequestMessage(HttpMethod.Get, _endpoints.StorageUrl(username));
         request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/xml"));
-        var response = await _httpClient.SendAsync(request);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var body = await response.Content.ReadAsStringAsync();
-            System.Diagnostics.Debug.WriteLine($"Storage API {response.StatusCode}: {body}");
-            throw new HttpRequestException($"Storage returned {(int)response.StatusCode} {response.ReasonPhrase}");
-        }
+        using var response = await _httpClient.SendAsync(request);
 
         var xml = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            System.Diagnostics.Debug.WriteLine($"Storage API {response.StatusCode}: {xml}");
+            throw new HttpRequestException($"Storage returned {(int)response.StatusCode} {response.ReasonPhrase}");
+        }
         return ParseVoSpaceXml(xml);
+    }
+
+    public async Task<List<VoSpaceNode>> ListNodesAsync(string path, int? limit = null)
+    {
+        var url = _endpoints.StorageNodeListUrl(path, limit);
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/xml"));
+
+        using var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var xml = await response.Content.ReadAsStringAsync();
+        return VoSpaceParser.ParseNodeList(xml);
+    }
+
+    public async Task UploadFileAsync(string remotePath, Stream content, string? contentType = null)
+    {
+        var url = _endpoints.StorageFilesUrl(remotePath);
+        using var streamContent = new StreamContent(content);
+        if (!string.IsNullOrEmpty(contentType))
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        using var response = await _httpClient.PutAsync(url, streamContent);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<Stream> DownloadFileAsync(string remotePath)
+    {
+        var url = _endpoints.StorageFilesUrl(remotePath);
+        return await _httpClient.GetStreamAsync(url);
+    }
+
+    public async Task CreateFolderAsync(string remotePath, string folderName)
+    {
+        var fullPath = string.IsNullOrEmpty(remotePath)
+            ? folderName
+            : $"{remotePath}/{folderName}";
+        var nodeUri = $"vos://cadc.nrc.ca~arc/home/{fullPath}";
+        var url = _endpoints.StorageNodeUrl(fullPath);
+
+        var xml = VoSpaceParser.BuildContainerNodeXml(nodeUri);
+        using var xmlContent = new StringContent(xml, System.Text.Encoding.UTF8, "text/xml");
+        using var response = await _httpClient.PutAsync(url, xmlContent);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task DeleteNodeAsync(string remotePath)
+    {
+        var url = _endpoints.StorageNodeUrl(remotePath);
+        using var response = await _httpClient.DeleteAsync(url);
+        response.EnsureSuccessStatusCode();
     }
 
     private static StorageQuota? ParseVoSpaceXml(string xml)
