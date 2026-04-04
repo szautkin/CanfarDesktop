@@ -16,6 +16,7 @@ public partial class NotebookViewModel : ObservableObject
     private readonly IDirtyTracker _dirtyTracker;
     private readonly IAutoSaveService _autoSaveService;
     private readonly IKernelService _kernelService;
+    private readonly RecentNotebooksService _recentNotebooks;
     private NotebookDocument _document;
     private string? _filePath;
 
@@ -32,11 +33,13 @@ public partial class NotebookViewModel : ObservableObject
     public NotebookDocument Document => _document;
     public string? FilePath => _filePath;
 
-    public NotebookViewModel(IDirtyTracker dirtyTracker, IAutoSaveService autoSaveService, IKernelService kernelService)
+    public NotebookViewModel(IDirtyTracker dirtyTracker, IAutoSaveService autoSaveService,
+        IKernelService kernelService, RecentNotebooksService recentNotebooks)
     {
         _dirtyTracker = dirtyTracker;
         _autoSaveService = autoSaveService;
         _kernelService = kernelService;
+        _recentNotebooks = recentNotebooks;
         _document = NotebookParser.CreateEmpty();
 
         _dirtyTracker.DirtyChanged += OnDirtyChanged;
@@ -54,6 +57,7 @@ public partial class NotebookViewModel : ObservableObject
         _document = document;
         Title = Path.GetFileName(filePath);
         KernelDisplayName = document.Metadata.KernelSpec?.DisplayName ?? "Unknown kernel";
+        _recentNotebooks.AddOrUpdate(filePath);
 
         _dirtyTracker.Reset();
         HydrateFromDocument();
@@ -163,6 +167,7 @@ public partial class NotebookViewModel : ObservableObject
             }
             File.Move(tmpPath, filePath, overwrite: true);
             _dirtyTracker.MarkClean();
+            _recentNotebooks.AddOrUpdate(filePath);
             StatusMessage = $"Saved {Path.GetFileName(filePath)}";
 
             _autoSaveService.StopAndCleanup();

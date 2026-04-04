@@ -81,6 +81,7 @@ public partial class App : Application
         services.AddTransient<IAutoSaveService, AutoSaveService>();
         services.AddSingleton<IRecoveryService, RecoveryService>();
         services.AddSingleton<IPythonDiscoveryService, PythonDiscoveryService>();
+        services.AddSingleton<RecentNotebooksService>();
         services.AddTransient<IKernelService, LocalKernelService>();
 
         // ViewModels

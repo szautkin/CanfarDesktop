@@ -12,11 +12,12 @@ public class NotebookViewModelTests : IDisposable
     private readonly IDirtyTracker _dirtyTracker = new DirtyTracker();
     private readonly IAutoSaveService _autoSave = Substitute.For<IAutoSaveService>();
     private readonly IKernelService _kernel = Substitute.For<IKernelService>();
+    private readonly RecentNotebooksService _recent = new();
     private readonly NotebookViewModel _vm;
 
     public NotebookViewModelTests()
     {
-        _vm = new NotebookViewModel(_dirtyTracker, _autoSave, _kernel);
+        _vm = new NotebookViewModel(_dirtyTracker, _autoSave, _kernel, _recent);
     }
 
     public void Dispose()
