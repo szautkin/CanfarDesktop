@@ -14,6 +14,7 @@ public sealed partial class SearchPage : Page
 {
     public SearchViewModel ViewModel { get; }
     private readonly DataLinkService _dataLinkService;
+    private readonly ObservationStore _observationStore;
     private readonly DataTrainManager _dataTrainMgr = new();
     private bool _dataTrainLoaded;
 
@@ -21,10 +22,11 @@ public sealed partial class SearchPage : Page
     public string[] TimeUnits => UnitConverter.TimeUnits;
     public string[] PixelScaleUnits => UnitConverter.PixelScaleUnits;
 
-    public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService)
+    public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService, ObservationStore observationStore)
     {
         ViewModel = viewModel;
         _dataLinkService = dataLinkService;
+        _observationStore = observationStore;
         InitializeComponent();
 
         // Ctrl+Enter to search
@@ -344,7 +346,8 @@ public sealed partial class SearchPage : Page
                     Content = new FontIcon { Glyph = "\uE896", FontSize = 13 },
                     Tag = "action" // marks as action cell — prevents row detail
                 };
-                dlBtn.Click += async (_, _) => await DownloadFileAsync(capturedPubId);
+                var capturedRow = row;
+                dlBtn.Click += async (_, _) => await DownloadFileAsync(capturedPubId, capturedRow);
                 sp.Children.Add(dlBtn);
             }
             else if (!isHeader && key == "preview" && !string.IsNullOrEmpty(publisherID))
@@ -381,40 +384,19 @@ public sealed partial class SearchPage : Page
                         var links = await _dataLinkService.GetLinksAsync(capturedPubId);
                         var imageUrl = links.Thumbnails.FirstOrDefault() ?? links.Previews.FirstOrDefault();
 
-                        if (imageUrl is not null)
-                        {
-                            try
-                            {
-                                using var imgResponse = await _dataLinkService.DownloadAsync(imageUrl);
-                                using var imgStream = await imgResponse.Content.ReadAsStreamAsync();
-                                var memStream = new System.IO.MemoryStream();
-                                await imgStream.CopyToAsync(memStream);
-                                memStream.Position = 0;
-
-                                var bitmap = new BitmapImage();
-                                await bitmap.SetSourceAsync(memStream.AsRandomAccessStream());
-
-                                flyoutPanel.Children.Clear();
-                                flyoutPanel.Children.Add(new Image
-                                {
-                                    Source = bitmap,
-                                    MaxWidth = 300,
-                                    MaxHeight = 300,
-                                    Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform
-                                });
-                            }
-                            catch (Exception imgEx)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Image download failed: {imgEx.Message}");
-                                flyoutPanel.Children.Clear();
-                                flyoutPanel.Children.Add(new TextBlock { Text = "Image load failed", Opacity = 0.6 });
-                            }
-                        }
-                        else
+                        if (imageUrl is null)
                         {
                             flyoutPanel.Children.Clear();
                             flyoutPanel.Children.Add(new TextBlock { Text = "No preview available", Opacity = 0.6 });
+                            return;
                         }
+
+                        var img = await LoadImageFromUrlAsync(imageUrl);
+                        flyoutPanel.Children.Clear();
+                        if (img is not null)
+                            flyoutPanel.Children.Add(new Image { Source = img, MaxWidth = 300, MaxHeight = 300, Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform });
+                        else
+                            flyoutPanel.Children.Add(new TextBlock { Text = "Image load failed", Opacity = 0.6 });
                     }
                     catch
                     {
@@ -514,8 +496,6 @@ public sealed partial class SearchPage : Page
         try
         {
             var publisherID = row.Get(ViewModel.GetColumnHeader("publisherid"));
-            var fgBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
-
             var panel = new StackPanel { Spacing = 12 };
 
             // Preview images section (loads async)
@@ -536,28 +516,16 @@ public sealed partial class SearchPage : Page
             if (!string.IsNullOrEmpty(publisherID))
             {
                 var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-                var downloadBtn = new Button
-                {
-                    Content = new StackPanel
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Spacing = 6,
-                        Children = { new FontIcon { Glyph = "\uE896", FontSize = 14 }, new TextBlock { Text = "Download" } }
-                    }
-                };
                 var capturedPubIdForDl = publisherID;
-                downloadBtn.Click += async (_, _) => await DownloadFileAsync(capturedPubIdForDl);
-
-                var viewBtn = new Button { Content = "View on CADC" };
-                viewBtn.Click += (_, _) =>
+                var capturedRowForDl = row;
+                btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", "Download",
+                    async (_, _) => await DownloadFileAsync(capturedPubIdForDl, capturedRowForDl)));
+                btnPanel.Children.Add(UIFactory.CreateIconButton("\uE774", "View on CADC", (_, _) =>
                 {
                     var url = $"https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/details?ID={Uri.EscapeDataString(publisherID)}";
                     if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
                         _ = Windows.System.Launcher.LaunchUriAsync(uri);
-                };
-
-                btnPanel.Children.Add(downloadBtn);
-                btnPanel.Children.Add(viewBtn);
+                }));
                 panel.Children.Add(btnPanel);
             }
 
@@ -565,19 +533,8 @@ public sealed partial class SearchPage : Page
             foreach (var col in ViewModel.ResultColumns)
             {
                 var rawVal = row.Get(col.Header);
-                if (string.IsNullOrWhiteSpace(rawVal)) continue;
-                var sp = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-                sp.Children.Add(new TextBlock
-                {
-                    Text = col.Label, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                    Width = 170, FontSize = 12, Foreground = fgBrush
-                });
-                sp.Children.Add(new TextBlock
-                {
-                    Text = ViewModel.FormatCell(col.Key, rawVal), IsTextSelectionEnabled = true,
-                    FontSize = 12, TextWrapping = TextWrapping.Wrap, Foreground = fgBrush
-                });
-                panel.Children.Add(sp);
+                var metaRow = UIFactory.CreateMetadataRow(col.Label, ViewModel.FormatCell(col.Key, rawVal), 170);
+                if (metaRow is not null) panel.Children.Add(metaRow);
             }
 
             var dialog = new ContentDialog
@@ -593,42 +550,7 @@ public sealed partial class SearchPage : Page
             // Load images in background
             if (!string.IsNullOrEmpty(publisherID))
             {
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        var links = await _dataLinkService.GetLinksAsync(publisherID);
-                        var imageUrls = links.Previews.Concat(links.Thumbnails).Take(5).ToList();
-                        DispatcherQueue.TryEnqueue(() =>
-                        {
-                            imageProgress.IsActive = false;
-                            imageProgress.Visibility = Visibility.Collapsed;
-                            if (imageUrls.Count == 0)
-                            {
-                                imageSection.Visibility = Visibility.Collapsed;
-                                return;
-                            }
-                            foreach (var url in imageUrls)
-                            {
-                                imagePanel.Children.Add(new Image
-                                {
-                                    Source = new BitmapImage(new Uri(url)),
-                                    MaxHeight = 180,
-                                    MaxWidth = 250,
-                                    Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform
-                                });
-                            }
-                        });
-                    }
-                    catch
-                    {
-                        DispatcherQueue.TryEnqueue(() =>
-                        {
-                            imageProgress.IsActive = false;
-                            imageSection.Visibility = Visibility.Collapsed;
-                        });
-                    }
-                });
+                _ = LoadDetailImagesAsync(publisherID, imagePanel, imageProgress, imageSection);
             }
             else
             {
@@ -647,7 +569,52 @@ public sealed partial class SearchPage : Page
 
     #region Download + Preview
 
-    private async Task DownloadFileAsync(string publisherID)
+    private async Task LoadDetailImagesAsync(string publisherID, StackPanel imagePanel, ProgressRing spinner, StackPanel section)
+    {
+        try
+        {
+            var links = await _dataLinkService.GetLinksAsync(publisherID);
+            var imageUrls = links.Previews.Concat(links.Thumbnails).Distinct().Take(3).ToList();
+
+            spinner.IsActive = false;
+            spinner.Visibility = Visibility.Collapsed;
+
+            if (imageUrls.Count == 0)
+            {
+                section.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            foreach (var url in imageUrls)
+            {
+                var img = await LoadImageFromUrlAsync(url);
+                if (img is not null)
+                    imagePanel.Children.Add(new Image { Source = img, MaxHeight = 180, MaxWidth = 250, Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform });
+            }
+        }
+        catch
+        {
+            spinner.IsActive = false;
+            section.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>
+    /// Download image from URL with retry and timeout. Returns null on failure.
+    /// Reusable across preview flyout and detail modal.
+    /// </summary>
+    private async Task<BitmapImage?> LoadImageFromUrlAsync(string url)
+    {
+        var bytes = await _dataLinkService.DownloadImageBytesAsync(url);
+        if (bytes is null || bytes.Length == 0) return null;
+
+        var bitmap = new BitmapImage();
+        using var stream = new System.IO.MemoryStream(bytes);
+        await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
+        return bitmap;
+    }
+
+    private async Task DownloadFileAsync(string publisherID, SearchResultRow? sourceRow = null)
     {
         try
         {
@@ -666,11 +633,47 @@ public sealed partial class SearchPage : Page
             var file = await picker.PickSaveFileAsync();
             if (file is null) return;
 
-            // Download
-            using var response = await _dataLinkService.DownloadAsync(url);
-            using var stream = await response.Content.ReadAsStreamAsync();
-            using var fileStream = await file.OpenStreamForWriteAsync();
-            await stream.CopyToAsync(fileStream);
+            // Atomic download: write to temp file, then move to final location
+            var tempPath = file.Path + ".tmp";
+            try
+            {
+                using (var response = await _dataLinkService.DownloadAsync(url))
+                using (var stream = await response.Content.ReadAsStreamAsync())
+                using (var fileStream = new System.IO.FileStream(tempPath, System.IO.FileMode.Create))
+                {
+                    await stream.CopyToAsync(fileStream);
+                    await fileStream.FlushAsync();
+                }
+
+                // Move temp to final (overwrites if exists)
+                if (File.Exists(file.Path)) File.Delete(file.Path);
+                File.Move(tempPath, file.Path);
+            }
+            catch
+            {
+                // Clean up partial temp file on failure
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                throw; // re-throw to outer catch
+            }
+
+            // Track in Research module
+            var row = sourceRow;
+            if (row is not null)
+            {
+                try
+                {
+                    var dataLink = await _dataLinkService.GetLinksAsync(publisherID);
+                    var obs = DownloadedObservation.FromSearchResult(row, file.Path,
+                        dataLink, k => ViewModel.GetColumnHeader(k));
+                    var fi = new System.IO.FileInfo(file.Path);
+                    if (fi.Exists) obs.FileSize = fi.Length;
+                    _observationStore.Save(obs);
+                }
+                catch (Exception trackEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Download tracking error: {trackEx.Message}");
+                }
+            }
         }
         catch (Exception ex)
         {

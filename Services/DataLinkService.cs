@@ -42,17 +42,41 @@ public class DataLinkService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"DataLink fetch failed for {publisherID}: {ex.Message}");
-            return CacheAndReturn(publisherID, new DataLinkResult());
+            return new DataLinkResult(); // Don't cache failures — allow retry
         }
     }
 
     public string GetDownloadUrl(string publisherID) => _endpoints.DownloadUrl(publisherID);
 
-    public async Task<HttpResponseMessage> DownloadAsync(string url)
+    public async Task<HttpResponseMessage> DownloadAsync(string url, int timeoutSeconds = 30)
     {
-        var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+        var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
         response.EnsureSuccessStatusCode();
         return response;
+    }
+
+    /// <summary>
+    /// Download image bytes with timeout and retry. Returns null on failure.
+    /// </summary>
+    public async Task<byte[]?> DownloadImageBytesAsync(string url, int timeoutSeconds = 15)
+    {
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+                using var response = await _httpClient.GetAsync(url, cts.Token);
+                if (!response.IsSuccessStatusCode) return null;
+                return await response.Content.ReadAsByteArrayAsync(cts.Token);
+            }
+            catch (Exception ex) when (ex is IOException or HttpRequestException or TaskCanceledException or OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine($"Image download attempt {attempt + 1} failed for {url}: {ex.GetType().Name}");
+                if (attempt == 0) await Task.Delay(500); // brief pause before retry
+            }
+        }
+        return null;
     }
 
     private DataLinkResult CacheAndReturn(string key, DataLinkResult result)

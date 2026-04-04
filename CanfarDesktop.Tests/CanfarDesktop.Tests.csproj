@@ -42,5 +42,7 @@
     <Compile Include="..\Helpers\DataTrainManager.cs" Link="Linked\DataTrainManager.cs" />
     <Compile Include="..\Services\TAPService.cs" Link="Linked\TAPService.cs" />
     <Compile Include="..\Services\DataLinkService.cs" Link="Linked\DataLinkService.cs" />
+    <Compile Include="..\Models\DownloadedObservation.cs" Link="Linked\DownloadedObservation.cs" />
+    <Compile Include="..\Services\ObservationStore.cs" Link="Linked\ObservationStore.cs" />
   </ItemGroup>
 </Project>

@@ -282,7 +282,7 @@
                             <TextBlock x:Name="PageStatusText" VerticalAlignment="Center"
                                        Style="{StaticResource CaptionTextBlockStyle}" />
                             <Button Click="OnFirstPage" Padding="8,4" ToolTipService.ToolTip="First page">
-                                <FontIcon Glyph="&#xEB9D;" FontSize="12" />
+                                <FontIcon Glyph="&#xEB9E;" FontSize="12" />
                             </Button>
                             <Button Click="OnPrevPage" Padding="8,4" ToolTipService.ToolTip="Previous page">
                                 <FontIcon Glyph="&#xE70E;" FontSize="12" />
@@ -293,7 +293,7 @@
                                 <FontIcon Glyph="&#xE70D;" FontSize="12" />
                             </Button>
                             <Button Click="OnLastPage" Padding="8,4" ToolTipService.ToolTip="Last page">
-                                <FontIcon Glyph="&#xEB9E;" FontSize="12" />
+                                <FontIcon Glyph="&#xEB9D;" FontSize="12" />
                             </Button>
                             <ComboBox x:Name="RowsPerPageCombo" Header="Rows" Width="90"
                                       ItemsSource="{x:Bind ViewModel.RowsPerPageOptions}"

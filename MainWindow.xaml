@@ -65,6 +65,7 @@
             <Border x:Name="LandingContainer" />
             <Border x:Name="PortalContainer" Visibility="Collapsed" />
             <Border x:Name="SearchContainer" Visibility="Collapsed" />
+            <Border x:Name="ResearchContainer" Visibility="Collapsed" />
         </Grid>
     </Grid>
 </Window>

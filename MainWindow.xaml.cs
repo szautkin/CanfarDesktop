@@ -12,12 +12,13 @@ namespace CanfarDesktop;
 
 public sealed partial class MainWindow : Window
 {
-    private enum AppMode { Landing, Portal, Search }
+    private enum AppMode { Landing, Portal, Search, Research }
 
     private readonly MainViewModel _viewModel;
     private readonly LandingView _landingView;
     private DashboardPage? _dashboardPage;
     private SearchPage? _searchPage;
+    private ResearchPage? _researchPage;
     private AppMode _currentMode = AppMode.Landing;
     private bool _loginSucceeded;
 
@@ -44,6 +45,7 @@ public sealed partial class MainWindow : Window
         _landingView = new LandingView();
         _landingView.PortalRequested += OnPortalRequested;
         _landingView.SearchRequested += OnSearchRequested;
+        _landingView.ResearchRequested += OnResearchRequested;
         LandingContainer.Child = _landingView;
 
         Activated += OnWindowActivated;
@@ -85,6 +87,7 @@ public sealed partial class MainWindow : Window
         LandingContainer.Visibility = mode == AppMode.Landing ? Visibility.Visible : Visibility.Collapsed;
         PortalContainer.Visibility = mode == AppMode.Portal ? Visibility.Visible : Visibility.Collapsed;
         SearchContainer.Visibility = mode == AppMode.Search ? Visibility.Visible : Visibility.Collapsed;
+        ResearchContainer.Visibility = mode == AppMode.Research ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnHomeClick(object sender, RoutedEventArgs e)
@@ -111,6 +114,12 @@ public sealed partial class MainWindow : Window
         NavigateTo(AppMode.Search);
     }
 
+    private void OnResearchRequested(object? sender, EventArgs e)
+    {
+        EnsureResearchPage();
+        NavigateTo(AppMode.Research);
+    }
+
     private void EnsureDashboard()
     {
         if (_dashboardPage is not null) return;
@@ -125,6 +134,19 @@ public sealed partial class MainWindow : Window
         _searchPage = App.Services.GetRequiredService<SearchPage>();
         SearchContainer.Child = _searchPage;
         _searchPage.LoadAsync();
+    }
+
+    private void EnsureResearchPage()
+    {
+        if (_researchPage is null)
+        {
+            _researchPage = App.Services.GetRequiredService<ResearchPage>();
+            ResearchContainer.Child = _researchPage;
+        }
+        else
+        {
+            _researchPage.RefreshList();
+        }
     }
 
     private async Task ShowLoginThenPortalAsync()

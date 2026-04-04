@@ -8,6 +8,7 @@ public sealed partial class LandingView : UserControl
 {
     public event EventHandler? PortalRequested;
     public event EventHandler? SearchRequested;
+    public event EventHandler? ResearchRequested;
 
     public string StatusMessage
     {
@@ -28,6 +29,11 @@ public sealed partial class LandingView : UserControl
     private void OnSearchTapped(object sender, TappedRoutedEventArgs e)
     {
         SearchRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnResearchTapped(object sender, TappedRoutedEventArgs e)
+    {
+        ResearchRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnTilePointerEntered(object sender, PointerRoutedEventArgs e)

@@ -64,6 +64,9 @@ public partial class App : Application
         // Recent launches
         services.AddSingleton<IRecentLaunchService, RecentLaunchService>();
 
+        // Research
+        services.AddSingleton<ObservationStore>();
+
         // Search (TAP is public, no auth needed)
         services.AddHttpClient<ITAPService, TAPService>();
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
@@ -77,10 +80,12 @@ public partial class App : Application
         services.AddTransient<PlatformLoadViewModel>();
         services.AddTransient<StorageViewModel>();
         services.AddTransient<SearchViewModel>();
+        services.AddTransient<ResearchViewModel>();
 
         // Pages
         services.AddTransient<DashboardPage>();
         services.AddTransient<SearchPage>();
+        services.AddTransient<ResearchPage>();
 
         return services.BuildServiceProvider();
     }
