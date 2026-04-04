@@ -155,6 +155,25 @@ public sealed partial class CodeCellControl : UserControl
         SyntaxView.Blocks.Add(paragraph);
     }
 
+    private void OnEditorKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Escape)
+        {
+            // Exit edit mode — remove focus from TextBox, return to command mode
+            if (_viewModel is not null)
+            {
+                _viewModel.IsEditing = false;
+                _viewModel.IsFocused = false;
+            }
+            RenderSyntax();
+            SyntaxView.Visibility = Visibility.Visible;
+            SourceEditor.Visibility = Visibility.Collapsed;
+            // Move focus to the parent so command-mode keys work
+            this.Focus(FocusState.Programmatic);
+            e.Handled = true;
+        }
+    }
+
     private void OnSourceTextChanged(object sender, TextChangedEventArgs e)
     {
         if (_suppressTextChanged || _viewModel is null) return;

@@ -60,7 +60,8 @@
                          Visibility="Collapsed"
                          GotFocus="OnEditorGotFocus"
                          LostFocus="OnEditorLostFocus"
-                         TextChanged="OnSourceTextChanged" />
+                         TextChanged="OnSourceTextChanged"
+                         KeyDown="OnEditorKeyDown" />
             </Grid>
 
             <!-- Output area -->
