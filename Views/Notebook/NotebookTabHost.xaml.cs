@@ -35,13 +35,16 @@ public sealed partial class NotebookTabHost : UserControl
     public NotebookPage AddNewTab()
     {
         var tabItem = ViewModel.AddNewTab();
-        return CreateTabViewItem(tabItem);
+        var page = CreateTabViewItem(tabItem);
+        UpdateWelcomeVisibility();
+        return page;
     }
 
     public async Task<NotebookPage> AddTabForFileAsync(string filePath)
     {
         var tabItem = ViewModel.AddTabForFile();
         var page = CreateTabViewItem(tabItem);
+        UpdateWelcomeVisibility();
         await page.OpenFileAsync(filePath);
         return page;
     }
