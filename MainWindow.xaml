@@ -68,11 +68,7 @@
             <Border x:Name="SearchContainer" Visibility="Collapsed" />
             <Border x:Name="ResearchContainer" Visibility="Collapsed" />
             <Border x:Name="StorageContainer" Visibility="Collapsed" />
-            <TabView x:Name="NotebookTabView" Visibility="Collapsed"
-                     IsAddTabButtonVisible="True"
-                     AddTabButtonClick="OnAddNotebookTab"
-                     TabCloseRequested="OnNotebookTabCloseRequested"
-                     SelectionChanged="OnNotebookTabChanged" />
+            <Border x:Name="NotebookContainer" Visibility="Collapsed" />
         </Grid>
     </Grid>
 </Window>

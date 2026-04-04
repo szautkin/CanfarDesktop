@@ -62,6 +62,9 @@
     <Compile Include="..\Services\Notebook\IRecoveryService.cs" Link="Linked\Notebook\IRecoveryService.cs" />
     <Compile Include="..\Services\Notebook\RecoveryService.cs" Link="Linked\Notebook\RecoveryService.cs" />
     <Compile Include="..\Services\Notebook\RecentNotebooksService.cs" Link="Linked\Notebook\RecentNotebooksService.cs" />
+    <Compile Include="..\Services\Notebook\INotebookTabFactory.cs" Link="Linked\Notebook\INotebookTabFactory.cs" />
+    <Compile Include="..\ViewModels\Notebook\NotebookTabItem.cs" Link="Linked\Notebook\NotebookTabItem.cs" />
+    <Compile Include="..\ViewModels\Notebook\NotebookTabHostViewModel.cs" Link="Linked\Notebook\NotebookTabHostViewModel.cs" />
     <!-- Notebook execution services (Milestone 4) -->
     <Compile Include="..\Services\Notebook\KernelState.cs" Link="Linked\Notebook\KernelState.cs" />
     <Compile Include="..\Services\Notebook\IKernelService.cs" Link="Linked\Notebook\IKernelService.cs" />

@@ -82,6 +82,7 @@ public partial class App : Application
         services.AddSingleton<IRecoveryService, RecoveryService>();
         services.AddSingleton<IPythonDiscoveryService, PythonDiscoveryService>();
         services.AddSingleton<RecentNotebooksService>();
+        services.AddSingleton<INotebookTabFactory, NotebookTabFactory>();
         services.AddTransient<IKernelService, LocalKernelService>();
 
         // ViewModels
@@ -95,6 +96,7 @@ public partial class App : Application
         services.AddTransient<ResearchViewModel>();
         services.AddTransient<StorageBrowserViewModel>();
         services.AddTransient<NotebookViewModel>();
+        services.AddTransient<NotebookTabHostViewModel>();
 
         // Pages
         services.AddTransient<DashboardPage>();

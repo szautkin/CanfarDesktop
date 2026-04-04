@@ -93,7 +93,7 @@ public sealed partial class MainWindow : Window
         SearchContainer.Visibility = mode == AppMode.Search ? Visibility.Visible : Visibility.Collapsed;
         ResearchContainer.Visibility = mode == AppMode.Research ? Visibility.Visible : Visibility.Collapsed;
         StorageContainer.Visibility = mode == AppMode.Storage ? Visibility.Visible : Visibility.Collapsed;
-        NotebookTabView.Visibility = mode == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
+        NotebookContainer.Visibility = mode == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnHomeClick(object sender, RoutedEventArgs e)
@@ -160,96 +160,30 @@ public sealed partial class MainWindow : Window
         NavigateTo(AppMode.Storage);
     }
 
+    private NotebookTabHost? _notebookTabHost;
+
     public async void OpenNotebook(string? filePath = null)
     {
-        // First time: check for recovery
-        if (NotebookTabView.TabItems.Count == 0)
+        if (_notebookTabHost is null)
         {
-            var page = CreateNotebookTab();
-            if (page is not null)
-                await page.CheckRecoveryAsync();
+            var hostVm = App.Services.GetRequiredService<ViewModels.Notebook.NotebookTabHostViewModel>();
+            _notebookTabHost = new NotebookTabHost(hostVm);
+            _notebookTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
+            NotebookContainer.Child = _notebookTabHost;
+
+            // Check for crash recovery on first open
+            _notebookTabHost.AddNewTab();
+            await _notebookTabHost.CheckRecoveryAsync();
         }
         else if (filePath is null)
         {
-            CreateNotebookTab();
+            _notebookTabHost.AddNewTab();
         }
 
-        // Open file in the current tab if specified
         if (filePath is not null)
-        {
-            var tab = CreateNotebookTab();
-            if (tab is not null)
-                await tab.OpenFileAsync(filePath);
-        }
+            await _notebookTabHost.AddTabForFileAsync(filePath);
 
         NavigateTo(AppMode.Notebook);
-    }
-
-    private NotebookPage? CreateNotebookTab()
-    {
-        var vm = App.Services.GetRequiredService<ViewModels.Notebook.NotebookViewModel>();
-        var page = new NotebookPage(vm);
-
-        var tab = new TabViewItem
-        {
-            Header = vm.Title,
-            Content = page,
-            IconSource = new Microsoft.UI.Xaml.Controls.SymbolIconSource { Symbol = Symbol.Document },
-        };
-
-        vm.PropertyChanged += (_, e) => DispatcherQueue.TryEnqueue(() =>
-        {
-            if (e.PropertyName is nameof(vm.Title) or nameof(vm.IsDirty))
-                tab.Header = vm.IsDirty ? $"{vm.Title} *" : vm.Title;
-        });
-
-        // Wire Ctrl+N from inside a tab to create a new tab
-        page.NewTabRequested += () => OpenNotebook();
-
-        NotebookTabView.TabItems.Add(tab);
-        NotebookTabView.SelectedItem = tab;
-        return page;
-    }
-
-    private void OnAddNotebookTab(TabView sender, object args)
-    {
-        CreateNotebookTab();
-    }
-
-    private async void OnNotebookTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
-    {
-        if (args.Tab.Content is NotebookPage page)
-        {
-            if (page.ViewModel.IsDirty)
-            {
-                var dialog = new ContentDialog
-                {
-                    Title = "Unsaved changes",
-                    Content = $"Save changes to {page.ViewModel.Title}?",
-                    PrimaryButtonText = "Save",
-                    SecondaryButtonText = "Don't Save",
-                    CloseButtonText = "Cancel",
-                    XamlRoot = Content.XamlRoot,
-                };
-                var result = await dialog.ShowAsync();
-                if (result == ContentDialogResult.Primary)
-                    await page.ViewModel.SaveCommand.ExecuteAsync(null);
-                else if (result == ContentDialogResult.None)
-                    return; // Cancel — don't close
-            }
-
-            page.ViewModel.Close();
-        }
-
-        sender.TabItems.Remove(args.Tab);
-
-        if (sender.TabItems.Count == 0)
-            NavigateTo(AppMode.Landing);
-    }
-
-    private void OnNotebookTabChanged(object sender, SelectionChangedEventArgs e)
-    {
-        // Could update title bar or global state here if needed
     }
 
     private void EnsureResearchPage()
