@@ -157,21 +157,62 @@ public sealed partial class CodeCellControl : UserControl
 
     private void OnEditorKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
-        if (e.Key == Windows.System.VirtualKey.Escape)
+        switch (e.Key)
         {
-            // Exit edit mode — remove focus from TextBox, return to command mode
-            if (_viewModel is not null)
-            {
-                _viewModel.IsEditing = false;
-                _viewModel.IsFocused = false;
-            }
-            RenderSyntax();
-            SyntaxView.Visibility = Visibility.Visible;
-            SourceEditor.Visibility = Visibility.Collapsed;
-            // Move focus to the parent so command-mode keys work
-            this.Focus(FocusState.Programmatic);
-            e.Handled = true;
+            case Windows.System.VirtualKey.Escape:
+                ExitEditMode();
+                e.Handled = true;
+                break;
+
+            // Arrow Up at first line → exit to previous cell
+            case Windows.System.VirtualKey.Up:
+                if (IsAtFirstLine())
+                {
+                    ExitEditMode();
+                    _viewModel?.RequestSelection();
+                    e.Handled = true;
+                }
+                break;
+
+            // Arrow Down at last line → exit to next cell
+            case Windows.System.VirtualKey.Down:
+                if (IsAtLastLine())
+                {
+                    ExitEditMode();
+                    _viewModel?.RequestSelection();
+                    e.Handled = true;
+                }
+                break;
         }
+    }
+
+    private void ExitEditMode()
+    {
+        if (_viewModel is not null)
+        {
+            _viewModel.IsEditing = false;
+            _viewModel.IsFocused = false;
+        }
+        RenderSyntax();
+        SyntaxView.Visibility = Visibility.Visible;
+        SourceEditor.Visibility = Visibility.Collapsed;
+        this.Focus(FocusState.Programmatic);
+    }
+
+    private bool IsAtFirstLine()
+    {
+        var text = SourceEditor.Text;
+        var pos = SourceEditor.SelectionStart;
+        // At first line if no newline before cursor position
+        return pos == 0 || !text[..pos].Contains('\n');
+    }
+
+    private bool IsAtLastLine()
+    {
+        var text = SourceEditor.Text;
+        var pos = SourceEditor.SelectionStart;
+        // At last line if no newline after cursor position
+        return pos >= text.Length || !text[pos..].Contains('\n');
     }
 
     private void OnSourceTextChanged(object sender, TextChangedEventArgs e)
