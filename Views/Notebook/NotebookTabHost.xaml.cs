@@ -233,6 +233,7 @@ public sealed partial class NotebookTabHost : UserControl
     private void OnMoveCellDown(object s, RoutedEventArgs e) => ActiveVM?.MoveCellDownCommand.Execute(null);
     private void OnDeleteCell(object s, RoutedEventArgs e) => ActiveVM?.DeleteSelectedCellCommand.Execute(null);
     private void OnClearAllOutputs(object s, RoutedEventArgs e) => ActiveVM?.ClearAllOutputsCommand.Execute(null);
+    private async void OnSettings(object s, RoutedEventArgs e) => await NotebookSettingsDialog.ShowAsync(XamlRoot);
     private async void OnRunCell(object s, RoutedEventArgs e) { if (ActiveVM is not null) await ActiveVM.RunSelectedCellCommand.ExecuteAsync(null); }
     private async void OnRunAll(object s, RoutedEventArgs e) { if (ActiveVM is not null) await ActiveVM.RunAllCellsCommand.ExecuteAsync(null); }
     private async void OnInterrupt(object s, RoutedEventArgs e) { if (ActiveVM is not null) await ActiveVM.InterruptKernelCommand.ExecuteAsync(null); }

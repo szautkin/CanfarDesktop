@@ -114,6 +114,7 @@ public partial class App : Application
         services.AddSingleton<IRecoveryService, RecoveryService>();
         services.AddSingleton<IPythonDiscoveryService, PythonDiscoveryService>();
         services.AddSingleton<RecentNotebooksService>();
+        services.AddSingleton(NotebookSettings.Load());
         services.AddSingleton<INotebookTabFactory, NotebookTabFactory>();
         services.AddTransient<IKernelService, LocalKernelService>();
 

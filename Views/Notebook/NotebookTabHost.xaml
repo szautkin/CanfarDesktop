@@ -88,6 +88,11 @@
                     <TextBlock Text="Clear" />
                 </StackPanel>
             </Button>
+            <AppBarSeparator />
+            <Button Click="OnSettings" ToolTipService.ToolTip="Settings" Padding="8,4"
+                    AutomationProperties.Name="Settings">
+                <FontIcon Glyph="&#xE713;" FontSize="14" />
+            </Button>
         </StackPanel>
 
         <!-- Welcome page (shown when no tabs open) -->
