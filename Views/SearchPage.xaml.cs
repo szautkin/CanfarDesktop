@@ -218,20 +218,28 @@ public sealed partial class SearchPage : Page
 
     #region Recent searches + saved queries
 
-    private bool _suppressRecentSelection;
-
-    private void OnRecentSearchSelected(object sender, SelectionChangedEventArgs e)
+    private void OnLoadRecentSearch(object sender, RoutedEventArgs e)
     {
-        if (_suppressRecentSelection) return;
-        if (e.AddedItems.Count == 0) return;
-        if (e.AddedItems[0] is RecentSearch search)
+        if (sender is Button { Tag: RecentSearch search })
         {
             ViewModel.LoadFromRecentSearch(search);
+            // Sync data train UI if loaded
+            if (_dataTrainUIBuilt)
+            {
+                _dataTrainMgr.ClearAll();
+                // Restore data train manager selections from ViewModel
+                foreach (var v in ViewModel.SelectedBands) _dataTrainMgr.SelectedBands.Add(v);
+                foreach (var v in ViewModel.SelectedCollections) _dataTrainMgr.SelectedCollections.Add(v);
+                foreach (var v in ViewModel.SelectedInstruments) _dataTrainMgr.SelectedInstruments.Add(v);
+                foreach (var v in ViewModel.SelectedFilters) _dataTrainMgr.SelectedFilters.Add(v);
+                foreach (var v in ViewModel.SelectedCalLevels) _dataTrainMgr.SelectedCalLevels.Add(v);
+                foreach (var v in ViewModel.SelectedDataTypes) _dataTrainMgr.SelectedDataTypes.Add(v);
+                foreach (var v in ViewModel.SelectedObsTypes) _dataTrainMgr.SelectedObsTypes.Add(v);
+                _dataTrainMgr.Refresh();
+                SyncAllTrainLists();
+            }
             MainPivot.SelectedIndex = 0;
         }
-        _suppressRecentSelection = true;
-        RecentSearchList.SelectedIndex = -1;
-        _suppressRecentSelection = false;
     }
 
     private void OnRemoveRecentSearch(object sender, RoutedEventArgs e)
@@ -259,7 +267,35 @@ public sealed partial class SearchPage : Page
         if (sender is Button { Tag: SavedQuery query })
         {
             ViewModel.LoadSavedQuery(query);
-            MainPivot.SelectedIndex = 2; // Switch to ADQL tab
+            MainPivot.SelectedIndex = 2;
+        }
+    }
+
+    private async void OnRunSavedQuery(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: SavedQuery query }) return;
+        try
+        {
+            // Show progress
+            QueryRunStatus.Visibility = Visibility.Visible;
+            QueryRunStatusText.Text = $"Running \"{query.Name}\"...";
+
+            ViewModel.AdqlText = query.Adql;
+            await ViewModel.ExecuteAdqlCommand.ExecuteAsync(null);
+
+            QueryRunStatus.Visibility = Visibility.Collapsed;
+
+            if (ViewModel.Results is not null)
+            {
+                RowsPerPageCombo.SelectedItem = ViewModel.RowsPerPage;
+                RenderResultsPage();
+                MainPivot.SelectedIndex = 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Run saved query error: {ex}");
+            QueryRunStatus.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -273,8 +309,24 @@ public sealed partial class SearchPage : Page
 
     #region Results table
 
-    private void RenderResultsPage()
+    private void RenderResultsPage(bool rebuildHeader = true)
     {
+        if (rebuildHeader)
+        {
+            DisposeFilterTimers();
+            HeaderPanel.Children.Clear();
+
+            if (ViewModel.Results is not null && ViewModel.Results.TotalRows > 0)
+            {
+                var visibleKeys = ViewModel.GetVisibleColumnKeys();
+                if (visibleKeys.Length > 0)
+                {
+                    HeaderPanel.Children.Add(BuildRow(visibleKeys, isHeader: true));
+                    HeaderPanel.Children.Add(BuildFilterRow(visibleKeys));
+                }
+            }
+        }
+
         ResultsPanel.Children.Clear();
 
         if (ViewModel.Results is null || ViewModel.Results.TotalRows == 0)
@@ -282,40 +334,111 @@ public sealed partial class SearchPage : Page
             ResultsPanel.Children.Add(new TextBlock
             {
                 Text = "No results found.",
-                Opacity = 0.6,
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
                 Margin = new Thickness(0, 16, 0, 0)
             });
             UpdatePaginationUI();
             return;
         }
 
-        var visibleKeys = ViewModel.GetVisibleColumnKeys();
-        if (visibleKeys.Length == 0) return;
+        var keys = ViewModel.GetVisibleColumnKeys();
+        if (keys.Length == 0) return;
 
-        // Header row
-        ResultsPanel.Children.Add(BuildRow(visibleKeys, isHeader: true));
+        var altBg = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
+        var hoverBg = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
 
-        // Current page data rows
         var pageRows = ViewModel.GetCurrentPageRows();
         for (var i = 0; i < pageRows.Count; i++)
         {
             var row = pageRows[i];
-            var rowBorder = BuildRow(visibleKeys, isHeader: false, row: row, rowIndex: i);
+            var rowBorder = BuildRow(keys, isHeader: false, row: row, rowIndex: i);
             var capturedRow = row;
+            var capturedIndex = i;
+            var originalBg = capturedIndex % 2 == 1 ? altBg : null;
+
             rowBorder.Tapped += (_, e) =>
             {
-                // Don't open detail if user clicked download/preview button
                 if (e.OriginalSource is FrameworkElement fe &&
                     (fe.Tag as string == "action" || FrameworkElementExtensions.FindParentWithTag(fe, "action") is not null))
                     return;
                 ShowRowDetail(capturedRow);
             };
-            rowBorder.PointerEntered += (s, _) => ((Border)s).Opacity = 0.7;
-            rowBorder.PointerExited += (s, _) => ((Border)s).Opacity = 1.0;
+            rowBorder.PointerEntered += (s, _) => ((Border)s).Background = hoverBg;
+            rowBorder.PointerExited += (s, _) => ((Border)s).Background = originalBg;
             ResultsPanel.Children.Add(rowBorder);
         }
 
         UpdatePaginationUI();
+    }
+
+    private void OnDataScrollViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    {
+        HeaderScroll.ChangeView(DataScroll.HorizontalOffset, null, null, disableAnimation: true);
+    }
+
+    private readonly List<System.Threading.Timer> _filterTimers = [];
+
+    private void DisposeFilterTimers()
+    {
+        foreach (var t in _filterTimers) t.Dispose();
+        _filterTimers.Clear();
+    }
+
+    private Border BuildFilterRow(string[] columnKeys)
+    {
+        var sp = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Padding = new Thickness(4, 2, 4, 2),
+            Spacing = 2
+        };
+
+        foreach (var key in columnKeys)
+        {
+            var width = ViewModel.GetColumnWidth(key);
+            if (key is "download" or "preview")
+            {
+                sp.Children.Add(new Border { Width = width });
+                continue;
+            }
+
+            var capturedKey = key;
+            var tb = new TextBox
+            {
+                Width = width,
+                Height = 24,
+                FontSize = 11,
+                Padding = new Thickness(4, 2, 4, 2),
+                PlaceholderText = "\uE721",
+                Text = ViewModel.GetColumnFilter(key)
+            };
+
+            System.Threading.Timer? debounce = null;
+            tb.TextChanged += (s, _) =>
+            {
+                debounce?.Dispose();
+                var timer = new System.Threading.Timer(_ =>
+                {
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        ViewModel.SetColumnFilter(capturedKey, ((TextBox)s).Text);
+                        ViewModel.UpdatePagination();
+                        RenderResultsPage(rebuildHeader: false);
+                    });
+                }, null, 300, Timeout.Infinite);
+                debounce = timer;
+                _filterTimers.Add(timer);
+            };
+
+            sp.Children.Add(tb);
+        }
+
+        return new Border
+        {
+            Child = sp,
+            Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"],
+            Padding = new Thickness(0, 2, 0, 2)
+        };
     }
 
     private Border BuildRow(string[] columnKeys, bool isHeader, SearchResultRow? row = null, int rowIndex = 0)
@@ -415,6 +538,33 @@ public sealed partial class SearchPage : Page
                 previewBtn.Flyout = flyout;
                 sp.Children.Add(previewBtn);
             }
+            else if (isHeader && key != "download" && key != "preview")
+            {
+                // Sortable header cell
+                var label = ViewModel.GetColumnLabel(key);
+                var sort = ViewModel.CurrentSort;
+                if (sort.Key == key)
+                    label += sort.Ascending ? " \u25B2" : " \u25BC";
+
+                var headerText = new TextBlock
+                {
+                    Text = label,
+                    Width = width,
+                    FontSize = 12,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                var capturedKey = key;
+                headerText.Tapped += (_, _) =>
+                {
+                    ViewModel.SortBy(capturedKey);
+                    RenderResultsPage(rebuildHeader: true);
+                };
+                headerText.PointerEntered += (s, _) => ((TextBlock)s).Opacity = 0.6;
+                headerText.PointerExited += (s, _) => ((TextBlock)s).Opacity = 1.0;
+                sp.Children.Add(headerText);
+            }
             else
             {
                 var text = isHeader ? ViewModel.GetColumnLabel(key) : ViewModel.FormatCell(key, row?.Get(ViewModel.GetColumnHeader(key)) ?? "");
@@ -425,8 +575,7 @@ public sealed partial class SearchPage : Page
                     FontSize = 12,
                     FontWeight = isHeader ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
+                    VerticalAlignment = VerticalAlignment.Center
                 });
             }
         }
@@ -475,10 +624,10 @@ public sealed partial class SearchPage : Page
     }
 
     // Pagination handlers
-    private void OnFirstPage(object s, RoutedEventArgs e) { ViewModel.GoToFirstPage(); RenderResultsPage(); }
-    private void OnPrevPage(object s, RoutedEventArgs e) { ViewModel.GoToPreviousPage(); RenderResultsPage(); }
-    private void OnNextPage(object s, RoutedEventArgs e) { ViewModel.GoToNextPage(); RenderResultsPage(); }
-    private void OnLastPage(object s, RoutedEventArgs e) { ViewModel.GoToLastPage(); RenderResultsPage(); }
+    private void OnFirstPage(object s, RoutedEventArgs e) { ViewModel.GoToFirstPage(); RenderResultsPage(rebuildHeader: false); }
+    private void OnPrevPage(object s, RoutedEventArgs e) { ViewModel.GoToPreviousPage(); RenderResultsPage(rebuildHeader: false); }
+    private void OnNextPage(object s, RoutedEventArgs e) { ViewModel.GoToNextPage(); RenderResultsPage(rebuildHeader: false); }
+    private void OnLastPage(object s, RoutedEventArgs e) { ViewModel.GoToLastPage(); RenderResultsPage(rebuildHeader: false); }
 
     private void OnRowsPerPageChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -486,7 +635,7 @@ public sealed partial class SearchPage : Page
         {
             ViewModel.RowsPerPage = rpp;
             ViewModel.CurrentPage = 1;
-            RenderResultsPage();
+            RenderResultsPage(rebuildHeader: false);
         }
     }
 
@@ -520,12 +669,6 @@ public sealed partial class SearchPage : Page
                 var capturedRowForDl = row;
                 btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", "Download",
                     async (_, _) => await DownloadFileAsync(capturedPubIdForDl, capturedRowForDl)));
-                btnPanel.Children.Add(UIFactory.CreateIconButton("\uE774", "View on CADC", (_, _) =>
-                {
-                    var url = $"https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/details?ID={Uri.EscapeDataString(publisherID)}";
-                    if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
-                        _ = Windows.System.Launcher.LaunchUriAsync(uri);
-                }));
                 panel.Children.Add(btnPanel);
             }
 

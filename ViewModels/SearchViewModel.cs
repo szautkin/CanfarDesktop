@@ -493,24 +493,88 @@ public partial class SearchViewModel : ObservableObject
 
     public void UpdatePagination()
     {
-        if (Results is null || Results.TotalRows == 0)
+        var totalFiltered = GetProcessedRows().Count;
+        var totalAll = Results?.TotalRows ?? 0;
+
+        if (totalAll == 0)
         {
             TotalPages = 1;
             PageStatus = "";
             return;
         }
-        TotalPages = Math.Max(1, (int)Math.Ceiling((double)Results.TotalRows / RowsPerPage));
+
+        TotalPages = Math.Max(1, (int)Math.Ceiling((double)totalFiltered / RowsPerPage));
         if (CurrentPage > TotalPages) CurrentPage = TotalPages;
+        if (CurrentPage < 1) CurrentPage = 1;
+
         var start = (CurrentPage - 1) * RowsPerPage + 1;
-        var end = Math.Min(CurrentPage * RowsPerPage, Results.TotalRows);
-        PageStatus = $"Showing {start}-{end} of {Results.TotalRows}";
+        var end = Math.Min(CurrentPage * RowsPerPage, totalFiltered);
+
+        PageStatus = totalFiltered != totalAll
+            ? $"Showing {start}-{end} of {totalFiltered} (filtered from {totalAll})"
+            : $"Showing {start}-{end} of {totalAll}";
+    }
+
+    // Sort state
+    private string? _sortColumnKey;
+    private bool _sortAscending = true;
+    public (string? Key, bool Ascending) CurrentSort => (_sortColumnKey, _sortAscending);
+
+    public void SortBy(string columnKey)
+    {
+        if (_sortColumnKey == columnKey)
+            _sortAscending = !_sortAscending;
+        else
+        {
+            _sortColumnKey = columnKey;
+            _sortAscending = true;
+        }
+        CurrentPage = 1;
+        InvalidateFilterCache();
+    }
+
+    // Filter state
+    private readonly Dictionary<string, string> _columnFilters = new(StringComparer.OrdinalIgnoreCase);
+    private List<SearchResultRow>? _filteredRowsCache;
+
+    public void SetColumnFilter(string columnKey, string filterText)
+    {
+        if (string.IsNullOrWhiteSpace(filterText))
+            _columnFilters.Remove(columnKey);
+        else
+            _columnFilters[columnKey] = filterText.Trim();
+        CurrentPage = 1;
+        InvalidateFilterCache();
+    }
+
+    public string GetColumnFilter(string columnKey) =>
+        _columnFilters.TryGetValue(columnKey, out var v) ? v : string.Empty;
+
+    public void InvalidateFilterCache() => _filteredRowsCache = null;
+
+    private List<SearchResultRow> GetProcessedRows()
+    {
+        if (_filteredRowsCache is not null) return _filteredRowsCache;
+        if (Results is null) { _filteredRowsCache = []; return _filteredRowsCache; }
+
+        // 1. Filter
+        var rows = _columnFilters.Count > 0
+            ? ResultFilter.Filter(Results.Rows, _columnFilters, GetColumnHeader)
+            : Results.Rows;
+
+        // 2. Sort
+        if (_sortColumnKey is not null)
+            rows = ResultSorter.Sort(rows, GetColumnHeader(_sortColumnKey), _sortAscending);
+
+        _filteredRowsCache = rows is List<SearchResultRow> list ? list : rows.ToList();
+        return _filteredRowsCache;
     }
 
     public List<SearchResultRow> GetCurrentPageRows()
     {
-        if (Results is null) return [];
+        var processed = GetProcessedRows();
         var skip = (CurrentPage - 1) * RowsPerPage;
-        return Results.Rows.Skip(skip).Take(RowsPerPage).ToList();
+        return processed.Skip(skip).Take(RowsPerPage).ToList();
     }
 
     public void GoToNextPage()
@@ -581,10 +645,7 @@ public partial class SearchViewModel : ObservableObject
     public void RemoveRecentSearch(RecentSearch search)
     {
         RecentSearches.Remove(search);
-        // Re-save the remaining list
-        _storeService.ClearRecentSearches();
-        foreach (var s in RecentSearches)
-            _storeService.SaveRecentSearch(s);
+        _storeService.SaveAllRecentSearches(RecentSearches);
     }
 
     public void ClearAllRecentSearches()
@@ -705,6 +766,23 @@ public partial class SearchViewModel : ObservableObject
         RestFrameEnergyUnit = s.RestFrameEnergyUnit;
         SpectralCutout = s.SpectralCutout;
         MaxRecords = s.MaxRecords;
+
+        // Restore data train selections
+        RestoreCollection(SelectedBands, s.Bands);
+        RestoreCollection(SelectedCollections, s.Collections);
+        RestoreCollection(SelectedInstruments, s.Instruments);
+        RestoreCollection(SelectedFilters, s.Filters);
+        RestoreCollection(SelectedCalLevels, s.CalibrationLevels);
+        RestoreCollection(SelectedDataTypes, s.DataProductTypes);
+        RestoreCollection(SelectedObsTypes, s.ObservationTypes);
+    }
+
+    private static void RestoreCollection(System.Collections.ObjectModel.ObservableCollection<string> target, string csv)
+    {
+        target.Clear();
+        if (string.IsNullOrWhiteSpace(csv)) return;
+        foreach (var v in csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            target.Add(v);
     }
 
     public void ClearForm()

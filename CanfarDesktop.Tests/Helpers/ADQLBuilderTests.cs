@@ -121,6 +121,58 @@ public class ADQLBuilderTests
     }
 
     [Fact]
+    public void Build_TargetWithSingleQuote_EscapesCorrectly()
+    {
+        var state = new SearchFormState { Target = "O'Brien's Star" };
+        var adql = ADQLBuilder.Build(state);
+        Assert.Contains("o''brien''s star", adql); // quotes doubled
+        Assert.DoesNotContain("O'Brien", adql); // raw quote NOT present
+    }
+
+    [Fact]
+    public void Build_ObservationIdExact_GeneratesEquals()
+    {
+        var state = new SearchFormState { ObservationId = "jw01837001" };
+        var adql = ADQLBuilder.Build(state);
+        Assert.Contains("= 'jw01837001'", adql);
+        Assert.DoesNotContain("LIKE", adql.Split("observationID")[1].Split("\n")[0]); // no LIKE on obsID line
+    }
+
+    [Fact]
+    public void Build_PublicOnly_GeneratesDataRelease()
+    {
+        var state = new SearchFormState { PublicOnly = true };
+        var adql = ADQLBuilder.Build(state);
+        Assert.Contains("Plane.dataRelease <= GETDATE()", adql);
+    }
+
+    [Fact]
+    public void Build_WithIntent_GeneratesClause()
+    {
+        var state = new SearchFormState { Intent = "science" };
+        var adql = ADQLBuilder.Build(state);
+        Assert.Contains("Observation.intent = 'science'", adql);
+    }
+
+    [Fact]
+    public void Build_SingleCollection_GeneratesEquals()
+    {
+        var state = new SearchFormState { Collections = "JWST" };
+        var adql = ADQLBuilder.Build(state);
+        Assert.Contains("Observation.collection = 'JWST'", adql);
+        Assert.DoesNotContain("Observation.collection IN", adql);
+    }
+
+    [Fact]
+    public void Build_ObservationDate_RangeSyntax()
+    {
+        var state = new SearchFormState { ObservationDate = "2020-01-01..2021-12-31" };
+        var adql = ADQLBuilder.Build(state);
+        Assert.Contains("INTERSECTS", adql);
+        Assert.Contains("Plane.time_bounds_samples", adql);
+    }
+
+    [Fact]
     public void Build_DataTrain_GeneratesInClause()
     {
         var state = new SearchFormState

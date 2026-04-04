@@ -10,6 +10,7 @@ public class DataLinkService
     private readonly HttpClient _httpClient;
     private readonly ApiEndpoints _endpoints;
     private readonly ConcurrentDictionary<string, DataLinkResult> _cache = new();
+    private static readonly SemaphoreSlim _downloadSemaphore = new(3); // max 3 concurrent image downloads
 
     public DataLinkService(HttpClient httpClient, ApiEndpoints endpoints)
     {
@@ -57,26 +58,40 @@ public class DataLinkService
     }
 
     /// <summary>
-    /// Download image bytes with timeout and retry. Returns null on failure.
+    /// Download image bytes with timeout, concurrency limit, and single retry.
+    /// Returns null on failure. Max 3 concurrent downloads to avoid overwhelming CADC.
     /// </summary>
     public async Task<byte[]?> DownloadImageBytesAsync(string url, int timeoutSeconds = 15)
     {
-        for (var attempt = 0; attempt < 2; attempt++)
+        await _downloadSemaphore.WaitAsync();
+        try
         {
-            try
+            for (var attempt = 0; attempt < 2; attempt++)
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
-                using var response = await _httpClient.GetAsync(url, cts.Token);
-                if (!response.IsSuccessStatusCode) return null;
-                return await response.Content.ReadAsByteArrayAsync(cts.Token);
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+                    using var response = await _httpClient.GetAsync(url, cts.Token);
+                    if (!response.IsSuccessStatusCode) return null;
+                    return await response.Content.ReadAsByteArrayAsync(cts.Token);
+                }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Image download attempt {attempt + 1} failed: {ex.GetType().Name}");
+                    if (attempt == 0) await Task.Delay(300);
+                }
+                catch (IOException)
+                {
+                    // Connection dropped by CADC — expected under load, don't retry
+                    return null;
+                }
             }
-            catch (Exception ex) when (ex is IOException or HttpRequestException or TaskCanceledException or OperationCanceledException)
-            {
-                System.Diagnostics.Debug.WriteLine($"Image download attempt {attempt + 1} failed for {url}: {ex.GetType().Name}");
-                if (attempt == 0) await Task.Delay(500); // brief pause before retry
-            }
+            return null;
         }
-        return null;
+        finally
+        {
+            _downloadSemaphore.Release();
+        }
     }
 
     private DataLinkResult CacheAndReturn(string key, DataLinkResult result)

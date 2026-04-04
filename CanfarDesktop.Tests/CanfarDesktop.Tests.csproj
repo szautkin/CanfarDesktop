@@ -40,6 +40,8 @@
     <Compile Include="..\Models\DataLinkResult.cs" Link="Linked\DataLinkResult.cs" />
     <Compile Include="..\Helpers\CellFormatter.cs" Link="Linked\CellFormatter.cs" />
     <Compile Include="..\Helpers\DataTrainManager.cs" Link="Linked\DataTrainManager.cs" />
+    <Compile Include="..\Helpers\ResultSorter.cs" Link="Linked\ResultSorter.cs" />
+    <Compile Include="..\Helpers\ResultFilter.cs" Link="Linked\ResultFilter.cs" />
     <Compile Include="..\Services\TAPService.cs" Link="Linked\TAPService.cs" />
     <Compile Include="..\Services\DataLinkService.cs" Link="Linked\DataLinkService.cs" />
     <Compile Include="..\Models\DownloadedObservation.cs" Link="Linked\DownloadedObservation.cs" />

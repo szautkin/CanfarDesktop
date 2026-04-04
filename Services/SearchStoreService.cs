@@ -8,6 +8,7 @@ public interface ISearchStoreService
 {
     List<RecentSearch> LoadRecentSearches();
     void SaveRecentSearch(RecentSearch search);
+    void SaveAllRecentSearches(IEnumerable<RecentSearch> searches);
     void ClearRecentSearches();
 
     List<SavedQuery> LoadSavedQueries();
@@ -62,6 +63,13 @@ public class SearchStoreService : ISearchStoreService
         if (list.Count > MaxRecentSearches)
             list.RemoveRange(MaxRecentSearches, list.Count - MaxRecentSearches);
 
+        File.WriteAllText(_recentPath, JsonSerializer.Serialize(list, JsonOptions));
+    }
+
+    public void SaveAllRecentSearches(IEnumerable<RecentSearch> searches)
+    {
+        if (_recentPath is null) return;
+        var list = searches.ToList();
         File.WriteAllText(_recentPath, JsonSerializer.Serialize(list, JsonOptions));
     }
 

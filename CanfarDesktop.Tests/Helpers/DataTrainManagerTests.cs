@@ -216,4 +216,58 @@ public class DataTrainManagerTests
         Assert.Equal("Optical", mgr.AllBands[1]);
         Assert.Equal("Radio", mgr.AllBands[2]);
     }
+
+    [Fact]
+    public void CascadeFilter_DeepColumns_CalLevel_DataType_ObsType()
+    {
+        var mgr = new DataTrainManager();
+        mgr.Load(SampleRows());
+
+        mgr.Toggle(0, "Radio"); // Band=Radio (JCMT+ALMA)
+
+        // Cal levels under Radio: 1 (JCMT) and 2 (ALMA)
+        Assert.Contains("1", mgr.AvailableCalLevels);
+        Assert.Contains("2", mgr.AvailableCalLevels);
+
+        // Data types under Radio: image (JCMT) and spectrum (ALMA)
+        Assert.Contains("image", mgr.AvailableDataTypes);
+        Assert.Contains("spectrum", mgr.AvailableDataTypes);
+
+        // Obs types under Radio: SCIENCE (JCMT) and CALIBRATION (ALMA)
+        Assert.Contains("SCIENCE", mgr.AvailableObsTypes);
+        Assert.Contains("CALIBRATION", mgr.AvailableObsTypes);
+
+        // Now filter to ALMA only
+        mgr.Toggle(1, "ALMA");
+        Assert.Single(mgr.AvailableCalLevels); // only "2"
+        Assert.Contains("2", mgr.AvailableCalLevels);
+        Assert.Single(mgr.AvailableDataTypes); // only "spectrum"
+        Assert.Single(mgr.AvailableObsTypes); // only "CALIBRATION"
+    }
+
+    [Fact]
+    public void RowCount_ReflectsLoadedData()
+    {
+        var mgr = new DataTrainManager();
+        Assert.Equal(0, mgr.RowCount);
+
+        mgr.Load(SampleRows());
+        Assert.Equal(7, mgr.RowCount);
+    }
+
+    [Fact]
+    public void Refresh_IdempotentOnConsistentState()
+    {
+        var mgr = new DataTrainManager();
+        mgr.Load(SampleRows());
+        mgr.Toggle(0, "Optical");
+
+        var bandsBefore = mgr.AvailableBands.Count;
+        var collsBefore = mgr.AvailableCollections.Count;
+
+        mgr.Refresh(); // should not change anything
+
+        Assert.Equal(bandsBefore, mgr.AvailableBands.Count);
+        Assert.Equal(collsBefore, mgr.AvailableCollections.Count);
+    }
 }

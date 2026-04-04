@@ -68,7 +68,8 @@ public partial class App : Application
         services.AddSingleton<ObservationStore>();
 
         // Search (TAP is public, no auth needed)
-        services.AddHttpClient<ITAPService, TAPService>();
+        services.AddHttpClient<ITAPService, TAPService>(client =>
+            client.Timeout = TimeSpan.FromMinutes(5));
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddHttpClient<DataLinkService>();
 
