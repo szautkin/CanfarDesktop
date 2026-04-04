@@ -74,6 +74,15 @@ public sealed partial class NotebookTabHost : UserControl
 
     public async Task CheckRecoveryAsync()
     {
+        // Wait for control to be in the visual tree (XamlRoot must be non-null for dialogs)
+        if (XamlRoot is null)
+        {
+            var tcs = new TaskCompletionSource();
+            void OnLoaded(object s, RoutedEventArgs e) { Loaded -= OnLoaded; tcs.SetResult(); }
+            Loaded += OnLoaded;
+            await tcs.Task;
+        }
+
         var recovery = App.Services.GetRequiredService<IRecoveryService>();
         var orphaned = await Task.Run(() => recovery.DetectOrphanedFiles());
         if (orphaned.Count == 0) return;
@@ -244,7 +253,7 @@ public sealed partial class NotebookTabHost : UserControl
     /// True when a TextBox has focus (edit mode). False = command mode.
     /// In command mode, single keys trigger cell commands (A/B/DD/Y/M/Escape/arrows).
     /// </summary>
-    private bool IsEditMode => FocusManager.GetFocusedElement(XamlRoot) is TextBox;
+    private bool IsEditMode => XamlRoot is not null && FocusManager.GetFocusedElement(XamlRoot) is TextBox;
 
     // For double-key commands (DD, II, 00)
     private Windows.System.VirtualKey _lastCommandKey;
