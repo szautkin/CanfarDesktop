@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using CanfarDesktop.Helpers.Notebook;
 using CanfarDesktop.ViewModels.Notebook;
 
 namespace CanfarDesktop.Views.Notebook;
@@ -61,18 +62,11 @@ public sealed partial class CodeCellControl : UserControl
         if (_viewModel is null) return;
 
         if (_viewModel.IsEditing)
-            AccentBorder.Background = GetThemeBrush("SystemFillColorSuccessBrush");
+            AccentBorder.Background = ThemeHelper.SuccessBrush;
         else if (_viewModel.IsSelected)
-            AccentBorder.Background = GetThemeBrush("AccentFillColorDefaultBrush");
+            AccentBorder.Background = ThemeHelper.AccentBrush;
         else
-            AccentBorder.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-    }
-
-    private static Brush GetThemeBrush(string key)
-    {
-        if (Application.Current.Resources.TryGetValue(key, out var value) && value is Brush brush)
-            return brush;
-        return new SolidColorBrush(Microsoft.UI.Colors.Gray);
+            AccentBorder.Background = ThemeHelper.Transparent;
     }
 
     private void OnEditorGotFocus(object sender, RoutedEventArgs e)

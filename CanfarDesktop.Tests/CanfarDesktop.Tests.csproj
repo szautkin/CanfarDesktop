@@ -64,6 +64,7 @@
     <Compile Include="..\Services\Notebook\KernelState.cs" Link="Linked\Notebook\KernelState.cs" />
     <Compile Include="..\Services\Notebook\IKernelService.cs" Link="Linked\Notebook\IKernelService.cs" />
     <Compile Include="..\Services\Notebook\PythonDiscoveryService.cs" Link="Linked\Notebook\PythonDiscoveryService.cs" />
+    <Compile Include="..\Services\Notebook\IPythonDiscoveryService.cs" Link="Linked\Notebook\IPythonDiscoveryService.cs" />
     <Compile Include="..\Services\Notebook\LocalKernelService.cs" Link="Linked\Notebook\LocalKernelService.cs" />
     <!-- Notebook ViewModels (Milestone 3) -->
     <Compile Include="..\ViewModels\Notebook\CellViewModel.cs" Link="Linked\Notebook\CellViewModel.cs" />

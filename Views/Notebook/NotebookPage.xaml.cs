@@ -60,11 +60,11 @@ public sealed partial class NotebookPage : UserControl
         KernelLabel.Text = state.ToString();
         KernelDot.Fill = state switch
         {
-            KernelState.Idle => new SolidColorBrush(Colors.Green),
-            KernelState.Busy => new SolidColorBrush(Colors.Orange),
-            KernelState.Starting => new SolidColorBrush(Colors.DodgerBlue),
-            KernelState.Error => new SolidColorBrush(Colors.OrangeRed),
-            _ => new SolidColorBrush(Colors.Gray), // Dead
+            KernelState.Idle => Helpers.Notebook.ThemeHelper.GetBrush("SystemFillColorSuccessBrush"),
+            KernelState.Busy => Helpers.Notebook.ThemeHelper.GetBrush("SystemFillColorCautionBrush"),
+            KernelState.Starting => Helpers.Notebook.ThemeHelper.GetBrush("AccentFillColorDefaultBrush"),
+            KernelState.Error => Helpers.Notebook.ThemeHelper.GetBrush("SystemFillColorCriticalBrush"),
+            _ => new SolidColorBrush(Colors.Gray),
         };
     }
 

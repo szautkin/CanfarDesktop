@@ -6,7 +6,7 @@ using System.Diagnostics;
 /// Finds a usable Python 3.8+ installation on the system.
 /// Search order: user-configured path > PATH > common Windows locations.
 /// </summary>
-public class PythonDiscoveryService
+public class PythonDiscoveryService : IPythonDiscoveryService
 {
     private string? _cachedPath;
     private string? _cachedVersion;

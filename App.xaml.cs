@@ -80,7 +80,7 @@ public partial class App : Application
         services.AddTransient<IDirtyTracker, DirtyTracker>();
         services.AddTransient<IAutoSaveService, AutoSaveService>();
         services.AddSingleton<IRecoveryService, RecoveryService>();
-        services.AddSingleton<PythonDiscoveryService>();
+        services.AddSingleton<IPythonDiscoveryService, PythonDiscoveryService>();
         services.AddTransient<IKernelService, LocalKernelService>();
 
         // ViewModels

@@ -8,11 +8,11 @@ using System.Text.Json;
 /// Manages a local Python subprocess for code execution.
 /// Communicates via JSON over stdin/stdout with a sentinel delimiter.
 /// </summary>
-public class LocalKernelService : IKernelService
+public class LocalKernelService : IKernelService, IAsyncDisposable
 {
     private const string Sentinel = "\x04__CANFAR_EXEC_BOUNDARY__\x04";
 
-    private readonly PythonDiscoveryService _pythonDiscovery;
+    private readonly IPythonDiscoveryService _pythonDiscovery;
     private Process? _process;
     private StreamWriter? _stdin;
     private int _executionCount;
@@ -25,16 +25,18 @@ public class LocalKernelService : IKernelService
     public event Action<KernelState>? StateChanged;
     public event Action<KernelOutput>? OutputReceived;
 
-    public LocalKernelService(PythonDiscoveryService pythonDiscovery)
+    public LocalKernelService(IPythonDiscoveryService pythonDiscovery)
     {
         _pythonDiscovery = pythonDiscovery;
     }
 
     public async Task StartAsync(string? workingDirectory = null)
     {
-        if (State is KernelState.Idle or KernelState.Busy) return;
-
-        SetState(KernelState.Starting);
+        lock (_lock)
+        {
+            if (State is KernelState.Idle or KernelState.Busy or KernelState.Starting) return;
+            SetState(KernelState.Starting);
+        }
 
         var pythonPath = await _pythonDiscovery.FindPythonAsync();
         if (pythonPath is null)
@@ -48,38 +50,47 @@ public class LocalKernelService : IKernelService
         _harnessPath = Path.Combine(Path.GetTempPath(), $"canfar_kernel_harness_{Environment.ProcessId}.py");
         await WriteHarnessAsync(_harnessPath);
 
-        var psi = new ProcessStartInfo
+        try
         {
-            FileName = pythonPath,
-            Arguments = $"\"{_harnessPath}\"",
-            WorkingDirectory = workingDirectory ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-        };
+            var psi = new ProcessStartInfo
+            {
+                FileName = pythonPath,
+                Arguments = $"\"{_harnessPath}\"",
+                WorkingDirectory = workingDirectory ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+            };
 
-        _process = Process.Start(psi);
-        if (_process is null || _process.HasExited)
-        {
-            SetState(KernelState.Dead);
-            throw new InvalidOperationException("Failed to start Python process.");
+            _process = Process.Start(psi);
+            if (_process is null || _process.HasExited)
+            {
+                SetState(KernelState.Dead);
+                throw new InvalidOperationException("Failed to start Python process.");
+            }
+
+            // Force UTF-8 on stdin to match harness's sys.stdin.reconfigure(encoding="utf-8")
+            _stdin = new StreamWriter(_process.StandardInput.BaseStream, new UTF8Encoding(false)) { AutoFlush = true };
+            _executionCount = 0;
+
+            _process.EnableRaisingEvents = true;
+            _process.Exited += OnProcessExited;
+
+            // Read the initial "idle" status + boundary
+            await ReadUntilBoundaryAsync();
+
+            SetState(KernelState.Idle);
         }
-
-        // Force UTF-8 on stdin to match harness's sys.stdin.reconfigure(encoding="utf-8")
-        _stdin = new StreamWriter(_process.StandardInput.BaseStream, new UTF8Encoding(false)) { AutoFlush = true };
-        _executionCount = 0;
-
-        _process.EnableRaisingEvents = true;
-        _process.Exited += OnProcessExited;
-
-        // Read the initial "idle" status + boundary
-        await ReadUntilBoundaryAsync();
-
-        SetState(KernelState.Idle);
+        catch
+        {
+            CleanupHarness();
+            SetState(KernelState.Dead);
+            throw;
+        }
     }
 
     public async Task<ExecutionResult> ExecuteAsync(string code, CancellationToken ct = default)
@@ -237,9 +248,9 @@ public class LocalKernelService : IKernelService
 
         try
         {
-            if (!_process.HasExited)
+            if (!_process.HasExited && _stdin is not null)
             {
-                await _stdin!.WriteLineAsync(JsonSerializer.Serialize(new { type = "quit" }));
+                await _stdin.WriteLineAsync(JsonSerializer.Serialize(new { type = "quit" }));
 
                 // Wait up to 3 seconds for clean exit
                 var exited = _process.WaitForExit(3000);
@@ -272,7 +283,12 @@ public class LocalKernelService : IKernelService
         while (!ct.IsCancellationRequested)
         {
             var line = await reader.ReadLineAsync(ct);
-            if (line is null) break; // process exited
+            if (line is null)
+            {
+                // Process exited mid-read
+                SetState(KernelState.Dead);
+                break;
+            }
 
             if (line == Sentinel) break;
 
@@ -399,11 +415,25 @@ public class LocalKernelService : IKernelService
             sys.stdout.write(SENTINEL + "\n"); sys.stdout.flush()
         """;
 
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        await ShutdownAsync();
+        _executionGate.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
-        ShutdownAsync().GetAwaiter().GetResult();
+        // Synchronous fallback: force-kill, no graceful shutdown (avoids deadlock)
+        try { _process?.Kill(entireProcessTree: true); } catch { }
+        _process?.Dispose();
+        _process = null;
+        _stdin = null;
+        CleanupHarness();
         _executionGate.Dispose();
         GC.SuppressFinalize(this);
     }

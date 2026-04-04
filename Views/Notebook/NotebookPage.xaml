@@ -49,7 +49,8 @@
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="0,0,0,1">
-            <Button Click="OnSave" ToolTipService.ToolTip="Save (Ctrl+S)" Padding="8,4">
+            <Button Click="OnSave" ToolTipService.ToolTip="Save (Ctrl+S)" Padding="8,4"
+                    AutomationProperties.Name="Save">
                 <FontIcon Glyph="&#xE74E;" FontSize="14" />
             </Button>
             <AppBarSeparator />
@@ -66,13 +67,16 @@
                 </StackPanel>
             </Button>
             <AppBarSeparator />
-            <Button Click="OnMoveCellUp" ToolTipService.ToolTip="Move Up" Padding="8,4">
+            <Button Click="OnMoveCellUp" ToolTipService.ToolTip="Move Up" Padding="8,4"
+                    AutomationProperties.Name="Move cell up">
                 <FontIcon Glyph="&#xE74A;" FontSize="14" />
             </Button>
-            <Button Click="OnMoveCellDown" ToolTipService.ToolTip="Move Down" Padding="8,4">
+            <Button Click="OnMoveCellDown" ToolTipService.ToolTip="Move Down" Padding="8,4"
+                    AutomationProperties.Name="Move cell down">
                 <FontIcon Glyph="&#xE74B;" FontSize="14" />
             </Button>
-            <Button Click="OnDeleteCell" ToolTipService.ToolTip="Delete Cell" Padding="8,4">
+            <Button Click="OnDeleteCell" ToolTipService.ToolTip="Delete Cell" Padding="8,4"
+                    AutomationProperties.Name="Delete cell">
                 <FontIcon Glyph="&#xE74D;" FontSize="14"
                           Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
             </Button>
@@ -90,10 +94,12 @@
                     <TextBlock Text="Run All" />
                 </StackPanel>
             </Button>
-            <Button Click="OnInterrupt" ToolTipService.ToolTip="Interrupt" Padding="8,4">
+            <Button Click="OnInterrupt" ToolTipService.ToolTip="Interrupt" Padding="8,4"
+                    AutomationProperties.Name="Interrupt kernel">
                 <FontIcon Glyph="&#xE71A;" FontSize="14" />
             </Button>
-            <Button Click="OnRestart" ToolTipService.ToolTip="Restart Kernel" Padding="8,4">
+            <Button Click="OnRestart" ToolTipService.ToolTip="Restart Kernel" Padding="8,4"
+                    AutomationProperties.Name="Restart kernel">
                 <FontIcon Glyph="&#xE72C;" FontSize="14" />
             </Button>
             <AppBarSeparator />

@@ -102,7 +102,11 @@ public partial class NotebookViewModel : ObservableObject
     #region Dirty tracking
 
     private void OnDirtyChanged(bool dirty) => IsDirty = dirty;
-    private void OnCellContentChanged() => _dirtyTracker.MarkDirty();
+    private void OnCellContentChanged()
+    {
+        _dirtyTracker.MarkDirty();
+        UpdateCellSnapshot();
+    }
 
     #endregion
 
@@ -176,30 +180,42 @@ public partial class NotebookViewModel : ObservableObject
 
     #region AutoSave
 
+    // Thread-safe snapshot of cells for autosave. Updated on every cell mutation.
+    private volatile List<(string CellType, string? Id, CellMetadata Metadata,
+        Dictionary<string, System.Text.Json.JsonElement>? ExtensionData,
+        int? ExecutionCount, List<CellOutput>? Outputs, string Source)> _cellSnapshot = [];
+
+    private void UpdateCellSnapshot()
+    {
+        _cellSnapshot = Cells.Select(c => (
+            c.Model.CellType, c.Model.Id, c.Model.Metadata,
+            c.Model.ExtensionData, c.Model.ExecutionCount, c.Model.Outputs, c.Source
+        )).ToList();
+    }
+
     private void StartAutoSave()
     {
+        UpdateCellSnapshot();
         _autoSaveService.Start(_filePath, () =>
         {
-            // Snapshot cells into a fresh document copy for thread-safe serialization.
-            // The timer callback runs on a thread pool thread — we must NOT touch
-            // ObservableCollection or UI-bound properties from here.
+            // Read the pre-built snapshot — no ObservableCollection access from timer thread
+            var cells = _cellSnapshot;
             var snapshot = new NotebookDocument
             {
                 NbFormat = _document.NbFormat,
                 NbFormatMinor = _document.NbFormatMinor,
                 Metadata = _document.Metadata,
                 ExtensionData = _document.ExtensionData,
-                Cells = Cells.Select(c =>
+                Cells = cells.Select(c =>
                 {
-                    // Read Source (string) is safe — it's a simple property, not a collection.
                     var copy = new NotebookCell
                     {
-                        CellType = c.Model.CellType,
-                        Id = c.Model.Id,
-                        Metadata = c.Model.Metadata,
-                        ExtensionData = c.Model.ExtensionData,
-                        ExecutionCount = c.Model.ExecutionCount,
-                        Outputs = c.Model.Outputs,
+                        CellType = c.CellType,
+                        Id = c.Id,
+                        Metadata = c.Metadata,
+                        ExtensionData = c.ExtensionData,
+                        ExecutionCount = c.ExecutionCount,
+                        Outputs = c.Outputs,
                     };
                     copy.SourceText = c.Source;
                     return copy;
