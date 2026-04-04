@@ -35,6 +35,17 @@ public partial class App : Application
         NotificationService.Initialize();
         _window = new MainWindow();
         _window.Activate();
+
+        // Handle file activation (double-click on .ipynb in File Explorer)
+        var activationArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
+        if (activationArgs?.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.File
+            && activationArgs.Data is Windows.ApplicationModel.Activation.IFileActivatedEventArgs fileArgs
+            && fileArgs.Files.Count > 0)
+        {
+            var filePath = fileArgs.Files[0].Path;
+            if (filePath.EndsWith(".ipynb", StringComparison.OrdinalIgnoreCase) && _window is MainWindow mw)
+                mw.OpenNotebook(filePath);
+        }
     }
 
     private static IServiceProvider ConfigureServices()

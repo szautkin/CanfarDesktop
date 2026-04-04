@@ -44,6 +44,16 @@
           Square310x310Logo="Assets\Square310x310Logo.png" />
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
+      <Extensions>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="jupyter-notebook">
+            <uap:SupportedFileTypes>
+              <uap:FileType ContentType="application/x-ipynb+json">.ipynb</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap:DisplayName>Jupyter Notebook</uap:DisplayName>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

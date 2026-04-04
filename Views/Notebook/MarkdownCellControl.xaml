@@ -24,13 +24,11 @@
 
             <!-- Content area: rendered or edit mode -->
             <Grid Grid.Column="1" Padding="12,8">
-                <!-- Rendered markdown (placeholder: plain text) -->
-                <TextBlock x:Name="RenderedView"
-                           TextWrapping="Wrap"
-                           Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                           Tapped="OnRenderedTapped"
-                           DoubleTapped="OnRenderedDoubleTapped"
-                           Visibility="Visible" />
+                <!-- Rendered markdown -->
+                <StackPanel x:Name="RenderedView"
+                            Tapped="OnRenderedTapped"
+                            DoubleTapped="OnRenderedDoubleTapped"
+                            Visibility="Visible" />
 
                 <!-- Edit mode: raw markdown source -->
                 <TextBox x:Name="SourceEditor"

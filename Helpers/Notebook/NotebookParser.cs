@@ -56,7 +56,8 @@ public static class NotebookParser
     {
         ArgumentNullException.ThrowIfNull(document);
         EnforceOutputRules(document);
-        return JsonSerializer.Serialize(document, WriteOptions);
+        var json = JsonSerializer.Serialize(document, WriteOptions);
+        return NormalizeWhitespace(json);
     }
 
     /// <summary>
@@ -66,7 +67,34 @@ public static class NotebookParser
     {
         ArgumentNullException.ThrowIfNull(document);
         EnforceOutputRules(document);
-        await JsonSerializer.SerializeAsync(stream, document, WriteOptions, ct);
+
+        // Serialize to string first to apply whitespace normalization
+        var json = JsonSerializer.Serialize(document, WriteOptions);
+        json = NormalizeWhitespace(json);
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        await stream.WriteAsync(bytes, ct);
+    }
+
+    /// <summary>
+    /// Convert 2-space indent to 1-space (Jupyter convention) and add trailing newline.
+    /// </summary>
+    private static string NormalizeWhitespace(string json)
+    {
+        // Replace leading 2-space indents with 1-space
+        var lines = json.Split('\n');
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var spaces = 0;
+            while (spaces < line.Length && line[spaces] == ' ') spaces++;
+            if (spaces >= 2)
+                lines[i] = new string(' ', spaces / 2) + line[spaces..];
+        }
+        var result = string.Join('\n', lines);
+        // Ensure trailing newline (Jupyter convention)
+        if (!result.EndsWith('\n')) result += '\n';
+        return result;
     }
 
     /// <summary>

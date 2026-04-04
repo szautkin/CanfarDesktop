@@ -61,11 +61,7 @@ public sealed partial class MarkdownCellControl : UserControl
         {
             RenderedView.Visibility = Visibility.Visible;
             SourceEditor.Visibility = Visibility.Collapsed;
-            // Render markdown as plain text for now (M5 will add rich rendering)
-            var isEmpty = string.IsNullOrWhiteSpace(_viewModel.Source);
-            RenderedView.Text = isEmpty ? "Double-click to edit" : _viewModel.Source;
-            RenderedView.Foreground = (Brush)Application.Current.Resources[
-                isEmpty ? "TextFillColorTertiaryBrush" : "TextFillColorPrimaryBrush"];
+            RenderMarkdown();
         }
         else
         {
@@ -76,6 +72,26 @@ public sealed partial class MarkdownCellControl : UserControl
             _suppressTextChanged = false;
             SourceEditor.Focus(FocusState.Programmatic);
         }
+    }
+
+    private void RenderMarkdown()
+    {
+        RenderedView.Children.Clear();
+
+        if (string.IsNullOrWhiteSpace(_viewModel?.Source))
+        {
+            RenderedView.Children.Add(new TextBlock
+            {
+                Text = "Double-click to edit",
+                Foreground = Helpers.Notebook.ThemeHelper.GetBrush("TextFillColorTertiaryBrush"),
+                FontStyle = Windows.UI.Text.FontStyle.Italic,
+            });
+            return;
+        }
+
+        var elements = Helpers.Notebook.MarkdownRenderer.Render(_viewModel.Source);
+        foreach (var element in elements)
+            RenderedView.Children.Add(element);
     }
 
     private void UpdateAccentBorder()
