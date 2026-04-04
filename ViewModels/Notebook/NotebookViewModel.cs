@@ -17,6 +17,7 @@ public partial class NotebookViewModel : ObservableObject
     private readonly IAutoSaveService _autoSaveService;
     private readonly IKernelService _kernelService;
     private readonly RecentNotebooksService _recentNotebooks;
+    private readonly UndoRedoService _undoRedo = new();
     private NotebookDocument _document;
     private string? _filePath;
 
@@ -256,6 +257,70 @@ public partial class NotebookViewModel : ObservableObject
 
     #endregion
 
+    #region Undo/Redo
+
+    private UndoState CaptureState() => new()
+    {
+        Cells = Cells.Select(c => new CellSnapshot
+        {
+            CellType = c.CellType,
+            Source = c.Source,
+            Id = c.CellId,
+            ExecutionCount = c is CodeCellViewModel code ? code.ExecutionCount : null,
+        }).ToList(),
+        SelectedIndex = SelectedCellIndex,
+    };
+
+    private void RestoreState(UndoState state)
+    {
+        foreach (var cell in Cells) cell.ContentChanged -= OnCellContentChanged;
+        Cells.Clear();
+
+        foreach (var snap in state.Cells)
+        {
+            var model = new NotebookCell
+            {
+                CellType = snap.CellType,
+                Id = snap.Id,
+                Source = NotebookCell.SplitSourceLines(snap.Source),
+                Outputs = snap.CellType == "code" ? [] : null,
+                ExecutionCount = snap.ExecutionCount,
+            };
+            var vm = CreateCellViewModel(model);
+            vm.ContentChanged += OnCellContentChanged;
+            Cells.Add(vm);
+        }
+
+        if (state.SelectedIndex >= 0 && state.SelectedIndex < Cells.Count)
+            SelectCell(state.SelectedIndex);
+        else if (Cells.Count > 0)
+            SelectCell(0);
+
+        UpdateCellSnapshot();
+    }
+
+    private void PushUndo() => _undoRedo.PushUndo(CaptureState());
+
+    [RelayCommand]
+    public void Undo()
+    {
+        var state = _undoRedo.PopUndo(CaptureState());
+        if (state is null) return;
+        RestoreState(state);
+        _dirtyTracker.MarkDirty();
+    }
+
+    [RelayCommand]
+    public void Redo()
+    {
+        var state = _undoRedo.PopRedo(CaptureState());
+        if (state is null) return;
+        RestoreState(state);
+        _dirtyTracker.MarkDirty();
+    }
+
+    #endregion
+
     #region Cell operations
 
     [RelayCommand]
@@ -276,6 +341,7 @@ public partial class NotebookViewModel : ObservableObject
 
     private void InsertCell(int index, string cellType)
     {
+        PushUndo();
         var model = new NotebookCell
         {
             CellType = cellType,
@@ -296,6 +362,7 @@ public partial class NotebookViewModel : ObservableObject
     public void DeleteSelectedCell()
     {
         if (SelectedCellIndex < 0) return;
+        PushUndo();
 
         var index = SelectedCellIndex;
         if (index >= Cells.Count) index = Cells.Count - 1;
@@ -318,6 +385,7 @@ public partial class NotebookViewModel : ObservableObject
     public void MoveCellUp()
     {
         if (SelectedCellIndex <= 0) return;
+        PushUndo();
         var index = SelectedCellIndex;
         Cells.Move(index, index - 1);
         _dirtyTracker.MarkDirty();
@@ -328,6 +396,7 @@ public partial class NotebookViewModel : ObservableObject
     public void MoveCellDown()
     {
         if (SelectedCellIndex < 0 || SelectedCellIndex >= Cells.Count - 1) return;
+        PushUndo();
         var index = SelectedCellIndex;
         Cells.Move(index, index + 1);
         _dirtyTracker.MarkDirty();
@@ -338,6 +407,7 @@ public partial class NotebookViewModel : ObservableObject
     public void SplitCell(int cursorPosition)
     {
         if (SelectedCell is null || SelectedCellIndex < 0) return;
+        PushUndo();
         var source = SelectedCell.Source;
         if (cursorPosition < 0 || cursorPosition > source.Length) return;
 
@@ -366,6 +436,7 @@ public partial class NotebookViewModel : ObservableObject
     public void MergeCellBelow()
     {
         if (SelectedCellIndex < 0 || SelectedCellIndex >= Cells.Count - 1) return;
+        PushUndo();
 
         var current = Cells[SelectedCellIndex];
         var below = Cells[SelectedCellIndex + 1];
@@ -381,6 +452,7 @@ public partial class NotebookViewModel : ObservableObject
     {
         if (SelectedCell is null || SelectedCellIndex < 0 || newType is null) return;
         if (SelectedCell.CellType == newType) return;
+        PushUndo();
 
         var oldModel = SelectedCell.Model;
         var newModel = new NotebookCell

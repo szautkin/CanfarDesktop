@@ -291,6 +291,14 @@ public sealed partial class NotebookTabHost : UserControl
                 CloseActiveTab();
                 e.Handled = true;
                 break;
+            case Windows.System.VirtualKey.Z when ctrl && !shift:
+                ActiveVM?.UndoCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Windows.System.VirtualKey.Y when ctrl:
+                ActiveVM?.RedoCommand.Execute(null);
+                e.Handled = true;
+                break;
             case Windows.System.VirtualKey.S when ctrl && !shift:
                 ActiveVM?.SaveCommand.Execute(null);
                 e.Handled = true;
@@ -409,6 +417,11 @@ public sealed partial class NotebookTabHost : UserControl
                 }
                 _lastCommandKey = key;
                 _lastCommandKeyTime = now;
+                return true;
+
+            // Undo structural change (command mode)
+            case Windows.System.VirtualKey.Z:
+                vm.UndoCommand.Execute(null);
                 return true;
 
             // Help (H key in command mode)
