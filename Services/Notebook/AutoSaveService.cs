@@ -12,6 +12,7 @@ public class AutoSaveService : IAutoSaveService
 {
     private Timer? _timer;
     private Func<NotebookDocument>? _documentProvider;
+    private Func<bool>? _isDirtyCheck;
     private string? _autoSavePath;
     private bool _disposed;
     private readonly object _lock = new();
@@ -19,13 +20,14 @@ public class AutoSaveService : IAutoSaveService
     public string? AutoSavePath => _autoSavePath;
     public TimeSpan Interval { get; set; } = TimeSpan.FromSeconds(30);
 
-    public void Start(string? originalPath, Func<NotebookDocument> documentProvider)
+    public void Start(string? originalPath, Func<NotebookDocument> documentProvider, Func<bool>? isDirtyCheck = null)
     {
         ArgumentNullException.ThrowIfNull(documentProvider);
 
         lock (_lock)
         {
             _documentProvider = documentProvider;
+            _isDirtyCheck = isDirtyCheck;
             _autoSavePath = BuildAutoSavePath(originalPath);
 
             var dir = Path.GetDirectoryName(_autoSavePath);
@@ -76,6 +78,11 @@ public class AutoSaveService : IAutoSaveService
         }
 
         if (provider is null || path is null) return null;
+
+        // Skip autosave when document is not dirty
+        Func<bool>? dirtyCheck;
+        lock (_lock) { dirtyCheck = _isDirtyCheck; }
+        if (dirtyCheck is not null && !dirtyCheck()) return null;
 
         try
         {

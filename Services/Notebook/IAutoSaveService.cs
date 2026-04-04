@@ -8,7 +8,7 @@ using CanfarDesktop.Models.Notebook;
 /// </summary>
 public interface IAutoSaveService : IDisposable
 {
-    void Start(string? originalPath, Func<NotebookDocument> documentProvider);
+    void Start(string? originalPath, Func<NotebookDocument> documentProvider, Func<bool>? isDirtyCheck = null);
     void StopAndCleanup();
     Task<string?> SaveNowAsync();
     string? AutoSavePath { get; }

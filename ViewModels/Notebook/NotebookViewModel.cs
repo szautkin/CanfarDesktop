@@ -235,7 +235,7 @@ public partial class NotebookViewModel : ObservableObject
                 }).ToList()
             };
             return snapshot;
-        });
+        }, isDirtyCheck: () => _dirtyTracker.IsDirty);
     }
 
     #endregion
