@@ -39,13 +39,16 @@ public sealed partial class NotebookPage : UserControl
             CellCountLabel.Text = $"{ViewModel.Cells.Count} cells";
         });
 
-        // Wire cell selection
+        // Wire cell selection (track handlers for proper unsubscribe)
         WireCellSelection(ViewModel.Cells);
         ViewModel.Cells.CollectionChanged += (_, args) =>
         {
             if (args.NewItems is not null)
                 foreach (CellViewModel cell in args.NewItems)
-                    cell.SelectionRequested += () => ViewModel.SelectCell(ViewModel.Cells.IndexOf(cell));
+                    WireSingleCellSelection(cell);
+            if (args.OldItems is not null)
+                foreach (CellViewModel cell in args.OldItems)
+                    UnwireSingleCellSelection(cell);
         };
 
         // Initial state
@@ -82,9 +85,25 @@ public sealed partial class NotebookPage : UserControl
         }
     }
 
+    private readonly Dictionary<CellViewModel, Action> _selectionHandlers = new();
+
     private void WireCellSelection(IEnumerable<CellViewModel> cells)
     {
         foreach (var cell in cells)
-            cell.SelectionRequested += () => ViewModel.SelectCell(ViewModel.Cells.IndexOf(cell));
+            WireSingleCellSelection(cell);
+    }
+
+    private void WireSingleCellSelection(CellViewModel cell)
+    {
+        if (_selectionHandlers.ContainsKey(cell)) return;
+        Action handler = () => ViewModel.SelectCell(ViewModel.Cells.IndexOf(cell));
+        _selectionHandlers[cell] = handler;
+        cell.SelectionRequested += handler;
+    }
+
+    private void UnwireSingleCellSelection(CellViewModel cell)
+    {
+        if (_selectionHandlers.Remove(cell, out var handler))
+            cell.SelectionRequested -= handler;
     }
 }
