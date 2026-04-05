@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -78,10 +79,61 @@ public sealed partial class NotebookPage : UserControl
             await using var stream = File.OpenRead(filePath);
             var document = await Helpers.Notebook.NotebookParser.ParseAsync(stream);
             ViewModel.LoadFromFile(filePath, document);
+
+            // Scan for missing dependencies
+            await CheckDependenciesAsync(document);
         }
         catch (Exception ex)
         {
             ViewModel.StatusMessage = $"Open failed: {ex.Message}";
+        }
+    }
+
+    private async Task CheckDependenciesAsync(Models.Notebook.NotebookDocument document)
+    {
+        var discovery = App.Services.GetRequiredService<IPythonDiscoveryService>();
+        var pythonPath = discovery.PythonPath;
+        if (pythonPath is null) return;
+
+        ViewModel.StatusMessage = "Checking dependencies...";
+
+        var imports = Helpers.Notebook.DependencyScanner.ExtractImports(document);
+        if (imports.Count == 0) return;
+
+        var missing = await Helpers.Notebook.DependencyScanner.FindMissingAsync(imports, pythonPath);
+        if (missing.Count == 0)
+        {
+            ViewModel.StatusMessage = "All dependencies installed";
+            return;
+        }
+
+        // Wait for XamlRoot
+        if (XamlRoot is null) return;
+
+        var packageList = string.Join("\n", missing.Select(m => $"  - {m.pipName}"));
+        var dialog = new ContentDialog
+        {
+            Title = $"{missing.Count} missing package(s)",
+            Content = $"This notebook needs:\n{packageList}\n\nInstall them now?",
+            PrimaryButtonText = "Install All",
+            CloseButtonText = "Skip",
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            ViewModel.StatusMessage = $"Installing {missing.Count} packages...";
+            var pipNames = missing.Select(m => m.pipName);
+            var result = await Helpers.Notebook.DependencyScanner.InstallAsync(pipNames, pythonPath);
+            var errors = result.errors;
+
+            ViewModel.StatusMessage = errors.Contains("ERROR")
+                ? "Some packages failed to install"
+                : $"Installed {missing.Count} packages";
+        }
+        else
+        {
+            ViewModel.StatusMessage = "Ready (some packages may be missing)";
         }
     }
 
