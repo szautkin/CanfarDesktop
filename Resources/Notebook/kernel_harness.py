@@ -194,11 +194,17 @@ def _handle_magic(code, exec_count):
     return outputs
 
 
+def _strip_shell_redirect(cmd_str):
+    """Strip Unix shell redirects (> /dev/null 2>&1) that don't work on Windows."""
+    import re
+    return re.sub(r'\s*[12]?>\s*/dev/null(\s+2>&1)?', '', cmd_str).strip()
+
+
 def _handle_single_magic(line, _sp):
     """Handle a single magic/shell command line."""
     # %pip install <packages>
     if line.startswith("%pip ") or line.startswith("!pip "):
-        args = line.split(None, 1)[1]
+        args = _strip_shell_redirect(line.split(None, 1)[1])
         cmd = [sys.executable, "-m", "pip"] + args.split()
         try:
             result = _sp.run(cmd, capture_output=True, text=True, timeout=300)
@@ -213,7 +219,7 @@ def _handle_single_magic(line, _sp):
 
     # %conda install <packages>
     if line.startswith("%conda ") or line.startswith("!conda "):
-        args = line.split(None, 1)[1]
+        args = _strip_shell_redirect(line.split(None, 1)[1])
         cmd = ["conda"] + args.split() + ["-y"]
         try:
             result = _sp.run(cmd, capture_output=True, text=True, timeout=600)
