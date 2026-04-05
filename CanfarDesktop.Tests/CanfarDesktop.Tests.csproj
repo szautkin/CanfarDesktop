@@ -70,6 +70,16 @@
     <Compile Include="..\ViewModels\Notebook\NotebookTabItem.cs" Link="Linked\Notebook\NotebookTabItem.cs" />
     <Compile Include="..\ViewModels\Notebook\NotebookTabHostViewModel.cs" Link="Linked\Notebook\NotebookTabHostViewModel.cs" />
     <Compile Include="..\ViewModels\Notebook\NotebookFileMode.cs" Link="Linked\Notebook\NotebookFileMode.cs" />
+    <!-- FITS Viewer -->
+    <Compile Include="..\Models\Fits\FitsCard.cs" Link="Linked\Fits\FitsCard.cs" />
+    <Compile Include="..\Models\Fits\FitsHeader.cs" Link="Linked\Fits\FitsHeader.cs" />
+    <Compile Include="..\Models\Fits\WcsInfo.cs" Link="Linked\Fits\WcsInfo.cs" />
+    <Compile Include="..\Models\Fits\FitsImageData.cs" Link="Linked\Fits\FitsImageData.cs" />
+    <Compile Include="..\Models\Fits\FitsHdu.cs" Link="Linked\Fits\FitsHdu.cs" />
+    <Compile Include="..\Services\Fits\FitsParser.cs" Link="Linked\Fits\FitsParser.cs" />
+    <Compile Include="..\Services\Fits\ImageStretcher.cs" Link="Linked\Fits\ImageStretcher.cs" />
+    <Compile Include="..\Services\Fits\ColormapProvider.cs" Link="Linked\Fits\ColormapProvider.cs" />
+    <Compile Include="..\Services\Fits\FitsRenderer.cs" Link="Linked\Fits\FitsRenderer.cs" />
     <!-- Notebook execution services (Milestone 4) -->
     <Compile Include="..\Services\Notebook\KernelState.cs" Link="Linked\Notebook\KernelState.cs" />
     <Compile Include="..\Services\Notebook\IKernelService.cs" Link="Linked\Notebook\IKernelService.cs" />
