@@ -105,6 +105,10 @@ public partial class App : Application
         services.AddHttpClient<IStorageService, StorageService>()
             .AddHttpMessageHandler<AuthTokenHandler>();
 
+        // Local file browser
+        services.AddSingleton<ILocalFileService, LocalFileService>();
+        services.AddTransient<LocalFileBrowserViewModel>();
+
         // Settings
         services.AddSingleton<ISettingsService, SettingsService>();
 

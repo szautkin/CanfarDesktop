@@ -21,6 +21,8 @@ public sealed partial class MainWindow : Window
     private SearchPage? _searchPage;
     private ResearchPage? _researchPage;
     private StorageBrowserPage? _storagePage;
+    private LocalFileBrowserPanel? _filePanel;
+    private bool _filePanelVisible;
     private AppMode _currentMode = AppMode.Landing;
     private bool _loginSucceeded;
 
@@ -54,6 +56,61 @@ public sealed partial class MainWindow : Window
 
         Activated += OnWindowActivated;
     }
+
+    #region File Browser Panel
+
+    public void ToggleFilePanel()
+    {
+        _filePanelVisible = !_filePanelVisible;
+
+        if (_filePanelVisible && _filePanel is null)
+        {
+            var vm = App.Services.GetRequiredService<LocalFileBrowserViewModel>();
+            _filePanel = new LocalFileBrowserPanel(vm);
+            _filePanel.FileOpenRequested += OnFilePanelFileOpen;
+            FilePanelContainer.Child = _filePanel;
+
+            // Default root: user's Documents folder
+            var docsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            vm.SetRootPath(docsPath);
+        }
+
+        FilePanelColumn.Width = _filePanelVisible
+            ? new Microsoft.UI.Xaml.GridLength(280)
+            : new Microsoft.UI.Xaml.GridLength(0);
+    }
+
+    public void SetFilePanelRoot(string path)
+    {
+        if (_filePanel is not null)
+            _filePanel.ViewModel.SetRootPath(path);
+    }
+
+    private void OnFilePanelFileOpen(string filePath)
+    {
+        if (filePath.EndsWith(".ipynb", StringComparison.OrdinalIgnoreCase))
+        {
+            OpenNotebook(filePath);
+        }
+        else
+        {
+            // Open with system default app
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = filePath,
+                    UseShellExecute = true,
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Open file failed: {ex.Message}");
+            }
+        }
+    }
+
+    #endregion
 
     #region Initialization
 
@@ -95,6 +152,8 @@ public sealed partial class MainWindow : Window
         StorageContainer.Visibility = mode == AppMode.Storage ? Visibility.Visible : Visibility.Collapsed;
         NotebookContainer.Visibility = mode == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    private void OnToggleFilePanel(object sender, RoutedEventArgs e) => ToggleFilePanel();
 
     private void OnHomeClick(object sender, RoutedEventArgs e)
     {

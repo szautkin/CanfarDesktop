@@ -31,6 +31,11 @@
                         Background="Transparent" BorderThickness="0">
                     <FontIcon Glyph="&#xE80F;" FontSize="16" />
                 </Button>
+                <Button Click="OnToggleFilePanel" ToolTipService.ToolTip="Explorer (Ctrl+B)" Padding="6,4"
+                        Background="Transparent" BorderThickness="0"
+                        AutomationProperties.Name="Toggle file explorer">
+                    <FontIcon Glyph="&#xE8B7;" FontSize="16" />
+                </Button>
             </StackPanel>
 
             <!-- Center: status -->
@@ -61,14 +66,25 @@
             </StackPanel>
         </Grid>
 
-        <!-- Content: 3 overlapping containers, visibility-toggled -->
+        <!-- Content: file browser panel + main content area -->
         <Grid Grid.Row="1">
-            <Border x:Name="LandingContainer" />
-            <Border x:Name="PortalContainer" Visibility="Collapsed" />
-            <Border x:Name="SearchContainer" Visibility="Collapsed" />
-            <Border x:Name="ResearchContainer" Visibility="Collapsed" />
-            <Border x:Name="StorageContainer" Visibility="Collapsed" />
-            <Border x:Name="NotebookContainer" Visibility="Collapsed" />
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="FilePanelColumn" Width="0" MinWidth="0" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- File browser side panel (collapsible) -->
+            <Border x:Name="FilePanelContainer" Grid.Column="0" />
+
+            <!-- Main content: overlapping containers, visibility-toggled -->
+            <Grid Grid.Column="1">
+                <Border x:Name="LandingContainer" />
+                <Border x:Name="PortalContainer" Visibility="Collapsed" />
+                <Border x:Name="SearchContainer" Visibility="Collapsed" />
+                <Border x:Name="ResearchContainer" Visibility="Collapsed" />
+                <Border x:Name="StorageContainer" Visibility="Collapsed" />
+                <Border x:Name="NotebookContainer" Visibility="Collapsed" />
+            </Grid>
         </Grid>
     </Grid>
 </Window>
