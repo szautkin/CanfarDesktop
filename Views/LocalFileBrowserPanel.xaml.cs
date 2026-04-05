@@ -64,7 +64,10 @@ public sealed partial class LocalFileBrowserPanel : UserControl
             case ".ipynb":
             case ".py":
             case ".md":
-                // Open in notebook tab
+            case ".fits":
+            case ".fit":
+            case ".fts":
+                // Open in app (notebook tab or FITS viewer)
                 FileOpenRequested?.Invoke(filePath);
                 break;
             default:

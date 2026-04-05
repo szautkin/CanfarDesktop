@@ -84,6 +84,7 @@
                 <Border x:Name="ResearchContainer" Visibility="Collapsed" />
                 <Border x:Name="StorageContainer" Visibility="Collapsed" />
                 <Border x:Name="NotebookContainer" Visibility="Collapsed" />
+                <Border x:Name="FitsViewerContainer" Visibility="Collapsed" />
             </Grid>
         </Grid>
     </Grid>

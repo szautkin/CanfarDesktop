@@ -135,6 +135,7 @@ public partial class App : Application
         services.AddTransient<IKernelService, LocalKernelService>();
 
         // ViewModels
+        services.AddTransient<FitsViewerViewModel>();
         services.AddTransient<MainViewModel>();
         services.AddTransient<LoginViewModel>();
         services.AddTransient<SessionListViewModel>();

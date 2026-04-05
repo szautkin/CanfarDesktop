@@ -11,6 +11,7 @@ public sealed partial class LandingView : UserControl
     public event EventHandler? ResearchRequested;
     public event EventHandler? StorageRequested;
     public event EventHandler? NotebookRequested;
+    public event EventHandler? FitsViewerRequested;
 
     public string StatusMessage
     {
@@ -33,6 +34,7 @@ public sealed partial class LandingView : UserControl
         new() { Title = "Research", Glyph = "\uE8B7", Subtitle = "Downloaded observations", Key = "research" },
         new() { Title = "Storage", Glyph = "\uEDA2", Subtitle = "Browse VOSpace files", Key = "storage" },
         new() { Title = "Notebook", Glyph = "\uE70B", Subtitle = "Open & run .ipynb files", Key = "notebook" },
+        new() { Title = "FITS Viewer", Glyph = "\uE7B8", Subtitle = "View astronomical images", Key = "fits" },
     ];
 
     public LandingView()
@@ -52,6 +54,7 @@ public sealed partial class LandingView : UserControl
                 case "research": ResearchRequested?.Invoke(this, EventArgs.Empty); break;
                 case "storage": StorageRequested?.Invoke(this, EventArgs.Empty); break;
                 case "notebook": NotebookRequested?.Invoke(this, EventArgs.Empty); break;
+                case "fits": FitsViewerRequested?.Invoke(this, EventArgs.Empty); break;
             }
         }
     }

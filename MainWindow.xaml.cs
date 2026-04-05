@@ -13,7 +13,7 @@ namespace CanfarDesktop;
 
 public sealed partial class MainWindow : Window
 {
-    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook }
+    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer }
 
     private readonly MainViewModel _viewModel;
     private readonly LandingView _landingView;
@@ -52,6 +52,7 @@ public sealed partial class MainWindow : Window
         _landingView.ResearchRequested += OnResearchRequested;
         _landingView.StorageRequested += (_, _) => OpenStorageBrowser();
         _landingView.NotebookRequested += (_, _) => OpenNotebook();
+        _landingView.FitsViewerRequested += (_, _) => OpenFitsViewer();
         LandingContainer.Child = _landingView;
 
         Activated += OnWindowActivated;
@@ -92,6 +93,10 @@ public sealed partial class MainWindow : Window
         if (ext is ".ipynb" or ".py" or ".md")
         {
             OpenNotebook(filePath);
+        }
+        else if (ext is ".fits" or ".fit" or ".fts")
+        {
+            OpenFitsViewer(filePath);
         }
         else
         {
@@ -152,6 +157,7 @@ public sealed partial class MainWindow : Window
         ResearchContainer.Visibility = mode == AppMode.Research ? Visibility.Visible : Visibility.Collapsed;
         StorageContainer.Visibility = mode == AppMode.Storage ? Visibility.Visible : Visibility.Collapsed;
         NotebookContainer.Visibility = mode == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
+        FitsViewerContainer.Visibility = mode == AppMode.FitsViewer ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnToggleFilePanel(object sender, RoutedEventArgs e) => ToggleFilePanel();
@@ -220,6 +226,7 @@ public sealed partial class MainWindow : Window
         NavigateTo(AppMode.Storage);
     }
 
+    private Views.FitsViewer.FitsViewerPage? _fitsViewerPage;
     private NotebookTabHost? _notebookTabHost;
 
     public async void OpenNotebook(string? filePath = null)
@@ -240,6 +247,21 @@ public sealed partial class MainWindow : Window
             await _notebookTabHost.AddTabForFileAsync(filePath);
 
         NavigateTo(AppMode.Notebook);
+    }
+
+    public async void OpenFitsViewer(string? filePath = null)
+    {
+        if (_fitsViewerPage is null)
+        {
+            var vm = App.Services.GetRequiredService<FitsViewerViewModel>();
+            _fitsViewerPage = new Views.FitsViewer.FitsViewerPage(vm);
+            FitsViewerContainer.Child = _fitsViewerPage;
+        }
+
+        if (filePath is not null)
+            await _fitsViewerPage.OpenFileAsync(filePath);
+
+        NavigateTo(AppMode.FitsViewer);
     }
 
     private void EnsureResearchPage()
