@@ -23,6 +23,12 @@ public sealed partial class NotebookTabHost : UserControl
         ViewModel = viewModel;
         InitializeComponent();
 
+        // Apply settings
+        var settings = App.Services.GetRequiredService<NotebookSettings>();
+        ToolbarPanel.Visibility = settings.ShowToolbar ? Visibility.Visible : Visibility.Collapsed;
+        settings.Changed += () => DispatcherQueue?.TryEnqueue(() =>
+            ToolbarPanel.Visibility = settings.ShowToolbar ? Visibility.Visible : Visibility.Collapsed);
+
         Welcome.NewRequested += () => AddNewTab();
         Welcome.OpenPickerRequested += () => OnOpenFile(this, new RoutedEventArgs());
         Welcome.OpenFileRequested += async path => await AddTabForFileAsync(path);

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
@@ -17,6 +18,19 @@ public sealed partial class CodeCellControl : UserControl
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         Unloaded += (_, _) => DetachViewModel();
+        ApplySettings();
+
+        // Re-apply when settings change
+        var settings = App.Services.GetRequiredService<Services.Notebook.NotebookSettings>();
+        settings.Changed += () => DispatcherQueue?.TryEnqueue(ApplySettings);
+    }
+
+    private void ApplySettings()
+    {
+        var s = App.Services.GetRequiredService<Services.Notebook.NotebookSettings>();
+        SourceEditor.FontSize = s.FontSize;
+        SyntaxView.FontSize = s.FontSize;
+        SourceEditor.TextWrapping = s.WordWrap ? TextWrapping.Wrap : TextWrapping.NoWrap;
     }
 
     private void DetachViewModel()

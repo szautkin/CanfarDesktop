@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -17,6 +18,13 @@ public sealed partial class MarkdownCellControl : UserControl
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         Unloaded += (_, _) => DetachViewModel();
+
+        var settings = App.Services.GetRequiredService<Services.Notebook.NotebookSettings>();
+        settings.Changed += () => DispatcherQueue?.TryEnqueue(() =>
+        {
+            SourceEditor.FontSize = settings.FontSize;
+        });
+        SourceEditor.FontSize = settings.FontSize;
     }
 
     private void DetachViewModel()

@@ -35,6 +35,12 @@
                 </Button>
             </StackPanel>
 
+            <!-- System status -->
+            <Border x:Name="StatusPanel" CornerRadius="8" Padding="12,8" MinWidth="400"
+                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                <StackPanel x:Name="StatusStack" Spacing="4" />
+            </Border>
+
             <!-- Recent files (scrollable) -->
             <StackPanel x:Name="RecentSection" Spacing="8" Visibility="Collapsed" MinWidth="400">
                 <TextBlock Text="Recent Notebooks"

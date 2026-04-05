@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CanfarDesktop.Services.Notebook;
+using IPythonDiscoveryService = CanfarDesktop.Services.Notebook.IPythonDiscoveryService;
 
 namespace CanfarDesktop.Views.Notebook;
 
@@ -17,9 +18,103 @@ public sealed partial class WelcomePage : UserControl
         Loaded += OnLoaded;
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         RefreshRecent();
+        await CheckSystemRequirementsAsync();
+    }
+
+    private async Task CheckSystemRequirementsAsync()
+    {
+        StatusStack.Children.Clear();
+
+        var pythonDiscovery = App.Services.GetRequiredService<IPythonDiscoveryService>();
+        var pythonPath = await pythonDiscovery.FindPythonAsync();
+
+        if (pythonPath is not null)
+        {
+            AddStatusRow("\uE73E", $"Python {pythonDiscovery.PythonVersion}", pythonPath,
+                "SystemFillColorSuccessBrush");
+        }
+        else
+        {
+            AddStatusRow("\uE783", "Python not found", "Install Python 3.8+ from python.org",
+                "SystemFillColorCriticalBrush");
+
+            var installBtn = new HyperlinkButton
+            {
+                Content = "Download Python",
+                NavigateUri = new System.Uri("https://www.python.org/downloads/"),
+                Margin = new Thickness(24, 0, 0, 0),
+            };
+            StatusStack.Children.Add(installBtn);
+        }
+
+        // Check for common packages
+        if (pythonPath is not null)
+        {
+            await CheckPackageAsync("numpy");
+            await CheckPackageAsync("matplotlib");
+        }
+    }
+
+    private async Task CheckPackageAsync(string package)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "python",
+                Arguments = $"-c \"import {package}; print({package}.__version__)\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using var proc = System.Diagnostics.Process.Start(psi);
+            if (proc is null) return;
+            var output = (await proc.StandardOutput.ReadToEndAsync()).Trim();
+            await proc.WaitForExitAsync();
+
+            if (proc.ExitCode == 0 && !string.IsNullOrEmpty(output))
+                AddStatusRow("\uE73E", $"{package} {output}", null, "SystemFillColorSuccessBrush");
+            else
+                AddStatusRow("\uE783", $"{package} not installed",
+                    $"Run: %pip install {package}", "SystemFillColorCautionBrush");
+        }
+        catch
+        {
+            AddStatusRow("\uE783", $"{package} not installed",
+                $"Run: %pip install {package}", "SystemFillColorCautionBrush");
+        }
+    }
+
+    private void AddStatusRow(string glyph, string label, string? detail, string brushKey)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        row.Children.Add(new FontIcon
+        {
+            Glyph = glyph,
+            FontSize = 14,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources[brushKey],
+        });
+        var textStack = new StackPanel();
+        textStack.Children.Add(new TextBlock
+        {
+            Text = label,
+            Style = (Style)Application.Current.Resources["BodyTextBlockStyle"],
+        });
+        if (detail is not null)
+        {
+            textStack.Children.Add(new TextBlock
+            {
+                Text = detail,
+                Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"],
+            });
+        }
+        row.Children.Add(textStack);
+        StatusStack.Children.Add(row);
     }
 
     public void RefreshRecent()
