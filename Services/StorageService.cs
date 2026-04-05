@@ -68,8 +68,14 @@ public class StorageService : IStorageService
         var url = _endpoints.StorageNodeUrl(fullPath);
 
         var xml = VoSpaceParser.BuildContainerNodeXml(nodeUri);
+        System.Diagnostics.Debug.WriteLine($"CreateFolder PUT {url}\n{xml}");
         using var xmlContent = new StringContent(xml, System.Text.Encoding.UTF8, "text/xml");
         using var response = await _httpClient.PutAsync(url, xmlContent);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            System.Diagnostics.Debug.WriteLine($"CreateFolder failed: {response.StatusCode}\n{body}");
+        }
         response.EnsureSuccessStatusCode();
     }
 

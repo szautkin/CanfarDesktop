@@ -486,7 +486,7 @@ public sealed partial class SearchPage : Page
                     BorderThickness = new Thickness(0),
                     Width = width,
                     VerticalAlignment = VerticalAlignment.Center,
-                    Content = new FontIcon { Glyph = "\uE8B9", FontSize = 13 },
+                    Content = new TextBlock { Text = "Preview", FontSize = 11 },
                     Tag = "action"
                 };
 

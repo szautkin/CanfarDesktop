@@ -122,6 +122,11 @@ public static class VoSpaceParser
                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                       uri="{escaped}"
                       xsi:type="vos:ContainerNode">
+              <vos:properties/>
+              <vos:accepts/>
+              <vos:provides/>
+              <vos:capabilities/>
+              <vos:nodes/>
             </vos:node>
             """;
     }
