@@ -110,6 +110,9 @@ public class AutoSaveService : IAutoSaveService
         if (originalPath is not null)
         {
             var name = Path.GetFileNameWithoutExtension(originalPath);
+            // Strip any existing .autosave suffix to avoid nesting (autosave-of-autosave)
+            while (name.EndsWith(".autosave", StringComparison.OrdinalIgnoreCase))
+                name = name[..^".autosave".Length];
             // Include a hash of the full path to avoid collisions for same-name files in different dirs
             var hash = originalPath.GetHashCode().ToString("x8");
             return Path.Combine(dir, $"{name}-{hash}.autosave.ipynb");
