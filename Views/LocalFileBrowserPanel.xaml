@@ -95,8 +95,7 @@
                   Padding="4,0">
             <TreeView.ItemTemplate>
                 <DataTemplate x:DataType="models:LocalFileNode">
-                    <TreeViewItem ItemsSource="{x:Bind Children, Mode=OneWay}"
-                                  HasUnrealizedChildren="{x:Bind HasUnrealizedChildren, Mode=OneWay}"
+                    <TreeViewItem HasUnrealizedChildren="{x:Bind IsFolder, Mode=OneTime}"
                                   AutomationProperties.Name="{x:Bind Name}">
                         <StackPanel Orientation="Horizontal" Spacing="8" Padding="2,4"
                                     IsTabStop="False"

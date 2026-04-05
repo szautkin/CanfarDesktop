@@ -85,8 +85,14 @@ public sealed partial class LocalFileBrowserPanel : UserControl
 
     private void OnNodeExpanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
-        if (args.Item is LocalFileNode node && node.HasUnrealizedChildren)
-            ViewModel.LoadChildren(node);
+        if (args.Item is not LocalFileNode node || !node.IsFolder) return;
+
+        // Only load once — after the first expand the TreeViewNode already has children.
+        if (args.Node.Children.Count > 0) return;
+
+        var children = ViewModel.LoadChildren(node);
+        foreach (var child in children)
+            args.Node.Children.Add(new TreeViewNode { Content = child, HasUnrealizedChildren = child.IsFolder });
     }
 
     // ── Keyboard shortcuts ───────────────────────────────────────────────────
