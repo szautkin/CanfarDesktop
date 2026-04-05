@@ -97,24 +97,22 @@
                 </Grid>
             </Border>
 
-            <!-- Image canvas -->
-            <ScrollViewer Grid.Column="1"
-                          x:Name="ImageScroller"
-                          ZoomMode="Disabled"
-                          HorizontalScrollMode="Enabled"
-                          HorizontalScrollBarVisibility="Auto"
-                          VerticalScrollBarVisibility="Auto"
-                          Background="Black"
-                          PointerPressed="OnCanvasPointerPressed"
-                          PointerMoved="OnCanvasPointerMoved"
-                          PointerReleased="OnCanvasPointerReleased"
-                          PointerCanceled="OnCanvasPointerReleased"
-                          PointerWheelChanged="OnCanvasWheelChanged">
+            <!-- Image canvas: manual zoom/pan via CompositeTransform -->
+            <Border Grid.Column="1" Background="Black" x:Name="ImageCanvas"
+                    PointerPressed="OnCanvasPointerPressed"
+                    PointerMoved="OnCanvasPointerMoved"
+                    PointerReleased="OnCanvasPointerReleased"
+                    PointerCanceled="OnCanvasPointerReleased"
+                    PointerWheelChanged="OnCanvasWheelChanged">
                 <Image x:Name="FitsImage"
-                       Stretch="None"
+                       Stretch="Uniform"
                        HorizontalAlignment="Center"
-                       VerticalAlignment="Center" />
-            </ScrollViewer>
+                       VerticalAlignment="Center">
+                    <Image.RenderTransform>
+                        <CompositeTransform x:Name="ImageTransform" />
+                    </Image.RenderTransform>
+                </Image>
+            </Border>
         </Grid>
 
         <!-- Status bar -->

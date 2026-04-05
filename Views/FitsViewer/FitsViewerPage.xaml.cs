@@ -52,10 +52,7 @@ public sealed partial class FitsViewerPage : UserControl
             }
         });
 
-        ImageScroller.ViewChanged += (_, _) =>
-        {
-            ZoomLabel.Text = $"{ImageScroller.ZoomFactor * 100:F0}%";
-        };
+        ZoomLabel.Text = "100%";
     }
 
     public async Task OpenFileAsync(string filePath)
@@ -121,11 +118,12 @@ public sealed partial class FitsViewerPage : UserControl
     private void OnResetStretch(object s, RoutedEventArgs e)
     {
         ViewModel.ResetStretchCommand.Execute(null);
-        // Reset zoom to fit
-        _manualZoom = 1.0f;
-        FitsImage.Width = double.NaN;  // auto-size
-        FitsImage.Height = double.NaN;
-        ZoomLabel.Text = "Fit";
+        // Reset zoom + pan
+        ImageTransform.ScaleX = 1;
+        ImageTransform.ScaleY = 1;
+        ImageTransform.TranslateX = 0;
+        ImageTransform.TranslateY = 0;
+        ZoomLabel.Text = "100%";
     }
 
     private void OnToggleHeader(object s, RoutedEventArgs e)
@@ -190,29 +188,37 @@ public sealed partial class FitsViewerPage : UserControl
         }
     }
 
-    // ── Mouse: drag-to-pan, scroll, coordinate tracking ────────────────────
-
-    private float _manualZoom = 1.0f;
+    // ── Mouse: zoom (wheel), pan (drag), coordinate readout ────────────────
 
     private void OnCanvasWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        var delta = e.GetCurrentPoint(ImageScroller).Properties.MouseWheelDelta;
+        var point = e.GetCurrentPoint(ImageCanvas);
+        var delta = point.Properties.MouseWheelDelta;
         var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(
             Windows.System.VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
         if (shift)
         {
             // Shift+scroll → horizontal pan
-            ImageScroller.ScrollToHorizontalOffset(ImageScroller.HorizontalOffset - delta);
+            ImageTransform.TranslateX += delta;
         }
         else
         {
-            // Scroll → zoom
-            var factor = delta > 0 ? 1.15f : 1 / 1.15f;
-            _manualZoom = Math.Clamp(_manualZoom * factor, 0.05f, 30f);
-            FitsImage.Width = (ViewModel.ImageData?.Width ?? 100) * _manualZoom;
-            FitsImage.Height = (ViewModel.ImageData?.Height ?? 100) * _manualZoom;
-            ZoomLabel.Text = $"{_manualZoom * 100:F0}%";
+            // Scroll → zoom toward cursor
+            var factor = delta > 0 ? 1.15 : 1.0 / 1.15;
+            var oldScale = ImageTransform.ScaleX;
+            var newScale = Math.Clamp(oldScale * factor, 0.05, 50.0);
+
+            // Zoom toward the cursor position
+            var cursorX = point.Position.X;
+            var cursorY = point.Position.Y;
+
+            ImageTransform.TranslateX = cursorX - (cursorX - ImageTransform.TranslateX) * (newScale / oldScale);
+            ImageTransform.TranslateY = cursorY - (cursorY - ImageTransform.TranslateY) * (newScale / oldScale);
+            ImageTransform.ScaleX = newScale;
+            ImageTransform.ScaleY = newScale;
+
+            ZoomLabel.Text = $"{newScale * 100:F0}%";
         }
 
         e.Handled = true;
@@ -220,16 +226,15 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void OnCanvasPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        var point = e.GetCurrentPoint(ImageScroller);
-
-        // Left button or middle button → start drag-to-pan
+        var point = e.GetCurrentPoint(ImageCanvas);
         if (point.Properties.IsLeftButtonPressed || point.Properties.IsMiddleButtonPressed)
         {
             _isDragging = true;
             _dragStart = point.Position;
-            _scrollStartH = ImageScroller.HorizontalOffset;
-            _scrollStartV = ImageScroller.VerticalOffset;
-            ImageScroller.CapturePointer(e.Pointer);
+            _scrollStartH = ImageTransform.TranslateX;
+            _scrollStartV = ImageTransform.TranslateY;
+            ImageCanvas.CapturePointer(e.Pointer);
+            e.Handled = true;
         }
     }
 
@@ -237,19 +242,19 @@ public sealed partial class FitsViewerPage : UserControl
     {
         if (_isDragging)
         {
-            var pos = e.GetCurrentPoint(ImageScroller).Position;
-            var dx = _dragStart.X - pos.X;
-            var dy = _dragStart.Y - pos.Y;
-
-            ImageScroller.ScrollToHorizontalOffset(_scrollStartH + dx);
-            ImageScroller.ScrollToVerticalOffset(_scrollStartV + dy);
+            var pos = e.GetCurrentPoint(ImageCanvas).Position;
+            ImageTransform.TranslateX = _scrollStartH + (pos.X - _dragStart.X);
+            ImageTransform.TranslateY = _scrollStartV + (pos.Y - _dragStart.Y);
+            e.Handled = true;
             return;
         }
 
-        // Coordinate readout
-        if (ViewModel.RenderedImage is null) return;
+        // Coordinate readout — convert display coords to image pixel coords
+        if (ViewModel.RenderedImage is null || ViewModel.ImageData is null) return;
         var imgPos = e.GetCurrentPoint(FitsImage).Position;
-        ViewModel.UpdatePixelInfo(imgPos.X, imgPos.Y);
+        var scale = ImageTransform.ScaleX;
+        if (scale > 0)
+            ViewModel.UpdatePixelInfo(imgPos.X / scale, imgPos.Y / scale);
     }
 
     private void OnCanvasPointerReleased(object sender, PointerRoutedEventArgs e)
@@ -257,7 +262,8 @@ public sealed partial class FitsViewerPage : UserControl
         if (_isDragging)
         {
             _isDragging = false;
-            ImageScroller.ReleasePointerCapture(e.Pointer);
+            ImageCanvas.ReleasePointerCapture(e.Pointer);
+            e.Handled = true;
         }
     }
 }
