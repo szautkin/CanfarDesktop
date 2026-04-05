@@ -112,6 +112,7 @@ public class DataLinkService
         var accessUrlIdx = fieldNames.IndexOf("access_url");
         var semanticsIdx = fieldNames.IndexOf("semantics");
         var contentTypeIdx = fieldNames.IndexOf("content_type");
+        var descriptionIdx = fieldNames.IndexOf("description");
         var errorIdx = fieldNames.IndexOf("error_message");
 
         if (accessUrlIdx < 0 || semanticsIdx < 0) return result;
@@ -136,8 +137,14 @@ public class DataLinkService
                 result.Thumbnails.Add(url);
             else if (semantics == "#preview" && contentType.Contains("image", StringComparison.OrdinalIgnoreCase))
                 result.Previews.Add(url);
-            else if (semantics == "#this" && result.DirectFileUrl is null)
-                result.DirectFileUrl = url;
+            else if (semantics == "#this")
+                result.DirectFiles.Add(new DataLinkFile
+                {
+                    Url = url,
+                    ContentType = contentType,
+                    Description = descriptionIdx >= 0 && descriptionIdx < cells.Count
+                        ? cells[descriptionIdx] : "",
+                });
         }
 
         System.Diagnostics.Debug.WriteLine($"DataLink parsed: {result.Thumbnails.Count} thumbnails, {result.Previews.Count} previews");

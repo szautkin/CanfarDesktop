@@ -756,7 +756,23 @@ public sealed partial class SearchPage : Page
     {
         try
         {
-            var url = _dataLinkService.GetDownloadUrl(publisherID);
+            // Resolve DataLink to find direct file URLs
+            var dataLink = await _dataLinkService.GetLinksAsync(publisherID);
+            var url = dataLink.DirectFileUrl ?? _dataLinkService.GetDownloadUrl(publisherID);
+            var selectedFilename = "";
+
+            // If multiple files available, let user choose
+            if (dataLink.DirectFiles.Count > 1)
+            {
+                var picked = await ShowFileSelectionDialogAsync(dataLink.DirectFiles);
+                if (picked is null) return; // cancelled
+                url = picked.Url;
+                selectedFilename = picked.Filename;
+            }
+            else if (dataLink.DirectFiles.Count == 1)
+            {
+                selectedFilename = dataLink.DirectFiles[0].Filename;
+            }
 
             var hWnd = nint.Zero;
             if (WindowHelper.ActiveWindows.Count > 0)
@@ -765,8 +781,9 @@ public sealed partial class SearchPage : Page
 
             var picker = new Windows.Storage.Pickers.FileSavePicker();
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
-            var suggestedName = ExtractFilenameFromPublisherID(publisherID);
-            // Ensure .fits extension for CADC astronomical data
+            var suggestedName = !string.IsNullOrEmpty(selectedFilename)
+                ? selectedFilename
+                : ExtractFilenameFromPublisherID(publisherID);
             if (!Path.HasExtension(suggestedName))
                 suggestedName += ".fits";
             picker.SuggestedFileName = suggestedName;
@@ -805,9 +822,9 @@ public sealed partial class SearchPage : Page
             {
                 try
                 {
-                    var dataLink = await _dataLinkService.GetLinksAsync(publisherID);
+                    var dlForObs = await _dataLinkService.GetLinksAsync(publisherID);
                     var obs = DownloadedObservation.FromSearchResult(row, file.Path,
-                        dataLink, k => ViewModel.GetColumnHeader(k));
+                        dlForObs, k => ViewModel.GetColumnHeader(k));
                     var fi = new System.IO.FileInfo(file.Path);
                     if (fi.Exists) obs.FileSize = fi.Length;
                     _observationStore.Save(obs);
@@ -822,6 +839,59 @@ public sealed partial class SearchPage : Page
         {
             System.Diagnostics.Debug.WriteLine($"Download error: {ex.Message}");
         }
+    }
+
+    private async Task<DataLinkFile?> ShowFileSelectionDialogAsync(List<DataLinkFile> files)
+    {
+        var listView = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            MaxHeight = 300,
+        };
+
+        foreach (var f in files)
+        {
+            var panel = new StackPanel { Spacing = 2 };
+            panel.Children.Add(new TextBlock
+            {
+                Text = f.Filename,
+                Style = (Microsoft.UI.Xaml.Style)Microsoft.UI.Xaml.Application.Current.Resources["BodyStrongTextBlockStyle"],
+            });
+            if (!string.IsNullOrEmpty(f.Description))
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = f.Description,
+                    Style = (Microsoft.UI.Xaml.Style)Microsoft.UI.Xaml.Application.Current.Resources["CaptionTextBlockStyle"],
+                    Foreground = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["TextFillColorTertiaryBrush"],
+                });
+            }
+            if (!string.IsNullOrEmpty(f.ContentType))
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = f.ContentType,
+                    Style = (Microsoft.UI.Xaml.Style)Microsoft.UI.Xaml.Application.Current.Resources["CaptionTextBlockStyle"],
+                    Foreground = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["TextFillColorTertiaryBrush"],
+                });
+            }
+            listView.Items.Add(panel);
+        }
+
+        if (listView.Items.Count > 0) listView.SelectedIndex = 0;
+
+        var dialog = new ContentDialog
+        {
+            Title = $"Select file to download ({files.Count} available)",
+            Content = listView,
+            PrimaryButtonText = "Download",
+            CloseButtonText = "Cancel",
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return null;
+        var idx = listView.SelectedIndex;
+        return idx >= 0 && idx < files.Count ? files[idx] : null;
     }
 
     private static string ExtractFilenameFromPublisherID(string publisherID)
