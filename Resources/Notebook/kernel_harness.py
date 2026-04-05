@@ -264,14 +264,6 @@ def main():
         elif msg_type == "execute":
             code = msg.get("code", "")
             exec_count = msg.get("exec_count", 0)
-            # Debug: log received code to temp file
-            import tempfile, os
-            debug_path = os.path.join(tempfile.gettempdir(), "canfar_kernel_debug.log")
-            with open(debug_path, "a", encoding="utf-8") as df:
-                df.write(f"--- exec_count={exec_count} len={len(code)} ---\n")
-                df.write(repr(code) + "\n")
-                df.write(code + "\n")
-                df.write("--- end ---\n")
             if code.strip():
                 execute_code(code, exec_count)
             else:
