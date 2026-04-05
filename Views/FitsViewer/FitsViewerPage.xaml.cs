@@ -27,6 +27,15 @@ public sealed partial class FitsViewerPage : UserControl
         ViewModel = viewModel;
         InitializeComponent();
 
+        // Clip the image canvas so zoomed image doesn't overflow into toolbar/statusbar
+        ImageCanvas.SizeChanged += (_, _) =>
+        {
+            ImageCanvas.Clip = new Microsoft.UI.Xaml.Media.RectangleGeometry
+            {
+                Rect = new Windows.Foundation.Rect(0, 0, ImageCanvas.ActualWidth, ImageCanvas.ActualHeight)
+            };
+        };
+
         ViewModel.PropertyChanged += (_, e) => DispatcherQueue.TryEnqueue(() =>
         {
             switch (e.PropertyName)
@@ -194,31 +203,37 @@ public sealed partial class FitsViewerPage : UserControl
     {
         var point = e.GetCurrentPoint(ImageCanvas);
         var delta = point.Properties.MouseWheelDelta;
+
+        var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(
+            Windows.System.VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
         var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(
             Windows.System.VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
-        if (shift)
+        if (ctrl)
         {
-            // Shift+scroll → horizontal pan
-            ImageTransform.TranslateX += delta;
-        }
-        else
-        {
-            // Scroll → zoom toward cursor
+            // Ctrl+scroll → zoom toward cursor
             var factor = delta > 0 ? 1.15 : 1.0 / 1.15;
             var oldScale = ImageTransform.ScaleX;
             var newScale = Math.Clamp(oldScale * factor, 0.05, 50.0);
 
-            // Zoom toward the cursor position
             var cursorX = point.Position.X;
             var cursorY = point.Position.Y;
-
             ImageTransform.TranslateX = cursorX - (cursorX - ImageTransform.TranslateX) * (newScale / oldScale);
             ImageTransform.TranslateY = cursorY - (cursorY - ImageTransform.TranslateY) * (newScale / oldScale);
             ImageTransform.ScaleX = newScale;
             ImageTransform.ScaleY = newScale;
 
             ZoomLabel.Text = $"{newScale * 100:F0}%";
+        }
+        else if (shift)
+        {
+            // Shift+scroll → horizontal pan
+            ImageTransform.TranslateX += delta;
+        }
+        else
+        {
+            // Scroll → vertical pan
+            ImageTransform.TranslateY += delta;
         }
 
         e.Handled = true;
