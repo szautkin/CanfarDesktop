@@ -100,9 +100,7 @@
             <!-- Image canvas -->
             <ScrollViewer Grid.Column="1"
                           x:Name="ImageScroller"
-                          ZoomMode="Enabled"
-                          MinZoomFactor="0.1"
-                          MaxZoomFactor="20"
+                          ZoomMode="Disabled"
                           HorizontalScrollMode="Enabled"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Auto"

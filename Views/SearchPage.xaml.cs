@@ -765,7 +765,12 @@ public sealed partial class SearchPage : Page
 
             var picker = new Windows.Storage.Pickers.FileSavePicker();
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
-            picker.SuggestedFileName = ExtractFilenameFromPublisherID(publisherID);
+            var suggestedName = ExtractFilenameFromPublisherID(publisherID);
+            // Ensure .fits extension for CADC astronomical data
+            if (!Path.HasExtension(suggestedName))
+                suggestedName += ".fits";
+            picker.SuggestedFileName = suggestedName;
+            picker.FileTypeChoices.Add("FITS Image", new List<string> { ".fits" });
             picker.FileTypeChoices.Add("All Files", new List<string> { "." });
 
             var file = await picker.PickSaveFileAsync();

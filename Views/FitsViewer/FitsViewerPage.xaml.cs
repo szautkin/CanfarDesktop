@@ -118,7 +118,15 @@ public sealed partial class FitsViewerPage : UserControl
         ViewModel.MaxCut = _sliderRangeMin + (float)(e.NewValue / 100.0 * range);
     }
 
-    private void OnResetStretch(object s, RoutedEventArgs e) => ViewModel.ResetStretchCommand.Execute(null);
+    private void OnResetStretch(object s, RoutedEventArgs e)
+    {
+        ViewModel.ResetStretchCommand.Execute(null);
+        // Reset zoom to fit
+        _manualZoom = 1.0f;
+        FitsImage.Width = double.NaN;  // auto-size
+        FitsImage.Height = double.NaN;
+        ZoomLabel.Text = "Fit";
+    }
 
     private void OnToggleHeader(object s, RoutedEventArgs e)
     {
@@ -184,19 +192,30 @@ public sealed partial class FitsViewerPage : UserControl
 
     // ── Mouse: drag-to-pan, scroll, coordinate tracking ────────────────────
 
+    private float _manualZoom = 1.0f;
+
     private void OnCanvasWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        var props = e.GetCurrentPoint(ImageScroller).Properties;
+        var delta = e.GetCurrentPoint(ImageScroller).Properties.MouseWheelDelta;
         var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(
             Windows.System.VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
         if (shift)
         {
             // Shift+scroll → horizontal pan
-            var delta = props.MouseWheelDelta;
             ImageScroller.ScrollToHorizontalOffset(ImageScroller.HorizontalOffset - delta);
-            e.Handled = true;
         }
+        else
+        {
+            // Scroll → zoom
+            var factor = delta > 0 ? 1.15f : 1 / 1.15f;
+            _manualZoom = Math.Clamp(_manualZoom * factor, 0.05f, 30f);
+            FitsImage.Width = (ViewModel.ImageData?.Width ?? 100) * _manualZoom;
+            FitsImage.Height = (ViewModel.ImageData?.Height ?? 100) * _manualZoom;
+            ZoomLabel.Text = $"{_manualZoom * 100:F0}%";
+        }
+
+        e.Handled = true;
     }
 
     private void OnCanvasPointerPressed(object sender, PointerRoutedEventArgs e)
