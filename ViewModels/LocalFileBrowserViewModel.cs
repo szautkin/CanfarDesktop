@@ -19,23 +19,28 @@ public partial class LocalFileBrowserViewModel : ObservableObject
     [ObservableProperty] private LocalFileNode? _selectedNode;
     [ObservableProperty] private bool _showHidden;
     [ObservableProperty] private string _filterText = "";
+    [ObservableProperty] private bool _sortByDate;
 
     public ObservableCollection<LocalFileNode> RootNodes { get; } = [];
+    public ObservableCollection<BreadcrumbSegment> Breadcrumbs { get; } = [];
 
-    /// <summary>Raised when a file should be opened (e.g., .ipynb in notebook tab).</summary>
     public event Action<string>? FileOpenRequested;
+    public event Action? PickFolderRequested;
 
     public LocalFileBrowserViewModel(ILocalFileService fileService)
     {
         _fileService = fileService;
-        // Capture the UI thread dispatcher at construction time (always called from UI thread via DI).
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _fileService.DirectoryChanged += OnDirectoryChanged;
     }
 
+    // ── Navigation ───────────────────────────────────────────────────────────
+
     public void SetRootPath(string path)
     {
+        if (!Directory.Exists(path)) return;
         RootPath = path;
+        RebuildBreadcrumbs();
         RefreshRoot();
     }
 
@@ -46,7 +51,10 @@ public partial class LocalFileBrowserViewModel : ObservableObject
         if (string.IsNullOrEmpty(RootPath) || !Directory.Exists(RootPath)) return;
 
         var children = _fileService.GetChildren(RootPath, ShowHidden);
-        foreach (var child in children)
+        var filtered = ApplyFilter(children);
+        var sorted = ApplySort(filtered);
+
+        foreach (var child in sorted)
             RootNodes.Add(child);
 
         _fileService.WatchDirectory(RootPath);
@@ -56,31 +64,38 @@ public partial class LocalFileBrowserViewModel : ObservableObject
     {
         if (!parent.IsFolder) return [];
         var children = _fileService.GetChildren(parent.FullPath, ShowHidden);
-        parent.Children = children;
+        var sorted = ApplySort(children);
+        parent.Children = sorted;
         parent.HasUnrealizedChildren = false;
         _fileService.WatchDirectory(parent.FullPath);
-        return children;
+        return sorted;
     }
+
+    // ── File operations ──────────────────────────────────────────────────────
 
     [RelayCommand]
     public void OpenSelected()
     {
         if (SelectedNode is null) return;
-        FileOpenRequested?.Invoke(SelectedNode.FullPath);
+        if (SelectedNode.IsFolder)
+            SetRootPath(SelectedNode.FullPath);
+        else
+            FileOpenRequested?.Invoke(SelectedNode.FullPath);
     }
 
     [RelayCommand]
     public void NewFolder()
     {
         var parent = SelectedNode?.IsFolder == true ? SelectedNode.FullPath : RootPath;
-        if (string.IsNullOrEmpty(parent)) return;
+        if (string.IsNullOrEmpty(parent) || !Directory.Exists(parent)) return;
 
         var name = "New Folder";
         var counter = 1;
         while (Directory.Exists(Path.Combine(parent, name)))
             name = $"New Folder ({counter++})";
 
-        _fileService.CreateFolder(parent, name);
+        try { _fileService.CreateFolder(parent, name); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"CreateFolder failed: {ex.Message}"); }
     }
 
     [RelayCommand]
@@ -89,43 +104,36 @@ public partial class LocalFileBrowserViewModel : ObservableObject
         var parent = SelectedNode?.IsFolder == true ? SelectedNode.FullPath : RootPath;
         if (string.IsNullOrEmpty(parent) || !Directory.Exists(parent)) return;
 
-        // Deduplicate: untitled.ipynb → untitled (1).ipynb → untitled (2).ipynb
         var name = "untitled.ipynb";
         var counter = 1;
         while (File.Exists(Path.Combine(parent, name)))
             name = $"untitled ({counter++}).ipynb";
 
-        _fileService.CreateFile(parent, name);
+        try { _fileService.CreateFile(parent, name); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"CreateFile failed: {ex.Message}"); }
     }
 
     [RelayCommand]
     public void DeleteSelected()
     {
         if (SelectedNode is null) return;
-        _fileService.Delete(SelectedNode.FullPath);
+        try { _fileService.Delete(SelectedNode.FullPath); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Delete failed: {ex.Message}"); }
+    }
+
+    public void RenameSelected(string newName)
+    {
+        if (SelectedNode is null || string.IsNullOrWhiteSpace(newName)) return;
+        _fileService.Rename(SelectedNode.FullPath, newName);
     }
 
     [RelayCommand]
     public void CopyPath()
     {
-        if (SelectedNode is null) return;
-        _fileService.CopyToClipboard(SelectedNode.FullPath);
+        // Clipboard handled in View (needs UI thread)
     }
-
-    private void OnDirectoryChanged(string path)
-    {
-        // FileSystemWatcher fires on a thread-pool thread — marshal to UI thread before
-        // touching RootNodes (ObservableCollection raises CollectionChanged on its caller's thread).
-        if (path == RootPath)
-            _dispatcherQueue.TryEnqueue(RefreshRoot);
-    }
-
-    partial void OnShowHiddenChanged(bool value) => RefreshRoot();
-    partial void OnRootPathChanged(string value) => RebuildBreadcrumbs();
 
     // ── Breadcrumbs ──────────────────────────────────────────────────────────
-
-    public ObservableCollection<BreadcrumbSegment> Breadcrumbs { get; } = [];
 
     private void RebuildBreadcrumbs()
     {
@@ -144,9 +152,9 @@ public partial class LocalFileBrowserViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void NavigateToBreadcrumb(BreadcrumbSegment segment)
+    public void NavigateToBreadcrumb(BreadcrumbSegment? segment)
     {
-        if (Directory.Exists(segment.FullPath))
+        if (segment is not null && Directory.Exists(segment.FullPath))
             SetRootPath(segment.FullPath);
     }
 
@@ -168,9 +176,66 @@ public partial class LocalFileBrowserViewModel : ObservableObject
 
     // ── Open Folder ──────────────────────────────────────────────────────────
 
-    /// <summary>Raised when the ViewModel wants the View to show a folder picker.</summary>
-    public event Action? PickFolderRequested;
-
     [RelayCommand]
     public void OpenFolder() => PickFolderRequested?.Invoke();
+
+    // ── Sort ─────────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    public void ToggleSort()
+    {
+        SortByDate = !SortByDate;
+        RefreshRoot();
+    }
+
+    private List<LocalFileNode> ApplySort(List<LocalFileNode> nodes)
+    {
+        // Folders always first
+        var folders = nodes.Where(n => n.IsFolder);
+        var files = nodes.Where(n => !n.IsFolder);
+
+        if (SortByDate)
+        {
+            folders = folders.OrderByDescending(n => n.DateModified);
+            files = files.OrderByDescending(n => n.DateModified);
+        }
+        else
+        {
+            folders = folders.OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase);
+            files = files.OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase);
+        }
+
+        return folders.Concat(files).ToList();
+    }
+
+    // ── Filter ───────────────────────────────────────────────────────────────
+
+    private List<LocalFileNode> ApplyFilter(List<LocalFileNode> nodes)
+    {
+        if (string.IsNullOrWhiteSpace(FilterText)) return nodes;
+
+        var filter = FilterText.Trim();
+        return nodes.Where(n =>
+            n.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)
+        ).ToList();
+    }
+
+    // ── Change notifications ─────────────────────────────────────────────────
+
+    partial void OnShowHiddenChanged(bool value) => RefreshRoot();
+
+    partial void OnFilterTextChanged(string value)
+    {
+        // Debounce handled by TextChanged event delay in View
+    }
+
+    private void OnDirectoryChanged(string path)
+    {
+        // FileSystemWatcher fires on thread-pool — marshal to UI thread
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            if (path == RootPath)
+                RefreshRoot();
+        });
+    }
 }

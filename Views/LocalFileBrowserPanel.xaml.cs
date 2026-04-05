@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -30,11 +31,19 @@ public sealed partial class LocalFileBrowserPanel : UserControl
 
     private void OnItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
-        if (args.InvokedItem is LocalFileNode node)
+        if (args.InvokedItem is not LocalFileNode node) return;
+
+        ViewModel.SelectedNode = node;
+
+        if (node.IsFolder)
         {
-            ViewModel.SelectedNode = node;
-            if (!node.IsFolder)
-                FileOpenRequested?.Invoke(node.FullPath);
+            // Double-click folder → navigate into it (change root, update breadcrumbs)
+            ViewModel.SetRootPath(node.FullPath);
+        }
+        else
+        {
+            // Double-click file → open it
+            FileOpenRequested?.Invoke(node.FullPath);
         }
     }
 
@@ -44,15 +53,79 @@ public sealed partial class LocalFileBrowserPanel : UserControl
             ViewModel.LoadChildren(node);
     }
 
+    // ── Keyboard shortcuts ───────────────────────────────────────────────────
+
+    private void OnTreeKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (ViewModel.SelectedNode is null) return;
+
+        switch (e.Key)
+        {
+            case Windows.System.VirtualKey.Delete:
+                ViewModel.DeleteSelectedCommand.Execute(null);
+                e.Handled = true;
+                break;
+
+            case Windows.System.VirtualKey.F2:
+                StartRename(ViewModel.SelectedNode);
+                e.Handled = true;
+                break;
+
+            case Windows.System.VirtualKey.Enter:
+                if (ViewModel.SelectedNode.IsFolder)
+                    ViewModel.SetRootPath(ViewModel.SelectedNode.FullPath);
+                else
+                    FileOpenRequested?.Invoke(ViewModel.SelectedNode.FullPath);
+                e.Handled = true;
+                break;
+
+            case Windows.System.VirtualKey.Back:
+                ViewModel.FolderUpCommand.Execute(null);
+                e.Handled = true;
+                break;
+        }
+    }
+
+    // ── Rename ───────────────────────────────────────────────────────────────
+
+    private async void StartRename(LocalFileNode node)
+    {
+        var input = new TextBox { Text = node.Name };
+        input.SelectAll();
+        var dialog = new ContentDialog
+        {
+            Title = "Rename",
+            Content = input,
+            PrimaryButtonText = "Rename",
+            CloseButtonText = "Cancel",
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary
+            && !string.IsNullOrWhiteSpace(input.Text)
+            && input.Text != node.Name)
+        {
+            try
+            {
+                ViewModel.RenameSelected(input.Text);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Rename failed: {ex.Message}");
+            }
+        }
+    }
+
     // ── Toolbar buttons ──────────────────────────────────────────────────────
 
-    private void OnNewFile(object s, RoutedEventArgs e)   => ViewModel.NewFileCommand.Execute(null);
-    private void OnNewFolder(object s, RoutedEventArgs e) => ViewModel.NewFolderCommand.Execute(null);
-    private void OnRefresh(object s, RoutedEventArgs e)   => ViewModel.RefreshRootCommand.Execute(null);
-    private void OnFolderUp(object s, RoutedEventArgs e)  => ViewModel.FolderUpCommand.Execute(null);
+    private void OnToggleSort(object s, RoutedEventArgs e)  => ViewModel.ToggleSortCommand.Execute(null);
+    private void OnNewFile(object s, RoutedEventArgs e)    => ViewModel.NewFileCommand.Execute(null);
+    private void OnNewFolder(object s, RoutedEventArgs e)  => ViewModel.NewFolderCommand.Execute(null);
+    private void OnRefresh(object s, RoutedEventArgs e)    => ViewModel.RefreshRootCommand.Execute(null);
+    private void OnFolderUp(object s, RoutedEventArgs e)   => ViewModel.FolderUpCommand.Execute(null);
     private void OnOpenFolder(object s, RoutedEventArgs e) => ViewModel.OpenFolderCommand.Execute(null);
 
-    // ── Breadcrumb navigation ─────────────────────────────────────────────
+    // ── Breadcrumb navigation ────────────────────────────────────────────────
 
     private void OnBreadcrumbClick(object sender, RoutedEventArgs e)
     {
@@ -65,7 +138,7 @@ public sealed partial class LocalFileBrowserPanel : UserControl
     private void OnFilterChanged(object sender, TextChangedEventArgs e)
     {
         ViewModel.FilterText = FilterBox.Text;
-        // TODO: apply filter to tree view items
+        ViewModel.RefreshRootCommand.Execute(null);
     }
 
     // ── Context menu ─────────────────────────────────────────────────────────
@@ -73,7 +146,12 @@ public sealed partial class LocalFileBrowserPanel : UserControl
     private void OnOpenItem(object sender, RoutedEventArgs e)
     {
         if (sender is MenuFlyoutItem { DataContext: LocalFileNode node })
-            FileOpenRequested?.Invoke(node.FullPath);
+        {
+            if (node.IsFolder)
+                ViewModel.SetRootPath(node.FullPath);
+            else
+                FileOpenRequested?.Invoke(node.FullPath);
+        }
     }
 
     private void OnCopyPath(object sender, RoutedEventArgs e)
@@ -86,16 +164,38 @@ public sealed partial class LocalFileBrowserPanel : UserControl
         }
     }
 
-    private void OnDeleteItem(object sender, RoutedEventArgs e)
+    private void OnRenameItem(object sender, RoutedEventArgs e)
     {
         if (sender is MenuFlyoutItem { DataContext: LocalFileNode node })
+        {
+            ViewModel.SelectedNode = node;
+            StartRename(node);
+        }
+    }
+
+    private async void OnDeleteItem(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem { DataContext: LocalFileNode node }) return;
+
+        var dialog = new ContentDialog
+        {
+            Title = "Delete",
+            Content = node.IsFolder
+                ? $"Delete folder \"{node.Name}\" and all contents?"
+                : $"Delete \"{node.Name}\"?",
+            PrimaryButtonText = "Delete",
+            CloseButtonText = "Cancel",
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         {
             ViewModel.SelectedNode = node;
             ViewModel.DeleteSelectedCommand.Execute(null);
         }
     }
 
-    // ── Folder picker (View responsibility — needs window handle + XamlRoot) ─
+    // ── Folder picker ────────────────────────────────────────────────────────
 
     private async Task PickFolderAsync()
     {
@@ -103,7 +203,6 @@ public sealed partial class LocalFileBrowserPanel : UserControl
         picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
         picker.FileTypeFilter.Add("*");
 
-        // WinUI 3: picker must be initialized with the HWND (same pattern as StorageBrowserPage).
         var hwnd = ActiveWindows.Count > 0
             ? WindowNative.GetWindowHandle(ActiveWindows[0])
             : IntPtr.Zero;

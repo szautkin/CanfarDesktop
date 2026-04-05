@@ -42,6 +42,10 @@
                         ToolTipService.ToolTip="New Folder" AutomationProperties.Name="New folder">
                     <FontIcon Glyph="&#xE8F4;" FontSize="12" />
                 </Button>
+                <Button Click="OnToggleSort" Padding="4" Background="Transparent" BorderThickness="0"
+                        ToolTipService.ToolTip="Sort by name/date" AutomationProperties.Name="Toggle sort">
+                    <FontIcon Glyph="&#xE8CB;" FontSize="12" />
+                </Button>
                 <Button Click="OnRefresh" Padding="4" Background="Transparent" BorderThickness="0"
                         ToolTipService.ToolTip="Refresh" AutomationProperties.Name="Refresh">
                     <FontIcon Glyph="&#xE72C;" FontSize="12" />
@@ -86,6 +90,7 @@
                   SelectionMode="Single"
                   ItemInvoked="OnItemInvoked"
                   Expanding="OnNodeExpanding"
+                  KeyDown="OnTreeKeyDown"
                   Padding="4,0">
             <TreeView.ItemTemplate>
                 <DataTemplate x:DataType="models:LocalFileNode">
@@ -109,6 +114,9 @@
                                     <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8C8;" /></MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Text="Rename" Click="OnRenameItem">
+                                    <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8AC;" /></MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
                                 <MenuFlyoutItem Text="Delete" Click="OnDeleteItem">
                                     <MenuFlyoutItem.Icon>
                                         <FontIcon Glyph="&#xE74D;"
