@@ -15,6 +15,8 @@ public sealed partial class FitsViewerPage : UserControl
     public FitsViewerViewModel ViewModel { get; }
     private bool _headerVisible;
     private bool _suppressSliderChange;
+    private float _sliderRangeMin;  // slider 0% maps to this pixel value
+    private float _sliderRangeMax;  // slider 100% maps to this pixel value
 
     public FitsViewerPage(FitsViewerViewModel viewModel)
     {
@@ -101,15 +103,15 @@ public sealed partial class FitsViewerPage : UserControl
     private void OnMinCutChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_suppressSliderChange || ViewModel.ImageData is null) return;
-        var range = ViewModel.ImageData.Max - ViewModel.ImageData.Min;
-        ViewModel.MinCut = ViewModel.ImageData.Min + (float)(e.NewValue / 100.0 * range);
+        var range = _sliderRangeMax - _sliderRangeMin;
+        ViewModel.MinCut = _sliderRangeMin + (float)(e.NewValue / 100.0 * range);
     }
 
     private void OnMaxCutChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_suppressSliderChange || ViewModel.ImageData is null) return;
-        var range = ViewModel.ImageData.Max - ViewModel.ImageData.Min;
-        ViewModel.MaxCut = ViewModel.ImageData.Min + (float)(e.NewValue / 100.0 * range);
+        var range = _sliderRangeMax - _sliderRangeMin;
+        ViewModel.MaxCut = _sliderRangeMin + (float)(e.NewValue / 100.0 * range);
     }
 
     private void OnResetStretch(object s, RoutedEventArgs e) => ViewModel.ResetStretchCommand.Execute(null);
@@ -125,6 +127,13 @@ public sealed partial class FitsViewerPage : UserControl
     private void UpdateSliderRange()
     {
         if (ViewModel.ImageData is null) return;
+
+        // Set slider range to ±2x the auto-cut spread, centered on the data
+        var autoCutSpread = ViewModel.MaxCut - ViewModel.MinCut;
+        var margin = Math.Max(autoCutSpread * 2, 1f);
+        _sliderRangeMin = ViewModel.MinCut - margin;
+        _sliderRangeMax = ViewModel.MaxCut + margin;
+
         _suppressSliderChange = true;
         UpdateSliders();
         _suppressSliderChange = false;
@@ -134,11 +143,11 @@ public sealed partial class FitsViewerPage : UserControl
     {
         if (ViewModel.ImageData is null) return;
         _suppressSliderChange = true;
-        var range = ViewModel.ImageData.Max - ViewModel.ImageData.Min;
+        var range = _sliderRangeMax - _sliderRangeMin;
         if (range > 0)
         {
-            MinCutSlider.Value = (ViewModel.MinCut - ViewModel.ImageData.Min) / range * 100;
-            MaxCutSlider.Value = (ViewModel.MaxCut - ViewModel.ImageData.Min) / range * 100;
+            MinCutSlider.Value = (ViewModel.MinCut - _sliderRangeMin) / range * 100;
+            MaxCutSlider.Value = (ViewModel.MaxCut - _sliderRangeMin) / range * 100;
         }
         _suppressSliderChange = false;
     }
