@@ -94,7 +94,41 @@ def _handle_magic(code, exec_count):
         for l in lines if l.strip()
     )
     if not is_all_magic:
-        # Mixed code — check single-line magics only
+        # Check if ANY lines are magic — if so, pre-process them
+        has_magic = any(
+            l.strip().startswith(("!", "%pip", "%conda", "%matplotlib"))
+            for l in lines if l.strip()
+        )
+        if has_magic:
+            # Mixed cell: run magic lines via subprocess, keep regular lines as code
+            outputs = []
+            regular_lines = []
+            for l in lines:
+                ls = l.strip()
+                if ls and ls.startswith(("!", "%pip", "%conda", "%matplotlib")):
+                    # Flush accumulated regular code first
+                    if regular_lines:
+                        code_block = "\n".join(regular_lines)
+                        regular_lines = []
+                        # Return None to let execute_code handle the cleaned code
+                        # Actually, execute the magic and return combined result
+                    result = _handle_single_magic(ls, _sp)
+                    if result:
+                        outputs.extend(result)
+                else:
+                    regular_lines.append(l)
+            # If there are remaining regular lines, return None so execute_code handles them
+            if regular_lines:
+                # Re-build code without magic lines and return None
+                # The magic lines have been executed; now run the rest normally
+                cleaned = "\n".join(regular_lines)
+                # We can't easily split execution here — just run magic outputs and return
+                # Let the user know magic lines ran but code needs a separate cell
+                if outputs:
+                    outputs.append({"type": "stream", "name": "stderr",
+                                    "text": "Note: Magic commands (!/%) and regular code should be in separate cells.\n"})
+                    return outputs
+            return outputs if outputs else None
         if len(lines) == 1:
             return _handle_single_magic(stripped, _sp)
         return None  # Not a magic cell
