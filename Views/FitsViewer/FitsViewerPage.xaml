@@ -56,6 +56,31 @@
             <Button Click="OnResetStretch" Content="Reset" Padding="8,4" />
             <Button Click="OnToggleHeader" Content="Header" Padding="8,4" />
 
+            <AppBarSeparator />
+
+            <!-- Crosshair tools -->
+            <Button Click="OnCopyCoords" Padding="8,4"
+                    ToolTipService.ToolTip="Copy Coordinates"
+                    AutomationProperties.Name="Copy coordinates from crosshair">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <FontIcon Glyph="&#xE8C8;" FontSize="14" />
+                    <TextBlock Text="Copy RA/Dec" />
+                </StackPanel>
+            </Button>
+            <Button Click="OnSearchAtPosition" Padding="8,4"
+                    ToolTipService.ToolTip="Search CADC at crosshair position"
+                    AutomationProperties.Name="Search at crosshair position">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <FontIcon Glyph="&#xE721;" FontSize="14" />
+                    <TextBlock Text="Search Here" />
+                </StackPanel>
+            </Button>
+            <Button Click="OnClearCrosshair" Padding="8,4"
+                    ToolTipService.ToolTip="Clear crosshair"
+                    AutomationProperties.Name="Clear crosshair">
+                <FontIcon Glyph="&#xE894;" FontSize="14" />
+            </Button>
+
             <ProgressRing x:Name="LoadingRing" IsActive="False" Width="20" Height="20"
                           VerticalAlignment="Center" />
         </StackPanel>

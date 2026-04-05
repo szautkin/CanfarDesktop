@@ -13,6 +13,7 @@ namespace CanfarDesktop.Views.FitsViewer;
 public sealed partial class FitsViewerPage : UserControl
 {
     public FitsViewerViewModel ViewModel { get; }
+    public event Action<double, double>? SearchAtPositionRequested;
     private bool _headerVisible;
     private bool _suppressSliderChange;
     private float _sliderRangeMin;
@@ -21,6 +22,7 @@ public sealed partial class FitsViewerPage : UserControl
     private Windows.Foundation.Point _dragStart;
     private double _scrollStartH;
     private double _scrollStartV;
+    private Windows.Foundation.Point? _crosshairImagePos; // in image pixel coords
 
     public FitsViewerPage(FitsViewerViewModel viewModel)
     {
@@ -141,6 +143,37 @@ public sealed partial class FitsViewerPage : UserControl
         HeaderColumn.Width = _headerVisible ? new GridLength(320) : new GridLength(0);
     }
 
+    // ── Crosshair toolbar ────────────────────────────────────────────────────
+
+    private void OnCopyCoords(object s, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(ViewModel.CrosshairCoords)) return;
+        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        package.SetText(ViewModel.CrosshairCoords);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+        ViewModel.StatusMessage = "Coordinates copied to clipboard";
+    }
+
+    private void OnSearchAtPosition(object s, RoutedEventArgs e)
+    {
+        if (ViewModel.CrosshairRa is null || ViewModel.CrosshairDec is null)
+        {
+            ViewModel.StatusMessage = "Right-click on the image to place crosshair first";
+            return;
+        }
+        SearchAtPositionRequested?.Invoke(ViewModel.CrosshairRa.Value, ViewModel.CrosshairDec.Value);
+    }
+
+    private void OnClearCrosshair(object s, RoutedEventArgs e)
+    {
+        CrosshairH.Visibility = Visibility.Collapsed;
+        CrosshairV.Visibility = Visibility.Collapsed;
+        CrosshairLabel.Visibility = Visibility.Collapsed;
+        ViewModel.CrosshairCoords = "";
+        ViewModel.CrosshairRa = null;
+        ViewModel.CrosshairDec = null;
+    }
+
     // ── Sliders ──────────────────────────────────────────────────────────────
 
     private void UpdateSliderRange()
@@ -224,16 +257,19 @@ public sealed partial class FitsViewerPage : UserControl
             ImageTransform.ScaleY = newScale;
 
             ZoomLabel.Text = $"{newScale * 100:F0}%";
+            UpdateCrosshairDisplay();
         }
         else if (shift)
         {
             // Shift+scroll → horizontal pan
             ImageTransform.TranslateX += delta;
+            UpdateCrosshairDisplay();
         }
         else
         {
             // Scroll → vertical pan
             ImageTransform.TranslateY += delta;
+            UpdateCrosshairDisplay();
         }
 
         e.Handled = true;
@@ -264,55 +300,93 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void PlaceCrosshair(Windows.Foundation.Point screenPos)
     {
+        _crosshairImagePos = e_PointToImage(screenPos);
+        UpdateCrosshairDisplay();
+    }
+
+    /// <summary>
+    /// Recalculate crosshair screen position from stored image pixel coords.
+    /// Call after pan/zoom to keep crosshair tracking the same pixel.
+    /// </summary>
+    private void UpdateCrosshairDisplay()
+    {
+        if (_crosshairImagePos is null || ViewModel.ImageData is null) return;
+
+        var imgPx = _crosshairImagePos.Value;
+        var screenPos = ImageToScreen(imgPx);
         var canvasW = ImageCanvas.ActualWidth;
         var canvasH = ImageCanvas.ActualHeight;
 
-        // Full-width horizontal line, full-height vertical line
+        // Draw lines
         CrosshairH.X1 = 0; CrosshairH.Y1 = screenPos.Y;
         CrosshairH.X2 = canvasW; CrosshairH.Y2 = screenPos.Y;
         CrosshairV.X1 = screenPos.X; CrosshairV.Y1 = 0;
         CrosshairV.X2 = screenPos.X; CrosshairV.Y2 = canvasH;
-
         CrosshairH.Visibility = Visibility.Visible;
         CrosshairV.Visibility = Visibility.Visible;
 
-        // Compute pixel + WCS coordinates at crosshair position
-        if (ViewModel.ImageData is not null)
+        // Compute coordinates
+        var ix = (int)imgPx.X;
+        var iy = (int)imgPx.Y;
+        var w = ViewModel.ImageData.Width;
+        var h = ViewModel.ImageData.Height;
+        var lines = new List<string>();
+
+        if (ix >= 0 && ix < w && iy >= 0 && iy < h)
         {
-            var imgPos = e_PointToImage(screenPos);
-            var ix = (int)imgPos.X;
-            var iy = (int)imgPos.Y;
-            var w = ViewModel.ImageData.Width;
-            var h = ViewModel.ImageData.Height;
+            var fitsY = h - 1 - iy;
+            var pixelIdx = fitsY * w + ix;
+            var value = ViewModel.ImageData.Pixels[pixelIdx];
+            lines.Add($"Pixel ({ix}, {iy}) = {value:G6}");
 
-            var lines = new List<string>();
-
-            if (ix >= 0 && ix < w && iy >= 0 && iy < h)
+            if (ViewModel.ImageData.Wcs is { IsValid: true } wcs)
             {
-                var fitsY = h - 1 - iy;
-                var pixelIdx = fitsY * w + ix;
-                var value = ViewModel.ImageData.Pixels[pixelIdx];
-                lines.Add($"Pixel ({ix}, {iy}) = {value:G6}");
-
-                if (ViewModel.ImageData.Wcs is { IsValid: true } wcs)
-                {
-                    var (ra, dec) = wcs.PixelToWorld(ix + 1, fitsY + 1);
-                    lines.Add($"RA  {Models.Fits.WcsInfo.FormatRa(ra)}");
-                    lines.Add($"Dec {Models.Fits.WcsInfo.FormatDec(dec)}");
-                }
+                var (ra, dec) = wcs.PixelToWorld(ix + 1, fitsY + 1);
+                var raStr = Models.Fits.WcsInfo.FormatRa(ra);
+                var decStr = Models.Fits.WcsInfo.FormatDec(dec);
+                lines.Add($"RA  {raStr}");
+                lines.Add($"Dec {decStr}");
+                ViewModel.CrosshairRa = ra;
+                ViewModel.CrosshairDec = dec;
+                ViewModel.CrosshairCoords = $"RA {raStr}  Dec {decStr}";
             }
-
-            CrosshairText.Text = string.Join("\n", lines);
-            CrosshairLabel.Visibility = lines.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-
-            // Position label near crosshair but offset to avoid overlap
-            var labelX = screenPos.X + 12;
-            var labelY = screenPos.Y - 50;
-            if (labelX + 200 > canvasW) labelX = screenPos.X - 200;
-            if (labelY < 0) labelY = screenPos.Y + 12;
-            Canvas.SetLeft(CrosshairLabel, labelX);
-            Canvas.SetTop(CrosshairLabel, labelY);
         }
+
+        CrosshairText.Text = string.Join("\n", lines);
+        CrosshairLabel.Visibility = lines.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        var labelX = screenPos.X + 12;
+        var labelY = screenPos.Y - 50;
+        if (labelX + 200 > canvasW) labelX = screenPos.X - 200;
+        if (labelY < 0) labelY = screenPos.Y + 12;
+        Canvas.SetLeft(CrosshairLabel, labelX);
+        Canvas.SetTop(CrosshairLabel, labelY);
+    }
+
+    /// <summary>Convert image pixel coords back to screen coords (inverse of e_PointToImage).</summary>
+    private Windows.Foundation.Point ImageToScreen(Windows.Foundation.Point imgPx)
+    {
+        var scale = ImageTransform.ScaleX;
+        if (scale <= 0) scale = 1;
+
+        var imgW = FitsImage.ActualWidth;
+        var imgH = FitsImage.ActualHeight;
+        var canvasW = ImageCanvas.ActualWidth;
+        var canvasH = ImageCanvas.ActualHeight;
+        var imgOffsetX = (canvasW - imgW) / 2;
+        var imgOffsetY = (canvasH - imgH) / 2;
+
+        // Map from pixel coords to display image coords
+        double displayX = imgPx.X, displayY = imgPx.Y;
+        if (ViewModel.ImageData is not null && imgW > 0)
+        {
+            displayX = imgPx.X / ViewModel.ImageData.Width * imgW;
+            displayY = imgPx.Y / ViewModel.ImageData.Height * imgH;
+        }
+
+        var sx = displayX * scale + imgOffsetX + ImageTransform.TranslateX;
+        var sy = displayY * scale + imgOffsetY + ImageTransform.TranslateY;
+        return new Windows.Foundation.Point(sx, sy);
     }
 
     /// <summary>Convert screen position to image pixel coordinates.</summary>
@@ -351,6 +425,7 @@ public sealed partial class FitsViewerPage : UserControl
             var pos = e.GetCurrentPoint(ImageCanvas).Position;
             ImageTransform.TranslateX = _scrollStartH + (pos.X - _dragStart.X);
             ImageTransform.TranslateY = _scrollStartV + (pos.Y - _dragStart.Y);
+            UpdateCrosshairDisplay(); // crosshair tracks the image
             e.Handled = true;
             return;
         }

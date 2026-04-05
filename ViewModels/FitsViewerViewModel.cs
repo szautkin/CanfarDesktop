@@ -19,6 +19,14 @@ public partial class FitsViewerViewModel : ObservableObject
     [ObservableProperty] private string _title = "FITS Viewer";
     [ObservableProperty] private string _statusMessage = "No file loaded";
     [ObservableProperty] private string _coordinateText = "";
+    [ObservableProperty] private string _crosshairCoords = "";
+
+    /// <summary>Crosshair RA/Dec in degrees (for search integration).</summary>
+    public double? CrosshairRa { get; set; }
+    public double? CrosshairDec { get; set; }
+
+    /// <summary>Raised when user wants to search at crosshair position.</summary>
+    public event Action<double, double>? SearchAtPositionRequested;
     [ObservableProperty] private string _pixelText = "";
     [ObservableProperty] private WriteableBitmap? _renderedImage;
     [ObservableProperty] private bool _isLoading;

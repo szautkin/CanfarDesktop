@@ -255,6 +255,7 @@ public sealed partial class MainWindow : Window
         {
             var vm = App.Services.GetRequiredService<FitsViewerViewModel>();
             _fitsViewerPage = new Views.FitsViewer.FitsViewerPage(vm);
+            _fitsViewerPage.SearchAtPositionRequested += OnSearchAtFitsPosition;
             FitsViewerContainer.Child = _fitsViewerPage;
         }
 
@@ -262,6 +263,19 @@ public sealed partial class MainWindow : Window
             await _fitsViewerPage.OpenFileAsync(filePath);
 
         NavigateTo(AppMode.FitsViewer);
+    }
+
+    private void OnSearchAtFitsPosition(double ra, double dec)
+    {
+        EnsureSearchPage();
+        // Pre-fill the search target with the crosshair coordinates
+        if (_searchPage is not null)
+        {
+            var raStr = Models.Fits.WcsInfo.FormatRa(ra);
+            var decStr = Models.Fits.WcsInfo.FormatDec(dec);
+            _searchPage.ViewModel.Target = $"{raStr} {decStr}";
+        }
+        NavigateTo(AppMode.Search);
     }
 
     private void EnsureResearchPage()
