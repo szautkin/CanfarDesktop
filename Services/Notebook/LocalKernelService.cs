@@ -265,6 +265,10 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
     {
         if (_process is null) return;
 
+        // Unsubscribe before any wait/kill so the Exited event cannot fire
+        // and attempt to read properties on a process we are about to dispose.
+        _process.Exited -= OnProcessExited;
+
         try
         {
             if (!_process.HasExited && _stdin is not null)
@@ -273,19 +277,23 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
                 // Wait up to 3 seconds for clean exit
                 var exited = _process.WaitForExit(3000);
-                if (!exited)
+                if (!exited && !_process.HasExited)
                     _process.Kill(entireProcessTree: true);
             }
         }
         catch (Exception ex)
         {
             NotebookLogger.Error("Kernel shutdown error", ex);
-            try { _process.Kill(entireProcessTree: true); } catch { }
+            try
+            {
+                if (_process is not null && !_process.HasExited)
+                    _process.Kill(entireProcessTree: true);
+            }
+            catch { }
         }
         finally
         {
-            _process.Exited -= OnProcessExited;
-            _process.Dispose();
+            _process?.Dispose();
             _process = null;
             _stdin = null;
             SetState(KernelState.Dead);
@@ -347,7 +355,17 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
     private void OnProcessExited(object? sender, EventArgs e)
     {
-        var exitCode = _process?.HasExited == true ? _process.ExitCode : -1;
+        // _process may be nulled or disposed concurrently by ShutdownAsync/Dispose —
+        // capture a local reference and read ExitCode inside a try to avoid Win32Exception.
+        int exitCode = -1;
+        try
+        {
+            var proc = _process;
+            if (proc is not null && !_disposed)
+                exitCode = proc.ExitCode;
+        }
+        catch { /* process already disposed */ }
+
         NotebookLogger.Warn($"Kernel process exited unexpectedly (exit code: {exitCode})");
         SetState(KernelState.Dead);
         CleanupHarness();
@@ -449,11 +467,22 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        // Synchronous fallback: force-kill, no graceful shutdown (avoids deadlock)
-        try { _process?.Kill(entireProcessTree: true); } catch { }
-        _process?.Dispose();
+        // Synchronous fallback: force-kill, no graceful shutdown (avoids deadlock).
+        // Unsubscribe Exited before Kill so the handler never fires on a disposed process.
+        var proc = _process;
         _process = null;
         _stdin = null;
+        if (proc is not null)
+        {
+            try { proc.Exited -= OnProcessExited; } catch { }
+            try
+            {
+                if (!proc.HasExited)
+                    proc.Kill(entireProcessTree: true);
+            }
+            catch { /* process already exited — Win32Exception is expected and benign */ }
+            try { proc.Dispose(); } catch { }
+        }
         CleanupHarness();
         _executionGate.Dispose();
         GC.SuppressFinalize(this);

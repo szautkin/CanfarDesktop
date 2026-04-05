@@ -24,8 +24,15 @@ public sealed partial class WelcomePage : UserControl
         await CheckSystemRequirementsAsync();
     }
 
+    private bool _systemChecked;
+
     private async Task CheckSystemRequirementsAsync()
     {
+        // Only check once — PythonDiscovery caches, but the Process.Start
+        // calls for package checks throw Win32Exception in the debugger
+        if (_systemChecked) return;
+        _systemChecked = true;
+
         StatusStack.Children.Clear();
 
         var pythonDiscovery = App.Services.GetRequiredService<IPythonDiscoveryService>();
