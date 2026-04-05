@@ -34,16 +34,20 @@ public sealed partial class NotebookTabHost : UserControl
         Welcome.OpenFileRequested += async path => await AddTabForFileAsync(path);
 
         // Wire cell navigation from editor boundary (Up at first line, Down at last line)
-        CodeCellControl.NavigateRequested += delta =>
+        _navigateHandler = delta =>
         {
             if (ActiveVM is null) return;
             var newIndex = ActiveVM.SelectedCellIndex + delta;
             if (newIndex >= 0 && newIndex < ActiveVM.Cells.Count)
                 ActiveVM.SelectCell(newIndex);
         };
+        CodeCellControl.NavigateRequested += _navigateHandler;
+        Unloaded += (_, _) => CodeCellControl.NavigateRequested -= _navigateHandler;
 
         UpdateWelcomeVisibility();
     }
+
+    private readonly Action<int> _navigateHandler;
 
     #region Tab lifecycle
 

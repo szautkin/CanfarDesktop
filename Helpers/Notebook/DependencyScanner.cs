@@ -83,21 +83,50 @@ public static partial class DependencyScanner
     public static async Task<List<(string module, string pipName)>> FindMissingAsync(
         HashSet<string> modules, string pythonPath)
     {
-        var missing = new List<(string, string)>();
+        if (modules.Count == 0) return [];
 
-        foreach (var mod in modules)
+        // Batch check: one process tests all modules via JSON output
+        var checkScript = string.Join("\n", modules.Select(m =>
+            $"try:\n import {m}\n print('{m}:ok')\nexcept ImportError:\n print('{m}:missing')"));
+
+        try
         {
-            var installed = await IsInstalledAsync(mod, pythonPath);
-            if (!installed)
+            var psi = new ProcessStartInfo
             {
-                var pipName = ModuleToPip.GetValueOrDefault(mod, mod);
-                missing.Add((mod, pipName));
-            }
-        }
+                FileName = pythonPath,
+                Arguments = $"-c \"{checkScript.Replace("\"", "\\\"")}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using var proc = Process.Start(psi);
+            if (proc is null) return [];
 
-        return missing;
+            var output = await proc.StandardOutput.ReadToEndAsync();
+            await proc.WaitForExitAsync();
+
+            var missing = new List<(string, string)>();
+            foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = line.Trim().Split(':');
+                if (parts.Length == 2 && parts[1] == "missing")
+                {
+                    var mod = parts[0];
+                    var pipName = ModuleToPip.GetValueOrDefault(mod, mod);
+                    missing.Add((mod, pipName));
+                }
+            }
+            return missing;
+        }
+        catch
+        {
+            // Fallback: assume all missing
+            return modules.Select(m => (m, ModuleToPip.GetValueOrDefault(m, m))).ToList();
+        }
     }
 
+    // Kept for potential single-module checks
     private static async Task<bool> IsInstalledAsync(string module, string pythonPath)
     {
         try

@@ -137,12 +137,13 @@ public sealed partial class CodeCellControl : UserControl
 
     private void RenderSyntax()
     {
-        SyntaxView.Blocks.Clear();
         var source = _viewModel?.Source ?? "";
 
-        // Skip re-highlight if source unchanged
+        // Skip re-highlight if source unchanged and already rendered
         if (source == _lastHighlightedSource && SyntaxView.Blocks.Count > 0) return;
         _lastHighlightedSource = source;
+
+        SyntaxView.Blocks.Clear();
 
         if (string.IsNullOrEmpty(source))
         {

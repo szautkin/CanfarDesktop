@@ -11,7 +11,7 @@ using CanfarDesktop.Services.Notebook;
 /// Top-level ViewModel for a single open notebook. Owns the cell list,
 /// dirty tracking, autosave lifecycle, and cell manipulation commands.
 /// </summary>
-public partial class NotebookViewModel : ObservableObject
+public partial class NotebookViewModel : ObservableObject, IDisposable
 {
     private readonly IDirtyTracker _dirtyTracker;
     private readonly IAutoSaveService _autoSaveService;
@@ -678,6 +678,8 @@ public partial class NotebookViewModel : ObservableObject
         try { _kernelService.Dispose(); }
         catch (Exception ex) { NotebookLogger.Error("Kernel dispose on close", ex); }
     }
+
+    public void Dispose() => Close();
 
     #endregion
 
