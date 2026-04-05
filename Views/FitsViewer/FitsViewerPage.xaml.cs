@@ -22,7 +22,7 @@ public sealed partial class FitsViewerPage : UserControl
     private Windows.Foundation.Point _dragStart;
     private double _scrollStartH;
     private double _scrollStartV;
-    private Windows.Foundation.Point? _crosshairImagePos; // in image pixel coords
+    private Windows.Foundation.Point? _crosshairScreenPos; // fixed screen position
 
     public FitsViewerPage(FitsViewerViewModel viewModel)
     {
@@ -166,6 +166,7 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void OnClearCrosshair(object s, RoutedEventArgs e)
     {
+        _crosshairScreenPos = null;
         CrosshairH.Visibility = Visibility.Collapsed;
         CrosshairV.Visibility = Visibility.Collapsed;
         CrosshairLabel.Visibility = Visibility.Collapsed;
@@ -257,19 +258,19 @@ public sealed partial class FitsViewerPage : UserControl
             ImageTransform.ScaleY = newScale;
 
             ZoomLabel.Text = $"{newScale * 100:F0}%";
-            UpdateCrosshairDisplay();
+            UpdateCrosshairCoords();
         }
         else if (shift)
         {
             // Shift+scroll → horizontal pan
             ImageTransform.TranslateX += delta;
-            UpdateCrosshairDisplay();
+            UpdateCrosshairCoords();
         }
         else
         {
             // Scroll → vertical pan
             ImageTransform.TranslateY += delta;
-            UpdateCrosshairDisplay();
+            UpdateCrosshairCoords();
         }
 
         e.Handled = true;
@@ -300,32 +301,34 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void PlaceCrosshair(Windows.Foundation.Point screenPos)
     {
-        _crosshairImagePos = e_PointToImage(screenPos);
-        UpdateCrosshairDisplay();
+        _crosshairScreenPos = screenPos;
+        DrawCrosshairLines(screenPos);
+        UpdateCrosshairCoords();
+    }
+
+    /// <summary>Draw crosshair lines at a fixed screen position.</summary>
+    private void DrawCrosshairLines(Windows.Foundation.Point pos)
+    {
+        var canvasW = ImageCanvas.ActualWidth;
+        var canvasH = ImageCanvas.ActualHeight;
+        CrosshairH.X1 = 0; CrosshairH.Y1 = pos.Y;
+        CrosshairH.X2 = canvasW; CrosshairH.Y2 = pos.Y;
+        CrosshairV.X1 = pos.X; CrosshairV.Y1 = 0;
+        CrosshairV.X2 = pos.X; CrosshairV.Y2 = canvasH;
+        CrosshairH.Visibility = Visibility.Visible;
+        CrosshairV.Visibility = Visibility.Visible;
     }
 
     /// <summary>
-    /// Recalculate crosshair screen position from stored image pixel coords.
-    /// Call after pan/zoom to keep crosshair tracking the same pixel.
+    /// Update the crosshair coordinate label based on whatever image pixel
+    /// is currently under the fixed screen position. Call after pan/zoom.
     /// </summary>
-    private void UpdateCrosshairDisplay()
+    private void UpdateCrosshairCoords()
     {
-        if (_crosshairImagePos is null || ViewModel.ImageData is null) return;
+        if (_crosshairScreenPos is null || ViewModel.ImageData is null) return;
 
-        var imgPx = _crosshairImagePos.Value;
-        var screenPos = ImageToScreen(imgPx);
-        var canvasW = ImageCanvas.ActualWidth;
-        var canvasH = ImageCanvas.ActualHeight;
-
-        // Draw lines
-        CrosshairH.X1 = 0; CrosshairH.Y1 = screenPos.Y;
-        CrosshairH.X2 = canvasW; CrosshairH.Y2 = screenPos.Y;
-        CrosshairV.X1 = screenPos.X; CrosshairV.Y1 = 0;
-        CrosshairV.X2 = screenPos.X; CrosshairV.Y2 = canvasH;
-        CrosshairH.Visibility = Visibility.Visible;
-        CrosshairV.Visibility = Visibility.Visible;
-
-        // Compute coordinates
+        var screenPos = _crosshairScreenPos.Value;
+        var imgPx = e_PointToImage(screenPos);
         var ix = (int)imgPx.X;
         var iy = (int)imgPx.Y;
         var w = ViewModel.ImageData.Width;
@@ -357,6 +360,7 @@ public sealed partial class FitsViewerPage : UserControl
 
         var labelX = screenPos.X + 12;
         var labelY = screenPos.Y - 50;
+        var canvasW = ImageCanvas.ActualWidth;
         if (labelX + 200 > canvasW) labelX = screenPos.X - 200;
         if (labelY < 0) labelY = screenPos.Y + 12;
         Canvas.SetLeft(CrosshairLabel, labelX);
@@ -425,7 +429,7 @@ public sealed partial class FitsViewerPage : UserControl
             var pos = e.GetCurrentPoint(ImageCanvas).Position;
             ImageTransform.TranslateX = _scrollStartH + (pos.X - _dragStart.X);
             ImageTransform.TranslateY = _scrollStartV + (pos.Y - _dragStart.Y);
-            UpdateCrosshairDisplay(); // crosshair tracks the image
+            UpdateCrosshairCoords(); // crosshair tracks the image
             e.Handled = true;
             return;
         }
