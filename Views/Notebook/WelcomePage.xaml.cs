@@ -62,9 +62,11 @@ public sealed partial class WelcomePage : UserControl
     {
         try
         {
+            var discovery = App.Services.GetRequiredService<IPythonDiscoveryService>();
+            var pythonExe = discovery.PythonPath ?? "python";
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "python",
+                FileName = pythonExe,
                 Arguments = $"-c \"import {package}; print({package}.__version__)\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
