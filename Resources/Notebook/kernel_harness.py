@@ -136,7 +136,11 @@ def _handle_magic(code, exec_count):
                     outputs.append({"type": "stream", "name": "stdout", "text": o})
         except Exception as e:
             sys.stdout, sys.stderr = old_out, old_err
-            tb_lines = traceback.format_exception(type(e), e, e.__traceback__)
+            # Filter harness frames from traceback — show only user code
+            tb = e.__traceback__
+            while tb is not None and "kernel_harness" in (tb.tb_frame.f_code.co_filename or ""):
+                tb = tb.tb_next
+            tb_lines = traceback.format_exception(type(e), e, tb or e.__traceback__)
             outputs.append({
                 "type": "error",
                 "ename": type(e).__name__,
