@@ -271,9 +271,7 @@ public sealed partial class MainWindow : Window
         // Pre-fill the search target with the crosshair coordinates
         if (_searchPage is not null)
         {
-            var raStr = Models.Fits.WcsInfo.FormatRa(ra);
-            var decStr = Models.Fits.WcsInfo.FormatDec(dec);
-            _searchPage.ViewModel.Target = $"{raStr} {decStr}";
+            _searchPage.ViewModel.Target = Models.Fits.WcsInfo.FormatForResolver(ra, dec);
         }
         NavigateTo(AppMode.Search);
     }

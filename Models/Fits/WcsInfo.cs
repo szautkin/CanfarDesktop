@@ -58,6 +58,28 @@ public record WcsInfo
     }
 
     /// <summary>
+    /// Format as resolver-compatible string: "HH:MM:SS.ss, +DD:MM:SS.s"
+    /// </summary>
+    public static string FormatForResolver(double raDeg, double decDeg)
+    {
+        // RA
+        var ra = raDeg / 15.0;
+        if (ra < 0) ra += 24;
+        var rh = (int)ra;
+        var rm = (int)((ra - rh) * 60);
+        var rs = (ra - rh - rm / 60.0) * 3600;
+
+        // Dec
+        var sign = decDeg >= 0 ? "+" : "-";
+        var dec = Math.Abs(decDeg);
+        var dd = (int)dec;
+        var dm = (int)((dec - dd) * 60);
+        var ds = (dec - dd - dm / 60.0) * 3600;
+
+        return $"{rh:D2}:{rm:D2}:{rs:05.2f}, {sign}{dd:D2}:{dm:D2}:{ds:04.1f}";
+    }
+
+    /// <summary>
     /// Extract WCS from a parsed FITS header.
     /// </summary>
     public static WcsInfo FromHeader(FitsHeader header)
