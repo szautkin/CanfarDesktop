@@ -24,6 +24,7 @@ public sealed partial class MainWindow : Window
     private LocalFileBrowserPanel? _filePanel;
     private bool _filePanelVisible;
     private AppMode _currentMode = AppMode.Landing;
+    private readonly Stack<AppMode> _navigationStack = new();
     private bool _loginSucceeded;
 
     public MainWindow()
@@ -150,6 +151,9 @@ public sealed partial class MainWindow : Window
 
     private void NavigateTo(AppMode mode)
     {
+        if (_currentMode != mode)
+            _navigationStack.Push(_currentMode);
+
         _currentMode = mode;
         LandingContainer.Visibility = mode == AppMode.Landing ? Visibility.Visible : Visibility.Collapsed;
         PortalContainer.Visibility = mode == AppMode.Portal ? Visibility.Visible : Visibility.Collapsed;
@@ -158,13 +162,42 @@ public sealed partial class MainWindow : Window
         StorageContainer.Visibility = mode == AppMode.Storage ? Visibility.Visible : Visibility.Collapsed;
         NotebookContainer.Visibility = mode == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
         FitsViewerContainer.Visibility = mode == AppMode.FitsViewer ? Visibility.Visible : Visibility.Collapsed;
+
+        BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnToggleFilePanel(object sender, RoutedEventArgs e) => ToggleFilePanel();
 
+    private void OnBackClick(object sender, RoutedEventArgs e)
+    {
+        if (_navigationStack.Count > 0)
+        {
+            var previous = _navigationStack.Pop();
+            _currentMode = previous; // set directly to avoid re-pushing
+            LandingContainer.Visibility = previous == AppMode.Landing ? Visibility.Visible : Visibility.Collapsed;
+            PortalContainer.Visibility = previous == AppMode.Portal ? Visibility.Visible : Visibility.Collapsed;
+            SearchContainer.Visibility = previous == AppMode.Search ? Visibility.Visible : Visibility.Collapsed;
+            ResearchContainer.Visibility = previous == AppMode.Research ? Visibility.Visible : Visibility.Collapsed;
+            StorageContainer.Visibility = previous == AppMode.Storage ? Visibility.Visible : Visibility.Collapsed;
+            NotebookContainer.Visibility = previous == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
+            FitsViewerContainer.Visibility = previous == AppMode.FitsViewer ? Visibility.Visible : Visibility.Collapsed;
+
+            BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
     private void OnHomeClick(object sender, RoutedEventArgs e)
     {
-        NavigateTo(AppMode.Landing);
+        _navigationStack.Clear();
+        _currentMode = AppMode.Landing; // set directly to avoid re-pushing
+        LandingContainer.Visibility = Visibility.Visible;
+        PortalContainer.Visibility = Visibility.Collapsed;
+        SearchContainer.Visibility = Visibility.Collapsed;
+        ResearchContainer.Visibility = Visibility.Collapsed;
+        StorageContainer.Visibility = Visibility.Collapsed;
+        NotebookContainer.Visibility = Visibility.Collapsed;
+        FitsViewerContainer.Visibility = Visibility.Collapsed;
+        BackButton.Visibility = Visibility.Collapsed;
     }
 
     private async void OnPortalRequested(object? sender, EventArgs e)
@@ -226,7 +259,7 @@ public sealed partial class MainWindow : Window
         NavigateTo(AppMode.Storage);
     }
 
-    private Views.FitsViewer.FitsViewerPage? _fitsViewerPage;
+    private Views.FitsViewer.FitsTabHost? _fitsTabHost;
     private NotebookTabHost? _notebookTabHost;
 
     public async void OpenNotebook(string? filePath = null)
@@ -251,16 +284,17 @@ public sealed partial class MainWindow : Window
 
     public async void OpenFitsViewer(string? filePath = null)
     {
-        if (_fitsViewerPage is null)
+        if (_fitsTabHost is null)
         {
-            var vm = App.Services.GetRequiredService<FitsViewerViewModel>();
-            _fitsViewerPage = new Views.FitsViewer.FitsViewerPage(vm);
-            _fitsViewerPage.SearchAtPositionRequested += OnSearchAtFitsPosition;
-            FitsViewerContainer.Child = _fitsViewerPage;
+            var hostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
+            _fitsTabHost = new Views.FitsViewer.FitsTabHost(hostVm);
+            _fitsTabHost.SearchAtPositionRequested += OnSearchAtFitsPosition;
+            _fitsTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
+            FitsViewerContainer.Child = _fitsTabHost;
         }
 
         if (filePath is not null)
-            await _fitsViewerPage.OpenFileAsync(filePath);
+            await _fitsTabHost.AddTabForFileAsync(filePath);
 
         NavigateTo(AppMode.FitsViewer);
     }
@@ -433,21 +467,24 @@ public sealed partial class MainWindow : Window
         {
             Text = "A CANFAR Science Portal Companion",
             Style = (Style)Application.Current.Resources["BodyTextBlockStyle"],
-            HorizontalAlignment = HorizontalAlignment.Center, Opacity = 0.7
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
         };
 
         var version = new TextBlock
         {
             Text = $"Version {GetAppVersion()}",
             Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-            HorizontalAlignment = HorizontalAlignment.Center, Opacity = 0.5
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"]
         };
 
         var copyright = new TextBlock
         {
             Text = "\u00a9 2026 Serhii Zautkin",
             Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-            HorizontalAlignment = HorizontalAlignment.Center, Opacity = 0.4
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"]
         };
 
         var link = new HyperlinkButton

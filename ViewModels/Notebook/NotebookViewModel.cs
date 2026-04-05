@@ -33,6 +33,9 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
     public ObservableCollection<CellViewModel> Cells { get; } = [];
     public NotebookDocument Document => _document;
     public string? FilePath => _filePath;
+
+    /// <summary>Cell clipboard for command-mode C/V (shared across tabs via static).</summary>
+    private static NotebookCell? _clipboardCell;
     public NotebookFileMode FileMode { get; private set; } = NotebookFileMode.Notebook;
 
     public NotebookViewModel(IDirtyTracker dirtyTracker, IAutoSaveService autoSaveService,
@@ -423,6 +426,44 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
             SelectCell(Math.Min(index, Cells.Count - 1));
 
         UpdateCellSnapshot();
+    }
+
+    [RelayCommand]
+    public void CopySelectedCell()
+    {
+        if (SelectedCell is null) return;
+        _clipboardCell = new NotebookCell
+        {
+            CellType = SelectedCell.CellType,
+            Id = NotebookParser.GenerateCellId(),
+            Source = new List<string>(SelectedCell.Model.Source),
+            Outputs = SelectedCell.CellType == "code" ? [] : null,
+            ExecutionCount = null
+        };
+        StatusMessage = "Cell copied";
+    }
+
+    [RelayCommand]
+    public void PasteCellBelow()
+    {
+        if (_clipboardCell is null) return;
+        PushUndo();
+        var clone = new NotebookCell
+        {
+            CellType = _clipboardCell.CellType,
+            Id = NotebookParser.GenerateCellId(),
+            Source = new List<string>(_clipboardCell.Source),
+            Outputs = _clipboardCell.CellType == "code" ? [] : null,
+            ExecutionCount = null
+        };
+        var insertIndex = SelectedCellIndex >= 0 ? SelectedCellIndex + 1 : Cells.Count;
+        var vm = CreateCellViewModel(clone);
+        vm.ContentChanged += OnCellContentChanged;
+        Cells.Insert(insertIndex, vm);
+        _dirtyTracker.MarkDirty();
+        SelectCell(insertIndex);
+        UpdateCellSnapshot();
+        StatusMessage = "Cell pasted";
     }
 
     [RelayCommand]

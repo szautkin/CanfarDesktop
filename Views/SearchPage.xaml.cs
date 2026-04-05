@@ -656,14 +656,19 @@ public sealed partial class SearchPage : Page
             });
             panel.Children.Add(imageSection);
 
-            // Action buttons
+            // Action buttons — close dialog first to avoid "only one ContentDialog" error
+            ContentDialog? detailDialog = null;
             if (!string.IsNullOrEmpty(publisherID))
             {
                 var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
                 var capturedPubIdForDl = publisherID;
                 var capturedRowForDl = row;
                 btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", "Download",
-                    async (_, _) => await DownloadFileAsync(capturedPubIdForDl, capturedRowForDl)));
+                    async (_, _) =>
+                    {
+                        detailDialog?.Hide();
+                        await DownloadFileAsync(capturedPubIdForDl, capturedRowForDl);
+                    }));
                 panel.Children.Add(btnPanel);
             }
 
@@ -675,7 +680,7 @@ public sealed partial class SearchPage : Page
                 if (metaRow is not null) panel.Children.Add(metaRow);
             }
 
-            var dialog = new ContentDialog
+            detailDialog = new ContentDialog
             {
                 Title = row.Get(ViewModel.GetColumnHeader("targetname")) is { Length: > 0 } name
                     ? $"Observation — {name}" : "Observation Detail",
@@ -683,7 +688,7 @@ public sealed partial class SearchPage : Page
                 CloseButtonText = "Close",
                 XamlRoot = XamlRoot
             };
-            dialog.Resources["ContentDialogMinWidth"] = 650.0;
+            detailDialog.Resources["ContentDialogMinWidth"] = 650.0;
 
             // Load images in background
             if (!string.IsNullOrEmpty(publisherID))
@@ -695,7 +700,7 @@ public sealed partial class SearchPage : Page
                 imageSection.Visibility = Visibility.Collapsed;
             }
 
-            await dialog.ShowAsync();
+            await detailDialog.ShowAsync();
         }
         catch (Exception ex)
         {

@@ -432,11 +432,11 @@ public sealed partial class NotebookTabHost : UserControl
 
             // Copy/paste cell
             case Windows.System.VirtualKey.C:
-                // TODO: copy cell to clipboard
+                vm.CopySelectedCellCommand.Execute(null);
                 return true;
 
             case Windows.System.VirtualKey.V:
-                // TODO: paste cell
+                vm.PasteCellBelowCommand.Execute(null);
                 return true;
 
             // Kernel

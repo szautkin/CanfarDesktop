@@ -25,10 +25,17 @@
 
             <!-- Left: branding + home -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button x:Name="BackButton" Click="OnBackClick" ToolTipService.ToolTip="Back"
+                        Padding="6,4" Background="Transparent" BorderThickness="0"
+                        Visibility="Collapsed"
+                        AutomationProperties.Name="Go back">
+                    <FontIcon Glyph="&#xE72B;" FontSize="16" />
+                </Button>
                 <Image Source="Assets/Verbinal_icon.png" Height="28" />
                 <TextBlock Text="Verbinal" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
                 <Button Click="OnHomeClick" ToolTipService.ToolTip="Home" Padding="6,4"
-                        Background="Transparent" BorderThickness="0">
+                        Background="Transparent" BorderThickness="0"
+                        AutomationProperties.Name="Go to home">
                     <FontIcon Glyph="&#xE80F;" FontSize="16" />
                 </Button>
                 <Button Click="OnToggleFilePanel" ToolTipService.ToolTip="Explorer (Ctrl+B)" Padding="6,4"
@@ -47,7 +54,8 @@
             <!-- Right: auth area -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <Button Click="OnAboutClick" ToolTipService.ToolTip="About" Padding="6,4"
-                        Background="Transparent" BorderThickness="0">
+                        Background="Transparent" BorderThickness="0"
+                        AutomationProperties.Name="About Verbinal">
                     <FontIcon Glyph="&#xE946;" FontSize="16" />
                 </Button>
                 <ProgressRing x:Name="AuthProgress" IsActive="False" Width="20" Height="20" />

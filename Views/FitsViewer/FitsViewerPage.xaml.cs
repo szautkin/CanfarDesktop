@@ -1,12 +1,9 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Windows.Storage.Pickers;
-using WinRT.Interop;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models.Fits;
-using CanfarDesktop.Services.Fits;
 using CanfarDesktop.ViewModels;
-using static CanfarDesktop.Views.WindowHelper;
 
 namespace CanfarDesktop.Views.FitsViewer;
 
@@ -14,22 +11,25 @@ public sealed partial class FitsViewerPage : UserControl
 {
     public FitsViewerViewModel ViewModel { get; }
     public event Action<double, double>? SearchAtPositionRequested;
+    /// <summary>Raised when zoom changes via scroll wheel so the host can update its slider.</summary>
+    public event Action<double>? ZoomChanged;
+
     private bool _headerVisible;
-    private bool _suppressSliderChange;
-    private float _sliderRangeMin;
-    private float _sliderRangeMax;
     private bool _isDragging;
     private Windows.Foundation.Point _dragStart;
     private double _scrollStartH;
     private double _scrollStartV;
-    private Windows.Foundation.Point? _crosshairScreenPos; // fixed screen position
+    private Windows.Foundation.Point? _crosshairScreenPos;
+
+    /// <summary>Slider normalization range (per-image).</summary>
+    public float SliderRangeMin { get; private set; }
+    public float SliderRangeMax { get; private set; }
 
     public FitsViewerPage(FitsViewerViewModel viewModel)
     {
         ViewModel = viewModel;
         InitializeComponent();
 
-        // Clip the image canvas so zoomed image doesn't overflow into toolbar/statusbar
         ImageCanvas.SizeChanged += (_, _) =>
         {
             ImageCanvas.Clip = new Microsoft.UI.Xaml.Media.RectangleGeometry
@@ -38,7 +38,17 @@ public sealed partial class FitsViewerPage : UserControl
             };
         };
 
-        ViewModel.PropertyChanged += (_, e) => DispatcherQueue.TryEnqueue(() =>
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+
+        // Re-bind image when tab becomes visible again (WinUI unloads hidden tabs)
+        Loaded += OnLoaded;
+
+        ZoomLabel.Text = "100%";
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(() =>
         {
             switch (e.PropertyName)
             {
@@ -51,120 +61,46 @@ public sealed partial class FitsViewerPage : UserControl
                 case nameof(ViewModel.PixelText):
                     PixelLabel.Text = ViewModel.PixelText;
                     break;
-                case nameof(ViewModel.IsLoading):
-                    LoadingRing.IsActive = ViewModel.IsLoading;
-                    break;
                 case nameof(ViewModel.RenderedImage):
                     FitsImage.Source = ViewModel.RenderedImage;
                     break;
-                case nameof(ViewModel.MinCut) or nameof(ViewModel.MaxCut):
-                    UpdateSliders();
-                    break;
             }
         });
-
-        ZoomLabel.Text = "100%";
     }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        // Restore image source when tab becomes visible again after WinUI unload
+        if (FitsImage.Source is null && ViewModel.RenderedImage is not null)
+            FitsImage.Source = ViewModel.RenderedImage;
+    }
+
+    /// <summary>
+    /// Called explicitly by FitsTabHost on tab close. Do NOT use Unloaded —
+    /// WinUI fires Unloaded when switching tabs, which would destroy the image.
+    /// </summary>
+    public void CleanupForClose()
+    {
+        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        FitsImage.Source = null;
+    }
+
+    // ── Public API for FitsTabHost ──────────────────────────────────────────
 
     public async Task OpenFileAsync(string filePath)
     {
         await ViewModel.OpenFileCommand.ExecuteAsync(filePath);
         UpdateHeaderList();
-        UpdateSliderRange();
+        ComputeSliderRange();
     }
 
-    // ── Toolbar ──────────────────────────────────────────────────────────────
-
-    private async void OnOpenFile(object s, RoutedEventArgs e)
-    {
-        var hwnd = ActiveWindows.Count > 0
-            ? WindowNative.GetWindowHandle(ActiveWindows[0])
-            : nint.Zero;
-        if (hwnd == nint.Zero) return;
-
-        var picker = new FileOpenPicker();
-        InitializeWithWindow.Initialize(picker, hwnd);
-        picker.FileTypeFilter.Add(".fits");
-        picker.FileTypeFilter.Add(".fit");
-        picker.FileTypeFilter.Add(".fts");
-        picker.FileTypeFilter.Add("*");
-
-        var file = await picker.PickSingleFileAsync();
-        if (file is not null)
-            await OpenFileAsync(file.Path);
-    }
-
-    private void OnStretchChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (StretchCombo.SelectedItem is ComboBoxItem { Tag: string tag })
-        {
-            if (Enum.TryParse<ImageStretcher.StretchMode>(tag, out var mode))
-                ViewModel.Stretch = mode;
-        }
-    }
-
-    private void OnColormapChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (ColormapCombo.SelectedItem is ComboBoxItem { Tag: string tag })
-        {
-            if (Enum.TryParse<ColormapProvider.ColormapName>(tag, out var name))
-                ViewModel.Colormap = name;
-        }
-    }
-
-    private void OnMinCutChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-    {
-        if (_suppressSliderChange || ViewModel.ImageData is null) return;
-        var range = _sliderRangeMax - _sliderRangeMin;
-        ViewModel.MinCut = _sliderRangeMin + (float)(e.NewValue / 100.0 * range);
-    }
-
-    private void OnMaxCutChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-    {
-        if (_suppressSliderChange || ViewModel.ImageData is null) return;
-        var range = _sliderRangeMax - _sliderRangeMin;
-        ViewModel.MaxCut = _sliderRangeMin + (float)(e.NewValue / 100.0 * range);
-    }
-
-    private void OnResetStretch(object s, RoutedEventArgs e)
-    {
-        ViewModel.ResetStretchCommand.Execute(null);
-        // Reset zoom + pan
-        ImageTransform.ScaleX = 1;
-        ImageTransform.ScaleY = 1;
-        ImageTransform.TranslateX = 0;
-        ImageTransform.TranslateY = 0;
-        ZoomLabel.Text = "100%";
-    }
-
-    private void OnToggleHeader(object s, RoutedEventArgs e)
+    public void ToggleHeader()
     {
         _headerVisible = !_headerVisible;
         HeaderColumn.Width = _headerVisible ? new GridLength(320) : new GridLength(0);
     }
 
-    // ── Crosshair toolbar ────────────────────────────────────────────────────
-
-    private void OnCopyCoords(object s, RoutedEventArgs e)
-    {
-        if (string.IsNullOrEmpty(ViewModel.CrosshairCoords)) return;
-        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
-        package.SetText(ViewModel.CrosshairCoords);
-        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-        ViewModel.StatusMessage = "Coordinates copied to clipboard";
-    }
-
-    private void OnSearchAtPosition(object s, RoutedEventArgs e)
-    {
-        if (ViewModel.CrosshairRa is null || ViewModel.CrosshairDec is null)
-        {
-            ViewModel.StatusMessage = "Right-click on the image to place crosshair first";
-            return;
-        }
-        SearchAtPositionRequested?.Invoke(ViewModel.CrosshairRa.Value, ViewModel.CrosshairDec.Value);
-    }
-
-    private void OnClearCrosshair(object s, RoutedEventArgs e)
+    public void ClearCrosshair()
     {
         _crosshairScreenPos = null;
         CrosshairH.Visibility = Visibility.Collapsed;
@@ -175,34 +111,166 @@ public sealed partial class FitsViewerPage : UserControl
         ViewModel.CrosshairDec = null;
     }
 
-    // ── Sliders ──────────────────────────────────────────────────────────────
-
-    private void UpdateSliderRange()
+    public string? CopyCoords()
     {
-        if (ViewModel.ImageData is null) return;
-
-        // Set slider range to ±2x the auto-cut spread, centered on the data
-        var autoCutSpread = ViewModel.MaxCut - ViewModel.MinCut;
-        var margin = Math.Max(autoCutSpread * 2, 1f);
-        _sliderRangeMin = ViewModel.MinCut - margin;
-        _sliderRangeMax = ViewModel.MaxCut + margin;
-
-        _suppressSliderChange = true;
-        UpdateSliders();
-        _suppressSliderChange = false;
+        if (string.IsNullOrEmpty(ViewModel.CrosshairCoords)) return null;
+        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        package.SetText(ViewModel.CrosshairCoords);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+        ViewModel.StatusMessage = "Coordinates copied to clipboard";
+        return ViewModel.CrosshairCoords;
     }
 
-    private void UpdateSliders()
+    public void TriggerSearchAtPosition()
+    {
+        if (ViewModel.CrosshairRa is null || ViewModel.CrosshairDec is null)
+        {
+            ViewModel.StatusMessage = "Right-click on the image to place crosshair first";
+            return;
+        }
+        SearchAtPositionRequested?.Invoke(ViewModel.CrosshairRa.Value, ViewModel.CrosshairDec.Value);
+    }
+
+    public void ResetView()
+    {
+        ViewModel.ResetStretchCommand.Execute(null);
+        ViewModel.IsNorthUp = false;
+        ImageTransform.ScaleX = 1;
+        ImageTransform.ScaleY = 1;
+        ImageTransform.TranslateX = 0;
+        ImageTransform.TranslateY = 0;
+        ImageTransform.Rotation = 0;
+        ImageTransform.ScaleX = 1; // remove any flip
+        ZoomLabel.Text = "100%";
+        ComputeSliderRange();
+    }
+
+    /// <summary>
+    /// Toggle North-up orientation using WCS rotation angle.
+    /// Rotates the image so celestial North points up and East points left.
+    /// </summary>
+    public void SetNorthUp(bool northUp)
+    {
+        ViewModel.IsNorthUp = northUp;
+
+        if (!northUp)
+        {
+            var mag = Math.Abs(ImageTransform.ScaleX);
+            ImageTransform.Rotation = 0;
+            ImageTransform.ScaleX = mag;
+            ViewModel.StatusMessage = "Original orientation";
+            UpdateCrosshairCoords();
+            return;
+        }
+
+        if (ViewModel.ImageData?.Wcs is not { IsValid: true } wcs)
+        {
+            ViewModel.StatusMessage = "No WCS — cannot determine North direction";
+            ViewModel.IsNorthUp = false;
+            return;
+        }
+
+        var angle = wcs.NorthAngle;
+        var mag2 = Math.Abs(ImageTransform.ScaleX);
+
+        ImageTransform.Rotation = -angle;
+        ImageTransform.ScaleX = wcs.HasParityFlip ? -mag2 : mag2;
+
+        // With RenderTransformOrigin="0.5,0.5" the rotation is around image center —
+        // no translate compensation needed.
+
+        ViewModel.StatusMessage = $"North Up (rotated {angle:F1}\u00b0" +
+            (wcs.HasParityFlip ? ", mirrored" : "") +
+            $", {wcs.PixelScaleArcsec:F2}\"/px)";
+        UpdateCrosshairCoords();
+    }
+
+    /// <summary>
+    /// Navigate crosshair to a world coordinate (RA, Dec in degrees).
+    /// Converts to display pixel and places crosshair at the screen position.
+    /// </summary>
+    public void GoToWorldCoordinate(double ra, double dec)
+    {
+        var displayPixel = ViewModel.GoToCoordinate(ra, dec);
+        if (displayPixel is null)
+        {
+            ViewModel.StatusMessage = "No WCS available for coordinate navigation";
+            return;
+        }
+
+        var x = displayPixel.Value.X;
+        var y = displayPixel.Value.Y;
+        var w = ViewModel.ImageData!.Width;
+        var h = ViewModel.ImageData!.Height;
+
+        if (x < 0 || x >= w || y < 0 || y >= h)
+        {
+            ViewModel.StatusMessage = $"Coordinate outside image bounds (pixel {x:F0}, {y:F0} — image is {w}x{h})";
+            return;
+        }
+
+        // Center the view on this coordinate
+        CenterOnImagePixel(x, y);
+    }
+
+    private void CenterOnImagePixel(double imgPixelX, double imgPixelY)
+    {
+        var p = GetTransformParams();
+        double localX = imgPixelX, localY = imgPixelY;
+        if (ViewModel.ImageData is not null && p.imgW > 0)
+        {
+            localX = imgPixelX / ViewModel.ImageData.Width * p.imgW;
+            localY = imgPixelY / ViewModel.ImageData.Height * p.imgH;
+        }
+
+        var (tx, ty) = ViewportMath.ComputeCenterTranslate(localX, localY,
+            p.scaleX, p.scaleY, p.rotation, p.imgW, p.imgH, p.canvasW, p.canvasH);
+        ImageTransform.TranslateX = tx;
+        ImageTransform.TranslateY = ty;
+
+        var centerX = p.canvasW / 2;
+        var centerY = p.canvasH / 2;
+        _crosshairScreenPos = new Windows.Foundation.Point(centerX, centerY);
+        DrawCrosshairLines(_crosshairScreenPos.Value);
+        UpdateCrosshairCoords();
+    }
+
+    /// <summary>Get current zoom magnitude (always positive).</summary>
+    public double GetZoomMagnitude() => Math.Abs(ImageTransform.ScaleX);
+
+    /// <summary>Set zoom level from the toolbar slider (preserves mirror sign).</summary>
+    public void SetZoomLevel(double magnitude)
+    {
+        var sign = ImageTransform.ScaleX < 0 ? -1.0 : 1.0;
+        var clamped = Math.Clamp(magnitude, 0.05, 20.0);
+        ImageTransform.ScaleX = clamped * sign;
+        ImageTransform.ScaleY = clamped;
+        ZoomLabel.Text = $"{clamped * 100:F0}%";
+        UpdateCrosshairCoords();
+    }
+
+    /// <summary>Compute slider range from current auto-cut values.</summary>
+    public void ComputeSliderRange()
     {
         if (ViewModel.ImageData is null) return;
-        _suppressSliderChange = true;
-        var range = _sliderRangeMax - _sliderRangeMin;
-        if (range > 0)
-        {
-            MinCutSlider.Value = (ViewModel.MinCut - _sliderRangeMin) / range * 100;
-            MaxCutSlider.Value = (ViewModel.MaxCut - _sliderRangeMin) / range * 100;
-        }
-        _suppressSliderChange = false;
+        var autoCutSpread = ViewModel.MaxCut - ViewModel.MinCut;
+        var margin = Math.Max(autoCutSpread * 2, 1f);
+        SliderRangeMin = ViewModel.MinCut - margin;
+        SliderRangeMax = ViewModel.MaxCut + margin;
+    }
+
+    /// <summary>Convert a 0-100 slider value to an actual cut value.</summary>
+    public float SliderToValue(double sliderValue)
+    {
+        var range = SliderRangeMax - SliderRangeMin;
+        return SliderRangeMin + (float)(sliderValue / 100.0 * range);
+    }
+
+    /// <summary>Convert an actual cut value to a 0-100 slider value.</summary>
+    public double ValueToSlider(float cutValue)
+    {
+        var range = SliderRangeMax - SliderRangeMin;
+        return range > 0 ? (cutValue - SliderRangeMin) / range * 100 : 0;
     }
 
     // ── Header panel ─────────────────────────────────────────────────────────
@@ -245,30 +313,34 @@ public sealed partial class FitsViewerPage : UserControl
 
         if (ctrl)
         {
-            // Ctrl+scroll → zoom toward cursor
             var factor = delta > 0 ? 1.15 : 1.0 / 1.15;
-            var oldScale = ImageTransform.ScaleX;
-            var newScale = Math.Clamp(oldScale * factor, 0.05, 50.0);
+            var oldMag = Math.Abs(ImageTransform.ScaleX);
+            var newMag = Math.Clamp(oldMag * factor, 0.05, 50.0);
+            var signX = ImageTransform.ScaleX < 0 ? -1.0 : 1.0;
 
-            var cursorX = point.Position.X;
-            var cursorY = point.Position.Y;
-            ImageTransform.TranslateX = cursorX - (cursorX - ImageTransform.TranslateX) * (newScale / oldScale);
-            ImageTransform.TranslateY = cursorY - (cursorY - ImageTransform.TranslateY) * (newScale / oldScale);
-            ImageTransform.ScaleX = newScale;
-            ImageTransform.ScaleY = newScale;
+            var p = GetTransformParams();
+            var (tx, ty) = ViewportMath.ComputeZoomTranslate(
+                point.Position.X, point.Position.Y,
+                p.scaleX, p.scaleY, newMag * signX, newMag,
+                p.rotation, p.imgW, p.imgH, p.canvasW, p.canvasH,
+                p.translateX, p.translateY);
 
-            ZoomLabel.Text = $"{newScale * 100:F0}%";
+            ImageTransform.ScaleX = newMag * signX;
+            ImageTransform.ScaleY = newMag;
+            ImageTransform.TranslateX = tx;
+            ImageTransform.TranslateY = ty;
+
+            ZoomLabel.Text = $"{newMag * 100:F0}%";
+            ZoomChanged?.Invoke(newMag);
             UpdateCrosshairCoords();
         }
         else if (shift)
         {
-            // Shift+scroll → horizontal pan
             ImageTransform.TranslateX += delta;
             UpdateCrosshairCoords();
         }
         else
         {
-            // Scroll → vertical pan
             ImageTransform.TranslateY += delta;
             UpdateCrosshairCoords();
         }
@@ -282,7 +354,6 @@ public sealed partial class FitsViewerPage : UserControl
 
         if (point.Properties.IsRightButtonPressed)
         {
-            // Right-click → place crosshair
             PlaceCrosshair(point.Position);
             e.Handled = true;
             return;
@@ -301,12 +372,21 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void PlaceCrosshair(Windows.Foundation.Point screenPos)
     {
-        _crosshairScreenPos = screenPos;
-        DrawCrosshairLines(screenPos);
-        UpdateCrosshairCoords();
+        var scale = Math.Abs(ImageTransform.ScaleX);
+
+        if (scale > 1.05) // zoomed in: center the view on the clicked point
+        {
+            var imgPx = e_PointToImage(screenPos);
+            CenterOnImagePixel(imgPx.X, imgPx.Y);
+        }
+        else
+        {
+            _crosshairScreenPos = screenPos;
+            DrawCrosshairLines(screenPos);
+            UpdateCrosshairCoords();
+        }
     }
 
-    /// <summary>Draw crosshair lines at a fixed screen position.</summary>
     private void DrawCrosshairLines(Windows.Foundation.Point pos)
     {
         var canvasW = ImageCanvas.ActualWidth;
@@ -319,10 +399,6 @@ public sealed partial class FitsViewerPage : UserControl
         CrosshairV.Visibility = Visibility.Visible;
     }
 
-    /// <summary>
-    /// Update the crosshair coordinate label based on whatever image pixel
-    /// is currently under the fixed screen position. Call after pan/zoom.
-    /// </summary>
     private void UpdateCrosshairCoords()
     {
         if (_crosshairScreenPos is null || ViewModel.ImageData is null) return;
@@ -345,8 +421,8 @@ public sealed partial class FitsViewerPage : UserControl
             if (ViewModel.ImageData.Wcs is { IsValid: true } wcs)
             {
                 var (ra, dec) = wcs.PixelToWorld(ix + 1, fitsY + 1);
-                var raStr = Models.Fits.WcsInfo.FormatRa(ra);
-                var decStr = Models.Fits.WcsInfo.FormatDec(dec);
+                var raStr = WcsInfo.FormatRa(ra);
+                var decStr = WcsInfo.FormatDec(dec);
                 lines.Add($"RA  {raStr}");
                 lines.Add($"Dec {decStr}");
                 ViewModel.CrosshairRa = ra;
@@ -367,59 +443,47 @@ public sealed partial class FitsViewerPage : UserControl
         Canvas.SetTop(CrosshairLabel, labelY);
     }
 
-    /// <summary>Convert image pixel coords back to screen coords (inverse of e_PointToImage).</summary>
+    /// <summary>Helper to get current transform params for ViewportMath calls.</summary>
+    private (double scaleX, double scaleY, double rotation, double imgW, double imgH,
+             double canvasW, double canvasH, double translateX, double translateY) GetTransformParams()
+    {
+        var scaleX = ImageTransform.ScaleX;
+        var scaleY = ImageTransform.ScaleY;
+        if (Math.Abs(scaleX) < 0.001) scaleX = 1;
+        if (Math.Abs(scaleY) < 0.001) scaleY = 1;
+        return (scaleX, scaleY, ImageTransform.Rotation,
+                FitsImage.ActualWidth, FitsImage.ActualHeight,
+                ImageCanvas.ActualWidth, ImageCanvas.ActualHeight,
+                ImageTransform.TranslateX, ImageTransform.TranslateY);
+    }
+
     private Windows.Foundation.Point ImageToScreen(Windows.Foundation.Point imgPx)
     {
-        var scale = ImageTransform.ScaleX;
-        if (scale <= 0) scale = 1;
-
-        var imgW = FitsImage.ActualWidth;
-        var imgH = FitsImage.ActualHeight;
-        var canvasW = ImageCanvas.ActualWidth;
-        var canvasH = ImageCanvas.ActualHeight;
-        var imgOffsetX = (canvasW - imgW) / 2;
-        var imgOffsetY = (canvasH - imgH) / 2;
-
-        // Map from pixel coords to display image coords
-        double displayX = imgPx.X, displayY = imgPx.Y;
-        if (ViewModel.ImageData is not null && imgW > 0)
+        var p = GetTransformParams();
+        double localX = imgPx.X, localY = imgPx.Y;
+        if (ViewModel.ImageData is not null && p.imgW > 0)
         {
-            displayX = imgPx.X / ViewModel.ImageData.Width * imgW;
-            displayY = imgPx.Y / ViewModel.ImageData.Height * imgH;
+            localX = imgPx.X / ViewModel.ImageData.Width * p.imgW;
+            localY = imgPx.Y / ViewModel.ImageData.Height * p.imgH;
         }
-
-        var sx = displayX * scale + imgOffsetX + ImageTransform.TranslateX;
-        var sy = displayY * scale + imgOffsetY + ImageTransform.TranslateY;
+        var (sx, sy) = ViewportMath.LocalToScreen(localX, localY,
+            p.scaleX, p.scaleY, p.rotation, p.imgW, p.imgH,
+            p.canvasW, p.canvasH, p.translateX, p.translateY);
         return new Windows.Foundation.Point(sx, sy);
     }
 
-    /// <summary>Convert screen position to image pixel coordinates.</summary>
     private Windows.Foundation.Point e_PointToImage(Windows.Foundation.Point screenPos)
     {
-        // Inverse the CompositeTransform: (screen - translate) / scale
-        // Then account for Image centering within the canvas
-        var scale = ImageTransform.ScaleX;
-        if (scale <= 0) scale = 1;
-
-        // The Image is centered — find its offset
-        var imgW = FitsImage.ActualWidth;
-        var imgH = FitsImage.ActualHeight;
-        var canvasW = ImageCanvas.ActualWidth;
-        var canvasH = ImageCanvas.ActualHeight;
-        var imgOffsetX = (canvasW - imgW) / 2;
-        var imgOffsetY = (canvasH - imgH) / 2;
-
-        var px = (screenPos.X - ImageTransform.TranslateX - imgOffsetX) / scale;
-        var py = (screenPos.Y - ImageTransform.TranslateY - imgOffsetY) / scale;
-
-        // Map from display image size to actual pixel size
-        if (ViewModel.ImageData is not null && imgW > 0)
+        var p = GetTransformParams();
+        var (lx, ly) = ViewportMath.ScreenToLocal(screenPos.X, screenPos.Y,
+            p.scaleX, p.scaleY, p.rotation, p.imgW, p.imgH,
+            p.canvasW, p.canvasH, p.translateX, p.translateY);
+        if (ViewModel.ImageData is not null && p.imgW > 0)
         {
-            px = px / imgW * ViewModel.ImageData.Width;
-            py = py / imgH * ViewModel.ImageData.Height;
+            lx = lx / p.imgW * ViewModel.ImageData.Width;
+            ly = ly / p.imgH * ViewModel.ImageData.Height;
         }
-
-        return new Windows.Foundation.Point(px, py);
+        return new Windows.Foundation.Point(lx, ly);
     }
 
     private void OnCanvasPointerMoved(object sender, PointerRoutedEventArgs e)
@@ -429,12 +493,11 @@ public sealed partial class FitsViewerPage : UserControl
             var pos = e.GetCurrentPoint(ImageCanvas).Position;
             ImageTransform.TranslateX = _scrollStartH + (pos.X - _dragStart.X);
             ImageTransform.TranslateY = _scrollStartV + (pos.Y - _dragStart.Y);
-            UpdateCrosshairCoords(); // crosshair tracks the image
+            UpdateCrosshairCoords();
             e.Handled = true;
             return;
         }
 
-        // Coordinate readout
         if (ViewModel.RenderedImage is null || ViewModel.ImageData is null) return;
         var screenPos = e.GetCurrentPoint(ImageCanvas).Position;
         var pixelPos = e_PointToImage(screenPos);

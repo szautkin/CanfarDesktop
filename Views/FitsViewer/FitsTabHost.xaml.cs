@@ -1,0 +1,406 @@
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
+using CanfarDesktop.Models.Fits;
+using CanfarDesktop.Services.Fits;
+using CanfarDesktop.ViewModels;
+using static CanfarDesktop.Views.WindowHelper;
+
+namespace CanfarDesktop.Views.FitsViewer;
+
+public sealed partial class FitsTabHost : UserControl
+{
+    public FitsTabHostViewModel ViewModel { get; }
+    public event Action<double, double>? SearchAtPositionRequested;
+    public event Action? AllTabsClosed;
+
+    private FitsViewerPage? _activePage;
+    private bool _suppressToolbarSync;
+    private bool _coordPanelVisible;
+
+    public FitsTabHost(FitsTabHostViewModel viewModel)
+    {
+        ViewModel = viewModel;
+        InitializeComponent();
+        CoordListView.ItemsSource = ViewModel.SavedCoordinates;
+    }
+
+    // ── Tab lifecycle ────────────────────────────────────────────────────────
+
+    public FitsViewerPage AddNewTab()
+    {
+        var tabItem = ViewModel.AddNewTab();
+        return CreateTabViewItem(tabItem);
+    }
+
+    public async Task<FitsViewerPage> AddTabForFileAsync(string filePath)
+    {
+        var tabItem = ViewModel.AddNewTab();
+        var page = CreateTabViewItem(tabItem);
+        await page.OpenFileAsync(filePath);
+        SyncToolbarToActiveTab();
+        return page;
+    }
+
+    private record TabHandlers(
+        System.ComponentModel.PropertyChangedEventHandler HeaderHandler,
+        System.ComponentModel.PropertyChangedEventHandler LoadingHandler,
+        Action<double, double> SearchHandler,
+        Action<double> ZoomHandler);
+
+    private readonly Dictionary<FitsViewerTabItem, TabHandlers> _tabHandlers = [];
+
+    private FitsViewerPage CreateTabViewItem(FitsViewerTabItem tabItem)
+    {
+        var page = new FitsViewerPage(tabItem.ViewModel);
+
+        // Store handlers so we can unsubscribe on tab close
+        Action<double, double> searchHandler = (ra, dec) => SearchAtPositionRequested?.Invoke(ra, dec);
+        page.SearchAtPositionRequested += searchHandler;
+
+        var tab = new TabViewItem
+        {
+            Content = page,
+            Header = tabItem.Header,
+            IconSource = new SymbolIconSource { Symbol = Symbol.Document },
+            Tag = tabItem,
+        };
+
+        System.ComponentModel.PropertyChangedEventHandler headerHandler = (_, e) =>
+        {
+            if (e.PropertyName == nameof(FitsViewerTabItem.Header))
+                DispatcherQueue.TryEnqueue(() => tab.Header = tabItem.Header);
+        };
+        tabItem.PropertyChanged += headerHandler;
+
+        System.ComponentModel.PropertyChangedEventHandler loadingHandler = (_, e) =>
+        {
+            if (tabItem != ViewModel.ActiveTab) return;
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (e.PropertyName == nameof(FitsViewerViewModel.IsLoading))
+                    LoadingRing.IsActive = tabItem.ViewModel.IsLoading;
+                else if (e.PropertyName == nameof(FitsViewerViewModel.CrosshairCoords))
+                    UpdatePanelCrosshairText(tabItem.ViewModel);
+            });
+        };
+        tabItem.ViewModel.PropertyChanged += loadingHandler;
+
+        Action<double> zoomHandler = mag => DispatcherQueue.TryEnqueue(() => UpdateZoomDisplay(mag));
+        page.ZoomChanged += zoomHandler;
+
+        _tabHandlers[tabItem] = new TabHandlers(headerHandler, loadingHandler, searchHandler, zoomHandler);
+
+        TabViewControl.TabItems.Add(tab);
+        TabViewControl.SelectedItem = tab;
+        return page;
+    }
+
+    private void OnAddTab(TabView sender, object args) => PromptOpenFile();
+
+    private void OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
+    {
+        if (args.Tab.Tag is not FitsViewerTabItem tabItem) return;
+
+        // Unsubscribe all handlers and clean up page resources
+        if (_tabHandlers.Remove(tabItem, out var handlers))
+        {
+            tabItem.PropertyChanged -= handlers.HeaderHandler;
+            tabItem.ViewModel.PropertyChanged -= handlers.LoadingHandler;
+            if (args.Tab.Content is FitsViewerPage page)
+            {
+                page.SearchAtPositionRequested -= handlers.SearchHandler;
+                page.ZoomChanged -= handlers.ZoomHandler;
+                page.CleanupForClose();
+            }
+        }
+
+        ViewModel.CloseTab(tabItem);
+        sender.TabItems.Remove(args.Tab);
+
+        if (sender.TabItems.Count == 0)
+        {
+            _activePage = null;
+            AllTabsClosed?.Invoke();
+        }
+    }
+
+    private void OnTabSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (TabViewControl.SelectedItem is TabViewItem { Tag: FitsViewerTabItem tabItem, Content: FitsViewerPage page })
+        {
+            ViewModel.ActiveTab = tabItem;
+            _activePage = page;
+            SyncToolbarToActiveTab();
+        }
+    }
+
+    // ── Toolbar sync ─────────────────────────────────────────────────────────
+
+    private void SyncToolbarToActiveTab()
+    {
+        var vm = ViewModel.ActiveViewModel;
+        if (vm is null) return;
+
+        _suppressToolbarSync = true;
+        try
+        {
+            // Stretch combo
+            var stretchName = vm.Stretch.ToString();
+            for (var i = 0; i < StretchCombo.Items.Count; i++)
+            {
+                if (StretchCombo.Items[i] is ComboBoxItem { Tag: string tag } && tag == stretchName)
+                {
+                    StretchCombo.SelectedIndex = i;
+                    break;
+                }
+            }
+
+            // Colormap combo
+            var colormapName = vm.Colormap.ToString();
+            for (var i = 0; i < ColormapCombo.Items.Count; i++)
+            {
+                if (ColormapCombo.Items[i] is ComboBoxItem { Tag: string tag } && tag == colormapName)
+                {
+                    ColormapCombo.SelectedIndex = i;
+                    break;
+                }
+            }
+
+            // Sliders
+            if (_activePage is not null)
+            {
+                MinCutSlider.Value = _activePage.ValueToSlider(vm.MinCut);
+                MaxCutSlider.Value = _activePage.ValueToSlider(vm.MaxCut);
+            }
+
+            LoadingRing.IsActive = vm.IsLoading;
+            NorthUpToggle.IsChecked = vm.IsNorthUp;
+
+            // Zoom slider + combo
+            if (_activePage is not null)
+            {
+                var mag = _activePage.GetZoomMagnitude();
+                ZoomSlider.Value = Math.Clamp(mag * 100, ZoomSlider.Minimum, ZoomSlider.Maximum);
+                ZoomPresetCombo.Text = $"{mag * 100:F0}%";
+            }
+
+            // Crosshair readout in panel
+            UpdatePanelCrosshairText(vm);
+        }
+        finally
+        {
+            _suppressToolbarSync = false;
+        }
+    }
+
+    // ── Toolbar handlers ─────────────────────────────────────────────────────
+
+    private async void OnOpenFile(object s, RoutedEventArgs e) => await PromptOpenFileAsync();
+
+    private async void PromptOpenFile() => await PromptOpenFileAsync();
+
+    private async Task PromptOpenFileAsync()
+    {
+        var hwnd = ActiveWindows.Count > 0
+            ? WindowNative.GetWindowHandle(ActiveWindows[0])
+            : nint.Zero;
+        if (hwnd == nint.Zero) return;
+
+        var picker = new FileOpenPicker();
+        InitializeWithWindow.Initialize(picker, hwnd);
+        picker.FileTypeFilter.Add(".fits");
+        picker.FileTypeFilter.Add(".fit");
+        picker.FileTypeFilter.Add(".fts");
+        picker.FileTypeFilter.Add("*");
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null)
+            await AddTabForFileAsync(file.Path);
+    }
+
+    private void OnStretchChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressToolbarSync || ViewModel.ActiveViewModel is null) return;
+        if (StretchCombo.SelectedItem is ComboBoxItem { Tag: string tag })
+        {
+            if (Enum.TryParse<ImageStretcher.StretchMode>(tag, out var mode))
+                ViewModel.ActiveViewModel.Stretch = mode;
+        }
+    }
+
+    private void OnColormapChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressToolbarSync || ViewModel.ActiveViewModel is null) return;
+        if (ColormapCombo.SelectedItem is ComboBoxItem { Tag: string tag })
+        {
+            if (Enum.TryParse<ColormapProvider.ColormapName>(tag, out var name))
+                ViewModel.ActiveViewModel.Colormap = name;
+        }
+    }
+
+    private void OnMinCutChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_suppressToolbarSync || _activePage is null || ViewModel.ActiveViewModel?.ImageData is null) return;
+        ViewModel.ActiveViewModel.MinCut = _activePage.SliderToValue(e.NewValue);
+    }
+
+    private void OnMaxCutChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_suppressToolbarSync || _activePage is null || ViewModel.ActiveViewModel?.ImageData is null) return;
+        ViewModel.ActiveViewModel.MaxCut = _activePage.SliderToValue(e.NewValue);
+    }
+
+    private void OnResetStretch(object s, RoutedEventArgs e)
+    {
+        _activePage?.ResetView();
+        SyncToolbarToActiveTab();
+    }
+
+    private void OnToggleHeader(object s, RoutedEventArgs e) => _activePage?.ToggleHeader();
+
+    private void OnToggleNorthUp(object s, RoutedEventArgs e)
+    {
+        if (_activePage is null) return;
+        _activePage.SetNorthUp(NorthUpToggle.IsChecked == true);
+    }
+
+    // ── Zoom slider ─────────────────────────────────────────────────────────
+
+    private void OnZoomSliderChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_suppressToolbarSync || _activePage is null) return;
+        _activePage.SetZoomLevel(e.NewValue / 100.0);
+        _suppressToolbarSync = true;
+        ZoomPresetCombo.Text = $"{e.NewValue:F0}%";
+        _suppressToolbarSync = false;
+    }
+
+    private void OnZoomPresetChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressToolbarSync || _activePage is null) return;
+
+        double pct = 0;
+        if (ZoomPresetCombo.SelectedItem is ComboBoxItem { Tag: string tag })
+            double.TryParse(tag, out pct);
+        else if (!string.IsNullOrEmpty(ZoomPresetCombo.Text))
+        {
+            // Handle manual text entry: "300" or "300%"
+            var text = ZoomPresetCombo.Text.Trim().TrimEnd('%');
+            double.TryParse(text, out pct);
+        }
+
+        if (pct > 0)
+        {
+            _activePage.SetZoomLevel(pct / 100.0);
+            _suppressToolbarSync = true;
+            ZoomSlider.Value = Math.Clamp(pct, ZoomSlider.Minimum, ZoomSlider.Maximum);
+            ZoomPresetCombo.Text = $"{pct:F0}%";
+            _suppressToolbarSync = false;
+        }
+    }
+
+    private void OnZoomTextSubmitted(ComboBox sender, ComboBoxTextSubmittedEventArgs args)
+    {
+        if (_suppressToolbarSync || _activePage is null) return;
+        var text = args.Text?.Trim().TrimEnd('%') ?? "";
+        if (double.TryParse(text, out var pct) && pct > 0)
+        {
+            args.Handled = true;
+            _activePage.SetZoomLevel(pct / 100.0);
+            _suppressToolbarSync = true;
+            ZoomSlider.Value = Math.Clamp(pct, ZoomSlider.Minimum, ZoomSlider.Maximum);
+            ZoomPresetCombo.Text = $"{pct:F0}%";
+            _suppressToolbarSync = false;
+        }
+    }
+
+    /// <summary>Called by the page when zoom changes via scroll wheel.</summary>
+    public void UpdateZoomDisplay(double zoomMagnitude)
+    {
+        _suppressToolbarSync = true;
+        var pct = zoomMagnitude * 100;
+        ZoomSlider.Value = Math.Clamp(pct, ZoomSlider.Minimum, ZoomSlider.Maximum);
+        ZoomPresetCombo.Text = $"{pct:F0}%";
+        _suppressToolbarSync = false;
+    }
+
+    // ── Crosshair toolbar ────────────────────────────────────────────────────
+
+    private void OnCopyCoords(object s, RoutedEventArgs e) => _activePage?.CopyCoords();
+
+    private void OnSearchAtPosition(object s, RoutedEventArgs e) => _activePage?.TriggerSearchAtPosition();
+
+    private void OnClearCrosshair(object s, RoutedEventArgs e) => _activePage?.ClearCrosshair();
+
+    private void OnSaveCrosshair(object s, RoutedEventArgs e) => SaveCurrentCrosshair("");
+
+    // ── Coordinate panel ─────────────────────────────────────────────────────
+
+    private void UpdatePanelCrosshairText(FitsViewerViewModel? vm)
+    {
+        if (vm?.CrosshairRa is not null && vm.CrosshairDec is not null)
+        {
+            var raStr = Models.Fits.WcsInfo.FormatRa(vm.CrosshairRa.Value);
+            var decStr = Models.Fits.WcsInfo.FormatDec(vm.CrosshairDec.Value);
+            PanelCrosshairText.Text = $"RA  {raStr}\nDec {decStr}";
+            PanelCrosshairText.Foreground = (Microsoft.UI.Xaml.Media.Brush)
+                Application.Current.Resources["TextFillColorPrimaryBrush"];
+        }
+        else
+        {
+            PanelCrosshairText.Text = "No crosshair placed";
+            PanelCrosshairText.Foreground = (Microsoft.UI.Xaml.Media.Brush)
+                Application.Current.Resources["TextFillColorTertiaryBrush"];
+        }
+    }
+
+    private void OnToggleCoordPanel(object s, RoutedEventArgs e)
+    {
+        _coordPanelVisible = !_coordPanelVisible;
+        CoordPanelColumn.Width = _coordPanelVisible ? new GridLength(280) : new GridLength(0);
+    }
+
+    private void OnSaveCrosshairFromPanel(object s, RoutedEventArgs e)
+    {
+        SaveCurrentCrosshair(CoordLabelBox.Text.Trim());
+        CoordLabelBox.Text = "";
+    }
+
+    private void SaveCurrentCrosshair(string label)
+    {
+        var vm = ViewModel.ActiveViewModel;
+        if (vm?.CrosshairRa is null || vm.CrosshairDec is null)
+        {
+            if (vm is not null) vm.StatusMessage = "Right-click to place crosshair first";
+            return;
+        }
+        ViewModel.SaveCoordinate(label, vm.CrosshairRa.Value, vm.CrosshairDec.Value, vm.FilePath);
+    }
+
+    private void OnGoToManual(object s, RoutedEventArgs e)
+    {
+        if (_activePage is null) return;
+        if (!double.TryParse(ManualRaBox.Text.Trim(), out var ra) ||
+            !double.TryParse(ManualDecBox.Text.Trim(), out var dec))
+        {
+            if (ViewModel.ActiveViewModel is not null)
+                ViewModel.ActiveViewModel.StatusMessage = "Enter valid RA and Dec in degrees";
+            return;
+        }
+        _activePage.GoToWorldCoordinate(ra, dec);
+    }
+
+    private void OnGoToSaved(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: SavedCoordinate coord } && _activePage is not null)
+            _activePage.GoToWorldCoordinate(coord.Ra, coord.Dec);
+    }
+
+    private void OnDeleteCoord(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: SavedCoordinate coord })
+            ViewModel.DeleteCoordinate(coord);
+    }
+}

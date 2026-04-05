@@ -88,6 +88,7 @@ public sealed partial class BatchJobsDialog : ContentDialog
     {
         if (sender is not Button { Tag: string sessionId }) return;
 
+        Hide(); // Must close before showing another ContentDialog
         var confirm = new ContentDialog
         {
             Title = "Delete Batch Job",
@@ -101,8 +102,6 @@ public sealed partial class BatchJobsDialog : ContentDialog
         if (await confirm.ShowAsync() == ContentDialogResult.Primary)
         {
             await _sessionService.DeleteSessionAsync(sessionId);
-            // Close dialog — parent will refresh on next poll
-            Hide();
         }
     }
 

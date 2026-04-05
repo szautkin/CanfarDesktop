@@ -155,18 +155,243 @@ public class FitsParserTests
     }
 
     [Fact]
-    public void WcsInfo_FormatRa()
+    public void WcsInfo_FormatRa_ExactHours()
     {
         // 180 degrees = 12h 00m 00.00s
-        var result = WcsInfo.FormatRa(180.0);
-        Assert.StartsWith("12h00m", result);
+        Assert.Equal("12h00m00.00s", WcsInfo.FormatRa(180.0));
     }
 
     [Fact]
-    public void WcsInfo_FormatDec()
+    public void WcsInfo_FormatRa_Zero()
     {
-        var result = WcsInfo.FormatDec(45.5);
-        Assert.StartsWith("+45", result);
+        Assert.Equal("00h00m00.00s", WcsInfo.FormatRa(0.0));
+    }
+
+    [Theory]
+    [InlineData(19.8, "01h19m")]    // CADC test: 19.8° = 1.32h
+    [InlineData(83.633, "05h34m")]  // Near Crab Nebula
+    [InlineData(270.0, "18h00m")]   // Exact hours
+    public void WcsInfo_FormatRa_StartsCorrectly(double raDeg, string expectedStart)
+    {
+        var result = WcsInfo.FormatRa(raDeg);
+        Assert.StartsWith(expectedStart, result);
+        Assert.EndsWith("s", result);
+    }
+
+    [Fact]
+    public void WcsInfo_FormatDec_PositiveExact()
+    {
+        Assert.StartsWith("+45\u00b030'00", WcsInfo.FormatDec(45.5));
+    }
+
+    [Fact]
+    public void WcsInfo_FormatDec_Negative()
+    {
+        var result = WcsInfo.FormatDec(-33.5);
+        Assert.StartsWith("-33\u00b030'", result);
+    }
+
+    [Fact]
+    public void WcsInfo_FormatDec_Zero()
+    {
+        var result = WcsInfo.FormatDec(0.0);
+        Assert.StartsWith("+00\u00b000'", result);
+    }
+
+    [Fact]
+    public void WcsInfo_FormatDec_CadcExample()
+    {
+        // CADC returned Dec: 42.10111111 → +42°06'04.0"
+        var result = WcsInfo.FormatDec(42.10111111);
+        Assert.StartsWith("+42\u00b006'", result);
+    }
+
+    [Fact]
+    public void WcsInfo_FormatForResolver_CadcExample()
+    {
+        // CADC test case: RA=19.8°, Dec=42.10111111°
+        // RA: 19.8/15 = 1.32h → 01h19m12.00s → rsInt=1200
+        // Dec: 42°06'04.0" → dsInt=40
+        var result = WcsInfo.FormatForResolver(19.8, 42.10111111);
+        Assert.Equal("01:19:1200,+42:06:040", result);
+    }
+
+    [Fact]
+    public void WcsInfo_FormatForResolver_ExactValues()
+    {
+        // 180° RA = 12h exactly, 45° Dec exactly
+        var result = WcsInfo.FormatForResolver(180.0, 45.0);
+        Assert.Equal("12:00:0000,+45:00:000", result);
+    }
+
+    [Fact]
+    public void WcsInfo_FormatForResolver_NegativeDec()
+    {
+        var result = WcsInfo.FormatForResolver(270.0, -33.5);
+        Assert.Equal("18:00:0000,-33:30:000", result);
+    }
+
+    [Fact]
+    public void WcsInfo_FormatForResolver_NoSpaces()
+    {
+        // CADC resolver requires no spaces in the coordinate string
+        var result = WcsInfo.FormatForResolver(19.8, 42.10111111);
+        Assert.DoesNotContain(" ", result);
+    }
+
+    [Fact]
+    public void WcsInfo_FormatForResolver_NoLetterF()
+    {
+        // Regression: C# format "05.2f" outputs literal 'f'. Ensure no 'f' in output.
+        var result = WcsInfo.FormatForResolver(83.633, 22.0145);
+        Assert.DoesNotContain("f", result);
+    }
+
+    [Fact]
+    public void WcsInfo_FormatRa_NoLetterF()
+    {
+        // Regression: ensure format strings don't produce literal 'f'
+        var result = WcsInfo.FormatRa(83.633);
+        Assert.DoesNotContain("f", result);
+    }
+
+    [Fact]
+    public void WcsInfo_FormatDec_NoLetterF()
+    {
+        var result = WcsInfo.FormatDec(22.0145);
+        Assert.DoesNotContain("f", result);
+    }
+
+    [Fact]
+    public void WcsInfo_WorldToPixel_Roundtrip()
+    {
+        var wcs = new WcsInfo
+        {
+            CrPix1 = 512, CrPix2 = 512,
+            CrVal1 = 180.0, CrVal2 = 45.0,
+            Cd1_1 = -0.001, Cd1_2 = 0,
+            Cd2_1 = 0, Cd2_2 = 0.001,
+        };
+
+        // Forward: pixel → world
+        var (ra, dec) = wcs.PixelToWorld(612, 712);
+        // Inverse: world → pixel
+        var pixel = wcs.WorldToPixel(ra, dec);
+
+        Assert.NotNull(pixel);
+        Assert.Equal(612.0, pixel.Value.Px, 6);
+        Assert.Equal(712.0, pixel.Value.Py, 6);
+    }
+
+    [Fact]
+    public void WcsInfo_WorldToPixel_Roundtrip_Rotated()
+    {
+        // CD matrix with 30° rotation
+        var angle = 30.0 * Math.PI / 180.0;
+        var scale = 0.001;
+        var wcs = new WcsInfo
+        {
+            CrPix1 = 256, CrPix2 = 256,
+            CrVal1 = 90.0, CrVal2 = -30.0,
+            Cd1_1 = -scale * Math.Cos(angle),
+            Cd1_2 = scale * Math.Sin(angle),
+            Cd2_1 = scale * Math.Sin(angle),
+            Cd2_2 = scale * Math.Cos(angle),
+        };
+
+        var (ra, dec) = wcs.PixelToWorld(300, 400);
+        var pixel = wcs.WorldToPixel(ra, dec);
+
+        Assert.NotNull(pixel);
+        Assert.Equal(300.0, pixel.Value.Px, 6);
+        Assert.Equal(400.0, pixel.Value.Py, 6);
+    }
+
+    [Fact]
+    public void WcsInfo_WorldToPixel_AtReferencePixel()
+    {
+        var wcs = new WcsInfo
+        {
+            CrPix1 = 512, CrPix2 = 512,
+            CrVal1 = 180.0, CrVal2 = 45.0,
+            Cd1_1 = -0.001, Cd1_2 = 0,
+            Cd2_1 = 0, Cd2_2 = 0.001,
+        };
+
+        // CrVal should map back to CrPix
+        var pixel = wcs.WorldToPixel(180.0, 45.0);
+        Assert.NotNull(pixel);
+        Assert.Equal(512.0, pixel.Value.Px, 6);
+        Assert.Equal(512.0, pixel.Value.Py, 6);
+    }
+
+    [Fact]
+    public void WcsInfo_WorldToPixel_SingularMatrix_ReturnsNull()
+    {
+        var wcs = new WcsInfo
+        {
+            CrPix1 = 100, CrPix2 = 100,
+            CrVal1 = 0, CrVal2 = 0,
+            Cd1_1 = 0, Cd1_2 = 0, // all zeros → singular
+            Cd2_1 = 0, Cd2_2 = 0,
+        };
+
+        Assert.Null(wcs.WorldToPixel(10.0, 20.0));
+    }
+
+    [Fact]
+    public void WcsInfo_NorthAngle_NoRotation()
+    {
+        // Standard orientation: North up, no rotation
+        var wcs = new WcsInfo
+        {
+            CrPix1 = 512, CrPix2 = 512,
+            CrVal1 = 180.0, CrVal2 = 45.0,
+            Cd1_1 = -0.001, Cd1_2 = 0,
+            Cd2_1 = 0, Cd2_2 = 0.001,
+        };
+        Assert.Equal(0.0, wcs.NorthAngle, 1);
+        Assert.False(wcs.HasParityFlip);
+    }
+
+    [Fact]
+    public void WcsInfo_NorthAngle_Rotated45()
+    {
+        var angle = 45.0 * Math.PI / 180.0;
+        var wcs = new WcsInfo
+        {
+            CrPix1 = 256, CrPix2 = 256,
+            CrVal1 = 90.0, CrVal2 = 30.0,
+            Cd1_1 = -0.001 * Math.Cos(angle),
+            Cd1_2 = 0.001 * Math.Sin(angle),
+            Cd2_1 = 0.001 * Math.Sin(angle),
+            Cd2_2 = 0.001 * Math.Cos(angle),
+        };
+        Assert.Equal(-45.0, wcs.NorthAngle, 1);
+    }
+
+    [Fact]
+    public void WcsInfo_ParityFlip_Detected()
+    {
+        // Positive determinant = parity flip (East right instead of left)
+        var wcs = new WcsInfo
+        {
+            Cd1_1 = 0.001, Cd1_2 = 0,
+            Cd2_1 = 0, Cd2_2 = 0.001,
+        };
+        Assert.True(wcs.HasParityFlip);
+    }
+
+    [Fact]
+    public void WcsInfo_PixelScale()
+    {
+        var wcs = new WcsInfo
+        {
+            Cd1_1 = -0.001, Cd1_2 = 0,
+            Cd2_1 = 0, Cd2_2 = 0.001,
+        };
+        // 0.001 deg/px = 3.6 arcsec/px
+        Assert.Equal(3.6, wcs.PixelScaleArcsec, 1);
     }
 
     [Fact]

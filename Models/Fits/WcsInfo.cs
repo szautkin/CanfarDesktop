@@ -20,6 +20,32 @@ public record WcsInfo
     public bool IsValid => Cd1_1 != 0 || Cd2_2 != 0;
 
     /// <summary>
+    /// Rotation angle in degrees from celestial North (measured East of North).
+    /// To display North-up, rotate the image by -NorthAngle.
+    /// </summary>
+    public double NorthAngle => Math.Atan2(-Cd1_2, Cd2_2) * 180.0 / Math.PI;
+
+    /// <summary>
+    /// True if the image has a parity flip (East appears right instead of left).
+    /// When true, the image should be mirrored horizontally to show standard orientation.
+    /// Most instruments produce negative determinant (no flip needed).
+    /// </summary>
+    public bool HasParityFlip => (Cd1_1 * Cd2_2 - Cd1_2 * Cd2_1) > 0;
+
+    /// <summary>
+    /// Pixel scale in arcseconds per pixel (geometric mean of axis scales).
+    /// </summary>
+    public double PixelScaleArcsec
+    {
+        get
+        {
+            var sx = Math.Sqrt(Cd1_1 * Cd1_1 + Cd2_1 * Cd2_1);
+            var sy = Math.Sqrt(Cd1_2 * Cd1_2 + Cd2_2 * Cd2_2);
+            return Math.Sqrt(sx * sy) * 3600.0; // degrees to arcsec
+        }
+    }
+
+    /// <summary>
     /// Convert pixel (x, y) to world (RA, Dec) in degrees using the CD matrix.
     /// </summary>
     public (double Ra, double Dec) PixelToWorld(double px, double py)
@@ -29,6 +55,22 @@ public record WcsInfo
         var ra = CrVal1 + Cd1_1 * dx + Cd1_2 * dy;
         var dec = CrVal2 + Cd2_1 * dx + Cd2_2 * dy;
         return (ra, dec);
+    }
+
+    /// <summary>
+    /// Convert world (RA, Dec) in degrees to pixel (x, y) by inverting the CD matrix.
+    /// Returns null if the CD matrix is singular.
+    /// </summary>
+    public (double Px, double Py)? WorldToPixel(double ra, double dec)
+    {
+        var det = Cd1_1 * Cd2_2 - Cd1_2 * Cd2_1;
+        if (Math.Abs(det) < 1e-30) return null;
+
+        var dra = ra - CrVal1;
+        var ddec = dec - CrVal2;
+        var px = CrPix1 + (Cd2_2 * dra - Cd1_2 * ddec) / det;
+        var py = CrPix2 + (-Cd2_1 * dra + Cd1_1 * ddec) / det;
+        return (px, py);
     }
 
     /// <summary>

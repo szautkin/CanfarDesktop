@@ -15,6 +15,8 @@ public partial class FitsViewerViewModel : ObservableObject
 {
     private FitsImageData? _imageData;
     private List<FitsHdu>? _hdus;
+    private bool _disposed;
+    private CancellationTokenSource? _renderCts;
 
     [ObservableProperty] private string _title = "FITS Viewer";
     [ObservableProperty] private string _statusMessage = "No file loaded";
@@ -25,8 +27,6 @@ public partial class FitsViewerViewModel : ObservableObject
     public double? CrosshairRa { get; set; }
     public double? CrosshairDec { get; set; }
 
-    /// <summary>Raised when user wants to search at crosshair position.</summary>
-    public event Action<double, double>? SearchAtPositionRequested;
     [ObservableProperty] private string _pixelText = "";
     [ObservableProperty] private WriteableBitmap? _renderedImage;
     [ObservableProperty] private bool _isLoading;
@@ -36,6 +36,7 @@ public partial class FitsViewerViewModel : ObservableObject
     [ObservableProperty] private ImageStretcher.StretchMode _stretch = ImageStretcher.StretchMode.Linear;
     [ObservableProperty] private ColormapProvider.ColormapName _colormap = ColormapProvider.ColormapName.Grayscale;
     [ObservableProperty] private double _zoomLevel = 1.0;
+    [ObservableProperty] private bool _isNorthUp;
 
     public List<FitsHdu>? Hdus => _hdus;
     public FitsImageData? ImageData => _imageData;
@@ -95,7 +96,11 @@ public partial class FitsViewerViewModel : ObservableObject
     [RelayCommand]
     public async Task RenderAsync()
     {
-        if (_imageData is null) return;
+        if (_imageData is null || _disposed) return;
+
+        // Cancel any in-flight render (e.g., from rapid slider drag)
+        _renderCts?.Cancel();
+        var cts = _renderCts = new CancellationTokenSource();
 
         var image = _imageData;
         var stretch = Stretch;
@@ -105,14 +110,20 @@ public partial class FitsViewerViewModel : ObservableObject
 
         var colormap = ColormapProvider.GetColormap(colormapName);
 
-        var bgra = await Task.Run(() =>
-            FitsRenderer.Render(image, stretch, colormap, minCut, maxCut));
+        byte[] bgra;
+        try
+        {
+            bgra = await Task.Run(() =>
+                FitsRenderer.Render(image, stretch, colormap, minCut, maxCut), cts.Token);
+        }
+        catch (OperationCanceledException) { return; }
 
-        // Create WriteableBitmap on UI thread
+        if (cts.Token.IsCancellationRequested || _disposed) return;
+
         var bitmap = new WriteableBitmap(image.Width, image.Height);
         using (var stream = bitmap.PixelBuffer.AsStream())
         {
-            await stream.WriteAsync(bgra);
+            await stream.WriteAsync(bgra, cts.Token);
         }
         bitmap.Invalidate();
 
@@ -184,5 +195,32 @@ public partial class FitsViewerViewModel : ObservableObject
         MaxCut = autoMax;
 
         _ = RenderAsync();
+    }
+
+    /// <summary>
+    /// Convert world RA/Dec to display pixel coordinates (0-based, Y-flipped).
+    /// Returns null if no image/WCS or singular matrix.
+    /// </summary>
+    public (double X, double Y)? GoToCoordinate(double ra, double dec)
+    {
+        if (_imageData?.Wcs is not { IsValid: true } wcs) return null;
+        var pixel = wcs.WorldToPixel(ra, dec);
+        if (pixel is null) return null;
+        // 1-based FITS pixel → 0-based display pixel, flip Y
+        var displayX = pixel.Value.Px - 1;
+        var displayY = _imageData.Height - 1 - (pixel.Value.Py - 1);
+        return (displayX, displayY);
+    }
+
+    /// <summary>
+    /// Release heavy resources (bitmaps, pixel arrays) for tab close.
+    /// </summary>
+    public void Cleanup()
+    {
+        _disposed = true;
+        _renderCts?.Cancel();
+        RenderedImage = null;
+        _imageData = null;
+        _hdus = null;
     }
 }

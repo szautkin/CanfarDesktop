@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Services;
+using CanfarDesktop.Services.Fits;
 using CanfarDesktop.Services.HttpClients;
 using CanfarDesktop.Services.Notebook;
 using CanfarDesktop.ViewModels;
@@ -68,15 +69,17 @@ public partial class App : Application
         if (fileArgs.Files.Count == 0) return;
 
         var filePath = fileArgs.Files[0].Path;
-        if (!filePath.EndsWith(".ipynb", StringComparison.OrdinalIgnoreCase)) return;
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
         if (_window is MainWindow mw)
         {
-            // Dispatch to UI thread (Activated fires on background thread)
             mw.DispatcherQueue.TryEnqueue(() =>
             {
-                mw.OpenNotebook(filePath);
-                mw.Activate(); // bring to foreground
+                if (ext is ".fits" or ".fit" or ".fts")
+                    mw.OpenFitsViewer(filePath);
+                else if (ext is ".ipynb")
+                    mw.OpenNotebook(filePath);
+                mw.Activate();
             });
         }
     }
@@ -124,6 +127,10 @@ public partial class App : Application
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddHttpClient<DataLinkService>();
 
+        // FITS viewer services
+        services.AddSingleton<ICoordinateStoreService, CoordinateStoreService>();
+        services.AddSingleton<IFitsTabFactory, FitsTabFactory>();
+
         // Notebook services
         services.AddTransient<IDirtyTracker, DirtyTracker>();
         services.AddTransient<IAutoSaveService, AutoSaveService>();
@@ -136,6 +143,7 @@ public partial class App : Application
 
         // ViewModels
         services.AddTransient<FitsViewerViewModel>();
+        services.AddSingleton<FitsTabHostViewModel>();
         services.AddTransient<MainViewModel>();
         services.AddTransient<LoginViewModel>();
         services.AddTransient<SessionListViewModel>();
