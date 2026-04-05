@@ -64,6 +64,17 @@ except ImportError:
 import os as _os
 _colab_prefix = "/content/"
 
+# Mock google.colab module so Colab notebooks don't crash on import
+import types as _types
+_mock_colab = _types.ModuleType("google.colab")
+_mock_colab.output = _types.ModuleType("google.colab.output")
+_mock_colab.output.enable_custom_widget_manager = lambda: None
+_mock_google = _types.ModuleType("google")
+_mock_google.colab = _mock_colab
+sys.modules["google"] = _mock_google
+sys.modules["google.colab"] = _mock_colab
+sys.modules["google.colab.output"] = _mock_colab.output
+
 
 def _capture_display_data(obj):
     """Hook for IPython-style display. Returns mime dict or None."""
@@ -116,6 +127,9 @@ def _handle_magic(code, exec_count):
         pending_code = []
         if not block:
             return
+        # Apply Colab path rewrite to code blocks too
+        if _colab_prefix in block:
+            block = block.replace(_colab_prefix, "")
         import io as _io
         old_out, old_err = sys.stdout, sys.stderr
         co, ce = _io.StringIO(), _io.StringIO()
