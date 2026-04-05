@@ -110,6 +110,7 @@ public partial class NotebookViewModel : ObservableObject
     private void OnCellContentChanged()
     {
         _dirtyTracker.MarkDirty();
+        _autoSaveService.NotifyChanged();
         UpdateCellSnapshot();
     }
 

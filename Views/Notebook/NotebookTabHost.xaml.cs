@@ -118,7 +118,16 @@ public sealed partial class NotebookTabHost : UserControl
             foreach (var candidate in orphaned.OrderByDescending(c => c.LastModifiedUtc))
             {
                 var page = await AddTabForFileAsync(candidate.AutoSavePath);
-                page.ViewModel.StatusMessage = "[Recovered] " + (candidate.OriginalPath ?? candidate.DisplayName);
+                // Restore original path so kernel uses the correct working directory
+                if (candidate.OriginalPath is not null && File.Exists(candidate.OriginalPath))
+                {
+                    page.ViewModel.LoadFromFile(candidate.OriginalPath, page.ViewModel.Document);
+                    page.ViewModel.StatusMessage = $"[Recovered] {candidate.OriginalPath}";
+                }
+                else
+                {
+                    page.ViewModel.StatusMessage = "[Recovered] " + candidate.DisplayName;
+                }
             }
         }
         else if (result == ContentDialogResult.Secondary)

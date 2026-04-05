@@ -15,6 +15,7 @@ public class AutoSaveService : IAutoSaveService
     private Func<bool>? _isDirtyCheck;
     private string? _autoSavePath;
     private bool _disposed;
+    private bool _hasNewChangesSinceLastSave = true;
     private readonly object _lock = new();
 
     public string? AutoSavePath => _autoSavePath;
@@ -56,6 +57,11 @@ public class AutoSaveService : IAutoSaveService
         }
     }
 
+    public void NotifyChanged()
+    {
+        lock (_lock) { _hasNewChangesSinceLastSave = true; }
+    }
+
     public async Task<string?> SaveNowAsync()
     {
         return await Task.Run(() => WriteAutoSave());
@@ -79,10 +85,16 @@ public class AutoSaveService : IAutoSaveService
 
         if (provider is null || path is null) return null;
 
-        // Skip autosave when document is not dirty
+        // Skip autosave when document is not dirty or no new changes since last autosave
         Func<bool>? dirtyCheck;
-        lock (_lock) { dirtyCheck = _isDirtyCheck; }
+        bool hasNewChanges;
+        lock (_lock)
+        {
+            dirtyCheck = _isDirtyCheck;
+            hasNewChanges = _hasNewChangesSinceLastSave;
+        }
         if (dirtyCheck is not null && !dirtyCheck()) return null;
+        if (!hasNewChanges) return null;
 
         try
         {
@@ -94,6 +106,7 @@ public class AutoSaveService : IAutoSaveService
             File.WriteAllText(tmpPath, json);
             File.Move(tmpPath, path, overwrite: true);
 
+            lock (_lock) { _hasNewChangesSinceLastSave = false; }
             Debug.WriteLine($"AutoSave written: {path}");
             return path;
         }

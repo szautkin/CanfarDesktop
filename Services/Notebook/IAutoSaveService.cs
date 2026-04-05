@@ -11,6 +11,7 @@ public interface IAutoSaveService : IDisposable
     void Start(string? originalPath, Func<NotebookDocument> documentProvider, Func<bool>? isDirtyCheck = null);
     void StopAndCleanup();
     Task<string?> SaveNowAsync();
+    void NotifyChanged();
     string? AutoSavePath { get; }
     TimeSpan Interval { get; set; }
 }
