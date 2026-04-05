@@ -41,7 +41,7 @@ public record WcsInfo
         var h = (int)ra;
         var m = (int)((ra - h) * 60);
         var s = (ra - h - m / 60.0) * 3600;
-        return $"{h:D2}h{m:D2}m{s:05.2f}s";
+        return $"{h:D2}h{m:D2}m{s:00.00}s";
     }
 
     /// <summary>
@@ -54,7 +54,7 @@ public record WcsInfo
         var d = (int)dec;
         var m = (int)((dec - d) * 60);
         var s = (dec - d - m / 60.0) * 3600;
-        return $"{sign}{d:D2}\u00b0{m:D2}'{s:04.1f}\"";
+        return $"{sign}{d:D2}\u00b0{m:D2}'{s:00.0}\"";
     }
 
     /// <summary>
@@ -77,7 +77,10 @@ public record WcsInfo
         var dm = (int)((dec - dd) * 60);
         var ds = (dec - dd - dm / 60.0) * 3600;
 
-        return $"{rh:D2}:{rm:D2}:{rs:05.2f},{sign}{dd:D2}:{dm:D2}:{ds:04.1f}";
+        // CADC format: seconds × 100 (RA) or × 10 (Dec) as integers, no decimal point
+        var rsInt = (int)Math.Round(rs * 100);
+        var dsInt = (int)Math.Round(ds * 10);
+        return $"{rh:D2}:{rm:D2}:{rsInt:D4},{sign}{dd:D2}:{dm:D2}:{dsInt:D3}";
     }
 
     /// <summary>
