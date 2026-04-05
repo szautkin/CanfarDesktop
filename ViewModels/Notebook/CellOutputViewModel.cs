@@ -18,6 +18,8 @@ public partial class CellOutputViewModel : ObservableObject
     [ObservableProperty] private string _textContent = string.Empty;
     [ObservableProperty] private bool _hasImage;
     [ObservableProperty] private string _imageBase64 = string.Empty;
+    [ObservableProperty] private bool _hasHtml;
+    [ObservableProperty] private string _htmlContent = string.Empty;
     [ObservableProperty] private bool _isError;
     [ObservableProperty] private string _errorName = string.Empty;
     [ObservableProperty] private string _traceback = string.Empty;
@@ -38,6 +40,12 @@ public partial class CellOutputViewModel : ObservableObject
 
             case "execute_result":
             case "display_data":
+                // Prefer HTML for rich display (pandas DataFrames, styled output)
+                if (_model.Data?.TryGetValue("text/html", out var htmlData) == true)
+                {
+                    HasHtml = true;
+                    HtmlContent = ExtractTextFromJsonElement(htmlData);
+                }
                 if (_model.Data?.TryGetValue("text/plain", out var textPlain) == true)
                     TextContent = ExtractTextFromJsonElement(textPlain);
                 if (_model.Data?.TryGetValue("image/png", out var imgPng) == true)

@@ -259,6 +259,8 @@ public sealed partial class CodeCellControl : UserControl
                 OutputStack.Children.Add(BuildErrorOutput(output));
             else if (output.HasImage)
                 OutputStack.Children.Add(BuildImageOutput(output));
+            else if (output.HasHtml)
+                BuildHtmlOutput(output);
             else if (!string.IsNullOrEmpty(output.TextContent))
                 OutputStack.Children.Add(BuildTextOutput(output));
         }
@@ -327,6 +329,13 @@ public sealed partial class CodeCellControl : UserControl
             CornerRadius = new CornerRadius(4),
             Padding = new Thickness(8, 4, 8, 4),
         };
+    }
+
+    private void BuildHtmlOutput(CellOutputViewModel output)
+    {
+        var elements = SimpleHtmlRenderer.Render(output.HtmlContent);
+        foreach (var element in elements)
+            OutputStack.Children.Add(element);
     }
 
     private UIElement BuildImageOutput(CellOutputViewModel output)
