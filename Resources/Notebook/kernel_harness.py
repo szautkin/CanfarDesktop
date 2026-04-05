@@ -59,6 +59,11 @@ try:
 except ImportError:
     pass
 
+# Colab compatibility: rewrite /content/ paths to working directory.
+# Many Colab notebooks hardcode paths like /content/repo/file.
+import os as _os
+_colab_prefix = "/content/"
+
 
 def _capture_display_data(obj):
     """Hook for IPython-style display. Returns mime dict or None."""
@@ -251,6 +256,10 @@ def execute_code(code, exec_count):
 
     # Normalize line endings (Windows TextBox sends \r\n)
     code = code.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Colab compatibility: rewrite /content/ paths to working directory
+    if _colab_prefix in code:
+        code = code.replace(_colab_prefix, "")
 
     # Handle magic commands (%pip, %conda, !shell)
     magic_result = _handle_magic(code, exec_count)
