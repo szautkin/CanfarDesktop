@@ -58,10 +58,20 @@ public partial class ResearchViewModel : ObservableObject
         Refresh();
     }
 
+    /// <summary>Raised when user wants to view a FITS file in the built-in viewer.</summary>
+    public event Action<string>? ViewInFitsRequested;
+
     [RelayCommand]
     public void OpenFile()
     {
         if (SelectedObservation is null || !SelectedObservation.FileExists) return;
+
+        var ext = Path.GetExtension(SelectedObservation.LocalPath).ToLowerInvariant();
+        if (ext is ".fits" or ".fit" or ".fts")
+        {
+            ViewInFitsRequested?.Invoke(SelectedObservation.LocalPath);
+            return;
+        }
 
         try
         {
@@ -75,6 +85,13 @@ public partial class ResearchViewModel : ObservableObject
         {
             System.Diagnostics.Debug.WriteLine($"Open file error: {ex.Message}");
         }
+    }
+
+    [RelayCommand]
+    public void OpenInFitsViewer()
+    {
+        if (SelectedObservation is null || !SelectedObservation.FileExists) return;
+        ViewInFitsRequested?.Invoke(SelectedObservation.LocalPath);
     }
 
     [RelayCommand]

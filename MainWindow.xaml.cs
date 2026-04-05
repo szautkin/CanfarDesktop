@@ -269,6 +269,7 @@ public sealed partial class MainWindow : Window
         if (_researchPage is null)
         {
             _researchPage = App.Services.GetRequiredService<ResearchPage>();
+            _researchPage.ViewModel.ViewInFitsRequested += path => OpenFitsViewer(path);
             ResearchContainer.Child = _researchPage;
         }
         else

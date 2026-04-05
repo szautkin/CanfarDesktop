@@ -136,6 +136,8 @@ public class DataLinkService
                 result.Thumbnails.Add(url);
             else if (semantics == "#preview" && contentType.Contains("image", StringComparison.OrdinalIgnoreCase))
                 result.Previews.Add(url);
+            else if (semantics == "#this" && result.DirectFileUrl is null)
+                result.DirectFileUrl = url;
         }
 
         System.Diagnostics.Debug.WriteLine($"DataLink parsed: {result.Thumbnails.Count} thumbnails, {result.Previews.Count} previews");

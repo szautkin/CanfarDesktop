@@ -182,7 +182,22 @@ public sealed partial class FitsViewerPage : UserControl
         }
     }
 
-    // ── Mouse: drag-to-pan + coordinate tracking ───────────────────────────
+    // ── Mouse: drag-to-pan, scroll, coordinate tracking ────────────────────
+
+    private void OnCanvasWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        var props = e.GetCurrentPoint(ImageScroller).Properties;
+        var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(
+            Windows.System.VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        if (shift)
+        {
+            // Shift+scroll → horizontal pan
+            var delta = props.MouseWheelDelta;
+            ImageScroller.ScrollToHorizontalOffset(ImageScroller.HorizontalOffset - delta);
+            e.Handled = true;
+        }
+    }
 
     private void OnCanvasPointerPressed(object sender, PointerRoutedEventArgs e)
     {

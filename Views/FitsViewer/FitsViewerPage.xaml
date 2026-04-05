@@ -110,7 +110,8 @@
                           PointerPressed="OnCanvasPointerPressed"
                           PointerMoved="OnCanvasPointerMoved"
                           PointerReleased="OnCanvasPointerReleased"
-                          PointerCanceled="OnCanvasPointerReleased">
+                          PointerCanceled="OnCanvasPointerReleased"
+                          PointerWheelChanged="OnCanvasWheelChanged">
                 <Image x:Name="FitsImage"
                        Stretch="None"
                        HorizontalAlignment="Center"
