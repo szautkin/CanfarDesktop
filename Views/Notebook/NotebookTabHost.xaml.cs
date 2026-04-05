@@ -242,8 +242,23 @@ public sealed partial class NotebookTabHost : UserControl
 
             var picker = new Windows.Storage.Pickers.FileSavePicker();
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
-            picker.SuggestedFileName = ActiveVM.Title.Replace(".ipynb", "") + ".ipynb";
-            picker.FileTypeChoices.Add("Jupyter Notebook", [".ipynb"]);
+
+            // File type matches the source format
+            switch (ActiveVM.FileMode)
+            {
+                case NotebookFileMode.PythonScript:
+                    picker.SuggestedFileName = ActiveVM.Title;
+                    picker.FileTypeChoices.Add("Python Script", [".py"]);
+                    break;
+                case NotebookFileMode.Markdown:
+                    picker.SuggestedFileName = ActiveVM.Title;
+                    picker.FileTypeChoices.Add("Markdown", [".md"]);
+                    break;
+                default:
+                    picker.SuggestedFileName = ActiveVM.Title.Replace(".ipynb", "") + ".ipynb";
+                    picker.FileTypeChoices.Add("Jupyter Notebook", [".ipynb"]);
+                    break;
+            }
 
             var file = await picker.PickSaveFileAsync();
             if (file is not null)
