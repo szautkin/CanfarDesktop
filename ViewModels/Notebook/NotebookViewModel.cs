@@ -33,6 +33,7 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
     public ObservableCollection<CellViewModel> Cells { get; } = [];
     public NotebookDocument Document => _document;
     public string? FilePath => _filePath;
+    public NotebookFileMode FileMode { get; private set; } = NotebookFileMode.Notebook;
 
     public NotebookViewModel(IDirtyTracker dirtyTracker, IAutoSaveService autoSaveService,
         IKernelService kernelService, RecentNotebooksService recentNotebooks)
@@ -56,10 +57,41 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
     {
         _filePath = filePath;
         _document = document;
+        FileMode = NotebookFileMode.Notebook;
         Title = Path.GetFileName(filePath);
         KernelDisplayName = document.Metadata.KernelSpec?.DisplayName ?? "Unknown kernel";
         _recentNotebooks.AddOrUpdate(filePath);
 
+        _dirtyTracker.Reset();
+        HydrateFromDocument();
+
+        _autoSaveService.StopAndCleanup();
+        StartAutoSave();
+    }
+
+    /// <summary>
+    /// Load a plain text file (.py, .md) as a single-cell notebook.
+    /// Saves back as plain text, not .ipynb.
+    /// </summary>
+    public void LoadFromTextFile(string filePath, string content, NotebookFileMode mode)
+    {
+        _filePath = filePath;
+        FileMode = mode;
+        Title = Path.GetFileName(filePath);
+        KernelDisplayName = mode == NotebookFileMode.PythonScript ? "Python" : "Markdown";
+
+        var cellType = mode == NotebookFileMode.PythonScript ? "code" : "markdown";
+        _document = NotebookParser.CreateEmpty();
+        _document.Cells.Clear();
+        _document.Cells.Add(new NotebookCell
+        {
+            CellType = cellType,
+            Id = NotebookParser.GenerateCellId(),
+            Source = NotebookCell.SplitSourceLines(content),
+            Outputs = cellType == "code" ? [] : null,
+        });
+
+        _recentNotebooks.AddOrUpdate(filePath);
         _dirtyTracker.Reset();
         HydrateFromDocument();
 
@@ -139,10 +171,21 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
         try
         {
             var tmpPath = _filePath + ".tmp";
-            await using (var stream = File.Create(tmpPath))
+
+            if (FileMode is NotebookFileMode.PythonScript or NotebookFileMode.Markdown)
             {
-                await NotebookParser.SerializeAsync(_document, stream);
+                // Plain text save — just the cell source, no JSON wrapper
+                var text = Cells.Count > 0 ? Cells[0].Source : "";
+                await File.WriteAllTextAsync(tmpPath, text);
             }
+            else
+            {
+                await using (var stream = File.Create(tmpPath))
+                {
+                    await NotebookParser.SerializeAsync(_document, stream);
+                }
+            }
+
             File.Move(tmpPath, _filePath, overwrite: true);
             _dirtyTracker.MarkClean();
             StatusMessage = $"Saved {Path.GetFileName(_filePath)}";

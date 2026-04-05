@@ -69,6 +69,7 @@
     <Compile Include="..\Services\Notebook\INotebookTabFactory.cs" Link="Linked\Notebook\INotebookTabFactory.cs" />
     <Compile Include="..\ViewModels\Notebook\NotebookTabItem.cs" Link="Linked\Notebook\NotebookTabItem.cs" />
     <Compile Include="..\ViewModels\Notebook\NotebookTabHostViewModel.cs" Link="Linked\Notebook\NotebookTabHostViewModel.cs" />
+    <Compile Include="..\ViewModels\Notebook\NotebookFileMode.cs" Link="Linked\Notebook\NotebookFileMode.cs" />
     <!-- Notebook execution services (Milestone 4) -->
     <Compile Include="..\Services\Notebook\KernelState.cs" Link="Linked\Notebook\KernelState.cs" />
     <Compile Include="..\Services\Notebook\IKernelService.cs" Link="Linked\Notebook\IKernelService.cs" />

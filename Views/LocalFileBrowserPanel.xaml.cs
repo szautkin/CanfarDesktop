@@ -62,6 +62,8 @@ public sealed partial class LocalFileBrowserPanel : UserControl
         switch (ext)
         {
             case ".ipynb":
+            case ".py":
+            case ".md":
                 // Open in notebook tab
                 FileOpenRequested?.Invoke(filePath);
                 break;

@@ -76,12 +76,25 @@ public sealed partial class NotebookPage : UserControl
     {
         try
         {
-            await using var stream = File.OpenRead(filePath);
-            var document = await Helpers.Notebook.NotebookParser.ParseAsync(stream);
-            ViewModel.LoadFromFile(filePath, document);
+            var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
-            // Scan for missing dependencies
-            await CheckDependenciesAsync(document);
+            if (ext is ".py" or ".md")
+            {
+                // Plain text file → single-cell notebook
+                var content = await File.ReadAllTextAsync(filePath);
+                var mode = ext == ".py"
+                    ? ViewModels.Notebook.NotebookFileMode.PythonScript
+                    : ViewModels.Notebook.NotebookFileMode.Markdown;
+                ViewModel.LoadFromTextFile(filePath, content, mode);
+            }
+            else
+            {
+                // .ipynb notebook
+                await using var stream = File.OpenRead(filePath);
+                var document = await Helpers.Notebook.NotebookParser.ParseAsync(stream);
+                ViewModel.LoadFromFile(filePath, document);
+                await CheckDependenciesAsync(document);
+            }
         }
         catch (Exception ex)
         {

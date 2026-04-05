@@ -88,7 +88,8 @@ public sealed partial class MainWindow : Window
 
     private void OnFilePanelFileOpen(string filePath)
     {
-        if (filePath.EndsWith(".ipynb", StringComparison.OrdinalIgnoreCase))
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ext is ".ipynb" or ".py" or ".md")
         {
             OpenNotebook(filePath);
         }
