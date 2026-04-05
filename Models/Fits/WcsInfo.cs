@@ -60,14 +60,22 @@ public record WcsInfo
     /// <summary>
     /// Format as resolver-compatible string: "HH:MM:SS.ss, +DD:MM:SS.s"
     /// </summary>
+    /// <summary>
+    /// Format as CADC resolver-compatible string: "HH:MM:SSFF,+DD:MM:SSF"
+    /// No spaces, fractional seconds concatenated as integers.
+    /// Example: "00:45:2052,+42:02:244" = 00h45m20.52s, +42°02'24.4"
+    /// </summary>
     public static string FormatForResolver(double raDeg, double decDeg)
     {
-        // RA
+        // RA in hours
         var ra = raDeg / 15.0;
         if (ra < 0) ra += 24;
         var rh = (int)ra;
         var rm = (int)((ra - rh) * 60);
         var rs = (ra - rh - rm / 60.0) * 3600;
+        // Seconds as integer with 2 fractional digits concatenated: 20.52 → "2052"
+        var rsInt = (int)(rs * 100);
+        var raStr = $"{rh:D2}:{rm:D2}:{rsInt:D4}";
 
         // Dec
         var sign = decDeg >= 0 ? "+" : "-";
@@ -75,8 +83,11 @@ public record WcsInfo
         var dd = (int)dec;
         var dm = (int)((dec - dd) * 60);
         var ds = (dec - dd - dm / 60.0) * 3600;
+        // Seconds as integer with 1 fractional digit concatenated: 24.4 → "244"
+        var dsInt = (int)(ds * 10);
+        var decStr = $"{sign}{dd:D2}:{dm:D2}:{dsInt:D3}";
 
-        return $"{rh:D2}:{rm:D2}:{rs:05.2f}, {sign}{dd:D2}:{dm:D2}:{ds:04.1f}";
+        return $"{raStr},{decStr}";
     }
 
     /// <summary>
