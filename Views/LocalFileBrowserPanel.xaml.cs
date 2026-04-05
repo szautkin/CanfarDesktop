@@ -1,8 +1,11 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 using CanfarDesktop.Models;
 using CanfarDesktop.ViewModels;
+using static CanfarDesktop.Views.WindowHelper;
 
 namespace CanfarDesktop.Views;
 
@@ -18,16 +21,12 @@ public sealed partial class LocalFileBrowserPanel : UserControl
         InitializeComponent();
 
         ViewModel.FileOpenRequested += path => FileOpenRequested?.Invoke(path);
-
-        // Watch for directory changes and refresh on UI thread
-        ViewModel.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(ViewModel.RootPath))
-                DispatcherQueue.TryEnqueue(() => FileTree.ItemsSource = ViewModel.RootNodes);
-        };
+        ViewModel.PickFolderRequested += async () => await PickFolderAsync();
 
         FileTree.ItemsSource = ViewModel.RootNodes;
     }
+
+    // ── TreeView events ──────────────────────────────────────────────────────
 
     private void OnItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
@@ -42,12 +41,26 @@ public sealed partial class LocalFileBrowserPanel : UserControl
     private void OnNodeExpanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
         if (args.Item is LocalFileNode node && node.HasUnrealizedChildren)
-        {
-            var children = ViewModel.LoadChildren(node);
-            // TreeView needs the children in the node's Children list
-            // which we already set in LoadChildren
-        }
+            ViewModel.LoadChildren(node);
     }
+
+    // ── Toolbar buttons ──────────────────────────────────────────────────────
+
+    private void OnNewFile(object s, RoutedEventArgs e)   => ViewModel.NewFileCommand.Execute(null);
+    private void OnNewFolder(object s, RoutedEventArgs e) => ViewModel.NewFolderCommand.Execute(null);
+    private void OnRefresh(object s, RoutedEventArgs e)   => ViewModel.RefreshRootCommand.Execute(null);
+    private void OnFolderUp(object s, RoutedEventArgs e)  => ViewModel.FolderUpCommand.Execute(null);
+    private void OnOpenFolder(object s, RoutedEventArgs e) => ViewModel.OpenFolderCommand.Execute(null);
+
+    // ── Breadcrumb navigation ─────────────────────────────────────────────
+
+    private void OnBreadcrumbClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is HyperlinkButton { Tag: BreadcrumbSegment segment })
+            ViewModel.NavigateToBreadcrumbCommand.Execute(segment);
+    }
+
+    // ── Filter ───────────────────────────────────────────────────────────────
 
     private void OnFilterChanged(object sender, TextChangedEventArgs e)
     {
@@ -55,9 +68,7 @@ public sealed partial class LocalFileBrowserPanel : UserControl
         // TODO: apply filter to tree view items
     }
 
-    private void OnNewFile(object s, RoutedEventArgs e) => ViewModel.NewFileCommand.Execute(null);
-    private void OnNewFolder(object s, RoutedEventArgs e) => ViewModel.NewFolderCommand.Execute(null);
-    private void OnRefresh(object s, RoutedEventArgs e) => ViewModel.RefreshRootCommand.Execute(null);
+    // ── Context menu ─────────────────────────────────────────────────────────
 
     private void OnOpenItem(object sender, RoutedEventArgs e)
     {
@@ -82,5 +93,25 @@ public sealed partial class LocalFileBrowserPanel : UserControl
             ViewModel.SelectedNode = node;
             ViewModel.DeleteSelectedCommand.Execute(null);
         }
+    }
+
+    // ── Folder picker (View responsibility — needs window handle + XamlRoot) ─
+
+    private async Task PickFolderAsync()
+    {
+        var picker = new FolderPicker();
+        picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+        picker.FileTypeFilter.Add("*");
+
+        // WinUI 3: picker must be initialized with the HWND (same pattern as StorageBrowserPage).
+        var hwnd = ActiveWindows.Count > 0
+            ? WindowNative.GetWindowHandle(ActiveWindows[0])
+            : IntPtr.Zero;
+        if (hwnd == IntPtr.Zero) return;
+        InitializeWithWindow.Initialize(picker, hwnd);
+
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder is not null)
+            ViewModel.SetRootPath(folder.Path);
     }
 }

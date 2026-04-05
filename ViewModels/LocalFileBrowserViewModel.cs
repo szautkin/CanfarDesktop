@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
+using Microsoft.UI.Dispatching;
 
 /// <summary>
 /// ViewModel for the local file browser side panel.
@@ -12,6 +13,7 @@ using CanfarDesktop.Services;
 public partial class LocalFileBrowserViewModel : ObservableObject
 {
     private readonly ILocalFileService _fileService;
+    private readonly DispatcherQueue _dispatcherQueue;
 
     [ObservableProperty] private string _rootPath = "";
     [ObservableProperty] private LocalFileNode? _selectedNode;
@@ -26,6 +28,8 @@ public partial class LocalFileBrowserViewModel : ObservableObject
     public LocalFileBrowserViewModel(ILocalFileService fileService)
     {
         _fileService = fileService;
+        // Capture the UI thread dispatcher at construction time (always called from UI thread via DI).
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _fileService.DirectoryChanged += OnDirectoryChanged;
     }
 
@@ -83,9 +87,15 @@ public partial class LocalFileBrowserViewModel : ObservableObject
     public void NewFile()
     {
         var parent = SelectedNode?.IsFolder == true ? SelectedNode.FullPath : RootPath;
-        if (string.IsNullOrEmpty(parent)) return;
+        if (string.IsNullOrEmpty(parent) || !Directory.Exists(parent)) return;
 
-        _fileService.CreateFile(parent, "untitled.ipynb");
+        // Deduplicate: untitled.ipynb → untitled (1).ipynb → untitled (2).ipynb
+        var name = "untitled.ipynb";
+        var counter = 1;
+        while (File.Exists(Path.Combine(parent, name)))
+            name = $"untitled ({counter++}).ipynb";
+
+        _fileService.CreateFile(parent, name);
     }
 
     [RelayCommand]
@@ -104,10 +114,63 @@ public partial class LocalFileBrowserViewModel : ObservableObject
 
     private void OnDirectoryChanged(string path)
     {
-        // Refresh will be dispatched to UI thread by the View
+        // FileSystemWatcher fires on a thread-pool thread — marshal to UI thread before
+        // touching RootNodes (ObservableCollection raises CollectionChanged on its caller's thread).
         if (path == RootPath)
-            RefreshRoot();
+            _dispatcherQueue.TryEnqueue(RefreshRoot);
     }
 
     partial void OnShowHiddenChanged(bool value) => RefreshRoot();
+    partial void OnRootPathChanged(string value) => RebuildBreadcrumbs();
+
+    // ── Breadcrumbs ──────────────────────────────────────────────────────────
+
+    public ObservableCollection<BreadcrumbSegment> Breadcrumbs { get; } = [];
+
+    private void RebuildBreadcrumbs()
+    {
+        Breadcrumbs.Clear();
+        if (string.IsNullOrEmpty(RootPath)) return;
+
+        var parts = RootPath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var accumulated = "";
+        for (var i = 0; i < parts.Length; i++)
+        {
+            accumulated = i == 0
+                ? (OperatingSystem.IsWindows() ? parts[0] + "\\" : "/" + parts[0])
+                : Path.Combine(accumulated, parts[i]);
+            Breadcrumbs.Add(new BreadcrumbSegment(parts[i], accumulated));
+        }
+    }
+
+    [RelayCommand]
+    public void NavigateToBreadcrumb(BreadcrumbSegment segment)
+    {
+        if (Directory.Exists(segment.FullPath))
+            SetRootPath(segment.FullPath);
+    }
+
+    // ── Folder Up ────────────────────────────────────────────────────────────
+
+    [RelayCommand(CanExecute = nameof(CanGoUp))]
+    public void FolderUp()
+    {
+        var parent = Path.GetDirectoryName(RootPath.TrimEnd(Path.DirectorySeparatorChar));
+        if (!string.IsNullOrEmpty(parent) && Directory.Exists(parent))
+            SetRootPath(parent);
+    }
+
+    private bool CanGoUp() =>
+        !string.IsNullOrEmpty(RootPath) &&
+        Path.GetDirectoryName(RootPath.TrimEnd(Path.DirectorySeparatorChar)) is { Length: > 0 };
+
+    partial void OnRootPathChanging(string value) => FolderUpCommand.NotifyCanExecuteChanged();
+
+    // ── Open Folder ──────────────────────────────────────────────────────────
+
+    /// <summary>Raised when the ViewModel wants the View to show a folder picker.</summary>
+    public event Action? PickFolderRequested;
+
+    [RelayCommand]
+    public void OpenFolder() => PickFolderRequested?.Invoke();
 }

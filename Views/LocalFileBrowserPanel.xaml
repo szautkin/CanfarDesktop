@@ -2,7 +2,8 @@
 <UserControl
     x:Class="CanfarDesktop.Views.LocalFileBrowserPanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:CanfarDesktop.Models">
 
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}"
           BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
@@ -10,10 +11,11 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
+        <!-- Header: title + action buttons -->
         <Grid Grid.Row="0" Padding="12,8"
               Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
             <Grid.ColumnDefinitions>
@@ -24,6 +26,14 @@
                        Style="{StaticResource BodyStrongTextBlockStyle}"
                        VerticalAlignment="Center" />
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                <Button Click="OnOpenFolder" Padding="4" Background="Transparent" BorderThickness="0"
+                        ToolTipService.ToolTip="Open Folder" AutomationProperties.Name="Open folder">
+                    <FontIcon Glyph="&#xE8DA;" FontSize="12" />
+                </Button>
+                <Button Click="OnFolderUp" Padding="4" Background="Transparent" BorderThickness="0"
+                        ToolTipService.ToolTip="Go Up" AutomationProperties.Name="Go up one folder">
+                    <FontIcon Glyph="&#xE74A;" FontSize="12" />
+                </Button>
                 <Button Click="OnNewFile" Padding="4" Background="Transparent" BorderThickness="0"
                         ToolTipService.ToolTip="New File" AutomationProperties.Name="New file">
                     <FontIcon Glyph="&#xE8A5;" FontSize="12" />
@@ -39,28 +49,53 @@
             </StackPanel>
         </Grid>
 
+        <!-- Breadcrumb bar -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollMode="Auto"
+                      HorizontalScrollBarVisibility="Hidden"
+                      VerticalScrollBarVisibility="Disabled"
+                      Padding="8,2">
+            <ItemsRepeater x:Name="BreadcrumbRepeater" ItemsSource="{x:Bind ViewModel.Breadcrumbs, Mode=OneWay}">
+                <ItemsRepeater.Layout>
+                    <StackLayout Orientation="Horizontal" />
+                </ItemsRepeater.Layout>
+                <DataTemplate x:DataType="models:BreadcrumbSegment">
+                    <StackPanel Orientation="Horizontal">
+                        <HyperlinkButton Content="{x:Bind Label}"
+                                         Padding="2,0"
+                                         FontSize="11"
+                                         Click="OnBreadcrumbClick"
+                                         Tag="{x:Bind}" />
+                        <TextBlock Text="/" VerticalAlignment="Center"
+                                   FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsRepeater>
+        </ScrollViewer>
+
         <!-- Filter bar -->
-        <TextBox Grid.Row="1" x:Name="FilterBox"
+        <TextBox Grid.Row="2" x:Name="FilterBox"
                  PlaceholderText="Filter files..."
                  Margin="8,4" Padding="6,4"
                  BorderThickness="1"
                  TextChanged="OnFilterChanged" />
 
         <!-- Tree view -->
-        <TreeView Grid.Row="2" x:Name="FileTree"
+        <TreeView Grid.Row="3" x:Name="FileTree"
                   SelectionMode="Single"
                   ItemInvoked="OnItemInvoked"
                   Expanding="OnNodeExpanding"
                   Padding="4,0">
             <TreeView.ItemTemplate>
-                <DataTemplate>
-                    <TreeViewItem ItemsSource="{Binding Children}"
-                                  HasUnrealizedChildren="{Binding HasUnrealizedChildren}"
-                                  AutomationProperties.Name="{Binding Name}">
+                <DataTemplate x:DataType="models:LocalFileNode">
+                    <TreeViewItem ItemsSource="{x:Bind Children, Mode=OneWay}"
+                                  HasUnrealizedChildren="{x:Bind HasUnrealizedChildren, Mode=OneWay}"
+                                  AutomationProperties.Name="{x:Bind Name}">
                         <StackPanel Orientation="Horizontal" Spacing="8" Padding="2,4">
-                            <FontIcon Glyph="{Binding Icon}" FontSize="14" />
-                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding FormattedSize}"
+                            <FontIcon Glyph="{x:Bind Icon}" FontSize="14" />
+                            <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{x:Bind FormattedSize}"
                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        VerticalAlignment="Center" />
