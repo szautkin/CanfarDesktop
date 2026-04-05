@@ -128,12 +128,10 @@ public static partial class SimpleHtmlRenderer
             rowIndex++;
         }
 
-        // Wrap in a ScrollViewer for wide tables
-        return new ScrollViewer
+        // Return the grid directly — avoid nested ScrollViewer which eats wheel events
+        return new Border
         {
-            Content = grid,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Child = grid,
             MaxHeight = 400,
             Margin = new Thickness(0, 4, 0, 4),
         };

@@ -360,6 +360,7 @@ public sealed partial class CodeCellControl : UserControl
             MaxHeight = 600,
             Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
             HorizontalAlignment = HorizontalAlignment.Left,
+            IsHitTestVisible = false, // let scroll events pass through to parent ScrollViewer
         };
 
         // Async load the base64 image
