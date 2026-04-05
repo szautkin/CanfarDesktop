@@ -79,14 +79,43 @@ def _capture_display_data(obj):
 
 
 def _handle_magic(code, exec_count):
-    """Handle Jupyter-style magic commands. Returns list of outputs, or None if not a magic."""
+    """Handle Jupyter-style magic commands. Returns list of outputs, or None if not a magic.
+
+    Supports multi-line cells where each line is a separate magic/shell command.
+    """
     import subprocess as _sp
 
     stripped = code.strip()
+    lines = stripped.split("\n")
 
+    # Check if ALL non-empty lines are magic/shell commands
+    is_all_magic = all(
+        l.strip().startswith(("!", "%pip", "%conda", "%matplotlib"))
+        for l in lines if l.strip()
+    )
+    if not is_all_magic:
+        # Mixed code — check single-line magics only
+        if len(lines) == 1:
+            return _handle_single_magic(stripped, _sp)
+        return None  # Not a magic cell
+
+    # Process each line as a separate magic command
+    outputs = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        result = _handle_single_magic(line, _sp)
+        if result is not None:
+            outputs.extend(result)
+    return outputs if outputs else None
+
+
+def _handle_single_magic(line, _sp):
+    """Handle a single magic/shell command line."""
     # %pip install <packages>
-    if stripped.startswith("%pip ") or stripped.startswith("!pip "):
-        args = stripped.split(None, 1)[1]  # everything after %pip
+    if line.startswith("%pip ") or line.startswith("!pip "):
+        args = line.split(None, 1)[1]
         cmd = [sys.executable, "-m", "pip"] + args.split()
         try:
             result = _sp.run(cmd, capture_output=True, text=True, timeout=300)
@@ -100,8 +129,8 @@ def _handle_magic(code, exec_count):
             return [{"type": "error", "ename": type(e).__name__, "evalue": str(e), "traceback": [str(e)]}]
 
     # %conda install <packages>
-    if stripped.startswith("%conda ") or stripped.startswith("!conda "):
-        args = stripped.split(None, 1)[1]
+    if line.startswith("%conda ") or line.startswith("!conda "):
+        args = line.split(None, 1)[1]
         cmd = ["conda"] + args.split() + ["-y"]
         try:
             result = _sp.run(cmd, capture_output=True, text=True, timeout=600)
@@ -115,8 +144,8 @@ def _handle_magic(code, exec_count):
             return [{"type": "error", "ename": type(e).__name__, "evalue": str(e), "traceback": [str(e)]}]
 
     # !shell command
-    if stripped.startswith("!"):
-        shell_cmd = stripped[1:].strip()
+    if line.startswith("!"):
+        shell_cmd = line[1:].strip()
         try:
             result = _sp.run(shell_cmd, shell=True, capture_output=True, text=True, timeout=120)
             outputs = []
@@ -128,11 +157,10 @@ def _handle_magic(code, exec_count):
         except Exception as e:
             return [{"type": "error", "ename": type(e).__name__, "evalue": str(e), "traceback": [str(e)]}]
 
-    # %matplotlib inline (already set up in harness init, just acknowledge)
-    if stripped in ("%matplotlib inline", "%matplotlib"):
+    # %matplotlib inline
+    if line in ("%matplotlib inline", "%matplotlib"):
         return [{"type": "stream", "name": "stdout", "text": "Matplotlib backend: Agg (inline)\n"}]
 
-    # Not a magic command
     return None
 
 

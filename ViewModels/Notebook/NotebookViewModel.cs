@@ -519,7 +519,10 @@ public partial class NotebookViewModel : ObservableObject
         if (SelectedCell is not CodeCellViewModel codeCell) return;
 
         if (KernelState == KernelState.Dead)
+        {
+            NotebookLogger.Info("Kernel is dead — starting new kernel for execution");
             await StartKernelAsync();
+        }
 
         if (KernelState != KernelState.Idle && KernelState != KernelState.Error)
         {

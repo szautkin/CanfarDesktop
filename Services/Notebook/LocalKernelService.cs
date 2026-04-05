@@ -335,6 +335,8 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
     private void OnProcessExited(object? sender, EventArgs e)
     {
+        var exitCode = _process?.HasExited == true ? _process.ExitCode : -1;
+        NotebookLogger.Warn($"Kernel process exited unexpectedly (exit code: {exitCode})");
         SetState(KernelState.Dead);
         CleanupHarness();
     }
