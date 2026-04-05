@@ -37,7 +37,7 @@ public class LocalFileNode
     /// files use the default text color so they blend with surrounding text.
     /// </summary>
     public Brush IconForeground => IsFolder
-        ? (Brush)Microsoft.UI.Xaml.Application.Current.Resources["SystemAccentColorLight1Brush"]
+        ? (Brush)Microsoft.UI.Xaml.Application.Current.Resources["AccentFillColorDefaultBrush"]
         : (Brush)Microsoft.UI.Xaml.Application.Current.Resources["TextFillColorPrimaryBrush"];
 
     public string FormattedSize => IsFolder ? "" : SizeBytes switch
