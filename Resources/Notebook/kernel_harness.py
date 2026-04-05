@@ -78,6 +78,64 @@ def _capture_display_data(obj):
     return None
 
 
+def _handle_magic(code, exec_count):
+    """Handle Jupyter-style magic commands. Returns list of outputs, or None if not a magic."""
+    import subprocess as _sp
+
+    stripped = code.strip()
+
+    # %pip install <packages>
+    if stripped.startswith("%pip ") or stripped.startswith("!pip "):
+        args = stripped.split(None, 1)[1]  # everything after %pip
+        cmd = [sys.executable, "-m", "pip"] + args.split()
+        try:
+            result = _sp.run(cmd, capture_output=True, text=True, timeout=300)
+            outputs = []
+            if result.stdout:
+                outputs.append({"type": "stream", "name": "stdout", "text": result.stdout})
+            if result.stderr:
+                outputs.append({"type": "stream", "name": "stderr", "text": result.stderr})
+            return outputs
+        except Exception as e:
+            return [{"type": "error", "ename": type(e).__name__, "evalue": str(e), "traceback": [str(e)]}]
+
+    # %conda install <packages>
+    if stripped.startswith("%conda ") or stripped.startswith("!conda "):
+        args = stripped.split(None, 1)[1]
+        cmd = ["conda"] + args.split() + ["-y"]
+        try:
+            result = _sp.run(cmd, capture_output=True, text=True, timeout=600)
+            outputs = []
+            if result.stdout:
+                outputs.append({"type": "stream", "name": "stdout", "text": result.stdout})
+            if result.stderr:
+                outputs.append({"type": "stream", "name": "stderr", "text": result.stderr})
+            return outputs
+        except Exception as e:
+            return [{"type": "error", "ename": type(e).__name__, "evalue": str(e), "traceback": [str(e)]}]
+
+    # !shell command
+    if stripped.startswith("!"):
+        shell_cmd = stripped[1:].strip()
+        try:
+            result = _sp.run(shell_cmd, shell=True, capture_output=True, text=True, timeout=120)
+            outputs = []
+            if result.stdout:
+                outputs.append({"type": "stream", "name": "stdout", "text": result.stdout})
+            if result.stderr:
+                outputs.append({"type": "stream", "name": "stderr", "text": result.stderr})
+            return outputs
+        except Exception as e:
+            return [{"type": "error", "ename": type(e).__name__, "evalue": str(e), "traceback": [str(e)]}]
+
+    # %matplotlib inline (already set up in harness init, just acknowledge)
+    if stripped in ("%matplotlib inline", "%matplotlib"):
+        return [{"type": "stream", "name": "stdout", "text": "Matplotlib backend: Agg (inline)\n"}]
+
+    # Not a magic command
+    return None
+
+
 def execute_code(code, exec_count):
     """Execute user code, capturing stdout, stderr, display data, and errors."""
     send_status("busy")
@@ -86,6 +144,16 @@ def execute_code(code, exec_count):
 
     # Normalize line endings (Windows TextBox sends \r\n)
     code = code.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Handle magic commands (%pip, %conda, !shell)
+    magic_result = _handle_magic(code, exec_count)
+    if magic_result is not None:
+        for out in magic_result:
+            send(out)
+        send({"type": "execute_reply", "exec_count": exec_count, "success": True})
+        send_status("idle")
+        send_boundary()
+        return
 
     # Redirect stdout/stderr
     old_stdout, old_stderr = sys.stdout, sys.stderr
