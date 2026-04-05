@@ -25,6 +25,11 @@ public sealed partial class LocalFileBrowserPanel : UserControl
         ViewModel.PickFolderRequested += async () => await PickFolderAsync();
 
         FileTree.ItemsSource = ViewModel.RootNodes;
+
+        ViewModel.Breadcrumbs.CollectionChanged += (_, _) =>
+            // Wait one layout pass so the ItemsRepeater has measured the new items.
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+                BreadcrumbScroller.ScrollToHorizontalOffset(double.MaxValue));
     }
 
     // ── TreeView events ──────────────────────────────────────────────────────
@@ -135,9 +140,9 @@ public sealed partial class LocalFileBrowserPanel : UserControl
 
     // ── Filter ───────────────────────────────────────────────────────────────
 
-    private void OnFilterChanged(object sender, TextChangedEventArgs e)
+    private void OnFilterChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs e)
     {
-        ViewModel.FilterText = FilterBox.Text;
+        ViewModel.FilterText = sender.Text;
         ViewModel.RefreshRootCommand.Execute(null);
     }
 
@@ -162,6 +167,16 @@ public sealed partial class LocalFileBrowserPanel : UserControl
             package.SetText(node.FullPath);
             Clipboard.SetContent(package);
         }
+    }
+
+    private void OnShowInExplorer(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem { DataContext: LocalFileNode node }) return;
+
+        // For files, pass /select so Explorer highlights the file in its parent folder.
+        var args = node.IsFolder ? $"\"{node.FullPath}\"" : $"/select,\"{node.FullPath}\"";
+        try { System.Diagnostics.Process.Start("explorer.exe", args); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ShowInExplorer failed: {ex.Message}"); }
     }
 
     private void OnRenameItem(object sender, RoutedEventArgs e)

@@ -1,5 +1,7 @@
 namespace CanfarDesktop.Models;
 
+using Microsoft.UI.Xaml.Media;
+
 /// <summary>
 /// Represents a file or folder in the local filesystem for the TreeView.
 /// </summary>
@@ -29,6 +31,14 @@ public class LocalFileNode
         ".pdf" => "\uEA90",   // PDF
         _ => "\uE7C3",        // Generic file
     };
+
+    /// <summary>
+    /// Foreground brush for the file-type icon. Folders use the system accent color;
+    /// files use the default text color so they blend with surrounding text.
+    /// </summary>
+    public Brush IconForeground => IsFolder
+        ? (Brush)Microsoft.UI.Xaml.Application.Current.Resources["SystemAccentColorLight1Brush"]
+        : (Brush)Microsoft.UI.Xaml.Application.Current.Resources["TextFillColorPrimaryBrush"];
 
     public string FormattedSize => IsFolder ? "" : SizeBytes switch
     {
