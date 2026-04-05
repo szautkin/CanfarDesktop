@@ -268,10 +268,13 @@ public sealed partial class MainWindow : Window
     private void OnSearchAtFitsPosition(double ra, double dec)
     {
         EnsureSearchPage();
-        // Pre-fill the search target with the crosshair coordinates
+        // Set RA/Dec directly — no need for name resolution
         if (_searchPage is not null)
         {
             _searchPage.ViewModel.Target = Models.Fits.WcsInfo.FormatForResolver(ra, dec);
+            _searchPage.ViewModel.ResolvedRA = ra;
+            _searchPage.ViewModel.ResolvedDec = dec;
+            _searchPage.ViewModel.ResolverStatus = "From FITS crosshair";
         }
         NavigateTo(AppMode.Search);
     }
