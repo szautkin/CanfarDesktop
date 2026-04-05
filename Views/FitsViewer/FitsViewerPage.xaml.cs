@@ -242,6 +242,15 @@ public sealed partial class FitsViewerPage : UserControl
     private void OnCanvasPointerPressed(object sender, PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(ImageCanvas);
+
+        if (point.Properties.IsRightButtonPressed)
+        {
+            // Right-click → place crosshair
+            PlaceCrosshair(point.Position);
+            e.Handled = true;
+            return;
+        }
+
         if (point.Properties.IsLeftButtonPressed || point.Properties.IsMiddleButtonPressed)
         {
             _isDragging = true;
@@ -251,6 +260,88 @@ public sealed partial class FitsViewerPage : UserControl
             ImageCanvas.CapturePointer(e.Pointer);
             e.Handled = true;
         }
+    }
+
+    private void PlaceCrosshair(Windows.Foundation.Point screenPos)
+    {
+        var canvasW = ImageCanvas.ActualWidth;
+        var canvasH = ImageCanvas.ActualHeight;
+
+        // Full-width horizontal line, full-height vertical line
+        CrosshairH.X1 = 0; CrosshairH.Y1 = screenPos.Y;
+        CrosshairH.X2 = canvasW; CrosshairH.Y2 = screenPos.Y;
+        CrosshairV.X1 = screenPos.X; CrosshairV.Y1 = 0;
+        CrosshairV.X2 = screenPos.X; CrosshairV.Y2 = canvasH;
+
+        CrosshairH.Visibility = Visibility.Visible;
+        CrosshairV.Visibility = Visibility.Visible;
+
+        // Compute pixel + WCS coordinates at crosshair position
+        if (ViewModel.ImageData is not null)
+        {
+            var imgPos = e_PointToImage(screenPos);
+            var ix = (int)imgPos.X;
+            var iy = (int)imgPos.Y;
+            var w = ViewModel.ImageData.Width;
+            var h = ViewModel.ImageData.Height;
+
+            var lines = new List<string>();
+
+            if (ix >= 0 && ix < w && iy >= 0 && iy < h)
+            {
+                var fitsY = h - 1 - iy;
+                var pixelIdx = fitsY * w + ix;
+                var value = ViewModel.ImageData.Pixels[pixelIdx];
+                lines.Add($"Pixel ({ix}, {iy}) = {value:G6}");
+
+                if (ViewModel.ImageData.Wcs is { IsValid: true } wcs)
+                {
+                    var (ra, dec) = wcs.PixelToWorld(ix + 1, fitsY + 1);
+                    lines.Add($"RA  {Models.Fits.WcsInfo.FormatRa(ra)}");
+                    lines.Add($"Dec {Models.Fits.WcsInfo.FormatDec(dec)}");
+                }
+            }
+
+            CrosshairText.Text = string.Join("\n", lines);
+            CrosshairLabel.Visibility = lines.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            // Position label near crosshair but offset to avoid overlap
+            var labelX = screenPos.X + 12;
+            var labelY = screenPos.Y - 50;
+            if (labelX + 200 > canvasW) labelX = screenPos.X - 200;
+            if (labelY < 0) labelY = screenPos.Y + 12;
+            Canvas.SetLeft(CrosshairLabel, labelX);
+            Canvas.SetTop(CrosshairLabel, labelY);
+        }
+    }
+
+    /// <summary>Convert screen position to image pixel coordinates.</summary>
+    private Windows.Foundation.Point e_PointToImage(Windows.Foundation.Point screenPos)
+    {
+        // Inverse the CompositeTransform: (screen - translate) / scale
+        // Then account for Image centering within the canvas
+        var scale = ImageTransform.ScaleX;
+        if (scale <= 0) scale = 1;
+
+        // The Image is centered — find its offset
+        var imgW = FitsImage.ActualWidth;
+        var imgH = FitsImage.ActualHeight;
+        var canvasW = ImageCanvas.ActualWidth;
+        var canvasH = ImageCanvas.ActualHeight;
+        var imgOffsetX = (canvasW - imgW) / 2;
+        var imgOffsetY = (canvasH - imgH) / 2;
+
+        var px = (screenPos.X - ImageTransform.TranslateX - imgOffsetX) / scale;
+        var py = (screenPos.Y - ImageTransform.TranslateY - imgOffsetY) / scale;
+
+        // Map from display image size to actual pixel size
+        if (ViewModel.ImageData is not null && imgW > 0)
+        {
+            px = px / imgW * ViewModel.ImageData.Width;
+            py = py / imgH * ViewModel.ImageData.Height;
+        }
+
+        return new Windows.Foundation.Point(px, py);
     }
 
     private void OnCanvasPointerMoved(object sender, PointerRoutedEventArgs e)
@@ -264,12 +355,11 @@ public sealed partial class FitsViewerPage : UserControl
             return;
         }
 
-        // Coordinate readout — convert display coords to image pixel coords
+        // Coordinate readout
         if (ViewModel.RenderedImage is null || ViewModel.ImageData is null) return;
-        var imgPos = e.GetCurrentPoint(FitsImage).Position;
-        var scale = ImageTransform.ScaleX;
-        if (scale > 0)
-            ViewModel.UpdatePixelInfo(imgPos.X / scale, imgPos.Y / scale);
+        var screenPos = e.GetCurrentPoint(ImageCanvas).Position;
+        var pixelPos = e_PointToImage(screenPos);
+        ViewModel.UpdatePixelInfo(pixelPos.X, pixelPos.Y);
     }
 
     private void OnCanvasPointerReleased(object sender, PointerRoutedEventArgs e)

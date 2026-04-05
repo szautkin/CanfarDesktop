@@ -98,12 +98,12 @@
             </Border>
 
             <!-- Image canvas: manual zoom/pan via CompositeTransform -->
-            <Border Grid.Column="1" Background="Black" x:Name="ImageCanvas"
-                    PointerPressed="OnCanvasPointerPressed"
-                    PointerMoved="OnCanvasPointerMoved"
-                    PointerReleased="OnCanvasPointerReleased"
-                    PointerCanceled="OnCanvasPointerReleased"
-                    PointerWheelChanged="OnCanvasWheelChanged">
+            <Grid Grid.Column="1" Background="Black" x:Name="ImageCanvas"
+                  PointerPressed="OnCanvasPointerPressed"
+                  PointerMoved="OnCanvasPointerMoved"
+                  PointerReleased="OnCanvasPointerReleased"
+                  PointerCanceled="OnCanvasPointerReleased"
+                  PointerWheelChanged="OnCanvasWheelChanged">
                 <Image x:Name="FitsImage"
                        Stretch="Uniform"
                        HorizontalAlignment="Center"
@@ -112,7 +112,20 @@
                         <CompositeTransform x:Name="ImageTransform" />
                     </Image.RenderTransform>
                 </Image>
-            </Border>
+
+                <!-- Crosshair overlay (click to place) -->
+                <Canvas x:Name="CrosshairCanvas" IsHitTestVisible="False">
+                    <Line x:Name="CrosshairH" Stroke="Cyan" StrokeThickness="1"
+                          Opacity="0.8" Visibility="Collapsed" />
+                    <Line x:Name="CrosshairV" Stroke="Cyan" StrokeThickness="1"
+                          Opacity="0.8" Visibility="Collapsed" />
+                    <Border x:Name="CrosshairLabel" Visibility="Collapsed"
+                            Background="#AA000000" CornerRadius="4" Padding="6,2">
+                        <TextBlock x:Name="CrosshairText" Foreground="Cyan"
+                                   FontFamily="Consolas" FontSize="11" />
+                    </Border>
+                </Canvas>
+            </Grid>
         </Grid>
 
         <!-- Status bar -->
