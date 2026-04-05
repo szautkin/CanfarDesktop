@@ -143,17 +143,32 @@ def _handle_single_magic(line, _sp):
         except Exception as e:
             return [{"type": "error", "ename": type(e).__name__, "evalue": str(e), "traceback": [str(e)]}]
 
-    # !shell command
+    # !shell command — stream output line-by-line for long-running commands
     if line.startswith("!"):
         shell_cmd = line[1:].strip()
         try:
-            result = _sp.run(shell_cmd, shell=True, capture_output=True, text=True, timeout=120)
+            proc = _sp.Popen(
+                shell_cmd, shell=True,
+                stdout=_sp.PIPE, stderr=_sp.STDOUT,
+                text=True, bufsize=1,
+            )
             outputs = []
-            if result.stdout:
-                outputs.append({"type": "stream", "name": "stdout", "text": result.stdout})
-            if result.stderr:
-                outputs.append({"type": "stream", "name": "stderr", "text": result.stderr})
+            collected = []
+            for out_line in proc.stdout:
+                collected.append(out_line)
+            proc.wait(timeout=120)
+            text = "".join(collected)
+            if text:
+                outputs.append({"type": "stream", "name": "stdout", "text": text})
+            if proc.returncode != 0:
+                outputs.append({"type": "stream", "name": "stderr",
+                                "text": f"[exit code {proc.returncode}]\n"})
             return outputs
+        except _sp.TimeoutExpired:
+            proc.kill()
+            return [{"type": "error", "ename": "TimeoutError",
+                     "evalue": f"Command timed out after 120s: {shell_cmd}",
+                     "traceback": [f"TimeoutError: {shell_cmd}"]}]
         except Exception as e:
             return [{"type": "error", "ename": type(e).__name__, "evalue": str(e), "traceback": [str(e)]}]
 
