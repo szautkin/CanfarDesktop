@@ -34,21 +34,52 @@ public sealed partial class LocalFileBrowserPanel : UserControl
 
     // ── TreeView events ──────────────────────────────────────────────────────
 
-    private void OnItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
+    /// <summary>Single click: select only (highlight item, update SelectedNode).</summary>
+    private void OnItemSelected(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
-        if (args.InvokedItem is not LocalFileNode node) return;
+        if (args.InvokedItem is LocalFileNode node)
+            ViewModel.SelectedNode = node;
+    }
 
-        ViewModel.SelectedNode = node;
+    /// <summary>Double click: open file or navigate into folder.</summary>
+    private void OnItemDoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: LocalFileNode node }) return;
 
         if (node.IsFolder)
         {
-            // Double-click folder → navigate into it (change root, update breadcrumbs)
             ViewModel.SetRootPath(node.FullPath);
         }
         else
         {
-            // Double-click file → open it
-            FileOpenRequested?.Invoke(node.FullPath);
+            OpenFile(node.FullPath);
+        }
+    }
+
+    private void OpenFile(string filePath)
+    {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        switch (ext)
+        {
+            case ".ipynb":
+                // Open in notebook tab
+                FileOpenRequested?.Invoke(filePath);
+                break;
+            default:
+                // Open with system default app
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = filePath,
+                        UseShellExecute = true,
+                    });
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Open file failed: {ex.Message}");
+                }
+                break;
         }
     }
 
@@ -80,7 +111,7 @@ public sealed partial class LocalFileBrowserPanel : UserControl
                 if (ViewModel.SelectedNode.IsFolder)
                     ViewModel.SetRootPath(ViewModel.SelectedNode.FullPath);
                 else
-                    FileOpenRequested?.Invoke(ViewModel.SelectedNode.FullPath);
+                    OpenFile(ViewModel.SelectedNode.FullPath);
                 e.Handled = true;
                 break;
 
@@ -155,7 +186,7 @@ public sealed partial class LocalFileBrowserPanel : UserControl
             if (node.IsFolder)
                 ViewModel.SetRootPath(node.FullPath);
             else
-                FileOpenRequested?.Invoke(node.FullPath);
+                OpenFile(node.FullPath);
         }
     }
 

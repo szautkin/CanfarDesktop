@@ -7,6 +7,11 @@ using System.Text.Json;
 /// <summary>
 /// Manages a local Python subprocess for code execution.
 /// Communicates via JSON over stdin/stdout with a sentinel delimiter.
+///
+/// Thread safety contract:
+///   - _executionGate (SemaphoreSlim) serializes all process I/O
+///   - _executionCts cancels in-flight reads before kill
+///   - Sequence: cancel CTS → acquire gate → kill process → release gate
 /// </summary>
 public class LocalKernelService : IKernelService, IAsyncDisposable
 {
@@ -16,10 +21,11 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
     private Process? _process;
     private StreamWriter? _stdin;
     private int _executionCount;
-    private bool _disposed;
+    private volatile bool _disposed;
     private string? _harnessPath;
     private readonly object _lock = new();
     private readonly SemaphoreSlim _executionGate = new(1, 1);
+    private CancellationTokenSource? _executionCts;
 
     public KernelState State { get; private set; } = KernelState.Dead;
     public event Action<KernelState>? StateChanged;
@@ -47,7 +53,6 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
                 "Python 3.8+ not found. Install Python from python.org or add it to PATH.");
         }
 
-        // Write harness to temp file
         _harnessPath = Path.Combine(Path.GetTempPath(), $"canfar_kernel_harness_{Environment.ProcessId}.py");
         await WriteHarnessAsync(_harnessPath);
 
@@ -56,7 +61,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
             var psi = new ProcessStartInfo
             {
                 FileName = pythonPath,
-                Arguments = $"-u \"{_harnessPath}\"", // -u = unbuffered stdout/stderr
+                Arguments = $"-u \"{_harnessPath}\"",
                 WorkingDirectory = workingDirectory ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
@@ -66,7 +71,6 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
             };
-            // Force UTF-8 on all Python I/O — avoids encoding mismatch with .NET's stdin
             psi.Environment["PYTHONIOENCODING"] = "utf-8";
             psi.Environment["PYTHONUNBUFFERED"] = "1";
 
@@ -77,8 +81,6 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
                 throw new InvalidOperationException("Failed to start Python process.");
             }
 
-            // Use the process's own StandardInput — do NOT create a second StreamWriter
-            // on the same BaseStream (causes buffer corruption / lost bytes)
             _stdin = _process.StandardInput;
             _stdin.AutoFlush = true;
             _executionCount = 0;
@@ -86,9 +88,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
             _process.EnableRaisingEvents = true;
             _process.Exited += OnProcessExited;
 
-            // Read the initial "idle" status + boundary
-            await ReadUntilBoundaryAsync();
-
+            await ReadUntilBoundaryAsync(CancellationToken.None);
             SetState(KernelState.Idle);
         }
         catch
@@ -101,7 +101,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
     public async Task<ExecutionResult> ExecuteAsync(string code, CancellationToken ct = default)
     {
-        if (State == KernelState.Dead || _stdin is null || _process is null || _process.HasExited)
+        if (State == KernelState.Dead || _stdin is null || _process is null)
         {
             SetState(KernelState.Dead);
             throw new InvalidOperationException("Kernel is not running. Restart the kernel and try again.");
@@ -110,14 +110,16 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
         await _executionGate.WaitAsync(ct);
         try
         {
+            // Create a linked CTS so InterruptAsync can cancel this read
+            _executionCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var linked = _executionCts.Token;
+
             _executionCount++;
             var count = _executionCount;
 
             SetState(KernelState.Busy);
 
-            // Normalize line endings for Python
             code = code.Replace("\r\n", "\n").Replace("\r", "\n");
-
             NotebookLogger.Info($"Execute ({code.Length} chars): {code[..Math.Min(80, code.Length)]}...");
 
             var request = JsonSerializer.Serialize(new
@@ -129,7 +131,14 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
             await _stdin!.WriteLineAsync(request);
 
-            var outputs = await ReadUntilBoundaryAsync(ct);
+            var outputs = await ReadUntilBoundaryAsync(linked);
+
+            // If cancelled (interrupt), return empty result — don't process stale output
+            if (linked.IsCancellationRequested)
+            {
+                SetState(KernelState.Dead);
+                return new ExecutionResult { Success = false, ExecutionCount = count, Outputs = [] };
+            }
 
             var success = true;
             var resultOutputs = new List<KernelOutput>();
@@ -193,14 +202,9 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
                         if (msg.TryGetProperty("success", out var s))
                             success = s.GetBoolean();
                         break;
-
-                    case "status":
-                        // handled by boundary logic
-                        break;
                 }
             }
 
-            // Errors are normal execution results — kernel stays alive and idle
             SetState(KernelState.Idle);
 
             return new ExecutionResult
@@ -212,54 +216,67 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
         }
         finally
         {
+            _executionCts?.Dispose();
+            _executionCts = null;
             _executionGate.Release();
         }
     }
 
+    /// <summary>
+    /// Interrupt: cancel in-flight read → wait for gate → kill → restart.
+    /// This is the ONLY correct sequence on Windows (no SIGINT for child processes).
+    /// </summary>
     public async Task InterruptAsync()
     {
-        if (_process is null || _process.HasExited) return;
+        if (_process is null) return;
 
-        NotebookLogger.Info("Interrupt requested — killing kernel and restarting");
+        NotebookLogger.Info("Interrupt requested — cancelling execution, then kill+restart");
 
-        // On Windows there's no SIGINT for subprocess. Kill and restart
-        // to preserve the Jupyter-like experience (kernel restarts fresh).
-        var workDir = _process.StartInfo.WorkingDirectory;
+        var workDir = _process?.StartInfo?.WorkingDirectory;
+
+        // Step 1: Cancel the in-flight ReadLineAsync — unblocks ExecuteAsync
+        _executionCts?.Cancel();
+
+        // Step 2: Wait for ExecuteAsync to release the semaphore
+        await _executionGate.WaitAsync();
         try
         {
-            _process.Exited -= OnProcessExited;
-            if (!_process.HasExited)
-                _process.Kill(entireProcessTree: true);
-            _process.Dispose();
+            // Step 3: NOW safe to kill — nobody is reading stdout
+            KillProcess();
         }
-        catch { /* process already dead */ }
         finally
         {
-            _process = null;
-            _stdin = null;
-            SetState(KernelState.Dead);
-            CleanupHarness();
+            _executionGate.Release();
         }
 
-        // Auto-restart so the user can continue working
+        // Step 4: Restart
         _executionCount = 0;
-        await StartAsync(workDir);
-        NotebookLogger.Info("Kernel restarted after interrupt");
+        try
+        {
+            await StartAsync(workDir);
+            NotebookLogger.Info("Kernel restarted after interrupt");
+        }
+        catch (Exception ex)
+        {
+            NotebookLogger.Error("Kernel restart after interrupt failed", ex);
+        }
     }
 
     public async Task RestartAsync(string? workingDirectory = null)
     {
+        _executionCts?.Cancel();
+
+        await _executionGate.WaitAsync();
         try
         {
-            await ShutdownAsync();
+            KillProcess();
         }
-        catch (Exception ex)
+        finally
         {
-            NotebookLogger.Error("Shutdown during restart failed", ex);
+            _executionGate.Release();
         }
+
         _executionCount = 0;
-        _stdin = null;
-        _process = null;
         await StartAsync(workingDirectory);
     }
 
@@ -267,74 +284,121 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
     {
         if (_process is null) return;
 
-        // Unsubscribe before any wait/kill so the Exited event cannot fire
-        // and attempt to read properties on a process we are about to dispose.
-        _process.Exited -= OnProcessExited;
+        // Cancel any in-flight execution
+        _executionCts?.Cancel();
 
+        // Wait for ExecuteAsync to finish
+        await _executionGate.WaitAsync();
         try
         {
-            if (!_process.HasExited && _stdin is not null)
-            {
-                await _stdin.WriteLineAsync(JsonSerializer.Serialize(new { type = "quit" }));
+            var proc = _process;
+            if (proc is null) return;
 
-                // Wait up to 3 seconds for clean exit
-                var exited = _process.WaitForExit(3000);
-                if (!exited && !_process.HasExited)
-                    _process.Kill(entireProcessTree: true);
-            }
-        }
-        catch (Exception ex)
-        {
-            NotebookLogger.Error("Kernel shutdown error", ex);
+            proc.Exited -= OnProcessExited;
+
             try
             {
-                if (_process is not null && !_process.HasExited)
-                    _process.Kill(entireProcessTree: true);
+                if (!proc.HasExited && _stdin is not null)
+                {
+                    // Send quit and give 500ms for clean exit — don't block 3 seconds
+                    await _stdin.WriteLineAsync(JsonSerializer.Serialize(new { type = "quit" }));
+                    await Task.Delay(500);
+                }
             }
-            catch { }
-        }
-        finally
-        {
-            _process?.Dispose();
+            catch { /* stdin write may fail if process already exiting */ }
+
+            // Kill + dispose on background thread (fast, non-blocking)
+            try { proc.Exited -= OnProcessExited; } catch { }
+            Task.Run(() =>
+            {
+                try { if (!proc.HasExited) proc.Kill(); } catch { }
+                try { proc.Dispose(); } catch { }
+            });
+
             _process = null;
             _stdin = null;
             SetState(KernelState.Dead);
             CleanupHarness();
         }
+        finally
+        {
+            _executionGate.Release();
+        }
     }
 
-    private async Task<List<JsonElement>> ReadUntilBoundaryAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Kill the process immediately. MUST only be called while holding _executionGate.
+    /// </summary>
+    private void KillProcess()
+    {
+        var proc = _process;
+        _process = null;
+        _stdin = null;
+
+        if (proc is null) return;
+
+        try { proc.Exited -= OnProcessExited; } catch { }
+
+        // Kill on a background thread to avoid blocking UI.
+        // Kill(false) = just the process, not the entire tree (fast).
+        // Dispose on background too since it waits for handle cleanup.
+        Task.Run(() =>
+        {
+            try { if (!proc.HasExited) proc.Kill(); } catch { }
+            try { proc.Dispose(); } catch { }
+        });
+
+        SetState(KernelState.Dead);
+        CleanupHarness();
+    }
+
+    /// <summary>
+    /// Read stdout lines until the sentinel boundary or cancellation/error.
+    /// Never throws — returns partial results on cancel/IOException.
+    /// </summary>
+    private async Task<List<JsonElement>> ReadUntilBoundaryAsync(CancellationToken ct)
     {
         var messages = new List<JsonElement>();
-        if (_process is null) return messages;
+        var proc = _process;
+        if (proc is null) return messages;
 
-        var reader = _process.StandardOutput;
-        while (!ct.IsCancellationRequested)
+        var reader = proc.StandardOutput;
+
+        try
         {
-            var line = await reader.ReadLineAsync(ct);
-            if (line is null)
+            while (!ct.IsCancellationRequested && !_disposed)
             {
-                // Process exited mid-read
-                SetState(KernelState.Dead);
-                break;
-            }
+                var line = await reader.ReadLineAsync(ct);
+                if (line is null)
+                {
+                    SetState(KernelState.Dead);
+                    break;
+                }
 
-            if (line == Sentinel) break;
+                if (line == Sentinel) break;
+                if (string.IsNullOrWhiteSpace(line)) continue;
 
-            if (string.IsNullOrWhiteSpace(line)) continue;
-
-            try
-            {
-                var doc = JsonDocument.Parse(line);
-                messages.Add(doc.RootElement.Clone());
+                try
+                {
+                    var doc = JsonDocument.Parse(line);
+                    messages.Add(doc.RootElement.Clone());
+                }
+                catch (JsonException)
+                {
+                    messages.Add(JsonDocument.Parse(
+                        JsonSerializer.Serialize(new { type = "stream", name = "stdout", text = line + "\n" })
+                    ).RootElement.Clone());
+                }
             }
-            catch (JsonException)
-            {
-                // Non-JSON output — likely raw print from Python. Treat as stdout stream.
-                messages.Add(JsonDocument.Parse(
-                    JsonSerializer.Serialize(new { type = "stream", name = "stdout", text = line + "\n" })
-                ).RootElement.Clone());
-            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Interrupt cancelled the read — expected
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or ObjectDisposedException)
+        {
+            // Process died while we were reading — expected during kill
+            SetState(KernelState.Dead);
         }
 
         return messages;
@@ -357,16 +421,16 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
     private void OnProcessExited(object? sender, EventArgs e)
     {
-        // _process may be nulled or disposed concurrently by ShutdownAsync/Dispose —
-        // capture a local reference and read ExitCode inside a try to avoid Win32Exception.
+        if (_disposed) return;
+
         int exitCode = -1;
         try
         {
             var proc = _process;
-            if (proc is not null && !_disposed)
+            if (proc is not null)
                 exitCode = proc.ExitCode;
         }
-        catch { /* process already disposed */ }
+        catch { }
 
         NotebookLogger.Warn($"Kernel process exited unexpectedly (exit code: {exitCode})");
         SetState(KernelState.Dead);
@@ -385,13 +449,12 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
         if (_harnessPath is not null && File.Exists(_harnessPath))
         {
             try { File.Delete(_harnessPath); }
-            catch { /* best effort */ }
+            catch { }
         }
     }
 
     private static async Task WriteHarnessAsync(string path)
     {
-        // Load harness from embedded resource or write inline
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
         var resourceName = "CanfarDesktop.Resources.Notebook.kernel_harness.py";
 
@@ -403,7 +466,6 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
         }
         else
         {
-            // Fallback: write minimal harness inline
             await File.WriteAllTextAsync(path, GetFallbackHarness());
         }
     }
@@ -460,6 +522,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _executionCts?.Cancel();
         await ShutdownAsync();
         _executionGate.Dispose();
         GC.SuppressFinalize(this);
@@ -469,23 +532,8 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        // Synchronous fallback: force-kill, no graceful shutdown (avoids deadlock).
-        // Unsubscribe Exited before Kill so the handler never fires on a disposed process.
-        var proc = _process;
-        _process = null;
-        _stdin = null;
-        if (proc is not null)
-        {
-            try { proc.Exited -= OnProcessExited; } catch { }
-            try
-            {
-                if (!proc.HasExited)
-                    proc.Kill(entireProcessTree: true);
-            }
-            catch { /* process already exited — Win32Exception is expected and benign */ }
-            try { proc.Dispose(); } catch { }
-        }
-        CleanupHarness();
+        _executionCts?.Cancel();
+        KillProcess();
         _executionGate.Dispose();
         GC.SuppressFinalize(this);
     }

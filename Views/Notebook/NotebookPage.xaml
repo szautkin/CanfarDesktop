@@ -26,14 +26,18 @@
         <ScrollViewer Grid.Row="0"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
-            <ItemsRepeater
-                x:Name="CellList"
-                Margin="40,16,40,16"
-                ItemTemplate="{StaticResource CellSelector}">
-                <ItemsRepeater.Layout>
-                    <StackLayout Spacing="8" />
-                </ItemsRepeater.Layout>
-            </ItemsRepeater>
+            <StackPanel>
+                <ItemsRepeater
+                    x:Name="CellList"
+                    Margin="40,16,40,0"
+                    ItemTemplate="{StaticResource CellSelector}">
+                    <ItemsRepeater.Layout>
+                        <StackLayout Spacing="8" />
+                    </ItemsRepeater.Layout>
+                </ItemsRepeater>
+                <!-- Extra space below last cell so user can always scroll past output -->
+                <Border Height="800" />
+            </StackPanel>
         </ScrollViewer>
 
         <!-- Status bar -->

@@ -89,7 +89,7 @@
         <!-- Tree view -->
         <TreeView Grid.Row="3" x:Name="FileTree"
                   SelectionMode="Single"
-                  ItemInvoked="OnItemInvoked"
+                  ItemInvoked="OnItemSelected"
                   Expanding="OnNodeExpanding"
                   KeyDown="OnTreeKeyDown"
                   Padding="4,0">
@@ -99,7 +99,8 @@
                                   HasUnrealizedChildren="{x:Bind HasUnrealizedChildren, Mode=OneWay}"
                                   AutomationProperties.Name="{x:Bind Name}">
                         <StackPanel Orientation="Horizontal" Spacing="8" Padding="2,4"
-                                    IsTabStop="False">
+                                    IsTabStop="False"
+                                    DoubleTapped="OnItemDoubleTapped">
                             <FontIcon Glyph="{x:Bind Icon}" FontSize="14"
                                       Foreground="{x:Bind IconForeground}" />
                             <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
