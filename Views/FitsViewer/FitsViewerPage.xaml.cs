@@ -15,8 +15,12 @@ public sealed partial class FitsViewerPage : UserControl
     public FitsViewerViewModel ViewModel { get; }
     private bool _headerVisible;
     private bool _suppressSliderChange;
-    private float _sliderRangeMin;  // slider 0% maps to this pixel value
-    private float _sliderRangeMax;  // slider 100% maps to this pixel value
+    private float _sliderRangeMin;
+    private float _sliderRangeMax;
+    private bool _isDragging;
+    private Windows.Foundation.Point _dragStart;
+    private double _scrollStartH;
+    private double _scrollStartV;
 
     public FitsViewerPage(FitsViewerViewModel viewModel)
     {
@@ -178,19 +182,48 @@ public sealed partial class FitsViewerPage : UserControl
         }
     }
 
-    // ── Mouse coordinate tracking ────────────────────────────────────────────
+    // ── Mouse: drag-to-pan + coordinate tracking ───────────────────────────
+
+    private void OnCanvasPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(ImageScroller);
+
+        // Left button or middle button → start drag-to-pan
+        if (point.Properties.IsLeftButtonPressed || point.Properties.IsMiddleButtonPressed)
+        {
+            _isDragging = true;
+            _dragStart = point.Position;
+            _scrollStartH = ImageScroller.HorizontalOffset;
+            _scrollStartV = ImageScroller.VerticalOffset;
+            ImageScroller.CapturePointer(e.Pointer);
+        }
+    }
 
     private void OnCanvasPointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (_isDragging)
+        {
+            var pos = e.GetCurrentPoint(ImageScroller).Position;
+            var dx = _dragStart.X - pos.X;
+            var dy = _dragStart.Y - pos.Y;
+
+            ImageScroller.ScrollToHorizontalOffset(_scrollStartH + dx);
+            ImageScroller.ScrollToVerticalOffset(_scrollStartV + dy);
+            return;
+        }
+
+        // Coordinate readout
         if (ViewModel.RenderedImage is null) return;
+        var imgPos = e.GetCurrentPoint(FitsImage).Position;
+        ViewModel.UpdatePixelInfo(imgPos.X, imgPos.Y);
+    }
 
-        var pos = e.GetCurrentPoint(FitsImage).Position;
-        var zoom = ImageScroller.ZoomFactor;
-
-        // Convert from display coords to pixel coords
-        var px = pos.X;
-        var py = pos.Y;
-
-        ViewModel.UpdatePixelInfo(px, py);
+    private void OnCanvasPointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (_isDragging)
+        {
+            _isDragging = false;
+            ImageScroller.ReleasePointerCapture(e.Pointer);
+        }
     }
 }

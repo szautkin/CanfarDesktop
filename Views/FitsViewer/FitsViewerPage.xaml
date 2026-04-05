@@ -103,10 +103,14 @@
                           ZoomMode="Enabled"
                           MinZoomFactor="0.1"
                           MaxZoomFactor="20"
+                          HorizontalScrollMode="Enabled"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Auto"
                           Background="Black"
-                          PointerMoved="OnCanvasPointerMoved">
+                          PointerPressed="OnCanvasPointerPressed"
+                          PointerMoved="OnCanvasPointerMoved"
+                          PointerReleased="OnCanvasPointerReleased"
+                          PointerCanceled="OnCanvasPointerReleased">
                 <Image x:Name="FitsImage"
                        Stretch="None"
                        HorizontalAlignment="Center"
