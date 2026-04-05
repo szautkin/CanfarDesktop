@@ -79,70 +79,95 @@ def _capture_display_data(obj):
 
 
 def _handle_magic(code, exec_count):
-    """Handle Jupyter-style magic commands. Returns list of outputs, or None if not a magic.
+    """Handle cells containing any mix of magic/shell lines and regular Python.
 
-    Supports multi-line cells where each line is a separate magic/shell command.
+    Lines are processed top-to-bottom:
+      - magic/shell lines  → subprocess
+      - regular code lines → accumulated then exec()'d as a block
+
+    Returns a list of output dicts, or None if the cell contains no magic at all.
     """
     import subprocess as _sp
 
-    stripped = code.strip()
-    lines = stripped.split("\n")
+    MAGIC_PREFIXES = ("!", "%pip ", "%pip\t", "%conda ", "%conda\t", "%matplotlib")
 
-    # Check if ALL non-empty lines are magic/shell commands
-    is_all_magic = all(
-        l.strip().startswith(("!", "%pip", "%conda", "%matplotlib"))
-        for l in lines if l.strip()
-    )
-    if not is_all_magic:
-        # Check if ANY lines are magic — if so, pre-process them
-        has_magic = any(
-            l.strip().startswith(("!", "%pip", "%conda", "%matplotlib"))
-            for l in lines if l.strip()
-        )
-        if has_magic:
-            # Mixed cell: run magic lines via subprocess, keep regular lines as code
-            outputs = []
-            regular_lines = []
-            for l in lines:
-                ls = l.strip()
-                if ls and ls.startswith(("!", "%pip", "%conda", "%matplotlib")):
-                    # Flush accumulated regular code first
-                    if regular_lines:
-                        code_block = "\n".join(regular_lines)
-                        regular_lines = []
-                        # Return None to let execute_code handle the cleaned code
-                        # Actually, execute the magic and return combined result
-                    result = _handle_single_magic(ls, _sp)
-                    if result:
-                        outputs.extend(result)
-                else:
-                    regular_lines.append(l)
-            # If there are remaining regular lines, return None so execute_code handles them
-            if regular_lines:
-                # Re-build code without magic lines and return None
-                # The magic lines have been executed; now run the rest normally
-                cleaned = "\n".join(regular_lines)
-                # We can't easily split execution here — just run magic outputs and return
-                # Let the user know magic lines ran but code needs a separate cell
-                if outputs:
-                    outputs.append({"type": "stream", "name": "stderr",
-                                    "text": "Note: Magic commands (!/%) and regular code should be in separate cells.\n"})
-                    return outputs
-            return outputs if outputs else None
-        if len(lines) == 1:
-            return _handle_single_magic(stripped, _sp)
-        return None  # Not a magic cell
+    lines = code.replace("\r\n", "\n").replace("\r", "\n").split("\n")
 
-    # Process each line as a separate magic command
+    def is_magic(line):
+        s = line.strip()
+        return bool(s) and any(s.startswith(p) for p in MAGIC_PREFIXES)
+
+    # If no magic lines at all, return None → regular execute_code handles it
+    if not any(is_magic(l) for l in lines):
+        return None
+
     outputs = []
+    pending_code = []
+
+    def flush_code():
+        """exec() any accumulated regular Python lines, capture output."""
+        nonlocal pending_code
+        block = "\n".join(pending_code).strip()
+        pending_code = []
+        if not block:
+            return
+        import io as _io
+        old_out, old_err = sys.stdout, sys.stderr
+        co, ce = _io.StringIO(), _io.StringIO()
+        try:
+            sys.stdout, sys.stderr = co, ce
+            try:
+                result = eval(compile(block, "<cell>", "eval"), _user_ns)
+                sys.stdout, sys.stderr = old_out, old_err
+                o = co.getvalue()
+                if o:
+                    outputs.append({"type": "stream", "name": "stdout", "text": o})
+                if result is not None:
+                    outputs.append({
+                        "type": "execute_result",
+                        "data": {"text/plain": repr(result)},
+                        "exec_count": exec_count,
+                    })
+            except SyntaxError:
+                exec(compile(block, "<cell>", "exec"), _user_ns)
+                sys.stdout, sys.stderr = old_out, old_err
+                o = co.getvalue()
+                if o:
+                    outputs.append({"type": "stream", "name": "stdout", "text": o})
+        except Exception as e:
+            sys.stdout, sys.stderr = old_out, old_err
+            tb_lines = traceback.format_exception(type(e), e, e.__traceback__)
+            outputs.append({
+                "type": "error",
+                "ename": type(e).__name__,
+                "evalue": str(e),
+                "traceback": tb_lines,
+            })
+        finally:
+            sys.stdout, sys.stderr = old_out, old_err
+            e2 = ce.getvalue()
+            if e2:
+                outputs.append({"type": "stream", "name": "stderr", "text": e2})
+
     for line in lines:
-        line = line.strip()
-        if not line:
+        s = line.strip()
+        if not s:
+            # Preserve blank lines inside code blocks; skip between magic lines
+            if pending_code:
+                pending_code.append(line)
             continue
-        result = _handle_single_magic(line, _sp)
-        if result is not None:
-            outputs.extend(result)
-    return outputs if outputs else None
+
+        if is_magic(s):
+            flush_code()  # exec any accumulated code before running magic
+            result = _handle_single_magic(s, _sp)
+            if result:
+                outputs.extend(result)
+        else:
+            pending_code.append(line)
+
+    flush_code()  # trailing regular code after the last magic line
+
+    return outputs
 
 
 def _handle_single_magic(line, _sp):
@@ -206,9 +231,10 @@ def _handle_single_magic(line, _sp):
         except Exception as e:
             return [{"type": "error", "ename": type(e).__name__, "evalue": str(e), "traceback": [str(e)]}]
 
-    # %matplotlib inline
-    if line in ("%matplotlib inline", "%matplotlib"):
-        return [{"type": "stream", "name": "stdout", "text": "Matplotlib backend: Agg (inline)\n"}]
+    # %matplotlib [backend]
+    if line.startswith("%matplotlib"):
+        backend = line[len("%matplotlib"):].strip() or "inline"
+        return [{"type": "stream", "name": "stdout", "text": f"Matplotlib backend: {backend} (using Agg)\n"}]
 
     return None
 
