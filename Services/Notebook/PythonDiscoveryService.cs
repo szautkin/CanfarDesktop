@@ -22,20 +22,43 @@ public class PythonDiscoveryService : IPythonDiscoveryService
     {
         if (_cachedPath is not null) return _cachedPath;
 
-        // 1. Check PATH (most common case)
-        var pathResult = await TryPythonAsync("python");
-        if (pathResult is not null) return Cache(pathResult.Value);
-
-        pathResult = await TryPythonAsync("python3");
-        if (pathResult is not null) return Cache(pathResult.Value);
-
-        // 2. Common Windows install locations
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
 
+        // 1. Check real Python installations first (NOT the Windows Store stub)
+        // The Store stub (WindowsApps\python.exe) is unreliable for subprocess I/O
+        string[] preferredPaths =
+        [
+            Path.Combine(localAppData, @"Python\pythoncore-3.14-64\python.exe"),
+            Path.Combine(localAppData, @"Python\pythoncore-3.13-64\python.exe"),
+            Path.Combine(localAppData, @"Python\pythoncore-3.12-64\python.exe"),
+            Path.Combine(localAppData, @"Programs\Python\Python314\python.exe"),
+            Path.Combine(localAppData, @"Programs\Python\Python313\python.exe"),
+            Path.Combine(localAppData, @"Programs\Python\Python312\python.exe"),
+            Path.Combine(localAppData, @"Programs\Python\Python311\python.exe"),
+        ];
+
+        foreach (var path in preferredPaths)
+        {
+            if (File.Exists(path))
+            {
+                var result = await TryPythonAsync(path);
+                if (result is not null) return Cache(result.Value);
+            }
+        }
+
+        // 2. Check PATH (may return Store stub — filter it out)
+        var pathResult = await TryPythonAsync("python");
+        if (pathResult is not null && !pathResult.Value.path.Contains("WindowsApps"))
+            return Cache(pathResult.Value);
+
+        pathResult = await TryPythonAsync("python3");
+        if (pathResult is not null && !pathResult.Value.path.Contains("WindowsApps"))
+            return Cache(pathResult.Value);
+
+        // 3. Other common Windows install locations
         string[] commonPaths =
         [
-            Path.Combine(localAppData, @"Programs\Python\Python313\python.exe"),
             Path.Combine(localAppData, @"Programs\Python\Python312\python.exe"),
             Path.Combine(localAppData, @"Programs\Python\Python311\python.exe"),
             Path.Combine(localAppData, @"Programs\Python\Python310\python.exe"),
@@ -60,14 +83,17 @@ public class PythonDiscoveryService : IPythonDiscoveryService
             }
         }
 
-        // 3. Conda on PATH
+        // 4. Conda on PATH
         pathResult = await TryPythonAsync("conda");
         if (pathResult is not null)
         {
-            // conda environments: try the default python in the base env
             var condaResult = await TryPythonAsync("conda run python");
             if (condaResult is not null) return Cache(condaResult.Value);
         }
+
+        // 5. Last resort: Windows Store stub (unreliable but better than nothing)
+        pathResult = await TryPythonAsync("python");
+        if (pathResult is not null) return Cache(pathResult.Value);
 
         return null;
     }
