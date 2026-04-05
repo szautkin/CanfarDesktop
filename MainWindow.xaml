@@ -34,7 +34,7 @@
                 <Button Click="OnToggleFilePanel" ToolTipService.ToolTip="Explorer (Ctrl+B)" Padding="6,4"
                         Background="Transparent" BorderThickness="0"
                         AutomationProperties.Name="Toggle file explorer">
-                    <FontIcon Glyph="&#xE8B7;" FontSize="16" />
+                    <FontIcon Glyph="&#xED25;" FontSize="16" />
                 </Button>
             </StackPanel>
 
