@@ -22,14 +22,17 @@
 
     <Grid RowDefinitions="*,Auto">
 
-        <!-- Cell list -->
+        <!-- Cell list — CanContentRenderOutsideBounds prevents scroll jump on layout changes -->
         <ScrollViewer Grid.Row="0"
                       VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalAnchorRatio="1.0"
+                      CanContentRenderOutsideBounds="True">
             <ItemsRepeater
                 x:Name="CellList"
                 Margin="40,16,40,16"
-                ItemTemplate="{StaticResource CellSelector}">
+                ItemTemplate="{StaticResource CellSelector}"
+                VerticalCacheLength="4">
                 <ItemsRepeater.Layout>
                     <StackLayout Spacing="8" />
                 </ItemsRepeater.Layout>

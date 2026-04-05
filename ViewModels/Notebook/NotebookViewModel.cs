@@ -675,7 +675,8 @@ public partial class NotebookViewModel : ObservableObject
             cell.ContentChanged -= OnCellContentChanged;
 
         // Shut down the Python kernel process
-        _kernelService.Dispose();
+        try { _kernelService.Dispose(); }
+        catch (Exception ex) { NotebookLogger.Error("Kernel dispose on close", ex); }
     }
 
     #endregion
