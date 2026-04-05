@@ -271,10 +271,15 @@ public sealed partial class MainWindow : Window
         // Set RA/Dec directly — no need for name resolution
         if (_searchPage is not null)
         {
-            _searchPage.ViewModel.Target = Models.Fits.WcsInfo.FormatForResolver(ra, dec);
-            _searchPage.ViewModel.ResolvedRA = ra;
-            _searchPage.ViewModel.ResolvedDec = dec;
-            _searchPage.ViewModel.ResolverStatus = "From FITS crosshair";
+            var vm = _searchPage.ViewModel;
+            // Suppress resolver: set NONE so Target change doesn't trigger async resolve
+            var prevService = vm.ResolverService;
+            vm.ResolverService = "NONE";
+            vm.Target = $"{Models.Fits.WcsInfo.FormatForResolver(ra, dec)}";
+            vm.ResolvedRA = ra;
+            vm.ResolvedDec = dec;
+            vm.ResolverStatus = "From FITS crosshair";
+            vm.ResolverService = prevService;
         }
         NavigateTo(AppMode.Search);
     }
