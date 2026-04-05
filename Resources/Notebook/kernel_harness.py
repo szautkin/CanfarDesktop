@@ -63,6 +63,7 @@ except ImportError:
 # Many Colab notebooks hardcode paths like /content/repo/file.
 import os as _os
 _colab_prefix = "/content/"
+_colab_replacement = _os.getcwd().replace("\\", "/") + "/"  # absolute path as replacement
 
 # Mock google.colab module so Colab notebooks don't crash on import
 import types as _types
@@ -129,7 +130,7 @@ def _handle_magic(code, exec_count):
             return
         # Apply Colab path rewrite to code blocks too
         if _colab_prefix in block:
-            block = block.replace(_colab_prefix, "")
+            block = block.replace(_colab_prefix, _colab_replacement)
         import io as _io
         old_out, old_err = sys.stdout, sys.stderr
         co, ce = _io.StringIO(), _io.StringIO()
@@ -273,7 +274,7 @@ def execute_code(code, exec_count):
 
     # Colab compatibility: rewrite /content/ paths to working directory
     if _colab_prefix in code:
-        code = code.replace(_colab_prefix, "")
+        code = code.replace(_colab_prefix, _colab_replacement)
 
     # Handle magic commands (%pip, %conda, !shell)
     magic_result = _handle_magic(code, exec_count)
