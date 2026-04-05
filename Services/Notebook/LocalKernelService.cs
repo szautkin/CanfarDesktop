@@ -101,8 +101,11 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
     public async Task<ExecutionResult> ExecuteAsync(string code, CancellationToken ct = default)
     {
-        if (State == KernelState.Dead)
-            throw new InvalidOperationException("Kernel is not running.");
+        if (State == KernelState.Dead || _stdin is null || _process is null || _process.HasExited)
+        {
+            SetState(KernelState.Dead);
+            throw new InvalidOperationException("Kernel is not running. Restart the kernel and try again.");
+        }
 
         await _executionGate.WaitAsync(ct);
         try
@@ -244,8 +247,17 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
     public async Task RestartAsync(string? workingDirectory = null)
     {
-        await ShutdownAsync();
+        try
+        {
+            await ShutdownAsync();
+        }
+        catch (Exception ex)
+        {
+            NotebookLogger.Error("Shutdown during restart failed", ex);
+        }
         _executionCount = 0;
+        _stdin = null;
+        _process = null;
         await StartAsync(workingDirectory);
     }
 
