@@ -84,16 +84,29 @@ public class PythonDiscoveryService : IPythonDiscoveryService
         }
 
         // 4. Conda on PATH
-        pathResult = await TryPythonAsync("conda");
-        if (pathResult is not null)
+        var condaPath = FindOnPath("conda");
+        if (condaPath is not null)
         {
-            var condaResult = await TryPythonAsync("conda run python");
-            if (condaResult is not null) return Cache(condaResult.Value);
+            // conda's python is in the same directory or a sibling
+            var condaPython = Path.Combine(Path.GetDirectoryName(condaPath)!, "python.exe");
+            if (File.Exists(condaPython))
+            {
+                var condaResult = await TryPythonAsync(condaPython);
+                if (condaResult is not null) return Cache(condaResult.Value);
+            }
         }
 
         // 5. Last resort: Windows Store stub (unreliable but better than nothing)
-        pathResult = await TryPythonAsync("python");
-        if (pathResult is not null) return Cache(pathResult.Value);
+        // FindOnPath already ran above for non-rooted paths; if we reach here,
+        // try the Store stub as absolute last resort
+        var storePython = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            @"Microsoft\WindowsApps\python.exe");
+        if (File.Exists(storePython))
+        {
+            pathResult = await TryPythonAsync(storePython);
+            if (pathResult is not null) return Cache(pathResult.Value);
+        }
 
         return null;
     }
@@ -113,6 +126,19 @@ public class PythonDiscoveryService : IPythonDiscoveryService
     {
         try
         {
+            // For non-rooted names (e.g., "python"), check if it exists on PATH
+            // before spawning a process — avoids Win32Exception in the debugger.
+            if (!Path.IsPathRooted(executable))
+            {
+                var resolved = FindOnPath(executable);
+                if (resolved is null) return null;
+                executable = resolved;
+            }
+            else if (!File.Exists(executable))
+            {
+                return null;
+            }
+
             var psi = new ProcessStartInfo
             {
                 FileName = executable,
@@ -130,7 +156,6 @@ public class PythonDiscoveryService : IPythonDiscoveryService
             var error = await proc.StandardError.ReadToEndAsync();
             await proc.WaitForExitAsync();
 
-            // Python --version outputs to stdout (3.x) or stderr (2.x)
             var versionLine = !string.IsNullOrWhiteSpace(output) ? output.Trim() : error.Trim();
             if (!versionLine.StartsWith("Python ")) return null;
 
@@ -138,34 +163,32 @@ public class PythonDiscoveryService : IPythonDiscoveryService
             if (!Version.TryParse(versionStr, out var version)) return null;
             if (version.Major < 3 || (version.Major == 3 && version.Minor < 8)) return null;
 
-            // Resolve the full path
-            var resolvedPath = executable;
-            if (!Path.IsPathRooted(executable))
-            {
-                // Try to resolve via `where` on Windows
-                var wherePsi = new ProcessStartInfo
-                {
-                    FileName = "where",
-                    Arguments = executable,
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                };
-                using var whereProc = Process.Start(wherePsi);
-                if (whereProc is not null)
-                {
-                    var whereLine = (await whereProc.StandardOutput.ReadLineAsync())?.Trim();
-                    await whereProc.WaitForExitAsync();
-                    if (!string.IsNullOrEmpty(whereLine) && File.Exists(whereLine))
-                        resolvedPath = whereLine;
-                }
-            }
-
-            return (resolvedPath, versionStr);
+            return (executable, versionStr);
         }
         catch
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Find an executable on PATH without spawning a process.
+    /// Returns the full path, or null if not found.
+    /// </summary>
+    private static string? FindOnPath(string executable)
+    {
+        var pathEnv = Environment.GetEnvironmentVariable("PATH");
+        if (pathEnv is null) return null;
+
+        var extensions = new[] { "", ".exe", ".cmd", ".bat" };
+        foreach (var dir in pathEnv.Split(Path.PathSeparator))
+        {
+            foreach (var ext in extensions)
+            {
+                var fullPath = Path.Combine(dir, executable + ext);
+                if (File.Exists(fullPath)) return fullPath;
+            }
+        }
+        return null;
     }
 }

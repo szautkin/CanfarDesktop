@@ -220,29 +220,31 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
     {
         if (_process is null || _process.HasExited) return;
 
+        NotebookLogger.Info("Interrupt requested — killing kernel and restarting");
+
+        // On Windows there's no SIGINT for subprocess. Kill and restart
+        // to preserve the Jupyter-like experience (kernel restarts fresh).
+        var workDir = _process.StartInfo.WorkingDirectory;
         try
         {
-            // Send interrupt signal via stdin
-            await _stdin!.WriteLineAsync("__INTERRUPT__");
-
-            // Wait briefly, then force kill if still busy
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            try
-            {
-                while (State == KernelState.Busy && !cts.Token.IsCancellationRequested)
-                    await Task.Delay(100, cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Timeout — kill and restart
+            _process.Exited -= OnProcessExited;
+            if (!_process.HasExited)
                 _process.Kill(entireProcessTree: true);
-                SetState(KernelState.Dead);
-            }
+            _process.Dispose();
         }
-        catch (Exception ex)
+        catch { /* process already dead */ }
+        finally
         {
-            System.Diagnostics.Debug.WriteLine($"Interrupt failed: {ex.Message}");
+            _process = null;
+            _stdin = null;
+            SetState(KernelState.Dead);
+            CleanupHarness();
         }
+
+        // Auto-restart so the user can continue working
+        _executionCount = 0;
+        await StartAsync(workDir);
+        NotebookLogger.Info("Kernel restarted after interrupt");
     }
 
     public async Task RestartAsync(string? workingDirectory = null)

@@ -70,7 +70,8 @@ public sealed partial class WelcomePage : UserControl
         try
         {
             var discovery = App.Services.GetRequiredService<IPythonDiscoveryService>();
-            var pythonExe = discovery.PythonPath ?? "python";
+            var pythonExe = discovery.PythonPath;
+            if (pythonExe is null) return; // no Python found — skip package check
             var psi = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = pythonExe,
