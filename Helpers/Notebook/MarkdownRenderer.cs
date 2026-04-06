@@ -183,7 +183,6 @@ public static partial class MarkdownRenderer
         };
 
         // Process inline formatting: **bold**, *italic*, `code`
-        var pos = 0;
         var remaining = text;
 
         // Simple approach: split on formatting markers

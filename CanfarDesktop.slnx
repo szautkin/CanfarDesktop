@@ -12,5 +12,7 @@
   </Project>
   <Project Path="CanfarDesktop.Tests\CanfarDesktop.Tests.csproj">
     <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|ARM64" Project="x64" Build="false" />
+    <Platform Solution="*|x86" Project="x64" Build="false" />
   </Project>
 </Solution>

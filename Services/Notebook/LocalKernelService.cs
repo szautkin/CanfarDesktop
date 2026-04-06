@@ -313,7 +313,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
             // Kill + dispose on background thread (fast, non-blocking)
             try { proc.Exited -= OnProcessExited; } catch { }
-            Task.Run(() =>
+            _ = Task.Run(() =>
             {
                 try { if (!proc.HasExited) proc.Kill(); } catch { }
                 try { proc.Dispose(); } catch { }

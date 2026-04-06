@@ -38,8 +38,8 @@ public partial class FitsViewerViewModel : ObservableObject
 
     public List<FitsHdu>? Hdus => _hdus;
     public FitsImageData? ImageData => _imageData;
-    public FitsHeader? CurrentHeader => _hdus is not null && _selectedHduIndex < _hdus.Count
-        ? _hdus[_selectedHduIndex].Header : null;
+    public FitsHeader? CurrentHeader => _hdus is not null && SelectedHduIndex < _hdus.Count
+        ? _hdus[SelectedHduIndex].Header : null;
 
     public string? FilePath { get; private set; }
 
