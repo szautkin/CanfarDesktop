@@ -61,6 +61,46 @@ public partial class ResearchViewModel : ObservableObject
     /// <summary>Raised when user wants to view a FITS file in the built-in viewer.</summary>
     public event Action<string>? ViewInFitsRequested;
 
+    /// <summary>
+    /// Download the FITS file for an observation that was saved without a file.
+    /// The save path is provided by the caller (View handles file picker).
+    /// </summary>
+    public async Task DownloadObservationFileAsync(string savePath)
+    {
+        if (SelectedObservation is null || string.IsNullOrEmpty(SelectedObservation.PublisherID)) return;
+
+        try
+        {
+            var dataLink = await _dataLinkService.GetLinksAsync(SelectedObservation.PublisherID);
+            var url = dataLink.DirectFileUrl ?? _dataLinkService.GetDownloadUrl(SelectedObservation.PublisherID);
+
+            var tempPath = savePath + ".tmp";
+            using (var response = await _dataLinkService.DownloadAsync(url))
+            using (var stream = await response.Content.ReadAsStreamAsync())
+            using (var fileStream = new FileStream(tempPath, FileMode.Create))
+            {
+                await stream.CopyToAsync(fileStream);
+            }
+
+            if (File.Exists(savePath)) File.Delete(savePath);
+            File.Move(tempPath, savePath);
+
+            // Update observation with the file path
+            SelectedObservation.LocalPath = savePath;
+            var fi = new FileInfo(savePath);
+            if (fi.Exists) SelectedObservation.FileSize = fi.Length;
+            _store.Save(SelectedObservation);
+            OnPropertyChanged(nameof(SelectedObservation));
+            Refresh();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Download error: {ex.Message}");
+            try { if (File.Exists(savePath + ".tmp")) File.Delete(savePath + ".tmp"); } catch { }
+            throw;
+        }
+    }
+
     [RelayCommand]
     public void OpenFile()
     {

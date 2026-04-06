@@ -88,6 +88,35 @@ public sealed partial class ResearchPage : UserControl
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8E5", "Open File", (_, _) => ViewModel.OpenFileCommand.Execute(null)));
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE838", "Show in Explorer", (_, _) => ViewModel.ShowInExplorerCommand.Execute(null)));
         }
+        else
+        {
+            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", "Download FITS", async (_, _) =>
+            {
+                try
+                {
+                    var hwnd = nint.Zero;
+                    if (WindowHelper.ActiveWindows.Count > 0)
+                        hwnd = WinRT.Interop.WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0]);
+                    if (hwnd == nint.Zero) return;
+
+                    var picker = new Windows.Storage.Pickers.FileSavePicker();
+                    WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                    var name = obs.TargetName is { Length: > 0 } ? obs.TargetName : "observation";
+                    picker.SuggestedFileName = $"{name}.fits";
+                    picker.FileTypeChoices.Add("FITS Image", new List<string> { ".fits" });
+
+                    var file = await picker.PickSaveFileAsync();
+                    if (file is null) return;
+
+                    await ViewModel.DownloadObservationFileAsync(file.Path);
+                    BuildDetail(obs); // rebuild to show Open/Explorer buttons
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Research download error: {ex.Message}");
+                }
+            }));
+        }
 
         var deleteBtn = UIFactory.CreateIconButton("\uE74D", "Delete", (_, _) =>
         {
