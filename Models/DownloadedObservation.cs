@@ -38,7 +38,7 @@ public class DownloadedObservation
     /// <summary>
     /// Create from a search result row + DataLink info.
     /// </summary>
-    public static DownloadedObservation FromSearchResult(SearchResultRow row, string localPath,
+    public static DownloadedObservation FromSearchResult(SearchResultRow row, string? localPath,
         DataLinkResult? dataLink, Func<string, string> getHeader)
     {
         string SafeGet(string key)

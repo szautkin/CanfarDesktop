@@ -663,7 +663,13 @@ public sealed partial class SearchPage : Page
                 var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
                 var capturedPubIdForDl = publisherID;
                 var capturedRowForDl = row;
-                btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", "Download",
+                btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8B7", "Save to Research",
+                    async (_, _) =>
+                    {
+                        detailDialog?.Hide();
+                        await SaveToResearchAsync(capturedPubIdForDl, capturedRowForDl);
+                    }));
+                btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", "Download FITS",
                     async (_, _) =>
                     {
                         detailDialog?.Hide();
@@ -755,6 +761,33 @@ public sealed partial class SearchPage : Page
         using var stream = new System.IO.MemoryStream(bytes);
         await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
         return bitmap;
+    }
+
+    private async Task SaveToResearchAsync(string publisherID, SearchResultRow? sourceRow)
+    {
+        if (sourceRow is null) return;
+        try
+        {
+            var dataLink = await _dataLinkService.GetLinksAsync(publisherID);
+            var obs = DownloadedObservation.FromSearchResult(sourceRow, null,
+                dataLink, k => ViewModel.GetColumnHeader(k));
+            _observationStore.Save(obs);
+
+            DownloadInfoBar.IsOpen = true;
+            DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
+            DownloadInfoBar.Title = "Saved to Research";
+            DownloadProgressBar.Visibility = Visibility.Collapsed;
+            DownloadProgressText.Text = obs.TargetName ?? publisherID;
+            _ = Task.Delay(3000).ContinueWith(_ => DispatcherQueue.TryEnqueue(() =>
+            {
+                DownloadInfoBar.IsOpen = false;
+                DownloadProgressBar.Visibility = Visibility.Visible;
+            }));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Save to research error: {ex.Message}");
+        }
     }
 
     private async Task DownloadFileAsync(string publisherID, SearchResultRow? sourceRow = null)
