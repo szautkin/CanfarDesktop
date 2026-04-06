@@ -208,15 +208,12 @@ public sealed partial class MainWindow : Window
 
     private async void OnPortalRequested(object? sender, EventArgs e)
     {
-        if (_viewModel.IsAuthenticated)
+        if (!_viewModel.IsAuthenticated)
         {
-            EnsureDashboard();
-            NavigateTo(AppMode.Portal);
+            if (!await ShowLoginDialogAsync()) return;
         }
-        else
-        {
-            await ShowLoginThenPortalAsync();
-        }
+        EnsureDashboard();
+        NavigateTo(AppMode.Portal);
     }
 
     private void OnSearchRequested(object? sender, EventArgs e)
@@ -251,8 +248,7 @@ public sealed partial class MainWindow : Window
     {
         if (!_viewModel.IsAuthenticated)
         {
-            await ShowLoginThenPortalAsync();
-            if (!_viewModel.IsAuthenticated) return;
+            if (!await ShowLoginDialogAsync()) return;
         }
 
         if (_storagePage is null)
@@ -350,7 +346,8 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task ShowLoginThenPortalAsync()
+    /// <summary>Show login dialog. Returns true if login succeeded.</summary>
+    private async Task<bool> ShowLoginDialogAsync()
     {
         LoginViewModel? loginVm = null;
         try
@@ -361,17 +358,12 @@ public sealed partial class MainWindow : Window
 
             var dialog = new LoginDialog(loginVm) { XamlRoot = Content.XamlRoot };
             await dialog.ShowAsync();
-
-            if (_loginSucceeded)
-            {
-                EnsureDashboard();
-                NavigateTo(AppMode.Portal);
-            }
-            // else: cancel → stay on Landing
+            return _loginSucceeded;
         }
         catch (Exception ex)
         {
             StatusText.Text = $"Login error: {ex.Message}";
+            return false;
         }
         finally
         {
@@ -423,7 +415,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnLoginClick(object sender, RoutedEventArgs e)
     {
-        await ShowLoginThenPortalAsync();
+        await ShowLoginDialogAsync();
     }
 
     private async void OnLogoutClick(object sender, RoutedEventArgs e)
