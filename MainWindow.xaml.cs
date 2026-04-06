@@ -101,7 +101,13 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            // Open with system default app
+            // Open with system default app — block executable extensions
+            var fileExt = Path.GetExtension(filePath).ToLowerInvariant();
+            if (fileExt is ".exe" or ".bat" or ".cmd" or ".ps1" or ".vbs" or ".js" or ".msi" or ".com" or ".scr")
+            {
+                System.Diagnostics.Debug.WriteLine($"Blocked shell execute for: {fileExt}");
+                return;
+            }
             try
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -252,6 +258,7 @@ public sealed partial class MainWindow : Window
         if (_storagePage is null)
         {
             _storagePage = App.Services.GetRequiredService<StorageBrowserPage>();
+            _storagePage.OpenInFitsViewerRequested += path => OpenFitsViewer(path);
             StorageContainer.Child = _storagePage;
             await _storagePage.LoadAsync(_viewModel.Username);
         }
@@ -264,39 +271,50 @@ public sealed partial class MainWindow : Window
 
     public async void OpenNotebook(string? filePath = null)
     {
-        if (_notebookTabHost is null)
+        try
         {
-            var hostVm = App.Services.GetRequiredService<ViewModels.Notebook.NotebookTabHostViewModel>();
-            _notebookTabHost = new NotebookTabHost(hostVm);
-            _notebookTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
-            NotebookContainer.Child = _notebookTabHost;
+            if (_notebookTabHost is null)
+            {
+                var hostVm = App.Services.GetRequiredService<ViewModels.Notebook.NotebookTabHostViewModel>();
+                _notebookTabHost = new NotebookTabHost(hostVm);
+                _notebookTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
+                NotebookContainer.Child = _notebookTabHost;
+                await _notebookTabHost.CheckRecoveryAsync();
+            }
 
-            // Check for crash recovery on first open
-            await _notebookTabHost.CheckRecoveryAsync();
+            if (filePath is not null)
+                await _notebookTabHost.AddTabForFileAsync(filePath);
+
+            NavigateTo(AppMode.Notebook);
         }
-
-        // Open specific file or show welcome page (user picks New/Open from there)
-        if (filePath is not null)
-            await _notebookTabHost.AddTabForFileAsync(filePath);
-
-        NavigateTo(AppMode.Notebook);
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Notebook error: {ex.Message}";
+        }
     }
 
     public async void OpenFitsViewer(string? filePath = null)
     {
-        if (_fitsTabHost is null)
+        try
         {
-            var hostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
-            _fitsTabHost = new Views.FitsViewer.FitsTabHost(hostVm);
-            _fitsTabHost.SearchAtPositionRequested += OnSearchAtFitsPosition;
-            _fitsTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
-            FitsViewerContainer.Child = _fitsTabHost;
+            if (_fitsTabHost is null)
+            {
+                var hostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
+                _fitsTabHost = new Views.FitsViewer.FitsTabHost(hostVm);
+                _fitsTabHost.SearchAtPositionRequested += OnSearchAtFitsPosition;
+                _fitsTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
+                FitsViewerContainer.Child = _fitsTabHost;
+            }
+
+            if (filePath is not null)
+                await _fitsTabHost.AddTabForFileAsync(filePath);
+
+            NavigateTo(AppMode.FitsViewer);
         }
-
-        if (filePath is not null)
-            await _fitsTabHost.AddTabForFileAsync(filePath);
-
-        NavigateTo(AppMode.FitsViewer);
+        catch (Exception ex)
+        {
+            StatusText.Text = $"FITS viewer error: {ex.Message}";
+        }
     }
 
     private void OnSearchAtFitsPosition(double ra, double dec)
@@ -387,6 +405,8 @@ public sealed partial class MainWindow : Window
             LoginButton.Visibility = Visibility.Collapsed;
             UserButton.Visibility = Visibility.Visible;
             UserButton.Content = _viewModel.Username;
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+                UserButton, $"{_viewModel.Username} — account options");
         }
         else
         {
@@ -442,6 +462,15 @@ public sealed partial class MainWindow : Window
             NavigateTo(AppMode.Landing);
             _landingView.StatusMessage = "Session expired. Please log in again.";
         });
+    }
+
+    #endregion
+
+    #region Settings
+
+    private async void OnSettingsClick(object sender, RoutedEventArgs e)
+    {
+        await Views.Notebook.NotebookSettingsDialog.ShowAsync(Content.XamlRoot);
     }
 
     #endregion

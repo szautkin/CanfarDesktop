@@ -285,6 +285,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <!-- Toolbar -->
@@ -345,6 +346,19 @@
                                           SelectionChanged="OnRowsPerPageChanged" />
                             </StackPanel>
                         </StackPanel>
+                        <!-- Download progress -->
+                        <InfoBar x:Name="DownloadInfoBar" Grid.Row="4"
+                                 IsOpen="False" IsClosable="False"
+                                 Severity="Informational" Title="Downloading..."
+                                 Margin="0,4,0,0">
+                            <InfoBar.Content>
+                                <StackPanel Spacing="4">
+                                    <ProgressBar x:Name="DownloadProgressBar" Minimum="0" Maximum="100" />
+                                    <TextBlock x:Name="DownloadProgressText"
+                                               Style="{StaticResource CaptionTextBlockStyle}" />
+                                </StackPanel>
+                            </InfoBar.Content>
+                        </InfoBar>
                     </Grid>
                 </PivotItem>
 

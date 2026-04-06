@@ -1,2 +1,0 @@
-- [User Profile](user_profile.md) — Serhii Zautkin, sole dev of Verbinal Windows + macOS CANFAR desktop clients
-- [CADC ARC API Surface](reference_cadc_arc_api.md) — Full VOSpace 2.1 endpoint inventory for ws-uv.canfar.net/arc (nodes, files, transfers)

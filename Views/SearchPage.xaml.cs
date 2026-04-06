@@ -798,27 +798,66 @@ public sealed partial class SearchPage : Page
             var file = await picker.PickSaveFileAsync();
             if (file is null) return;
 
-            // Atomic download: write to temp file, then move to final location
+            // Download with progress tracking
             var tempPath = file.Path + ".tmp";
             try
             {
-                using (var response = await _dataLinkService.DownloadAsync(url))
-                using (var stream = await response.Content.ReadAsStreamAsync())
-                using (var fileStream = new System.IO.FileStream(tempPath, System.IO.FileMode.Create))
+                DownloadInfoBar.IsOpen = true;
+                DownloadInfoBar.Title = $"Downloading {Path.GetFileName(file.Path)}...";
+                DownloadProgressBar.IsIndeterminate = true;
+                DownloadProgressText.Text = "";
+
+                using var response = await _dataLinkService.DownloadAsync(url);
+                var totalBytes = response.Content.Headers.ContentLength;
+                using var stream = await response.Content.ReadAsStreamAsync();
+                using var fileStream = new System.IO.FileStream(tempPath, System.IO.FileMode.Create);
+
+                if (totalBytes.HasValue)
                 {
-                    await stream.CopyToAsync(fileStream);
-                    await fileStream.FlushAsync();
+                    DownloadProgressBar.IsIndeterminate = false;
+                    DownloadProgressBar.Maximum = totalBytes.Value;
                 }
 
-                // Move temp to final (overwrites if exists)
+                var buffer = new byte[81920];
+                long downloaded = 0;
+                int bytesRead;
+                while ((bytesRead = await stream.ReadAsync(buffer)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
+                    downloaded += bytesRead;
+
+                    if (totalBytes.HasValue)
+                    {
+                        DownloadProgressBar.Value = downloaded;
+                        var pct = (double)downloaded / totalBytes.Value * 100;
+                        DownloadProgressText.Text = $"{FormatBytes(downloaded)} / {FormatBytes(totalBytes.Value)} ({pct:F0}%)";
+                    }
+                    else
+                    {
+                        DownloadProgressText.Text = FormatBytes(downloaded);
+                    }
+                }
+
+                await fileStream.FlushAsync();
+
                 if (File.Exists(file.Path)) File.Delete(file.Path);
                 File.Move(tempPath, file.Path);
+
+                DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
+                DownloadInfoBar.Title = $"Downloaded {Path.GetFileName(file.Path)}";
+                DownloadProgressBar.Visibility = Visibility.Collapsed;
+                DownloadProgressText.Text = FormatBytes(downloaded);
+                _ = Task.Delay(3000).ContinueWith(_ => DispatcherQueue.TryEnqueue(() =>
+                {
+                    DownloadInfoBar.IsOpen = false;
+                    DownloadProgressBar.Visibility = Visibility.Visible;
+                }));
             }
             catch
             {
-                // Clean up partial temp file on failure
+                DownloadInfoBar.IsOpen = false;
                 try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
-                throw; // re-throw to outer catch
+                throw;
             }
 
             // Track in Research module
@@ -910,6 +949,14 @@ public sealed partial class SearchPage : Page
             return publisherID[(lastQuestion + 1)..];
         return "observation";
     }
+
+    private static string FormatBytes(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
+        < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
+        _ => $"{bytes / (1024.0 * 1024 * 1024):F2} GB"
+    };
 
     private async Task LoadPreviewFlyout(Flyout flyout, string publisherID)
     {

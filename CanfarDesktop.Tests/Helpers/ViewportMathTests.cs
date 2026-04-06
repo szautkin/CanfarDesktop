@@ -200,4 +200,38 @@ public class ViewportMathTests
         Assert.Equal(250, lx, Tolerance);
         Assert.Equal(600, ly, Tolerance);
     }
+
+    // ── ComputeMatchedZoom ──────────────────────────────────────────────────
+
+    [Fact]
+    public void ComputeMatchedZoom_SameScale_SameZoom()
+    {
+        Assert.Equal(2.0, ViewportMath.ComputeMatchedZoom(2.0, 0.5, 0.5), Tolerance);
+    }
+
+    [Fact]
+    public void ComputeMatchedZoom_DoubleScale_HalfZoom()
+    {
+        // B has 2x coarser pixels → half the zoom to match angular extent
+        Assert.Equal(1.0, ViewportMath.ComputeMatchedZoom(2.0, 0.5, 1.0), Tolerance);
+    }
+
+    [Fact]
+    public void ComputeMatchedZoom_FinerPixels_MoreZoom()
+    {
+        // B has 2x finer pixels → double the zoom
+        Assert.Equal(4.0, ViewportMath.ComputeMatchedZoom(2.0, 1.0, 0.5), Tolerance);
+    }
+
+    [Fact]
+    public void ComputeMatchedZoom_ZeroScaleB_FallbackToZoomA()
+    {
+        Assert.Equal(3.0, ViewportMath.ComputeMatchedZoom(3.0, 0.5, 0.0), Tolerance);
+    }
+
+    [Fact]
+    public void ComputeMatchedZoom_NegativeScaleB_FallbackToZoomA()
+    {
+        Assert.Equal(3.0, ViewportMath.ComputeMatchedZoom(3.0, 0.5, -1.0), Tolerance);
+    }
 }

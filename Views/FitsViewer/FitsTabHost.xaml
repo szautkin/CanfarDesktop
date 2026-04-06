@@ -2,7 +2,8 @@
 <UserControl
     x:Class="CanfarDesktop.Views.FitsViewer.FitsTabHost"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    KeyDown="OnKeyDown">
 
     <Grid RowDefinitions="Auto,*">
 
@@ -98,6 +99,45 @@
                 </DropDownButton.Flyout>
             </DropDownButton>
 
+            <!-- Blink comparison -->
+            <DropDownButton Padding="8,4"
+                            ToolTipService.ToolTip="Blink comparison between two images"
+                            AutomationProperties.Name="Blink comparison">
+                <FontIcon Glyph="&#xE786;" FontSize="14" />
+                <DropDownButton.Flyout>
+                    <MenuFlyout Opening="OnBlinkFlyoutOpening" />
+                </DropDownButton.Flyout>
+            </DropDownButton>
+            <Slider x:Name="BlinkIntervalSlider" Width="80" Minimum="500" Maximum="5000" Value="2000"
+                    Visibility="Collapsed" ToolTipService.ToolTip="Fade speed (ms per cycle)"
+                    AutomationProperties.Name="Blink fade speed"
+                    ValueChanged="OnBlinkIntervalChanged" />
+            <Button x:Name="StopBlinkButton" Visibility="Collapsed" Click="OnStopBlink" Padding="8,4"
+                    ToolTipService.ToolTip="Stop blinking (Escape)"
+                    AutomationProperties.Name="Stop blink comparison"
+                    Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <FontIcon Glyph="&#xE71A;" FontSize="14" />
+                    <TextBlock Text="Stop Blink" />
+                </StackPanel>
+            </Button>
+
+            <!-- Sync zoom toggle -->
+            <ToggleButton x:Name="SyncZoomToggle"
+                          Click="OnToggleSyncZoom" Padding="8,4"
+                          ToolTipService.ToolTip="Sync zoom across tabs (match angular extent)"
+                          AutomationProperties.Name="Sync zoom across tabs">
+                <FontIcon Glyph="&#xE740;" FontSize="14" />
+            </ToggleButton>
+
+            <!-- Linked crosshair toggle -->
+            <ToggleButton x:Name="LinkedCrosshairToggle" IsChecked="True"
+                          Click="OnToggleLinkedCrosshair" Padding="8,4"
+                          ToolTipService.ToolTip="Link crosshair across tabs"
+                          AutomationProperties.Name="Link crosshair across tabs">
+                <FontIcon Glyph="&#xE71B;" FontSize="14" />
+            </ToggleButton>
+
             <!-- Bookmarks toggle -->
             <Button Click="OnToggleCoordPanel" Padding="8,4"
                     ToolTipService.ToolTip="Saved Coordinates panel"
@@ -107,13 +147,8 @@
 
             <AppBarSeparator />
 
-            <!-- Zoom slider + preset dropdown -->
-            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                <Slider x:Name="ZoomSlider" Width="100" Minimum="5" Maximum="2000" Value="100"
-                        ValueChanged="OnZoomSliderChanged"
-                        AutomationProperties.Name="Zoom level slider"
-                        ToolTipService.ToolTip="Zoom level" />
-                <ComboBox x:Name="ZoomPresetCombo" Width="95"
+            <!-- Zoom preset dropdown -->
+            <ComboBox x:Name="ZoomPresetCombo" Width="95"
                           SelectionChanged="OnZoomPresetChanged"
                           TextSubmitted="OnZoomTextSubmitted"
                           IsEditable="True"
@@ -132,7 +167,6 @@
                     <ComboBoxItem Content="800%" Tag="800" />
                     <ComboBoxItem Content="1200%" Tag="1200" />
                 </ComboBox>
-            </StackPanel>
 
             <ProgressRing x:Name="LoadingRing" IsActive="False" Width="20" Height="20"
                           VerticalAlignment="Center" />

@@ -60,14 +60,38 @@
                     </Image.RenderTransform>
                 </Image>
 
+                <!-- Blink overlay (fades on top of main image, never changes transforms) -->
+                <Image x:Name="BlinkImage"
+                       Stretch="Uniform"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       RenderTransformOrigin="0.5,0.5"
+                       Opacity="0"
+                       IsHitTestVisible="False"
+                       Visibility="Collapsed">
+                    <Image.RenderTransform>
+                        <CompositeTransform x:Name="BlinkTransform" />
+                    </Image.RenderTransform>
+                </Image>
+
                 <!-- Crosshair overlay (click to place) -->
                 <Canvas x:Name="CrosshairCanvas" IsHitTestVisible="False">
+                    <!-- Linked crosshair (from other tabs, dashed) -->
+                    <Line x:Name="LinkedCrosshairH"
+                          Stroke="{ThemeResource SystemFillColorCautionBrush}"
+                          StrokeDashArray="4,4"
+                          StrokeThickness="1" Visibility="Collapsed" />
+                    <Line x:Name="LinkedCrosshairV"
+                          Stroke="{ThemeResource SystemFillColorCautionBrush}"
+                          StrokeDashArray="4,4"
+                          StrokeThickness="1" Visibility="Collapsed" />
+                    <!-- Primary crosshair (user-placed) -->
                     <Line x:Name="CrosshairH"
                           Stroke="{ThemeResource SystemFillColorAttentionBrush}"
-                          StrokeThickness="1" Opacity="0.9" Visibility="Collapsed" />
+                          StrokeThickness="1" Visibility="Collapsed" />
                     <Line x:Name="CrosshairV"
                           Stroke="{ThemeResource SystemFillColorAttentionBrush}"
-                          StrokeThickness="1" Opacity="0.9" Visibility="Collapsed" />
+                          StrokeThickness="1" Visibility="Collapsed" />
                     <Border x:Name="CrosshairLabel" Visibility="Collapsed"
                             Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
                             CornerRadius="4" Padding="6,2">
@@ -95,11 +119,11 @@
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             <TextBlock Grid.Column="1" x:Name="CoordLabel"
                        Style="{StaticResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        HorizontalAlignment="Center" />
             <TextBlock Grid.Column="2" x:Name="PixelLabel"
                        Style="{StaticResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        Margin="16,0" />
             <TextBlock Grid.Column="3" x:Name="ZoomLabel"
                        Style="{StaticResource CaptionTextBlockStyle}"

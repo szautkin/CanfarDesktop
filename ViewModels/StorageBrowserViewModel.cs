@@ -128,6 +128,12 @@ public partial class StorageBrowserViewModel : ObservableObject
         }
     }
 
+    public async Task<Stream> DownloadStreamAsync(string remotePath)
+    {
+        var fullPath = $"{_username}/{remotePath}";
+        return await _storageService.DownloadFileAsync(fullPath);
+    }
+
     private async Task LoadCurrentFolderAsync()
     {
         IsLoading = true;

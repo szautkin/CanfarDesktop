@@ -143,6 +143,10 @@ public static class NotebookParser
 
     private static void NormalizeCells(NotebookDocument doc)
     {
+        const int maxCells = 10_000;
+        if (doc.Cells.Count > maxCells)
+            throw new InvalidDataException($"Notebook has {doc.Cells.Count} cells (max {maxCells}).");
+
         foreach (var cell in doc.Cells)
         {
             if (cell.CellType == "code")

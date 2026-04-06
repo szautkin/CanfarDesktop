@@ -53,7 +53,11 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
                 "Python 3.8+ not found. Install Python from python.org or add it to PATH.");
         }
 
-        _harnessPath = Path.Combine(Path.GetTempPath(), $"canfar_kernel_harness_{Environment.ProcessId}.py");
+        var harnessDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CanfarDesktop", "Kernel");
+        Directory.CreateDirectory(harnessDir);
+        _harnessPath = Path.Combine(harnessDir, $"harness_{Environment.ProcessId}_{Path.GetRandomFileName()}.py");
         await WriteHarnessAsync(_harnessPath);
 
         try
@@ -120,7 +124,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
             SetState(KernelState.Busy);
 
             code = code.Replace("\r\n", "\n").Replace("\r", "\n");
-            NotebookLogger.Info($"Execute ({code.Length} chars): {code[..Math.Min(80, code.Length)]}...");
+            NotebookLogger.Info($"Execute ({code.Length} chars)");
 
             var request = JsonSerializer.Serialize(new
             {

@@ -61,6 +61,9 @@ public class StorageService : IStorageService
 
     public async Task CreateFolderAsync(string remotePath, string folderName)
     {
+        if (folderName.Contains("..") || folderName.Contains('/') || folderName.Contains('\\'))
+            throw new ArgumentException("Folder name contains invalid characters.");
+
         var fullPath = string.IsNullOrEmpty(remotePath)
             ? folderName
             : $"{remotePath}/{folderName}";

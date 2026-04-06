@@ -21,16 +21,14 @@ public partial class FitsViewerViewModel : ObservableObject
     [ObservableProperty] private string _title = "FITS Viewer";
     [ObservableProperty] private string _statusMessage = "No file loaded";
     [ObservableProperty] private string _coordinateText = "";
-    [ObservableProperty] private string _crosshairCoords = "";
-
-    /// <summary>Crosshair RA/Dec in degrees (for search integration).</summary>
-    public double? CrosshairRa { get; set; }
-    public double? CrosshairDec { get; set; }
+    [ObservableProperty] private WorldCoordinate? _crosshairPosition;
 
     [ObservableProperty] private string _pixelText = "";
     [ObservableProperty] private WriteableBitmap? _renderedImage;
     [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private int _selectedHduIndex;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentHeader))]
+    private int _selectedHduIndex;
     [ObservableProperty] private float _minCut;
     [ObservableProperty] private float _maxCut;
     [ObservableProperty] private ImageStretcher.StretchMode _stretch = ImageStretcher.StretchMode.Linear;
@@ -100,6 +98,7 @@ public partial class FitsViewerViewModel : ObservableObject
 
         // Cancel any in-flight render (e.g., from rapid slider drag)
         _renderCts?.Cancel();
+        _renderCts?.Dispose();
         var cts = _renderCts = new CancellationTokenSource();
 
         var image = _imageData;
@@ -114,7 +113,7 @@ public partial class FitsViewerViewModel : ObservableObject
         try
         {
             bgra = await Task.Run(() =>
-                FitsRenderer.Render(image, stretch, colormap, minCut, maxCut), cts.Token);
+                FitsRenderer.Render(image, stretch, colormap, minCut, maxCut, cts.Token), cts.Token);
         }
         catch (OperationCanceledException) { return; }
 
@@ -219,6 +218,8 @@ public partial class FitsViewerViewModel : ObservableObject
     {
         _disposed = true;
         _renderCts?.Cancel();
+        _renderCts?.Dispose();
+        _renderCts = null;
         RenderedImage = null;
         _imageData = null;
         _hdus = null;

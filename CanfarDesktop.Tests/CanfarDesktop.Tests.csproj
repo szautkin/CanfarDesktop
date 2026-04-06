@@ -49,6 +49,9 @@
     <Compile Include="..\Services\DataLinkService.cs" Link="Linked\DataLinkService.cs" />
     <Compile Include="..\Models\DownloadedObservation.cs" Link="Linked\DownloadedObservation.cs" />
     <Compile Include="..\Services\ObservationStore.cs" Link="Linked\ObservationStore.cs" />
+    <Compile Include="..\Services\IStorageService.cs" Link="Linked\IStorageService.cs" />
+    <Compile Include="..\Models\StorageQuota.cs" Link="Linked\StorageQuota.cs" />
+    <Compile Include="..\ViewModels\StorageBrowserViewModel.cs" Link="Linked\StorageBrowserViewModel.cs" />
     <!-- Notebook document core (Milestone 2) -->
     <Compile Include="..\Models\Notebook\NotebookDocument.cs" Link="Linked\Notebook\NotebookDocument.cs" />
     <Compile Include="..\Models\Notebook\NotebookCell.cs" Link="Linked\Notebook\NotebookCell.cs" />
@@ -70,8 +73,11 @@
     <Compile Include="..\ViewModels\Notebook\NotebookTabItem.cs" Link="Linked\Notebook\NotebookTabItem.cs" />
     <Compile Include="..\ViewModels\Notebook\NotebookTabHostViewModel.cs" Link="Linked\Notebook\NotebookTabHostViewModel.cs" />
     <Compile Include="..\ViewModels\Notebook\NotebookFileMode.cs" Link="Linked\Notebook\NotebookFileMode.cs" />
-    <!-- Viewport math -->
+    <!-- Viewport math + models -->
     <Compile Include="..\Helpers\ViewportMath.cs" Link="Linked\ViewportMath.cs" />
+    <Compile Include="..\Helpers\BlinkAligner.cs" Link="Linked\BlinkAligner.cs" />
+    <Compile Include="..\Models\Fits\WorldCoordinate.cs" Link="Linked\Fits\WorldCoordinate.cs" />
+    <Compile Include="..\Models\Fits\SavedCoordinate.cs" Link="Linked\Fits\SavedCoordinate.cs" />
     <!-- FITS Viewer -->
     <Compile Include="..\Models\Fits\FitsCard.cs" Link="Linked\Fits\FitsCard.cs" />
     <Compile Include="..\Models\Fits\FitsHeader.cs" Link="Linked\Fits\FitsHeader.cs" />

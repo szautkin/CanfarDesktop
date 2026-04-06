@@ -154,7 +154,7 @@ public partial class App : Application
         services.AddTransient<ResearchViewModel>();
         services.AddTransient<StorageBrowserViewModel>();
         services.AddTransient<NotebookViewModel>();
-        services.AddTransient<NotebookTabHostViewModel>();
+        services.AddSingleton<NotebookTabHostViewModel>();
 
         // Pages
         services.AddTransient<DashboardPage>();

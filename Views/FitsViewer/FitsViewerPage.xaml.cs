@@ -20,6 +20,36 @@ public sealed partial class FitsViewerPage : UserControl
     private double _scrollStartH;
     private double _scrollStartV;
     private Windows.Foundation.Point? _crosshairScreenPos;
+    /// <summary>Crosshair locked to image pixel coords (0-based, Y-flipped display coords).</summary>
+    private Windows.Foundation.Point? _crosshairImagePos;
+
+    // Blink mode state
+    private bool _isBlinkMode;
+
+    /// <summary>
+    /// Set crosshair at a known image pixel position. Does NOT write to ViewModel.CrosshairPosition
+    /// (to avoid triggering shared state writes). Used by tab activation only.
+    /// </summary>
+    public void SetCrosshairAtImagePixel(double imgX, double imgY)
+    {
+        _crosshairImagePos = new Windows.Foundation.Point(imgX, imgY);
+
+        if (ImageCanvas.ActualWidth > 0)
+        {
+            var screenPos = ImageToScreen(_crosshairImagePos.Value);
+            _crosshairScreenPos = screenPos;
+            DrawCrosshairLines(screenPos);
+
+            // Position label without triggering PropertyChanged
+            var canvasW = ImageCanvas.ActualWidth;
+            var labelX = screenPos.X + 12;
+            var labelY = screenPos.Y - 50;
+            if (labelX + 200 > canvasW) labelX = screenPos.X - 200;
+            if (labelY < 0) labelY = screenPos.Y + 12;
+            Canvas.SetLeft(CrosshairLabel, labelX);
+            Canvas.SetTop(CrosshairLabel, labelY);
+        }
+    }
 
     /// <summary>Slider normalization range (per-image).</summary>
     public float SliderRangeMin { get; private set; }
@@ -36,6 +66,8 @@ public sealed partial class FitsViewerPage : UserControl
             {
                 Rect = new Windows.Foundation.Rect(0, 0, ImageCanvas.ActualWidth, ImageCanvas.ActualHeight)
             };
+            // Exit blink on resize — transforms become stale
+            if (_isBlinkMode) ExitBlinkMode();
         };
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -103,32 +135,85 @@ public sealed partial class FitsViewerPage : UserControl
     public void ClearCrosshair()
     {
         _crosshairScreenPos = null;
+        _crosshairImagePos = null;
         CrosshairH.Visibility = Visibility.Collapsed;
         CrosshairV.Visibility = Visibility.Collapsed;
         CrosshairLabel.Visibility = Visibility.Collapsed;
-        ViewModel.CrosshairCoords = "";
-        ViewModel.CrosshairRa = null;
-        ViewModel.CrosshairDec = null;
+        LinkedCrosshairH.Visibility = Visibility.Collapsed;
+        LinkedCrosshairV.Visibility = Visibility.Collapsed;
+        ViewModel.CrosshairPosition = null;
+    }
+
+    public void ClearLinkedCrosshair()
+    {
+        LinkedCrosshairH.Visibility = Visibility.Collapsed;
+        LinkedCrosshairV.Visibility = Visibility.Collapsed;
+    }
+
+    // ── Blink mode ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Enter blink mode: overlay a second image on top of the current view.
+    /// Does NOT change any transforms on the main image. Just fades the overlay.
+    /// </summary>
+    public void EnterBlinkMode(
+        Microsoft.UI.Xaml.Media.Imaging.WriteableBitmap blinkBitmap,
+        BlinkAligner.BlinkTransform blinkTransform)
+    {
+        _isBlinkMode = true;
+
+        // Force BlinkImage to match FitsImage's exact layout bounds (Stretch=Fill)
+        // This ensures both images share the same coordinate space and transform origin
+        BlinkImage.Width = FitsImage.ActualWidth;
+        BlinkImage.Height = FitsImage.ActualHeight;
+        BlinkImage.Stretch = Microsoft.UI.Xaml.Media.Stretch.Fill;
+        BlinkImage.Source = blinkBitmap;
+
+        BlinkTransform.Rotation = blinkTransform.Rotation;
+        BlinkTransform.ScaleX = blinkTransform.ScaleX;
+        BlinkTransform.ScaleY = blinkTransform.ScaleY;
+        BlinkTransform.TranslateX = blinkTransform.TranslateX;
+        BlinkTransform.TranslateY = blinkTransform.TranslateY;
+        BlinkImage.Opacity = 0;
+        BlinkImage.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Fade the blink overlay to target opacity (0 = show main, 1 = show blink).</summary>
+    public void SetBlinkOpacity(double opacity)
+    {
+        if (!_isBlinkMode) return;
+        BlinkImage.Opacity = opacity;
+    }
+
+    public void ExitBlinkMode()
+    {
+        _isBlinkMode = false;
+        BlinkImage.Visibility = Visibility.Collapsed;
+        BlinkImage.Source = null;
+        BlinkImage.Opacity = 0;
+        BlinkImage.Width = double.NaN; // clear size override
+        BlinkImage.Height = double.NaN;
     }
 
     public string? CopyCoords()
     {
-        if (string.IsNullOrEmpty(ViewModel.CrosshairCoords)) return null;
+        if (ViewModel.CrosshairPosition is null) return null;
+        var text = ViewModel.CrosshairPosition.Display;
         var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
-        package.SetText(ViewModel.CrosshairCoords);
+        package.SetText(text);
         Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
         ViewModel.StatusMessage = "Coordinates copied to clipboard";
-        return ViewModel.CrosshairCoords;
+        return text;
     }
 
     public void TriggerSearchAtPosition()
     {
-        if (ViewModel.CrosshairRa is null || ViewModel.CrosshairDec is null)
+        if (ViewModel.CrosshairPosition is null)
         {
             ViewModel.StatusMessage = "Right-click on the image to place crosshair first";
             return;
         }
-        SearchAtPositionRequested?.Invoke(ViewModel.CrosshairRa.Value, ViewModel.CrosshairDec.Value);
+        SearchAtPositionRequested?.Invoke(ViewModel.CrosshairPosition.Ra, ViewModel.CrosshairPosition.Dec);
     }
 
     public void ResetView()
@@ -159,7 +244,7 @@ public sealed partial class FitsViewerPage : UserControl
             ImageTransform.Rotation = 0;
             ImageTransform.ScaleX = mag;
             ViewModel.StatusMessage = "Original orientation";
-            UpdateCrosshairCoords();
+            RedrawCrosshairFromImage();
             return;
         }
 
@@ -182,7 +267,7 @@ public sealed partial class FitsViewerPage : UserControl
         ViewModel.StatusMessage = $"North Up (rotated {angle:F1}\u00b0" +
             (wcs.HasParityFlip ? ", mirrored" : "") +
             $", {wcs.PixelScaleArcsec:F2}\"/px)";
-        UpdateCrosshairCoords();
+        RedrawCrosshairFromImage();
     }
 
     /// <summary>
@@ -215,6 +300,9 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void CenterOnImagePixel(double imgPixelX, double imgPixelY)
     {
+        // Store image position — crosshair is now locked to this pixel
+        _crosshairImagePos = new Windows.Foundation.Point(imgPixelX, imgPixelY);
+
         var p = GetTransformParams();
         double localX = imgPixelX, localY = imgPixelY;
         if (ViewModel.ImageData is not null && p.imgW > 0)
@@ -228,15 +316,24 @@ public sealed partial class FitsViewerPage : UserControl
         ImageTransform.TranslateX = tx;
         ImageTransform.TranslateY = ty;
 
-        var centerX = p.canvasW / 2;
-        var centerY = p.canvasH / 2;
-        _crosshairScreenPos = new Windows.Foundation.Point(centerX, centerY);
-        DrawCrosshairLines(_crosshairScreenPos.Value);
-        UpdateCrosshairCoords();
+        RedrawCrosshairFromImage();
     }
 
     /// <summary>Get current zoom magnitude (always positive).</summary>
     public double GetZoomMagnitude() => Math.Abs(ImageTransform.ScaleX);
+
+    /// <summary>Get the image canvas dimensions (excludes header panel).</summary>
+    public (double W, double H) GetCanvasSize()
+        => (ImageCanvas.ActualWidth, ImageCanvas.ActualHeight);
+
+    /// <summary>Get FitsImage's actual display dimensions (Stretch=Uniform).</summary>
+    public (double W, double H) GetImageDisplaySize()
+        => (FitsImage.ActualWidth, FitsImage.ActualHeight);
+
+    /// <summary>Get the current CompositeTransform values for blink.</summary>
+    public (double rotation, double scaleX, double scaleY, double translateX, double translateY) GetCurrentTransform()
+        => (ImageTransform.Rotation, ImageTransform.ScaleX, ImageTransform.ScaleY,
+            ImageTransform.TranslateX, ImageTransform.TranslateY);
 
     /// <summary>Set zoom level from the toolbar slider (preserves mirror sign).</summary>
     public void SetZoomLevel(double magnitude)
@@ -246,7 +343,15 @@ public sealed partial class FitsViewerPage : UserControl
         ImageTransform.ScaleX = clamped * sign;
         ImageTransform.ScaleY = clamped;
         ZoomLabel.Text = $"{clamped * 100:F0}%";
-        UpdateCrosshairCoords();
+
+        // Only center/redraw if the page is laid out (not a hidden tab)
+        if (ImageCanvas.ActualWidth > 0)
+        {
+            if (_crosshairImagePos is not null)
+                CenterOnImagePixel(_crosshairImagePos.Value.X, _crosshairImagePos.Value.Y);
+            else
+                RedrawCrosshairFromImage();
+        }
     }
 
     /// <summary>Compute slider range from current auto-cut values.</summary>
@@ -303,6 +408,7 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void OnCanvasWheelChanged(object sender, PointerRoutedEventArgs e)
     {
+        if (_isBlinkMode) { e.Handled = true; return; }
         var point = e.GetCurrentPoint(ImageCanvas);
         var delta = point.Properties.MouseWheelDelta;
 
@@ -318,9 +424,19 @@ public sealed partial class FitsViewerPage : UserControl
             var newMag = Math.Clamp(oldMag * factor, 0.05, 50.0);
             var signX = ImageTransform.ScaleX < 0 ? -1.0 : 1.0;
 
+            // Zoom toward crosshair if placed, otherwise toward cursor
+            var zoomAnchorX = point.Position.X;
+            var zoomAnchorY = point.Position.Y;
+            if (_crosshairImagePos is not null)
+            {
+                var anchorScreen = ImageToScreen(_crosshairImagePos.Value);
+                zoomAnchorX = anchorScreen.X;
+                zoomAnchorY = anchorScreen.Y;
+            }
+
             var p = GetTransformParams();
             var (tx, ty) = ViewportMath.ComputeZoomTranslate(
-                point.Position.X, point.Position.Y,
+                zoomAnchorX, zoomAnchorY,
                 p.scaleX, p.scaleY, newMag * signX, newMag,
                 p.rotation, p.imgW, p.imgH, p.canvasW, p.canvasH,
                 p.translateX, p.translateY);
@@ -332,17 +448,17 @@ public sealed partial class FitsViewerPage : UserControl
 
             ZoomLabel.Text = $"{newMag * 100:F0}%";
             ZoomChanged?.Invoke(newMag);
-            UpdateCrosshairCoords();
+            RedrawCrosshairFromImage();
         }
         else if (shift)
         {
             ImageTransform.TranslateX += delta;
-            UpdateCrosshairCoords();
+            RedrawCrosshairFromImage();
         }
         else
         {
             ImageTransform.TranslateY += delta;
-            UpdateCrosshairCoords();
+            RedrawCrosshairFromImage();
         }
 
         e.Handled = true;
@@ -350,6 +466,7 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void OnCanvasPointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        if (_isBlinkMode) return;
         var point = e.GetCurrentPoint(ImageCanvas);
 
         if (point.Properties.IsRightButtonPressed)
@@ -372,18 +489,22 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void PlaceCrosshair(Windows.Foundation.Point screenPos)
     {
-        var scale = Math.Abs(ImageTransform.ScaleX);
+        // Convert screen click to image pixel and lock crosshair there
+        var imgPx = e_PointToImage(screenPos);
+        _crosshairImagePos = imgPx;
 
-        if (scale > 1.05) // zoomed in: center the view on the clicked point
+        var scale = Math.Abs(ImageTransform.ScaleX);
+        if (scale > 1.05)
         {
-            var imgPx = e_PointToImage(screenPos);
+            // Zoomed in: center viewport on the clicked point
             CenterOnImagePixel(imgPx.X, imgPx.Y);
         }
         else
         {
+            // Not zoomed: draw crosshair at click position, compute coords
             _crosshairScreenPos = screenPos;
             DrawCrosshairLines(screenPos);
-            UpdateCrosshairCoords();
+            ComputeCrosshairWcs();
         }
     }
 
@@ -399,14 +520,31 @@ public sealed partial class FitsViewerPage : UserControl
         CrosshairV.Visibility = Visibility.Visible;
     }
 
-    private void UpdateCrosshairCoords()
+    /// <summary>
+    /// Redraw the crosshair from its stored image pixel position.
+    /// Call after any transform change (zoom, pan, rotation).
+    /// The crosshair stays locked to the same image pixel.
+    /// </summary>
+    private void RedrawCrosshairFromImage()
     {
-        if (_crosshairScreenPos is null || ViewModel.ImageData is null) return;
+        if (_crosshairImagePos is null || ViewModel.ImageData is null) return;
 
-        var screenPos = _crosshairScreenPos.Value;
-        var imgPx = e_PointToImage(screenPos);
-        var ix = (int)imgPx.X;
-        var iy = (int)imgPx.Y;
+        var screenPos = ImageToScreen(_crosshairImagePos.Value);
+        _crosshairScreenPos = screenPos;
+        DrawCrosshairLines(screenPos);
+        ComputeCrosshairWcs();
+    }
+
+    /// <summary>
+    /// Compute WCS coordinates and pixel value from the stored image position.
+    /// Updates the crosshair label and ViewModel.CrosshairPosition.
+    /// </summary>
+    private void ComputeCrosshairWcs()
+    {
+        if (_crosshairImagePos is null || ViewModel.ImageData is null) return;
+
+        var ix = (int)_crosshairImagePos.Value.X;
+        var iy = (int)_crosshairImagePos.Value.Y;
         var w = ViewModel.ImageData.Width;
         var h = ViewModel.ImageData.Height;
         var lines = new List<string>();
@@ -421,26 +559,26 @@ public sealed partial class FitsViewerPage : UserControl
             if (ViewModel.ImageData.Wcs is { IsValid: true } wcs)
             {
                 var (ra, dec) = wcs.PixelToWorld(ix + 1, fitsY + 1);
-                var raStr = WcsInfo.FormatRa(ra);
-                var decStr = WcsInfo.FormatDec(dec);
-                lines.Add($"RA  {raStr}");
-                lines.Add($"Dec {decStr}");
-                ViewModel.CrosshairRa = ra;
-                ViewModel.CrosshairDec = dec;
-                ViewModel.CrosshairCoords = $"RA {raStr}  Dec {decStr}";
+                lines.Add($"RA  {WcsInfo.FormatRa(ra)}");
+                lines.Add($"Dec {WcsInfo.FormatDec(dec)}");
+                ViewModel.CrosshairPosition = new WorldCoordinate(ra, dec);
             }
         }
 
         CrosshairText.Text = string.Join("\n", lines);
-        CrosshairLabel.Visibility = lines.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        // Label hidden by default — shown only on hover near crosshair
+        CrosshairLabel.Visibility = Visibility.Collapsed;
 
-        var labelX = screenPos.X + 12;
-        var labelY = screenPos.Y - 50;
-        var canvasW = ImageCanvas.ActualWidth;
-        if (labelX + 200 > canvasW) labelX = screenPos.X - 200;
-        if (labelY < 0) labelY = screenPos.Y + 12;
-        Canvas.SetLeft(CrosshairLabel, labelX);
-        Canvas.SetTop(CrosshairLabel, labelY);
+        if (_crosshairScreenPos is { } sPos)
+        {
+            var labelX = sPos.X + 12;
+            var labelY = sPos.Y - 50;
+            var canvasW = ImageCanvas.ActualWidth;
+            if (labelX + 200 > canvasW) labelX = sPos.X - 200;
+            if (labelY < 0) labelY = sPos.Y + 12;
+            Canvas.SetLeft(CrosshairLabel, labelX);
+            Canvas.SetTop(CrosshairLabel, labelY);
+        }
     }
 
     /// <summary>Helper to get current transform params for ViewportMath calls.</summary>
@@ -493,7 +631,7 @@ public sealed partial class FitsViewerPage : UserControl
             var pos = e.GetCurrentPoint(ImageCanvas).Position;
             ImageTransform.TranslateX = _scrollStartH + (pos.X - _dragStart.X);
             ImageTransform.TranslateY = _scrollStartV + (pos.Y - _dragStart.Y);
-            UpdateCrosshairCoords();
+            RedrawCrosshairFromImage();
             e.Handled = true;
             return;
         }
@@ -502,6 +640,13 @@ public sealed partial class FitsViewerPage : UserControl
         var screenPos = e.GetCurrentPoint(ImageCanvas).Position;
         var pixelPos = e_PointToImage(screenPos);
         ViewModel.UpdatePixelInfo(pixelPos.X, pixelPos.Y);
+
+        // Show crosshair tooltip only when mouse is near the crosshair intersection
+        if (_crosshairScreenPos is { } cp && CrosshairText.Text.Length > 0)
+        {
+            var dist = Math.Sqrt(Math.Pow(screenPos.X - cp.X, 2) + Math.Pow(screenPos.Y - cp.Y, 2));
+            CrosshairLabel.Visibility = dist < 40 ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private void OnCanvasPointerReleased(object sender, PointerRoutedEventArgs e)

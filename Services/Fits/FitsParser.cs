@@ -77,11 +77,15 @@ public static class FitsParser
     public static FitsHeader? ReadHeader(Stream stream)
     {
         var header = new FitsHeader();
+        const int maxHeaderBlocks = 1000; // ~2.8 MB max header size
         var buffer = new byte[BlockSize];
         var foundEnd = false;
+        var blockCount = 0;
 
         while (!foundEnd)
         {
+            if (++blockCount > maxHeaderBlocks)
+                throw new InvalidDataException("FITS header exceeds maximum allowed size.");
             var bytesRead = stream.Read(buffer, 0, BlockSize);
             if (bytesRead < BlockSize) return header.Cards.Count > 0 ? header : null;
 
@@ -160,10 +164,15 @@ public static class FitsParser
         var bitpix = header.BitPix;
         var bscale = header.BScale;
         var bzero = header.BZero;
-        var pixelCount = width * height;
+        var pixelCount = (long)width * height;
+        if (pixelCount > int.MaxValue)
+            throw new NotSupportedException($"Image too large: {width}x{height} ({pixelCount} pixels)");
 
         var bytesPerPixel = Math.Abs(bitpix) / 8;
-        var dataSize = (int)(pixelCount * bytesPerPixel);
+        var dataSize = pixelCount * bytesPerPixel;
+        const long maxDataBytes = 512L * 1024 * 1024; // 512 MB cap
+        if (dataSize > maxDataBytes)
+            throw new NotSupportedException($"Image data too large ({dataSize / (1024 * 1024)} MB, max {maxDataBytes / (1024 * 1024)} MB)");
         var alignedSize = (int)AlignToBlock(dataSize);
 
         var rawBuffer = new byte[alignedSize];
@@ -171,7 +180,7 @@ public static class FitsParser
         if (bytesRead < dataSize)
             throw new InvalidDataException($"FITS data truncated: expected {dataSize} bytes, got {bytesRead}");
 
-        var pixels = new float[pixelCount];
+        var pixels = new float[(int)pixelCount];
         var min = float.MaxValue;
         var max = float.MinValue;
 
@@ -216,7 +225,7 @@ public static class FitsParser
     private static long CalculateDataSize(FitsHeader header)
     {
         var naxis = header.NAxis;
-        if (naxis == 0) return 0;
+        if (naxis is 0 or > 999) return 0; // FITS spec: NAXIS ≤ 999
 
         long size = Math.Abs(header.BitPix) / 8;
         for (var i = 1; i <= naxis; i++)

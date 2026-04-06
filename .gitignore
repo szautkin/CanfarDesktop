@@ -364,3 +364,5 @@ MigrationBackup/
 FodyWeavers.xsd
 # Local development docs
 dev_info/
+# Claude agent memory
+.claude/

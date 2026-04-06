@@ -132,4 +132,14 @@ public static class ViewportMath
         var newTy = cursorScreenY - imgOffsetY - ry - cy;
         return (newTx, newTy);
     }
+
+    /// <summary>
+    /// Compute zoom for image B that matches the angular extent of image A.
+    /// If B has coarser pixels (larger arcsec/px), it needs less zoom.
+    /// </summary>
+    public static double ComputeMatchedZoom(double zoomA, double pixelScaleA, double pixelScaleB)
+    {
+        if (pixelScaleB <= 0) return zoomA;
+        return zoomA * (pixelScaleA / pixelScaleB);
+    }
 }

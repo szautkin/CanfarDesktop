@@ -15,6 +15,16 @@ public partial class FitsTabHostViewModel : ObservableObject
     private readonly ICoordinateStoreService _coordStore;
 
     [ObservableProperty] private FitsViewerTabItem? _activeTab;
+    [ObservableProperty] private bool _isLinkedCrosshairEnabled = true;
+    [ObservableProperty] private WorldCoordinate? _linkedCrosshairPosition;
+    [ObservableProperty] private bool _isSyncZoomEnabled;
+
+    /// <summary>
+    /// Shared angular zoom: arcsec per screen pixel. When sync zoom is enabled,
+    /// all tabs compute their local zoom from this value and their own pixel scale.
+    /// localZoom = pixelScaleArcsec / sharedAngularZoom
+    /// </summary>
+    public double? SharedAngularZoom { get; set; }
 
     public ObservableCollection<FitsViewerTabItem> Tabs { get; } = [];
     public ObservableCollection<SavedCoordinate> SavedCoordinates { get; } = [];
@@ -38,6 +48,7 @@ public partial class FitsTabHostViewModel : ObservableObject
         var tab = _tabFactory.CreateTab();
         Tabs.Add(tab);
         ActiveTab = tab;
+        OnPropertyChanged(nameof(HasTabs));
         return tab;
     }
 
@@ -50,6 +61,7 @@ public partial class FitsTabHostViewModel : ObservableObject
             ActiveTab = Tabs[^1];
         else
             ActiveTab = null;
+        OnPropertyChanged(nameof(HasTabs));
     }
 
     public bool HasTabs => Tabs.Count > 0;

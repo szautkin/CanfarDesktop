@@ -1,3 +1,0 @@
-- [Project Architecture](project_architecture.md) -- CanfarDesktop search/results pipeline: ADQLBuilder, TAP service, per-column client-side filters, Pivot-based layout
-- [User Profile](user_profile.md) -- Developer building a WinUI 3 CADC archive search app for astronomers
-- [Stakeholder Review Q2 2026](project_stakeholder_review_2026q2.md) -- Full product review of Verbinal v1.0.6: Portal ready, Search strong, Storage quota-only, Research minimal

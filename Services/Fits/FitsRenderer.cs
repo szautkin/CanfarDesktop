@@ -23,7 +23,8 @@ public static class FitsRenderer
         ImageStretcher.StretchMode stretch,
         Windows.UI.Color[] colormap,
         float minCut,
-        float maxCut)
+        float maxCut,
+        CancellationToken ct = default)
     {
         var width = image.Width;
         var height = image.Height;
@@ -32,6 +33,7 @@ public static class FitsRenderer
 
         for (var y = 0; y < height; y++)
         {
+            if (y % 64 == 0) ct.ThrowIfCancellationRequested();
             // Flip Y: FITS row 0 = bottom, display row 0 = top
             var srcRow = height - 1 - y;
             var srcOffset = srcRow * width;

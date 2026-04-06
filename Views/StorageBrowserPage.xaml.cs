@@ -10,6 +10,7 @@ namespace CanfarDesktop.Views;
 public sealed partial class StorageBrowserPage : UserControl
 {
     public StorageBrowserViewModel ViewModel { get; }
+    public event Action<string>? OpenInFitsViewerRequested;
     private string _sortColumn = "name";
     private bool _sortAscending = true;
 
@@ -69,9 +70,9 @@ public sealed partial class StorageBrowserPage : UserControl
         FileList.ItemsSource = sorted;
     }
 
-    private void OnSortByName(object s, TappedRoutedEventArgs e) => ToggleSort("name");
-    private void OnSortBySize(object s, TappedRoutedEventArgs e) => ToggleSort("size");
-    private void OnSortByDate(object s, TappedRoutedEventArgs e) => ToggleSort("date");
+    private void OnSortByName(object s, RoutedEventArgs e) => ToggleSort("name");
+    private void OnSortBySize(object s, RoutedEventArgs e) => ToggleSort("size");
+    private void OnSortByDate(object s, RoutedEventArgs e) => ToggleSort("date");
 
     private void ToggleSort(string column)
     {
@@ -166,6 +167,46 @@ public sealed partial class StorageBrowserPage : UserControl
             TransferRing.IsActive = false;
             TransferText.Text = "";
             System.Diagnostics.Debug.WriteLine($"Upload error: {ex.Message}");
+        }
+    }
+
+    private async void OnOpenInFitsViewer(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedNode is null || ViewModel.SelectedNode.IsContainer) return;
+        var name = ViewModel.SelectedNode.Name;
+        var ext = Path.GetExtension(name).ToLowerInvariant();
+        if (ext is not (".fits" or ".fit" or ".fts"))
+        {
+            ViewModel.ErrorMessage = "Only FITS files can be opened in the viewer";
+            ViewModel.HasError = true;
+            return;
+        }
+
+        try
+        {
+            TransferRing.IsActive = true;
+            TransferText.Text = $"Downloading {name}...";
+
+            var remotePath = string.IsNullOrEmpty(ViewModel.CurrentPath)
+                ? name : $"{ViewModel.CurrentPath}/{name}";
+            var tempDir = Path.Combine(Path.GetTempPath(), "Verbinal");
+            Directory.CreateDirectory(tempDir);
+            var tempPath = Path.Combine(tempDir, name);
+
+            using var stream = await ViewModel.DownloadStreamAsync(remotePath);
+            using var fileStream = new FileStream(tempPath, FileMode.Create);
+            await stream.CopyToAsync(fileStream);
+
+            TransferRing.IsActive = false;
+            TransferText.Text = "";
+            OpenInFitsViewerRequested?.Invoke(tempPath);
+        }
+        catch (Exception ex)
+        {
+            TransferRing.IsActive = false;
+            TransferText.Text = "";
+            ViewModel.ErrorMessage = $"Failed to open: {ex.Message}";
+            ViewModel.HasError = true;
         }
     }
 

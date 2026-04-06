@@ -6,20 +6,35 @@ This is the Windows counterpart of [Verbinal for macOS](https://github.com/szaut
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
+## Screenshots
+
+![Landing Page](docs/images/landing.png)
+
 ## Features
 
-- **Session Management** — Launch, monitor, extend, and delete CANFAR science sessions (Notebook, Desktop, CARTA, Contributed, Firefly)
-- **Session Details** — View session events and container logs in a dialog
-- **Storage Quota** — View VOSpace home directory usage at a glance
-- **Platform Load** — Real-time cluster CPU, GPU, and RAM utilisation
-- **Recent Launches** — Quick re-launch from session history
-- **Standard & Advanced Launch** — Pick from the CANFAR image catalogue or supply a custom registry image with auth credentials
-- **Auto-Refresh** — Active sessions poll automatically while any session is pending
-- **Secure Credentials** — Tokens stored in Windows Credential Manager with optional "Remember me"
+### [Portal](docs/02-portal.md) — Session Management
+Launch, monitor, and manage CANFAR science sessions (JupyterLab, CARTA, NoVNC). View platform load, batch jobs, and session events/logs.
 
-## Screenshot
+### [Search](docs/03-search.md) — CADC Archive
+Query the Canadian Astronomy Data Centre archive with form-based search, ADQL editor, cascading data train filters, and download with real-time progress.
 
-*(coming soon)*
+### [Research](docs/04-research.md) — Downloaded Observations
+Browse downloaded FITS files with metadata cards, preview images, and one-click routing to the FITS Viewer.
+
+### [Storage](docs/05-storage.md) — VOSpace Browser
+Browse and manage VOSpace cloud files. Upload via drag-and-drop, download, create folders, and open FITS files directly in the viewer.
+
+### [Notebook](docs/06-notebook.md) — Jupiter
+A native WinUI Jupyter notebook engine. Multi-tab, local Python execution, Jupyter keyboard shortcuts, magic commands, matplotlib inline, autosave with crash recovery.
+
+### [FITS Viewer](docs/07-fits-viewer.md) — Astronomical Images
+Native FITS image viewer with WCS coordinates, multiple stretch modes and colormaps, North Up orientation, multi-tab comparison with linked crosshair, sync zoom, and blink comparison.
+
+### Cross-Module Integration
+- **Search to FITS** — Download from archive, view in FITS Viewer, crosshair back to Search
+- **Storage to FITS** — Right-click a .fits file in VOSpace, open directly in the viewer
+- **File Browser** — Side panel with local file navigation, routes .fits/.ipynb to the correct module
+- **Back Navigation** — Navigate between modules without losing context
 
 ## Installation
 
@@ -29,32 +44,26 @@ Install directly from the [Microsoft Store](https://apps.microsoft.com/detail/9p
 
 ### Build from source
 
-See [Building](#building) below.
+```powershell
+git clone https://github.com/szautkin/CanfarDesktop.git
+cd CanfarDesktop
+dotnet restore
+dotnet build -c Debug
+```
+
+Or open `CanfarDesktop.slnx` in Visual Studio 2022 and run.
 
 ## Requirements
 
 ### Runtime
 - Windows 10 (1809) or newer
-- A CANFAR account
+- A CANFAR account (for Portal and Storage)
+- Python 3.8+ (for Notebook execution)
 
 ### Build
-- Visual Studio 2022 17.8+ with the **.NET desktop development** and **Windows application development** workloads
+- Visual Studio 2022 17.8+ with **.NET desktop development** and **Windows application development** workloads
 - .NET 8 SDK
 - Windows App SDK 1.8+
-
-## Building
-
-```powershell
-# Clone the repository
-git clone https://github.com/szautkin/CanfarDesktop.git
-cd CanfarDesktop
-
-# Restore and build
-dotnet restore
-dotnet build -c Debug
-
-# Or open CanfarDesktop.slnx in Visual Studio and run the Verbinal project
-```
 
 ## Running Tests
 
@@ -62,58 +71,52 @@ dotnet build -c Debug
 dotnet test CanfarDesktop.Tests
 ```
 
-## Code Quality
+529 tests covering: FITS parser, WCS coordinate transforms, viewport math, blink alignment, notebook parser, dirty tracking, autosave, recovery, ADQL builder, data train, VOTable parsing, and more.
 
-- MVVM architecture with CommunityToolkit.Mvvm
-- Microsoft.Extensions.DependencyInjection for service registration
-- Unit tests with xUnit and NSubstitute
-- Strict separation of concerns: Views, ViewModels, Services, and Models
-- Nullable reference types enabled
+## Architecture
+
+- **Language:** C# 12 / .NET 8
+- **UI:** WinUI 3 (Windows App SDK 1.8) with Mica backdrop
+- **Architecture:** MVVM with CommunityToolkit.Mvvm
+- **DI:** Microsoft.Extensions.DependencyInjection (44 registrations, 18 interfaces)
+- **Networking:** HttpClient with typed handlers, all HTTPS
+- **Testing:** xUnit + NSubstitute
+- **Packaging:** MSIX (Microsoft Store)
+- **Security:** Windows PasswordVault for credentials, no telemetry
 
 ## Project Structure
 
 ```
-CanfarDesktop.slnx         # Solution file
-CanfarDesktop.csproj       # Main application project
-Assets/                    # App icons, session type images
-Converters/                # XAML value converters
-Helpers/                   # API endpoints, token storage, image parsing
-Models/                    # Data classes (Session, Image, PlatformLoad, etc.)
-Services/                  # API clients and business logic
-ViewModels/                # MVVM view models
+CanfarDesktop.slnx            Solution file
+CanfarDesktop.csproj           Main application project
+Models/                        Data classes
+  Fits/                        FITS image models (WcsInfo, FitsHeader, WorldCoordinate)
+  Notebook/                    Jupyter notebook document model
+Services/                      API clients and business logic
+  Fits/                        FITS parser, renderer, coordinate store
+  Notebook/                    Kernel service, autosave, recovery
+  HttpClients/                 Auth token handling
+Helpers/                       Pure utility functions
+  Notebook/                    Notebook parser, ANSI, syntax highlighting
+  ViewportMath.cs              Testable coordinate transforms
+  BlinkAligner.cs              Blink comparison alignment math
+ViewModels/                    MVVM ViewModels
+  Notebook/                    Notebook tab host, cell VMs
 Views/
-  Controls/                # Reusable XAML controls (session card, launch form, etc.)
-  Dialogs/                 # Login, delete confirmation, session events dialogs
-  DashboardPage.xaml       # Main dashboard view
-CanfarDesktop.Tests/       # Unit tests (xUnit + NSubstitute)
+  FitsViewer/                  FITS viewer pages + tab host
+  Notebook/                    Notebook pages + tab host
+  Controls/                    Reusable controls (session card, etc.)
+  Dialogs/                     Login, delete, session events
+docs/                          Feature documentation with screenshots
+CanfarDesktop.Tests/           Unit tests (xUnit + NSubstitute)
 ```
-
-## Tech Stack
-
-- **Language:** C# 12 / .NET 8
-- **UI:** WinUI 3 (Windows App SDK 1.8)
-- **Architecture:** MVVM with CommunityToolkit.Mvvm
-- **DI:** Microsoft.Extensions.DependencyInjection
-- **Networking:** HttpClient with typed handlers
-- **Testing:** xUnit + NSubstitute
-- **Packaging:** MSIX (Microsoft Store)
-
-## API Endpoints
-
-All communication is with CANFAR services over HTTPS. No telemetry, analytics, or third-party calls.
-
-| Service | Base URL | Purpose |
-|---------|----------|---------|
-| Auth | `ws-cadc.canfar.net/ac` | Login, token validation, user info |
-| Sessions | `ws-uv.canfar.net/skaha/v1` | Session CRUD, images, context, stats |
-| Storage | `ws-uv.canfar.net/arc` | VOSpace quota |
 
 ## License
 
 [GNU Affero General Public License v3.0](LICENSE)
 
-Copyright (C) 2025 Serhii Zautkin
+Copyright (C) 2025-2026 Serhii Zautkin
 
 ## Privacy
 
-See [PRIVACY.md](PRIVACY.md). In short: no data collection, no telemetry, no third-party services. All data stays on your machine or goes directly to CANFAR.
+See [PRIVACY.md](PRIVACY.md). No data collection, no telemetry, no third-party services. All data stays on your machine or goes directly to CANFAR.

@@ -1,6 +1,5 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 
 namespace CanfarDesktop.Views;
 
@@ -43,7 +42,7 @@ public sealed partial class LandingView : UserControl
         TilesRepeater.ItemsSource = Tiles;
     }
 
-    private void OnTileTapped(object sender, TappedRoutedEventArgs e)
+    private void OnTileClicked(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement fe && fe.Tag is string key)
         {
@@ -57,17 +56,5 @@ public sealed partial class LandingView : UserControl
                 case "fits": FitsViewerRequested?.Invoke(this, EventArgs.Empty); break;
             }
         }
-    }
-
-    private void OnTilePointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        if (sender is Border border)
-            border.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
-    }
-
-    private void OnTilePointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        if (sender is Border border)
-            border.Background = null;
     }
 }

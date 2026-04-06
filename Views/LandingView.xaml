@@ -18,24 +18,26 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
 
-            <!-- Tiles (responsive wrapping: 4 across → 2x2 → vertical as window narrows) -->
+            <!-- Tiles: 3 columns × 2 rows -->
             <ItemsRepeater x:Name="TilesRepeater" HorizontalAlignment="Center">
                 <ItemsRepeater.Layout>
                     <UniformGridLayout Orientation="Horizontal"
                                        MinItemWidth="170" MinItemHeight="160"
                                        MinColumnSpacing="20" MinRowSpacing="20"
-                                       MaximumRowsOrColumns="4" />
+                                       MaximumRowsOrColumns="3" />
                 </ItemsRepeater.Layout>
                 <ItemsRepeater.ItemTemplate>
                     <DataTemplate>
-                        <Border Width="170" Height="160" CornerRadius="8"
+                        <Button Width="170" Height="160" Padding="0"
+                                CornerRadius="8"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                Background="Transparent" Tag="{Binding Key}"
-                                Tapped="OnTileTapped"
-                                PointerEntered="OnTilePointerEntered" PointerExited="OnTilePointerExited">
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Tag="{Binding Key}"
+                                Click="OnTileClicked"
+                                AutomationProperties.Name="{Binding Title}"
+                                ToolTipService.ToolTip="{Binding Subtitle}">
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14">
                                 <FontIcon Glyph="{Binding Glyph}" FontSize="44" HorizontalAlignment="Center"
-                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                 <StackPanel Spacing="4" HorizontalAlignment="Center">
                                     <TextBlock Text="{Binding Title}" Style="{StaticResource SubtitleTextBlockStyle}"
                                                FontWeight="Bold" HorizontalAlignment="Center" />
@@ -45,7 +47,7 @@
                                                HorizontalAlignment="Center" />
                                 </StackPanel>
                             </StackPanel>
-                        </Border>
+                        </Button>
                     </DataTemplate>
                 </ItemsRepeater.ItemTemplate>
             </ItemsRepeater>
