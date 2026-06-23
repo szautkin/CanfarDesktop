@@ -168,6 +168,7 @@ public partial class App : Application
         services.AddTransient<SearchPage>();
         services.AddTransient<ResearchPage>();
         services.AddTransient<StorageBrowserPage>();
+        services.AddTransient<ObservationDetailPage>();
         // NotebookPage is created manually by NotebookTabHost (not DI-resolved)
 
         return services.BuildServiceProvider();

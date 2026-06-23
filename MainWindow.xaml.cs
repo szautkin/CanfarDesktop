@@ -15,7 +15,7 @@ namespace CanfarDesktop;
 
 public sealed partial class MainWindow : Window
 {
-    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer }
+    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer, ObservationDetail }
 
     private readonly MainViewModel _viewModel;
     private readonly ILegalAgreementService _legal;
@@ -24,6 +24,7 @@ public sealed partial class MainWindow : Window
     private SearchPage? _searchPage;
     private ResearchPage? _researchPage;
     private StorageBrowserPage? _storagePage;
+    private ObservationDetailPage? _obsDetailPage;
     private LocalFileBrowserPanel? _filePanel;
     private bool _filePanelVisible;
     private AppMode _currentMode = AppMode.Landing;
@@ -175,6 +176,7 @@ public sealed partial class MainWindow : Window
         StorageContainer.Visibility = mode == AppMode.Storage ? Visibility.Visible : Visibility.Collapsed;
         NotebookContainer.Visibility = mode == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
         FitsViewerContainer.Visibility = mode == AppMode.FitsViewer ? Visibility.Visible : Visibility.Collapsed;
+        ObsDetailContainer.Visibility = mode == AppMode.ObservationDetail ? Visibility.Visible : Visibility.Collapsed;
 
         BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -194,6 +196,7 @@ public sealed partial class MainWindow : Window
             StorageContainer.Visibility = previous == AppMode.Storage ? Visibility.Visible : Visibility.Collapsed;
             NotebookContainer.Visibility = previous == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
             FitsViewerContainer.Visibility = previous == AppMode.FitsViewer ? Visibility.Visible : Visibility.Collapsed;
+            ObsDetailContainer.Visibility = previous == AppMode.ObservationDetail ? Visibility.Visible : Visibility.Collapsed;
 
             BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -210,6 +213,7 @@ public sealed partial class MainWindow : Window
         StorageContainer.Visibility = Visibility.Collapsed;
         NotebookContainer.Visibility = Visibility.Collapsed;
         FitsViewerContainer.Visibility = Visibility.Collapsed;
+        ObsDetailContainer.Visibility = Visibility.Collapsed;
         BackButton.Visibility = Visibility.Collapsed;
     }
 
@@ -247,8 +251,36 @@ public sealed partial class MainWindow : Window
     {
         if (_searchPage is not null) return;
         _searchPage = App.Services.GetRequiredService<SearchPage>();
+        _searchPage.ObservationDetailRequested += OpenObservationDetail;
         SearchContainer.Child = _searchPage;
         _searchPage.LoadAsync();
+    }
+
+    public void OpenObservationDetail(string publisherID)
+    {
+        if (string.IsNullOrEmpty(publisherID)) return;
+        if (_obsDetailPage is null)
+        {
+            _obsDetailPage = App.Services.GetRequiredService<ObservationDetailPage>();
+            _obsDetailPage.SignInRequested += OnObsDetailSignIn;
+            _obsDetailPage.CloseRequested += () => OnBackClick(this, new RoutedEventArgs());
+            ObsDetailContainer.Child = _obsDetailPage;
+        }
+        NavigateTo(AppMode.ObservationDetail);
+        _ = _obsDetailPage.LoadAsync(publisherID);
+    }
+
+    private async void OnObsDetailSignIn()
+    {
+        try
+        {
+            if (await ShowLoginDialogAsync() && _obsDetailPage is not null)
+                await _obsDetailPage.RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Observation detail sign-in error: {ex.Message}");
+        }
     }
 
     public async void OpenStorageBrowser()

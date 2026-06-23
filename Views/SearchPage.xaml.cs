@@ -22,6 +22,9 @@ public sealed partial class SearchPage : Page
     public string[] TimeUnits => UnitConverter.TimeUnits;
     public string[] PixelScaleUnits => UnitConverter.PixelScaleUnits;
 
+    /// <summary>Raised when the user opens a result row's full CAOM2 detail (publisher ID).</summary>
+    public event Action<string>? ObservationDetailRequested;
+
     public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService, ObservationStore observationStore)
     {
         ViewModel = viewModel;
@@ -634,119 +637,17 @@ public sealed partial class SearchPage : Page
         }
     }
 
-    private async void ShowRowDetail(SearchResultRow row)
+    private void ShowRowDetail(SearchResultRow row)
     {
-        if (ViewModel.Results is null) return;
-        try
-        {
-            var publisherID = row.Get(ViewModel.GetColumnHeader("publisherid"));
-            var panel = new StackPanel { Spacing = 12 };
-
-            // Preview images section (loads async)
-            var imagePanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            var imageProgress = new ProgressRing { IsActive = true, Width = 24, Height = 24 };
-            var imageSection = new StackPanel { Spacing = 4 };
-            imageSection.Children.Add(imageProgress);
-            imageSection.Children.Add(new ScrollViewer
-            {
-                Content = imagePanel,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                MaxHeight = 200
-            });
-            panel.Children.Add(imageSection);
-
-            // Action buttons — close dialog first to avoid "only one ContentDialog" error
-            ContentDialog? detailDialog = null;
-            if (!string.IsNullOrEmpty(publisherID))
-            {
-                var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-                var capturedPubIdForDl = publisherID;
-                var capturedRowForDl = row;
-                btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8B7", "Save to Research",
-                    async (_, _) =>
-                    {
-                        detailDialog?.Hide();
-                        await SaveToResearchAsync(capturedPubIdForDl, capturedRowForDl);
-                    }));
-                btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", "Download FITS",
-                    async (_, _) =>
-                    {
-                        detailDialog?.Hide();
-                        await DownloadFileAsync(capturedPubIdForDl, capturedRowForDl);
-                    }));
-                panel.Children.Add(btnPanel);
-            }
-
-            // Metadata fields
-            foreach (var col in ViewModel.ResultColumns)
-            {
-                var rawVal = row.Get(col.Header);
-                var metaRow = UIFactory.CreateMetadataRow(col.Label, ViewModel.FormatCell(col.Key, rawVal), 170);
-                if (metaRow is not null) panel.Children.Add(metaRow);
-            }
-
-            detailDialog = new ContentDialog
-            {
-                Title = row.Get(ViewModel.GetColumnHeader("targetname")) is { Length: > 0 } name
-                    ? $"Observation — {name}" : "Observation Detail",
-                Content = new ScrollViewer { Content = panel, MaxHeight = 550 },
-                CloseButtonText = "Close",
-                XamlRoot = XamlRoot
-            };
-            detailDialog.Resources["ContentDialogMinWidth"] = 650.0;
-
-            // Load images in background
-            if (!string.IsNullOrEmpty(publisherID))
-            {
-                _ = LoadDetailImagesAsync(publisherID, imagePanel, imageProgress, imageSection);
-            }
-            else
-            {
-                imageSection.Visibility = Visibility.Collapsed;
-            }
-
-            await detailDialog.ShowAsync();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Row detail error: {ex.Message}");
-        }
+        // Open the rich CAOM2 detail viewer (hosted by MainWindow) for this observation.
+        var publisherID = row.Get(ViewModel.GetColumnHeader("publisherid"));
+        if (!string.IsNullOrEmpty(publisherID))
+            ObservationDetailRequested?.Invoke(publisherID);
     }
 
     #endregion
 
     #region Download + Preview
-
-    private async Task LoadDetailImagesAsync(string publisherID, StackPanel imagePanel, ProgressRing spinner, StackPanel section)
-    {
-        try
-        {
-            var links = await _dataLinkService.GetLinksAsync(publisherID);
-            var imageUrls = links.Previews.Concat(links.Thumbnails).Distinct().Take(3).ToList();
-
-            spinner.IsActive = false;
-            spinner.Visibility = Visibility.Collapsed;
-
-            if (imageUrls.Count == 0)
-            {
-                section.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            foreach (var url in imageUrls)
-            {
-                var img = await LoadImageFromUrlAsync(url);
-                if (img is not null)
-                    imagePanel.Children.Add(new Image { Source = img, MaxHeight = 180, MaxWidth = 250, Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform });
-            }
-        }
-        catch
-        {
-            spinner.IsActive = false;
-            section.Visibility = Visibility.Collapsed;
-        }
-    }
 
     /// <summary>
     /// Download image from URL with retry and timeout. Returns null on failure.

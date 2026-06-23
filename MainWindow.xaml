@@ -99,6 +99,7 @@
                 <Border x:Name="StorageContainer" Visibility="Collapsed" />
                 <Border x:Name="NotebookContainer" Visibility="Collapsed" />
                 <Border x:Name="FitsViewerContainer" Visibility="Collapsed" />
+                <Border x:Name="ObsDetailContainer" Visibility="Collapsed" />
             </Grid>
         </Grid>
 
