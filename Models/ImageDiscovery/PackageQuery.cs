@@ -8,6 +8,9 @@ namespace CanfarDesktop.Models.ImageDiscovery;
 /// </summary>
 public class PackageQuery
 {
+    /// <summary>The eight facetable filter categories (mirrors macOS <c>PackageQuery.Category</c>).</summary>
+    public enum Category { OsFamily, OsVersion, Python, R, Dpkg, Rpm, Apk, Capabilities }
+
     public HashSet<string> OsFamilies { get; init; } = new();
     public HashSet<string> OsVersions { get; init; } = new();
     public HashSet<string> Dpkg { get; init; } = new();
@@ -16,6 +19,23 @@ public class PackageQuery
     public HashSet<string> Python { get; init; } = new();
     public HashSet<string> R { get; init; } = new();
     public HashSet<string> Capabilities { get; init; } = new();
+
+    /// <summary>
+    /// A deep copy with only <paramref name="category"/>'s set cleared (mirrors macOS
+    /// <c>dropping(_:)</c>). Used by faceting: "which values would still yield results if I ignore
+    /// this category's current selections?"
+    /// </summary>
+    public PackageQuery Dropping(Category category) => new()
+    {
+        OsFamilies = category == Category.OsFamily ? new() : new(OsFamilies),
+        OsVersions = category == Category.OsVersion ? new() : new(OsVersions),
+        Python = category == Category.Python ? new() : new(Python),
+        R = category == Category.R ? new() : new(R),
+        Dpkg = category == Category.Dpkg ? new() : new(Dpkg),
+        Rpm = category == Category.Rpm ? new() : new(Rpm),
+        Apk = category == Category.Apk ? new() : new(Apk),
+        Capabilities = category == Category.Capabilities ? new() : new(Capabilities),
+    };
 
     public bool IsEmpty =>
         OsFamilies.Count == 0 && OsVersions.Count == 0 && Dpkg.Count == 0 && Rpm.Count == 0
