@@ -114,6 +114,18 @@ public class ImageDiscoveryViewModelTests
     }
 
     [Fact]
+    public void TypeFilter_DrivesFaceting_GreysValuesNotInThatType()
+    {
+        var vm = Sample();
+        vm.SelectedSessionType = "notebook";
+
+        // Only astroml (ubuntu) is a discovered NOTEBOOK image; carta (almalinux) is a carta image.
+        // So under type=notebook, almalinux must grey out (selecting it would yield no notebook image).
+        Assert.True(Val(vm, PackageQuery.Category.OsFamily, "ubuntu").IsEnabled);
+        Assert.False(Val(vm, PackageQuery.Category.OsFamily, "almalinux").IsEnabled);
+    }
+
+    [Fact]
     public void Faceting_DisablesValuesThatWouldYieldZero()
     {
         var vm = Sample();

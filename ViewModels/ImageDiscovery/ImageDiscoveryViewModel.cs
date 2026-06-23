@@ -246,12 +246,29 @@ public partial class ImageDiscoveryViewModel : ObservableObject
     /// <summary>Grey out values that would collapse the results to empty (unless already ticked).</summary>
     private void Refacet()
     {
+        var manifests = FacetingManifests();
         foreach (var section in FilterSections)
         {
-            var available = FacetEngine.AvailableValues(Query, section.Category, _discovered);
+            var available = FacetEngine.AvailableValues(Query, section.Category, manifests);
             foreach (var value in section.Values)
                 value.IsEnabled = available.Contains(value.Value) || value.IsSelected;
         }
+    }
+
+    /// <summary>
+    /// Discovered manifests scoped to the active session-type filter, so faceting (checkbox
+    /// enable/disable) stays consistent with the type-filtered results pane — a value is only
+    /// "available" if an image OF THE SELECTED TYPE has it. Cache-only images (no declared types) are
+    /// never excluded by the type filter.
+    /// </summary>
+    private IReadOnlyList<ImageManifest> FacetingManifests()
+    {
+        if (EffectiveType is not { } type) return _discovered;
+        var allowed = _allImages
+            .Where(i => i.Types.Length == 0 || i.Types.Contains(type))
+            .Select(i => i.Id)
+            .ToHashSet();
+        return _discovered.Where(m => allowed.Contains(m.ImageID)).ToList();
     }
 
     private void RebuildChips()
@@ -347,9 +364,7 @@ public partial class ImageDiscoveryViewModel : ObservableObject
     partial void OnSelectedSessionTypeChanged(string value)
     {
         if (_applying) return;
-        RebuildChips();
-        RecomputeFiltered();
-        HasActiveFilters = !Query.IsEmpty || EffectiveType is not null;
+        AfterFilterChanged(); // re-facet (the type filter changes which values are reachable) + chips + results
     }
 
     // ── Commands ─────────────────────────────────────────────────────────────
