@@ -177,6 +177,28 @@ public class ImageDiscoveryCoordinatorTests
     }
 
     [Fact]
+    public async Task EmptyUsername_AbortsBeforeAnyVoSpaceOrLaunch()
+    {
+        // Regression: AuthService is a transient typed-HttpClient, so its CurrentUsername was lost
+        // between resolutions → the coordinator saw "" and built home//.verbinal paths that 404/403'd
+        // opaquely. The guard must fail fast and clearly without touching VOSpace or Skaha.
+        var store = new FakeStore();
+        var hl = new FakeHeadless();
+        var vs = new FakeVoSpace();
+        var c = new ImageDiscoveryCoordinator(store, hl, vs, new FakeScripts(), usernameProvider: () => "  ",
+            imageTypesLookup: _ => Task.FromResult<IReadOnlyList<string>?>(null), // inspector path
+            raceDelay: _ => Task.CompletedTask, pollDelay: () => Task.CompletedTask, maxPolls: 5);
+
+        var ex = await Assert.ThrowsAsync<ImageDiscoveryException>(() => c.DiscoverAsync("img:noauth"));
+
+        Assert.Equal(FailureCategory.JobSubmitFailed, ex.Category);
+        Assert.Contains("signed in", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, hl.LaunchCount);   // never launched a job
+        Assert.Equal(0, vs.Uploads);       // never uploaded a script
+        Assert.Equal(FailureCategory.JobSubmitFailed, store.Outcome("img:noauth")!.Category);
+    }
+
+    [Fact]
     public async Task ConcurrentDiscover_Coalesces_OneLaunch()
     {
         var store = new FakeStore();

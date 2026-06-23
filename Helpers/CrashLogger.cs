@@ -47,6 +47,32 @@ public static class CrashLogger
         }
     }
 
+    /// <summary>
+    /// Append a scrubbed informational trace line (no exception). Mirrors to the debugger Output
+    /// window and the local crash.log. Used to trace flows like image discovery. Never throws.
+    /// </summary>
+    public static void Info(string message)
+    {
+        try
+        {
+            var entry = LogScrubber.Scrub($"[{DateTimeOffset.UtcNow:O}] {message}");
+            System.Diagnostics.Debug.WriteLine(entry);
+
+            var dir = ResolveLogDirectory();
+            if (dir is null) return;
+
+            var path = System.IO.Path.Combine(dir, "crash.log");
+            lock (_gate)
+            {
+                System.IO.File.AppendAllText(path, entry + Environment.NewLine);
+            }
+        }
+        catch
+        {
+            // Diagnostics must never throw.
+        }
+    }
+
     private static string? ResolveLogDirectory()
     {
         try

@@ -50,13 +50,23 @@ public class StorageService : IStorageService
         if (!string.IsNullOrEmpty(contentType))
             streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
         using var response = await _httpClient.PutAsync(url, streamContent);
+        if (!response.IsSuccessStatusCode)
+            CanfarDesktop.Helpers.CrashLogger.Info($"[Storage] PUT {url} -> {(int)response.StatusCode} {response.ReasonPhrase}");
         response.EnsureSuccessStatusCode();
     }
 
     public async Task<Stream> DownloadFileAsync(string remotePath)
     {
         var url = _endpoints.StorageFilesUrl(remotePath);
-        return await _httpClient.GetStreamAsync(url);
+        try
+        {
+            return await _httpClient.GetStreamAsync(url);
+        }
+        catch (HttpRequestException ex)
+        {
+            CanfarDesktop.Helpers.CrashLogger.Info($"[Storage] GET {url} -> FAILED {(int?)ex.StatusCode} {ex.StatusCode}: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task CreateFolderAsync(string remotePath, string folderName)
@@ -71,14 +81,10 @@ public class StorageService : IStorageService
         var url = _endpoints.StorageNodeUrl(fullPath);
 
         var xml = VoSpaceParser.BuildContainerNodeXml(nodeUri);
-        System.Diagnostics.Debug.WriteLine($"CreateFolder PUT {url}\n{xml}");
         using var xmlContent = new StringContent(xml, System.Text.Encoding.UTF8, "text/xml");
         using var response = await _httpClient.PutAsync(url, xmlContent);
         if (!response.IsSuccessStatusCode)
-        {
-            var body = await response.Content.ReadAsStringAsync();
-            System.Diagnostics.Debug.WriteLine($"CreateFolder failed: {response.StatusCode}\n{body}");
-        }
+            CanfarDesktop.Helpers.CrashLogger.Info($"[Storage] MKDIR(node) PUT {url} -> {(int)response.StatusCode} {response.ReasonPhrase}");
         response.EnsureSuccessStatusCode();
     }
 

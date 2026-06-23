@@ -58,6 +58,7 @@
     <Compile Include="..\Helpers\Sexagesimal.cs" Link="Linked\Sexagesimal.cs" />
     <Compile Include="..\Helpers\TrustedHosts.cs" Link="Linked\TrustedHosts.cs" />
     <Compile Include="..\Helpers\LogScrubber.cs" Link="Linked\LogScrubber.cs" />
+    <Compile Include="..\Helpers\CrashLogger.cs" Link="Linked\CrashLogger.cs" />
     <Compile Include="..\Helpers\LegalTerms.cs" Link="Linked\LegalTerms.cs" />
     <Compile Include="..\Services\HttpClients\AuthTokenProvider.cs" Link="Linked\AuthTokenProvider.cs" />
     <Compile Include="..\Services\HttpClients\AuthTokenHandler.cs" Link="Linked\AuthTokenHandler.cs" />

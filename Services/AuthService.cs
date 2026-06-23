@@ -13,9 +13,11 @@ public class AuthService : IAuthService
     private readonly TokenStorage _tokenStorage;
     private readonly AuthTokenProvider _tokenProvider;
 
-    public bool IsAuthenticated { get; private set; }
+    // Derived from the singleton AuthTokenProvider so they survive across transient AuthService
+    // instances (this service is a typed HttpClient → registered transient).
+    public bool IsAuthenticated => !string.IsNullOrEmpty(_tokenProvider.Token);
     public string? CurrentToken => _tokenProvider.Token;
-    public string? CurrentUsername { get; private set; }
+    public string? CurrentUsername => _tokenProvider.Username;
 
     public AuthService(HttpClient httpClient, ApiEndpoints endpoints, TokenStorage tokenStorage, AuthTokenProvider tokenProvider)
     {
@@ -49,8 +51,7 @@ public class AuthService : IAuthService
 
             var token = (await response.Content.ReadAsStringAsync()).Trim();
             _tokenProvider.Token = token;
-            CurrentUsername = username;
-            IsAuthenticated = true;
+            _tokenProvider.Username = username;
 
             if (rememberMe)
                 _tokenStorage.SaveCredentials(token, username, password);
@@ -76,8 +77,7 @@ public class AuthService : IAuthService
             {
                 var username = (await response.Content.ReadAsStringAsync()).Trim();
                 _tokenProvider.Token = token;
-                CurrentUsername = username;
-                IsAuthenticated = true;
+                _tokenProvider.Username = username;
                 return username;
             }
             return null;
@@ -108,9 +108,7 @@ public class AuthService : IAuthService
 
     public Task LogoutAsync()
     {
-        _tokenProvider.Clear();
-        CurrentUsername = null;
-        IsAuthenticated = false;
+        _tokenProvider.Clear(); // clears token + username on the shared singleton
         _tokenStorage.ClearToken();
         return Task.CompletedTask;
     }

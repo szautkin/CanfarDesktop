@@ -112,6 +112,9 @@ public class SessionService : ISessionService
             if (!string.IsNullOrEmpty(authHeader))
                 request.Headers.Add("x-skaha-registry-auth", authHeader);
 
+            CanfarDesktop.Helpers.CrashLogger.Info(
+                $"[Headless] POST {_endpoints.SessionsUrl} image={launchParams.Image} name={launchParams.Name} cmd={launchParams.Cmd} args={launchParams.Args} hasRegistryAuth={!string.IsNullOrEmpty(authHeader)}");
+
             string? id = null;
             string? failure = null;
             try
@@ -128,6 +131,9 @@ public class SessionService : ISessionService
             {
                 failure = ex.Message;
             }
+
+            CanfarDesktop.Helpers.CrashLogger.Info(
+                $"[Headless] POST result image={launchParams.Image} -> id={id ?? "(none)"} failure={failure ?? "(none)"}");
 
             if (!string.IsNullOrEmpty(id))
             {
