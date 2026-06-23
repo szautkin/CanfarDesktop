@@ -3,6 +3,10 @@
 ###############################################################################
 * text=auto
 
+# Shell scripts run on Linux (embedded probe/inspector scripts execute on the CANFAR
+# cluster) — force LF so a Windows checkout never corrupts the shebang with CRLF.
+*.sh text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
