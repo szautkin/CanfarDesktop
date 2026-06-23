@@ -31,6 +31,18 @@ public class ImageDiscoverySettingsService
     /// <summary>The inspector host image to launch (user override, or the built-in default).</summary>
     public string ResolveInspectorImage() => Settings.InspectorImage;
 
+    /// <summary>
+    /// Verify the stored credentials against the configured registry (Docker V2 token-auth).
+    /// <paramref name="client"/> must be a plain (non-auth'd) HttpClient — never carry the CADC token.
+    /// </summary>
+    public Task<RegistryTestResult> TestRegistryCredentialsAsync(HttpClient client)
+    {
+        var host = Settings.RegistryHost;
+        var user = Settings.Username;
+        var secret = ReadSecret(host, user) ?? string.Empty;
+        return RegistryCredentialTest.PerformAsync(host, user, secret, client);
+    }
+
     /// <summary>The <c>x-skaha-registry-auth</c> header value, or null when no credentials are configured.</summary>
     public string? CurrentAuthHeader()
     {

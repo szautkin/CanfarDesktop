@@ -42,6 +42,7 @@
     <Compile Include="..\Models\ImageDiscovery\PackageQuery.cs" Link="Linked\ImageDiscovery\PackageQuery.cs" />
     <Compile Include="..\Models\ImageDiscovery\ImageDiscoverySettings.cs" Link="Linked\ImageDiscovery\ImageDiscoverySettings.cs" />
     <Compile Include="..\Services\ImageDiscovery\ManifestParser.cs" Link="Linked\ImageDiscovery\ManifestParser.cs" />
+    <Compile Include="..\Services\ImageDiscovery\RegistryCredentialTest.cs" Link="Linked\ImageDiscovery\RegistryCredentialTest.cs" />
     <Compile Include="..\Helpers\RollingTagPolicy.cs" Link="Linked\ImageDiscovery\RollingTagPolicy.cs" />
     <!-- Image discovery coordinator backbone (M4c) -->
     <Compile Include="..\Models\ImageDiscovery\LastOutcome.cs" Link="Linked\ImageDiscovery\LastOutcome.cs" />

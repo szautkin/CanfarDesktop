@@ -30,7 +30,10 @@
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" />
             </StackPanel>
 
-            <InfoBar x:Name="ErrorBar" IsOpen="False" IsClosable="True" Severity="Error" />
+            <Button x:Name="TestButton" Content="Test credentials" Click="OnTestCredentials"
+                    HorizontalAlignment="Left" />
+
+            <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="True" Severity="Informational" />
         </StackPanel>
     </ScrollViewer>
 </ContentDialog>

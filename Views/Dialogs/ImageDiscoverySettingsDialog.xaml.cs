@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CanfarDesktop.Models.ImageDiscovery;
 using CanfarDesktop.Services.ImageDiscovery;
@@ -29,11 +30,14 @@ public sealed partial class ImageDiscoverySettingsDialog : ContentDialog
         RegistryHostBox.Text = s.RegistryHost == ImageDiscoverySettings.DefaultRegistryHost ? string.Empty : s.RegistryHost;
         UsernameBox.Text = s.Username;
         SecretBox.Password = string.Empty;
-        SecretStatus.Text = s.HasSecret
+        RefreshSecretStatus();
+        StatusBar.IsOpen = false;
+    }
+
+    private void RefreshSecretStatus()
+        => SecretStatus.Text = _service.Settings.HasSecret
             ? "A secret is stored. Type a new one to replace it, or leave blank to keep it."
             : "No secret stored.";
-        ErrorBar.IsOpen = false;
-    }
 
     private void OnSave(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
@@ -49,8 +53,7 @@ public sealed partial class ImageDiscoverySettingsDialog : ContentDialog
             }
             catch (Exception ex)
             {
-                ErrorBar.Message = ex.Message;
-                ErrorBar.IsOpen = true;
+                ShowStatus(InfoBarSeverity.Error, "Couldn't save secret", ex.Message);
                 args.Cancel = true; // keep the dialog open so the user can fix it
             }
         }
@@ -61,5 +64,69 @@ public sealed partial class ImageDiscoverySettingsDialog : ContentDialog
         _service.ResetToDefaults();
         Populate();
         args.Cancel = true; // keep open to show the reset state
+    }
+
+    /// <summary>
+    /// Apply the typed host/username/secret, then probe the registry's Docker V2 token endpoint so
+    /// the user can confirm the credentials work before a probe job fails later with ImagePullBackOff.
+    /// </summary>
+    private async void OnTestCredentials(object sender, RoutedEventArgs e)
+    {
+        // Test what the user typed: persist host/username and (if entered) the new secret first.
+        _service.SetRegistryHost(RegistryHostBox.Text);
+        _service.SetUsername(UsernameBox.Text);
+        if (SecretBox.Password.Length > 0)
+        {
+            try
+            {
+                _service.SetSecret(SecretBox.Password);
+                SecretBox.Password = string.Empty;
+                RefreshSecretStatus();
+            }
+            catch (Exception ex)
+            {
+                ShowStatus(InfoBarSeverity.Error, "Couldn't save secret", ex.Message);
+                return;
+            }
+        }
+
+        TestButton.IsEnabled = false;
+        ShowStatus(InfoBarSeverity.Informational, "Testing…", $"Contacting {_service.Settings.RegistryHost} …");
+        try
+        {
+            using var client = new HttpClient();
+            var result = await _service.TestRegistryCredentialsAsync(client);
+            var severity = result.Kind switch
+            {
+                RegistryTestKind.Success => InfoBarSeverity.Success,
+                RegistryTestKind.Unauthorized or RegistryTestKind.MissingConfiguration => InfoBarSeverity.Warning,
+                _ => InfoBarSeverity.Error,
+            };
+            var title = result.Kind switch
+            {
+                RegistryTestKind.Success => "Credentials valid",
+                RegistryTestKind.Unauthorized => "Credentials rejected",
+                RegistryTestKind.MissingConfiguration => "Configuration incomplete",
+                RegistryTestKind.InvalidChallenge => "Unexpected registry response",
+                _ => "Network error",
+            };
+            ShowStatus(severity, title, result.Message);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus(InfoBarSeverity.Error, "Test failed", ex.Message);
+        }
+        finally
+        {
+            TestButton.IsEnabled = true;
+        }
+    }
+
+    private void ShowStatus(InfoBarSeverity severity, string title, string message)
+    {
+        StatusBar.Severity = severity;
+        StatusBar.Title = title;
+        StatusBar.Message = message;
+        StatusBar.IsOpen = true;
     }
 }
