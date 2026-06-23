@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
+using CanfarDesktop.Services.ImageDiscovery;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views.Controls;
 using CanfarDesktop.Views.Dialogs;
@@ -16,6 +17,7 @@ public sealed partial class DashboardPage : Page
     private readonly StorageQuotaControl _storageQuota;
     private readonly BatchJobsControl _batchJobs;
     private readonly RecentLaunchesControl _recentLaunches;
+    private readonly CanfarImagesControl _canfarImages;
     private readonly SessionListViewModel _sessionListVm;
     private readonly SessionLaunchViewModel _sessionLaunchVm;
 
@@ -25,7 +27,9 @@ public sealed partial class DashboardPage : Page
         PlatformLoadViewModel platformLoadVm,
         StorageViewModel storageVm,
         IRecentLaunchService recentLaunchService,
-        ISessionService sessionService)
+        ISessionService sessionService,
+        IImageService imageService,
+        ImageDiscoveryCoordinator imageDiscoveryCoordinator)
     {
         InitializeComponent();
 
@@ -37,6 +41,7 @@ public sealed partial class DashboardPage : Page
         _storageQuota = new StorageQuotaControl(storageVm);
         _batchJobs = new BatchJobsControl(sessionService);
         _recentLaunches = new RecentLaunchesControl(recentLaunchService);
+        _canfarImages = new CanfarImagesControl(imageService, imageDiscoveryCoordinator);
 
         SessionListContainer.Child = _sessionList;
         LaunchFormContainer.Child = _launchForm;
@@ -44,6 +49,7 @@ public sealed partial class DashboardPage : Page
         StorageContainer.Child = _storageQuota;
         BatchJobsContainer.Child = _batchJobs;
         RecentLaunchesContainer.Child = _recentLaunches;
+        CanfarImagesContainer.Child = _canfarImages;
 
         // Wire up session counter for name generation
         sessionLaunchVm.SetSessionCounter(type =>
@@ -75,7 +81,8 @@ public sealed partial class DashboardPage : Page
             SafeLoadAsync(_sessionList.LoadAsync(), "sessions"),
             SafeLoadAsync(_launchForm.LoadAsync(), "launch form"),
             SafeLoadAsync(_platformLoad.LoadAsync(), "platform stats"),
-            SafeLoadAsync(_batchJobs.LoadAsync(), "batch jobs")
+            SafeLoadAsync(_batchJobs.LoadAsync(), "batch jobs"),
+            SafeLoadAsync(_canfarImages.LoadAsync(), "canfar images")
         };
 
         if (!string.IsNullOrEmpty(username))

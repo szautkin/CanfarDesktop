@@ -15,6 +15,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- Top row: Sessions + Storage -->
@@ -52,6 +53,9 @@
                     <Border Grid.Row="1" x:Name="PlatformLoadContainer" />
                 </Grid>
             </Grid>
+
+            <!-- Canfar Images catalogue + discovery -->
+            <Border Grid.Row="2" x:Name="CanfarImagesContainer" />
         </Grid>
     </ScrollViewer>
 </Page>

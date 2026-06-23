@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="CanfarDesktop.Views.Controls.CanfarImagesControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:CanfarDesktop.Views.Controls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    mc:Ignorable="d">
+
+    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1" CornerRadius="8" Padding="16">
+        <Grid RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
+                <FontIcon Glyph="&#xE74C;" FontSize="16" VerticalAlignment="Center" />
+                <TextBlock Text="Canfar Images" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <TextBlock x:Name="CountText" VerticalAlignment="Center"
+                           Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+
+            <SelectorBar Grid.Row="1" x:Name="TypeSelector" SelectionChanged="OnTypeChanged" />
+
+            <ListView Grid.Row="2" x:Name="ImageList" MaxHeight="320" SelectionMode="None"
+                      ScrollViewer.HorizontalScrollMode="Disabled">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="local:CanfarImageRow">
+                        <Grid ColumnSpacing="8" Padding="0,4" HorizontalAlignment="Stretch">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Label}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{x:Bind Status, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Inspect" Click="OnInspectClick"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.ToolTip="Discover the packages installed in this image" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+    </Border>
+</UserControl>
