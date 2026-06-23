@@ -48,6 +48,10 @@
     <Compile Include="..\Helpers\ImageDiscovery\ImageParser.cs" Link="Linked\ImageDiscovery\ImageParser.cs" />
     <Compile Include="..\Helpers\ImageDiscovery\DiscoveryFormatting.cs" Link="Linked\ImageDiscovery\DiscoveryFormatting.cs" />
     <Compile Include="..\Models\ContainerImage.cs" Link="Linked\ImageDiscovery\ContainerImage.cs" />
+    <Compile Include="..\ViewModels\ImageDiscovery\FacetViewModels.cs" Link="Linked\ImageDiscovery\FacetViewModels.cs" />
+    <Compile Include="..\ViewModels\ImageDiscovery\ImageRowViewModel.cs" Link="Linked\ImageDiscovery\ImageRowViewModel.cs" />
+    <Compile Include="..\ViewModels\ImageDiscovery\ActiveFilterChip.cs" Link="Linked\ImageDiscovery\ActiveFilterChip.cs" />
+    <Compile Include="..\ViewModels\ImageDiscovery\ImageDiscoveryViewModel.cs" Link="Linked\ImageDiscovery\ImageDiscoveryViewModel.cs" />
     <!-- Image discovery coordinator backbone (M4c) -->
     <Compile Include="..\Models\ImageDiscovery\LastOutcome.cs" Link="Linked\ImageDiscovery\LastOutcome.cs" />
     <Compile Include="..\Services\ImageDiscovery\ImageDiscoveryException.cs" Link="Linked\ImageDiscovery\ImageDiscoveryException.cs" />
