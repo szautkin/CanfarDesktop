@@ -85,6 +85,74 @@ public class SessionService : ISessionService
         return body;
     }
 
+    /// <summary>
+    /// Launch one or more replicas of a headless job, returning the session ids in launch order.
+    /// Each replica is a separate POST (180s timeout). Best-effort partial success: if replica N
+    /// fails after earlier replicas launched, throws <see cref="HeadlessLaunchException"/> carrying
+    /// the already-launched ids; a first-replica failure surfaces the underlying error directly.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> LaunchHeadlessAsync(SessionLaunchParams launchParams, CancellationToken cancellationToken = default)
+    {
+        var count = Math.Max(1, launchParams.Replicas);
+        var launched = new List<string>();
+
+        for (var i = 0; i < count; i++)
+        {
+            var pairs = HeadlessRequestBuilder.BuildFormPairs(launchParams, i, count);
+            var request = new HttpRequestMessage(HttpMethod.Post, _endpoints.SessionsUrl)
+            {
+                Content = new FormUrlEncodedContent(pairs)
+            };
+            if (!string.IsNullOrEmpty(launchParams.RegistryUsername))
+            {
+                var authValue = Convert.ToBase64String(
+                    System.Text.Encoding.UTF8.GetBytes($"{launchParams.RegistryUsername}:{launchParams.RegistrySecret ?? ""}"));
+                request.Headers.Add("x-skaha-registry-auth", authValue);
+            }
+
+            string? id = null;
+            string? failure = null;
+            try
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(180)); // Skaha session-create routinely takes 60-90s
+                using var response = await _httpClient.SendAsync(request, cts.Token);
+                if (response.IsSuccessStatusCode)
+                    id = ParseSessionId(await response.Content.ReadAsStringAsync(cts.Token));
+                else
+                    failure = $"HTTP {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(cts.Token)}";
+            }
+            catch (Exception ex)
+            {
+                failure = ex.Message;
+            }
+
+            if (!string.IsNullOrEmpty(id))
+            {
+                launched.Add(id);
+                continue;
+            }
+
+            failure ??= "Skaha returned an empty response.";
+            if (launched.Count == 0)
+                throw new HttpRequestException($"Headless launch failed: {failure}");
+            throw new HeadlessLaunchException(launched, i, failure);
+        }
+
+        return launched;
+    }
+
+    private static string? ParseSessionId(string body)
+    {
+        body = body.Trim();
+        if (body.StartsWith('['))
+        {
+            var ids = JsonSerializer.Deserialize<string[]>(body);
+            return ids?.FirstOrDefault();
+        }
+        return body.Length == 0 ? null : body;
+    }
+
     public async Task<bool> DeleteSessionAsync(string id)
     {
         var response = await _httpClient.DeleteAsync(_endpoints.SessionUrl(id));

@@ -29,6 +29,8 @@
   <ItemGroup>
     <Compile Include="..\Services\SessionService.cs" Link="Linked\SessionService.cs" />
     <Compile Include="..\Services\ISessionService.cs" Link="Linked\ISessionService.cs" />
+    <Compile Include="..\Services\HeadlessLaunchException.cs" Link="Linked\HeadlessLaunchException.cs" />
+    <Compile Include="..\Helpers\HeadlessRequestBuilder.cs" Link="Linked\HeadlessRequestBuilder.cs" />
     <Compile Include="..\Helpers\ApiEndpoints.cs" Link="Linked\ApiEndpoints.cs" />
     <!-- M1 security + legal (pure, no WinUI deps) -->
     <Compile Include="..\Helpers\Sexagesimal.cs" Link="Linked\Sexagesimal.cs" />

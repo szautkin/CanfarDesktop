@@ -7,6 +7,7 @@ public interface ISessionService
     Task<List<Session>> GetSessionsAsync();
     Task<Session?> GetSessionAsync(string id);
     Task<string?> LaunchSessionAsync(SessionLaunchParams launchParams);
+    Task<IReadOnlyList<string>> LaunchHeadlessAsync(SessionLaunchParams launchParams, CancellationToken cancellationToken = default);
     Task<bool> DeleteSessionAsync(string id);
     Task RenewSessionAsync(string id);
     Task<string?> GetSessionEventsAsync(string id);
