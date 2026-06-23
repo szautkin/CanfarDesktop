@@ -27,29 +27,28 @@ public class CellFormatterTests
         Assert.Equal("", CellFormatter.Format("startdate", "   "));
     }
 
-    // Coordinate formatting
+    // Coordinate formatting — RA/Dec now default to sexagesimal (macOS), with a degrees option.
     [Fact]
-    public void Format_RA_FormatsTo5DecimalPlaces()
+    public void Format_RA_DefaultsToSexagesimal()
     {
-        Assert.Equal("10.68400", CellFormatter.Format("ra(j20000)", "10.684"));
+        Assert.Equal("12:00:00.00", CellFormatter.Format("ra(j20000)", "180"));            // default hms
+        Assert.Equal("180.000000", CellFormatter.Format("ra(j20000)", "180", "degrees"));  // 6dp, sign only if negative
     }
 
     [Fact]
-    public void Format_Dec_FormatsTo5DecimalPlaces()
+    public void Format_Dec_DefaultsToSexagesimal()
     {
-        Assert.Equal("-41.26900", CellFormatter.Format("dec(j20000)", "-41.269"));
+        Assert.Equal("-30:00:00.0", CellFormatter.Format("dec(j20000)", "-30"));            // default dms
+        Assert.Equal("-30.000000", CellFormatter.Format("dec(j20000)", "-30", "degrees"));  // 6dp, always-signed
     }
 
-    // Integration time formatting
+    // Integration time now defaults to fixed seconds (macOS); minutes/hours/days via the unit menu.
     [Theory]
-    [InlineData("3600", "1h")]
-    [InlineData("7200", "2h")]
-    [InlineData("5400", "1.5h")]
-    [InlineData("300", "5m")]
-    [InlineData("90", "1.5m")]
-    [InlineData("45", "45s")]
-    [InlineData("0.5", "0.5s")]
-    public void Format_IntTime_ConvertsToHumanReadable(string input, string expected)
+    [InlineData("3600", "3600.000 s")]
+    [InlineData("90", "90.000 s")]
+    [InlineData("45", "45.000 s")]
+    [InlineData("0.5", "0.500 s")]
+    public void Format_IntTime_DefaultsToSeconds(string input, string expected)
     {
         Assert.Equal(expected, CellFormatter.Format("inttime", input));
     }
@@ -86,10 +85,11 @@ public class CellFormatterTests
     }
 
     [Fact]
-    public void Format_Wavelength_NormalValue_UsesStandard()
+    public void Format_Wavelength_NormalValue_RendersWithUnit()
     {
+        // minwavelength now defaults to metres with a "value m" render (macOS spectral set).
         var result = CellFormatter.Format("minwavelength", "0.5");
-        Assert.Equal("0.5", result);
+        Assert.Equal("0.500 m", result);
     }
 
     // Timestamp

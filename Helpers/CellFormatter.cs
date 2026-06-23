@@ -8,12 +8,22 @@ namespace CanfarDesktop.Helpers;
 /// </summary>
 public static class CellFormatter
 {
-    public static string Format(string columnKey, string raw)
+    public static string Format(string columnKey, string raw) => Format(columnKey, raw, null);
+
+    /// <summary>
+    /// Format a cell, honoring the chosen display unit for unit-menu columns (RA/Dec sexagesimal vs
+    /// degrees, spectral, time, pixel-scale, field-of-view, dates). <paramref name="unitId"/> null =
+    /// the column's default unit. Non-menu columns fall through to the legacy per-key formatters.
+    /// </summary>
+    public static string Format(string columnKey, string raw, string? unitId)
     {
         var trimmed = raw.Trim();
         if (string.IsNullOrEmpty(trimmed)) return "";
 
         var key = CleanKey(columnKey);
+
+        if (ColumnUnitCatalog.HasMenu(key))
+            return FormatWithUnit(key, trimmed, unitId ?? ColumnUnitCatalog.DefaultUnitId(key)!);
 
         return key switch
         {
@@ -29,6 +39,42 @@ public static class CellFormatter
             _ => trimmed
         };
     }
+
+    /// <summary>Render a unit-menu column's cell in the chosen unit (mirrors macOS ColumnFormatChoice dispatch).</summary>
+    private static string FormatWithUnit(string key, string raw, string unit)
+    {
+        switch (key)
+        {
+            case "ra(j20000)":
+                return unit == "degrees" ? FormatRaDegrees(raw) : Sexagesimal.FormatRaHms(raw);
+            case "dec(j20000)":
+                return unit == "degrees" ? FormatDecDegrees(raw) : Sexagesimal.FormatDecDms(raw);
+            case "minwavelength" or "maxwavelength" or "restframeenergy":
+                return UnitConverter.FormatSpectral(raw, unit);
+            case "inttime":
+                return UnitConverter.FormatDuration(raw, unit);
+            case "pixelscale" or "positionresolution":
+                return UnitConverter.FormatAngle(raw, unit);
+            case "fieldofview":
+                return UnitConverter.FormatArea(raw, unit);
+            case "startdate" or "enddate":
+                return unit == "mjd" ? raw : FormatMjdDate(raw);
+            default:
+                return raw;
+        }
+    }
+
+    // RA degrees: fixed 6 decimals, sign only when negative (macOS CoordinateFormatter .negativeOnly).
+    private static string FormatRaDegrees(string raw)
+        => double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && double.IsFinite(v)
+            ? v.ToString("F6", CultureInfo.InvariantCulture)
+            : raw;
+
+    // Dec degrees: fixed 6 decimals, always signed (macOS CoordinateFormatter .always).
+    private static string FormatDecDegrees(string raw)
+        => double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && double.IsFinite(v)
+            ? v.ToString("+0.000000;-0.000000", CultureInfo.InvariantCulture)
+            : raw;
 
     /// <summary>Clean column header to a normalized key (lowercase, no quotes, spaces→underscores).</summary>
     public static string CleanKey(string header)
