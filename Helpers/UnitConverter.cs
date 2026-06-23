@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace CanfarDesktop.Helpers;
@@ -195,4 +196,135 @@ public static class UnitConverter
         var u = unit.ToLower();
         return u is "hz" or "khz" or "mhz" or "ghz" or "ev" or "kev" or "mev" or "gev";
     }
+
+    // ── Display-side unit rendering (search-results unit menus) ───────────────
+    // macOS-faithful legacy CGS constants (match CADC CCDA convertUtils) so a TAP row renders to the
+    // SAME numbers as the reference client for any chosen unit. Kept separate from the SI constants
+    // above (used by the search-form TryConvertTo* path) so search behaviour is unchanged.
+    private const double CgsSpeedOfLight = 2.997925e8; // m/s
+    private const double CgsPlanck = 6.6262e-27;       // erg·s
+    private const double CgsErgPerEv = 1.602192e-12;   // erg/eV
+
+    private enum SpectralDimension { Wavelength, Frequency, Energy }
+
+    private sealed record SpectralUnitInfo(string Id, string Label, SpectralDimension Dimension, double FactorFromBase);
+
+    private static readonly SpectralUnitInfo[] SpectralUnitTable =
+    {
+        new("m",  "m",        SpectralDimension.Wavelength, 1),
+        new("cm", "cm",       SpectralDimension.Wavelength, 1e-2),
+        new("mm", "mm",       SpectralDimension.Wavelength, 1e-3),
+        new("um", "µm",  SpectralDimension.Wavelength, 1e-6),
+        new("nm", "nm",       SpectralDimension.Wavelength, 1e-9),
+        new("a",  "Å",   SpectralDimension.Wavelength, 1e-10),
+        new("hz",  "Hz",      SpectralDimension.Frequency, 1),
+        new("khz", "kHz",     SpectralDimension.Frequency, 1e3),
+        new("mhz", "MHz",     SpectralDimension.Frequency, 1e6),
+        new("ghz", "GHz",     SpectralDimension.Frequency, 1e9),
+        new("ev",  "eV",      SpectralDimension.Energy, 1),
+        new("kev", "keV",     SpectralDimension.Energy, 1e3),
+        new("mev", "MeV",     SpectralDimension.Energy, 1e6),
+        new("gev", "GeV",     SpectralDimension.Energy, 1e9),
+    };
+
+    /// <summary>The ordered (id, label) spectral unit choices for a column unit menu.</summary>
+    public static IReadOnlyList<(string Id, string Label)> SpectralUnitChoices
+        => SpectralUnitTable.Select(u => (u.Id, u.Label)).ToList();
+
+    /// <summary>
+    /// Convert a wavelength in metres to <paramref name="unitId"/> (cross-dimension via c and hc).
+    /// Null on non-positive / non-finite input. 1-to-1 with macOS SpectralConverter.
+    /// </summary>
+    public static double? ConvertSpectral(double metres, string unitId)
+    {
+        if (!double.IsFinite(metres) || metres <= 0) return null;
+        var unit = Array.Find(SpectralUnitTable, u => u.Id == unitId.ToLowerInvariant());
+        if (unit is null) return null;
+        return unit.Dimension switch
+        {
+            SpectralDimension.Wavelength => metres / unit.FactorFromBase,
+            SpectralDimension.Frequency => CgsSpeedOfLight / metres / unit.FactorFromBase,
+            SpectralDimension.Energy => CgsPlanck * CgsSpeedOfLight / (CgsErgPerEv * metres) / unit.FactorFromBase,
+            _ => null,
+        };
+    }
+
+    /// <summary>Render a metres-stored wavelength as "value label" in the chosen spectral unit; raw on failure.</summary>
+    public static string FormatSpectral(string raw, string unitId)
+    {
+        var metres = FiniteDouble(raw);
+        if (metres is null) return raw.Trim();
+        var value = ConvertSpectral(metres.Value, unitId);
+        if (value is null) return raw.Trim();
+        var label = Array.Find(SpectralUnitTable, u => u.Id == unitId.ToLowerInvariant())?.Label ?? unitId;
+        return $"{SpectralValueString(value.Value)} {label}";
+    }
+
+    // macOS SpectralFormatter precision ladder: >=100 → 1dp, >=1 → 2dp, >=0.001 → 3dp, else 4 sig figs.
+    private static string SpectralValueString(double v)
+    {
+        var mag = Math.Abs(v);
+        if (mag == 0) return "0";
+        if (mag >= 100) return v.ToString("F1", CultureInfo.InvariantCulture);
+        if (mag >= 1) return v.ToString("F2", CultureInfo.InvariantCulture);
+        if (mag >= 0.001) return v.ToString("F3", CultureInfo.InvariantCulture);
+        return v.ToString("G4", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>Render seconds as "value label" in the chosen duration unit (seconds/minutes/hours/days).</summary>
+    public static string FormatDuration(string raw, string unitId)
+    {
+        var seconds = FiniteDouble(raw);
+        if (seconds is null) return raw.Trim();
+        var (factor, label) = unitId.ToLowerInvariant() switch
+        {
+            "minutes" => (60.0, "m"),
+            "hours" => (3600.0, "h"),
+            "days" => (86400.0, "d"),
+            _ => (1.0, "s"),
+        };
+        return $"{(seconds.Value / factor).ToString("F3", CultureInfo.InvariantCulture)} {label}";
+    }
+
+    /// <summary>Render degrees as "value label" in the chosen angle unit (mas/arcsec/arcmin/deg).</summary>
+    public static string FormatAngle(string raw, string unitId)
+    {
+        var degrees = FiniteDouble(raw);
+        if (degrees is null) return raw.Trim();
+        var (factor, label) = unitId.ToLowerInvariant() switch
+        {
+            "milliarcseconds" => (3600000.0, "mas"),
+            "arcminutes" => (60.0, "′"),
+            "degrees" => (1.0, "°"),
+            _ => (3600.0, "″"), // arcseconds
+        };
+        return $"{AdaptivePrecision(degrees.Value * factor)} {label}";
+    }
+
+    /// <summary>Render square-degrees as "value label" in the chosen area unit.</summary>
+    public static string FormatArea(string raw, string unitId)
+    {
+        var sqDeg = FiniteDouble(raw);
+        if (sqDeg is null) return raw.Trim();
+        var (factor, label) = unitId.ToLowerInvariant() switch
+        {
+            "sq_arcsec" => (12960000.0, "sq arcsec"),
+            "sq_arcmin" => (3600.0, "sq arcmin"),
+            _ => (1.0, "sq deg"),
+        };
+        return $"{AdaptivePrecision(sqDeg.Value * factor)} {label}";
+    }
+
+    /// <summary>macOS adaptivePrecisionString: 6dp below 0.001 (non-zero), else 3dp.</summary>
+    public static string AdaptivePrecision(double v)
+    {
+        var mag = Math.Abs(v);
+        return mag != 0 && mag < 0.001
+            ? v.ToString("F6", CultureInfo.InvariantCulture)
+            : v.ToString("F3", CultureInfo.InvariantCulture);
+    }
+
+    private static double? FiniteDouble(string raw)
+        => double.TryParse(raw.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && double.IsFinite(v)
+            ? v : null;
 }
