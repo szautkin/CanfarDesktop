@@ -50,24 +50,30 @@ public partial class ImageRowViewModel : ObservableObject
 
     private readonly Func<ImageRowViewModel, bool, Task>? _discover;
     private readonly Action<ImageRowViewModel>? _dismiss;
+    private readonly Action<ImageRowViewModel>? _details;
 
     public ImageRowViewModel(ParsedImage image, RowState state,
         Func<ImageRowViewModel, bool, Task>? discover = null,
-        Action<ImageRowViewModel>? dismiss = null)
+        Action<ImageRowViewModel>? dismiss = null,
+        Action<ImageRowViewModel>? details = null)
     {
         Image = image;
         _state = state;
         _discover = discover;
         _dismiss = dismiss;
+        _details = details;
     }
 
     [RelayCommand] private Task Discover() => _discover?.Invoke(this, false) ?? Task.CompletedTask;
     [RelayCommand] private Task Rediscover() => _discover?.Invoke(this, true) ?? Task.CompletedTask;
     [RelayCommand] private void Dismiss() => _dismiss?.Invoke(this);
+    [RelayCommand] private void Details() => _details?.Invoke(this);
 
     public bool IsDiscovered => State.Kind == RowStateKind.Discovered;
     public bool IsRunning => State.Kind == RowStateKind.Running;
     public bool IsFailed => State.Kind == RowStateKind.Failed;
+    public bool IsNeverDiscovered => State.Kind == RowStateKind.NeverDiscovered;
+    public bool CanShowDetails => IsDiscovered || IsFailed;
     public bool HasJobLogs => State.Kind == RowStateKind.Failed && !string.IsNullOrEmpty(State.JobID);
 
     public int PackageCount => State.Manifest is { } m ? DiscoveryFormatting.PackageCount(m) : 0;
@@ -95,6 +101,8 @@ public partial class ImageRowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsDiscovered));
         OnPropertyChanged(nameof(IsRunning));
         OnPropertyChanged(nameof(IsFailed));
+        OnPropertyChanged(nameof(IsNeverDiscovered));
+        OnPropertyChanged(nameof(CanShowDetails));
         OnPropertyChanged(nameof(HasJobLogs));
         OnPropertyChanged(nameof(PackageCount));
         OnPropertyChanged(nameof(StatusText));

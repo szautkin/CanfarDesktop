@@ -65,9 +65,20 @@ public partial class ImageDiscoveryViewModel : ObservableObject
     [ObservableProperty] private bool _hasActiveFilters;
     [ObservableProperty] private bool _hasFailures;
     [ObservableProperty] private bool _isEmptyResult;
+    [ObservableProperty] private ManifestDetailViewModel? _detail;
 
     public bool HasSelection => SelectedRow is not null;
     partial void OnSelectedRowChanged(ImageRowViewModel? value) => OnPropertyChanged(nameof(HasSelection));
+
+    public bool IsShowingDetail => Detail is not null;
+    partial void OnDetailChanged(ManifestDetailViewModel? value) => OnPropertyChanged(nameof(IsShowingDetail));
+
+    /// <summary>Open the inline detail panel for a discovered/failed row (manifest or failure view).</summary>
+    private void ShowDetail(ImageRowViewModel? row)
+    {
+        if (row is null || row.State.Kind is RowStateKind.NeverDiscovered or RowStateKind.Running) return;
+        Detail = new ManifestDetailViewModel(row, _coordinator, () => Detail = null);
+    }
 
     public const string AllTypesOption = "All";
 
@@ -91,7 +102,8 @@ public partial class ImageDiscoveryViewModel : ObservableObject
                 parsed,
                 RowState.FromOutcome(_coordinator.Outcome(parsed.Id)),
                 discover: (row, force) => RunDiscoveryAsync(row, force),
-                dismiss: DismissError);
+                dismiss: DismissError,
+                details: ShowDetail);
         }
 
         SessionTypeOptions.Clear();

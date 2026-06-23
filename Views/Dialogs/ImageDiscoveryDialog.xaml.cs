@@ -1,3 +1,4 @@
+using Windows.ApplicationModel.DataTransfer;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
@@ -37,5 +38,13 @@ public sealed partial class ImageDiscoveryDialog : ContentDialog
         MatchListView.ItemsSource = grouped.View;
 
         PrimaryButtonClick += (_, _) => PickedImageId = _viewModel.SelectedRow?.Id;
+    }
+
+    private void OnCopyJson(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.Detail is not { } detail || string.IsNullOrEmpty(detail.Json)) return;
+        var data = new DataPackage();
+        data.SetText(detail.Json);
+        Clipboard.SetContent(data);
     }
 }
