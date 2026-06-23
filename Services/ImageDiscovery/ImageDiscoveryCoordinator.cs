@@ -75,6 +75,16 @@ public class ImageDiscoveryCoordinator
         lock (_inFlightGate) return _inFlight.Count;
     }
 
+    /// <summary>Every successfully-discovered manifest in the cache — the source the filter UI facets over.</summary>
+    public IReadOnlyList<ImageManifest> DiscoveredManifests()
+    {
+        var list = new List<ImageManifest>();
+        foreach (var id in _store.KnownImages())
+            if (_store.Outcome(id) is { IsSuccess: true, Manifest: { } m })
+                list.Add(m);
+        return list;
+    }
+
     /// <summary>Discover packages for one image (cache hit short-circuits unless <paramref name="force"/>).</summary>
     public async Task<ImageManifest> DiscoverAsync(string imageID, bool force = false, CancellationToken cancellationToken = default)
     {
