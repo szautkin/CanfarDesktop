@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Services;
+using CanfarDesktop.Services.Database;
 using CanfarDesktop.Services.Fits;
 using CanfarDesktop.Services.HttpClients;
 using CanfarDesktop.Services.Notebook;
@@ -124,6 +125,8 @@ public partial class App : Application
 
         // Research
         services.AddSingleton<ObservationStore>();
+        services.AddSingleton<AppDatabase>();
+        services.AddSingleton<ObservationNoteStore>();
 
         // Search (TAP is public, no auth needed)
         services.AddHttpClient<ITAPService, TAPService>(client =>

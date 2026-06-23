@@ -22,6 +22,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
   </ItemGroup>
 
   <!-- Link only the source files we need to test (avoids loading WinUI module initializer) -->
@@ -59,6 +60,11 @@
     <Compile Include="..\Helpers\Caom2Uri.cs" Link="Linked\Caom2Uri.cs" />
     <Compile Include="..\Helpers\Caom2Format.cs" Link="Linked\Caom2Format.cs" />
     <Compile Include="..\Helpers\DiskPersistence.cs" Link="Linked\DiskPersistence.cs" />
+    <Compile Include="..\Helpers\FtsQuery.cs" Link="Linked\FtsQuery.cs" />
+    <!-- SQLite notes store (M3b) -->
+    <Compile Include="..\Models\ObservationNote.cs" Link="Linked\ObservationNote.cs" />
+    <Compile Include="..\Services\Database\AppDatabase.cs" Link="Linked\Database\AppDatabase.cs" />
+    <Compile Include="..\Services\Database\ObservationNoteStore.cs" Link="Linked\Database\ObservationNoteStore.cs" />
     <Compile Include="..\Services\CAOM2Parser.cs" Link="Linked\CAOM2Parser.cs" />
     <Compile Include="..\Services\ICAOM2Service.cs" Link="Linked\ICAOM2Service.cs" />
     <Compile Include="..\Services\CAOM2Service.cs" Link="Linked\CAOM2Service.cs" />
