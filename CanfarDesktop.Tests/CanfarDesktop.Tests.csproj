@@ -30,6 +30,7 @@
     <Compile Include="..\Services\ISessionService.cs" Link="Linked\ISessionService.cs" />
     <Compile Include="..\Helpers\ApiEndpoints.cs" Link="Linked\ApiEndpoints.cs" />
     <!-- M1 security + legal (pure, no WinUI deps) -->
+    <Compile Include="..\Helpers\Sexagesimal.cs" Link="Linked\Sexagesimal.cs" />
     <Compile Include="..\Helpers\TrustedHosts.cs" Link="Linked\TrustedHosts.cs" />
     <Compile Include="..\Helpers\LogScrubber.cs" Link="Linked\LogScrubber.cs" />
     <Compile Include="..\Helpers\LegalTerms.cs" Link="Linked\LegalTerms.cs" />

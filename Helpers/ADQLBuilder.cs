@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Helpers;
@@ -106,12 +107,32 @@ public static class ADQLBuilder
 
     private static void AddSpatialClauses(SearchFormState s, List<string> c)
     {
-        if (!string.IsNullOrWhiteSpace(s.Target) || s.ResolvedRA is not null)
+        var target = s.Target?.Trim() ?? string.Empty;
+        if (target.Length > 0)
         {
-            if (s.ResolvedRA is not null && s.ResolvedDec is not null)
+            // Precedence mirrors the macOS SpatialBuilder: a coordinate-range box, then a
+            // direct coordinate pair (decimal OR sexagesimal), then resolved name coords,
+            // then a plain target-name substring match.
+            if (TryParseCoordRange(target, out var raLo, out var raHi, out var decLo, out var decHi))
+            {
+                c.Add($"INTERSECTS( RANGE_S2D({F(raLo)}, {F(raHi)}, {F(decLo)}, {F(decHi)}), Plane.position_bounds ) = 1");
+            }
+            else if (TryParseCoordinatePair(target, s.SearchRadius, out var ra, out var dec, out var radius))
+            {
+                c.Add($"INTERSECTS( CIRCLE('ICRS', {F(ra)}, {F(dec)}, {F(radius)}), Plane.position_bounds ) = 1");
+            }
+            else if (s.ResolvedRA is not null && s.ResolvedDec is not null)
+            {
                 c.Add($"INTERSECTS( CIRCLE('ICRS', {F(s.ResolvedRA.Value)}, {F(s.ResolvedDec.Value)}, {F(s.SearchRadius)}), Plane.position_bounds ) = 1");
-            else if (!string.IsNullOrWhiteSpace(s.Target))
-                c.Add($"lower(Observation.target_name) LIKE '%{EscapeLike(s.Target.ToLower())}%'");
+            }
+            else
+            {
+                c.Add($"lower(Observation.target_name) LIKE '%{EscapeLike(target.ToLower())}%'");
+            }
+        }
+        else if (s.ResolvedRA is not null && s.ResolvedDec is not null)
+        {
+            c.Add($"INTERSECTS( CIRCLE('ICRS', {F(s.ResolvedRA.Value)}, {F(s.ResolvedDec.Value)}, {F(s.SearchRadius)}), Plane.position_bounds ) = 1");
         }
 
         // Pixel scale
@@ -119,6 +140,83 @@ public static class ADQLBuilder
             AddConvertedRangeClause("Plane.position_sampleSize", psRange, s.PixelScaleUnit, c,
                 (v, u) => UnitConverter.TryConvertToDegrees(v, u, out var d) ? d : (double?)null);
     }
+
+    /// <summary>
+    /// Parse a coordinate-range box "raLo..raHi decLo..decHi" (decimal degrees) for a
+    /// RANGE_S2D search. Returns false unless the input is exactly two ".."-ranges.
+    /// </summary>
+    internal static bool TryParseCoordRange(string input, out double raLo, out double raHi, out double decLo, out double decHi)
+    {
+        raLo = raHi = decLo = decHi = 0;
+        var parts = input.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2 || !parts[0].Contains("..") || !parts[1].Contains("..")) return false;
+
+        var raParts = parts[0].Split("..", StringSplitOptions.None);
+        var decParts = parts[1].Split("..", StringSplitOptions.None);
+        if (raParts.Length != 2 || decParts.Length != 2) return false;
+
+        return TryDeg(raParts[0], out raLo) && TryDeg(raParts[1], out raHi)
+            && TryDeg(decParts[0], out decLo) && TryDeg(decParts[1], out decHi);
+    }
+
+    /// <summary>
+    /// Parse a direct coordinate pair "RA DEC [radius]" from the target field. RA/Dec may be
+    /// decimal degrees ("10.68 41.27") or colon-delimited sexagesimal ("10:42:44 +41:16:09").
+    /// Radius is optional with an optional unit (deg/arcmin/arcsec or '). Returns false for a
+    /// plain name like "M31".
+    /// </summary>
+    internal static bool TryParseCoordinatePair(string input, double defaultRadius, out double ra, out double dec, out double radius)
+    {
+        ra = dec = 0;
+        radius = defaultRadius;
+        var parts = input.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2) return false;
+        if (!TryParseAngle(parts[0], isRa: true, out ra)) return false;
+        if (!TryParseAngle(parts[1], isRa: false, out dec)) return false;
+        if (ra < 0 || ra > 360 || dec < -90 || dec > 90) return false;
+
+        if (parts.Length >= 3)
+        {
+            var parsed = ParseRadius(parts[2]);
+            if (parsed > 0) radius = parsed;
+        }
+        return true;
+    }
+
+    /// <summary>Decimal degrees, or colon-delimited sexagesimal (RA in hours, Dec in degrees).</summary>
+    private static bool TryParseAngle(string token, bool isRa, out double deg)
+    {
+        if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out deg))
+            return true; // decimal degrees
+        if (token.Contains(':'))
+        {
+            var v = isRa ? Sexagesimal.ParseRa(token) : Sexagesimal.ParseDec(token);
+            if (v is not null) { deg = v.Value; return true; }
+        }
+        return false;
+    }
+
+    private static readonly Regex RadiusRegex =
+        new(@"([0-9.eE+\-]+)\s*(arcmin|arcsec|deg)?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    /// <summary>Parse a radius token with optional unit to degrees. Returns 0 if unparseable.</summary>
+    private static double ParseRadius(string input)
+    {
+        var trimmed = input.Trim().Replace("'", "arcmin");
+        var m = RadiusRegex.Match(trimmed);
+        if (!m.Success || !double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+            return 0;
+        if (m.Groups[2].Success)
+        {
+            var unit = m.Groups[2].Value.ToLowerInvariant();
+            if (unit == "arcmin") return value / 60.0;
+            if (unit == "arcsec") return value / 3600.0;
+        }
+        return value; // deg or none
+    }
+
+    private static bool TryDeg(string token, out double value)
+        => double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
 
     #endregion
 
