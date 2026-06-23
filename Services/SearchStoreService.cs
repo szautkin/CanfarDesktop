@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Windows.Storage;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Services;
@@ -19,6 +20,7 @@ public interface ISearchStoreService
 public class SearchStoreService : ISearchStoreService
 {
     private const int MaxRecentSearches = 20;
+    private const int SchemaVersion = 1;
     private const string RecentFile = "recent_searches.json";
     private const string SavedFile = "saved_queries.json";
 
@@ -41,37 +43,19 @@ public class SearchStoreService : ISearchStoreService
     }
 
     public List<RecentSearch> LoadRecentSearches()
-    {
-        if (_recentPath is null || !File.Exists(_recentPath)) return [];
-        try
-        {
-            var json = File.ReadAllText(_recentPath);
-            return JsonSerializer.Deserialize<List<RecentSearch>>(json, JsonOptions) ?? [];
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Failed to load recent searches: {ex.Message}");
-            return [];
-        }
-    }
+        => DiskPersistence.Read(_recentPath, SchemaVersion, () => new List<RecentSearch>(), JsonOptions).Value;
 
     public void SaveRecentSearch(RecentSearch search)
     {
-        if (_recentPath is null) return;
         var list = LoadRecentSearches();
         list.Insert(0, search);
         if (list.Count > MaxRecentSearches)
             list.RemoveRange(MaxRecentSearches, list.Count - MaxRecentSearches);
-
-        File.WriteAllText(_recentPath, JsonSerializer.Serialize(list, JsonOptions));
+        DiskPersistence.Write(_recentPath, list, SchemaVersion, JsonOptions);
     }
 
     public void SaveAllRecentSearches(IEnumerable<RecentSearch> searches)
-    {
-        if (_recentPath is null) return;
-        var list = searches.ToList();
-        File.WriteAllText(_recentPath, JsonSerializer.Serialize(list, JsonOptions));
-    }
+        => DiskPersistence.Write(_recentPath, searches.ToList(), SchemaVersion, JsonOptions);
 
     public void ClearRecentSearches()
     {
@@ -80,34 +64,20 @@ public class SearchStoreService : ISearchStoreService
     }
 
     public List<SavedQuery> LoadSavedQueries()
-    {
-        if (_savedPath is null || !File.Exists(_savedPath)) return [];
-        try
-        {
-            var json = File.ReadAllText(_savedPath);
-            return JsonSerializer.Deserialize<List<SavedQuery>>(json, JsonOptions) ?? [];
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Failed to load saved queries: {ex.Message}");
-            return [];
-        }
-    }
+        => DiskPersistence.Read(_savedPath, SchemaVersion, () => new List<SavedQuery>(), JsonOptions).Value;
 
     public void SaveQuery(SavedQuery query)
     {
-        if (_savedPath is null) return;
         var list = LoadSavedQueries();
         list.RemoveAll(q => q.Name == query.Name);
         list.Insert(0, query);
-        File.WriteAllText(_savedPath, JsonSerializer.Serialize(list, JsonOptions));
+        DiskPersistence.Write(_savedPath, list, SchemaVersion, JsonOptions);
     }
 
     public void DeleteQuery(string name)
     {
-        if (_savedPath is null) return;
         var list = LoadSavedQueries();
         list.RemoveAll(q => q.Name == name);
-        File.WriteAllText(_savedPath, JsonSerializer.Serialize(list, JsonOptions));
+        DiskPersistence.Write(_savedPath, list, SchemaVersion, JsonOptions);
     }
 }

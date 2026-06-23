@@ -1,16 +1,19 @@
 using System.Text.Json;
 using Windows.Storage;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Services;
 
 /// <summary>
-/// Persists downloaded observation metadata to JSON on disk.
-/// Validates file existence on load, removes stale entries.
+/// Persists downloaded observation metadata to JSON on disk via a versioned, resilient
+/// envelope (corrupt files are quarantined, newer-schema files are not clobbered).
+/// Missing-file observations are kept, not pruned, so metadata survives offline/remounted volumes.
 /// </summary>
 public class ObservationStore
 {
     private const string FileName = "downloaded_observations.json";
+    private const int SchemaVersion = 1;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -30,12 +33,9 @@ public class ObservationStore
         {
             var folder = ApplicationData.Current.LocalFolder.Path;
             _filePath = Path.Combine(folder, FileName);
-            _observations = ReadFromDisk();
-
-            var before = _observations.Count;
-            _observations.RemoveAll(o => !o.FileExists);
-            if (_observations.Count != before)
-                WriteToDisk();
+            // Do NOT prune missing-file observations — preserve metadata for offline/remounted volumes.
+            _observations = DiskPersistence.Read(_filePath, SchemaVersion,
+                () => new List<DownloadedObservation>(), JsonOptions).Value;
         }
         catch (Exception ex)
         {
@@ -100,31 +100,9 @@ public class ObservationStore
         }
     }
 
-    private List<DownloadedObservation> ReadFromDisk()
-    {
-        if (_filePath is null || !File.Exists(_filePath)) return [];
-        try
-        {
-            var json = File.ReadAllText(_filePath);
-            return JsonSerializer.Deserialize<List<DownloadedObservation>>(json, JsonOptions) ?? [];
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"ObservationStore read failed: {ex.Message}");
-            return [];
-        }
-    }
-
     private void WriteToDisk()
     {
         if (_filePath is null) return;
-        try
-        {
-            File.WriteAllText(_filePath, JsonSerializer.Serialize(_observations, JsonOptions));
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"ObservationStore write failed: {ex.Message}");
-        }
+        DiskPersistence.Write(_filePath, _observations, SchemaVersion, JsonOptions);
     }
 }
