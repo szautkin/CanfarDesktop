@@ -31,6 +31,11 @@
     <Compile Include="..\Services\ISessionService.cs" Link="Linked\ISessionService.cs" />
     <Compile Include="..\Services\HeadlessLaunchException.cs" Link="Linked\HeadlessLaunchException.cs" />
     <Compile Include="..\Helpers\HeadlessRequestBuilder.cs" Link="Linked\HeadlessRequestBuilder.cs" />
+    <!-- Image discovery backend (M4b) -->
+    <Compile Include="..\Models\ImageDiscovery\ImageManifest.cs" Link="Linked\ImageDiscovery\ImageManifest.cs" />
+    <Compile Include="..\Models\ImageDiscovery\PackageQuery.cs" Link="Linked\ImageDiscovery\PackageQuery.cs" />
+    <Compile Include="..\Services\ImageDiscovery\ManifestParser.cs" Link="Linked\ImageDiscovery\ManifestParser.cs" />
+    <Compile Include="..\Helpers\RollingTagPolicy.cs" Link="Linked\ImageDiscovery\RollingTagPolicy.cs" />
     <Compile Include="..\Helpers\ApiEndpoints.cs" Link="Linked\ApiEndpoints.cs" />
     <!-- M1 security + legal (pure, no WinUI deps) -->
     <Compile Include="..\Helpers\Sexagesimal.cs" Link="Linked\Sexagesimal.cs" />
