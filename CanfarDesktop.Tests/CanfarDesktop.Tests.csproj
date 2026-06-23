@@ -25,6 +25,12 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
   </ItemGroup>
 
+  <!-- Embed the probe scripts so EmbeddedProbeScripts.FromAssembly resolves them in tests too. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\Resources\ImageDiscovery\probe.sh" Link="ImageDiscovery\probe.sh" />
+    <EmbeddedResource Include="..\Resources\ImageDiscovery\inspector.sh" Link="ImageDiscovery\inspector.sh" />
+  </ItemGroup>
+
   <!-- Link only the source files we need to test (avoids loading WinUI module initializer) -->
   <ItemGroup>
     <Compile Include="..\Services\SessionService.cs" Link="Linked\SessionService.cs" />
@@ -44,6 +50,7 @@
     <Compile Include="..\Helpers\Sha256.cs" Link="Linked\ImageDiscovery\Sha256.cs" />
     <Compile Include="..\Services\ImageDiscovery\ImageProbeFacades.cs" Link="Linked\ImageDiscovery\ImageProbeFacades.cs" />
     <Compile Include="..\Services\ImageDiscovery\ImageDiscoveryCoordinator.cs" Link="Linked\ImageDiscovery\ImageDiscoveryCoordinator.cs" />
+    <Compile Include="..\Services\ImageDiscovery\EmbeddedProbeScripts.cs" Link="Linked\ImageDiscovery\EmbeddedProbeScripts.cs" />
     <Compile Include="..\Helpers\ApiEndpoints.cs" Link="Linked\ApiEndpoints.cs" />
     <!-- M1 security + legal (pure, no WinUI deps) -->
     <Compile Include="..\Helpers\Sexagesimal.cs" Link="Linked\Sexagesimal.cs" />

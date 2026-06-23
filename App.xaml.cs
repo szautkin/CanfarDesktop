@@ -4,6 +4,7 @@ using CanfarDesktop.Helpers;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.Database;
 using CanfarDesktop.Services.Fits;
+using CanfarDesktop.Services.ImageDiscovery;
 using CanfarDesktop.Services.HttpClients;
 using CanfarDesktop.Services.Notebook;
 using CanfarDesktop.ViewModels;
@@ -86,6 +87,18 @@ public partial class App : Application
         }
     }
 
+    private static string ResolveManifestCacheDir()
+    {
+        try
+        {
+            return Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, "ImageDiscovery", "manifests");
+        }
+        catch
+        {
+            return Path.Combine(Path.GetTempPath(), "Verbinal", "ImageDiscovery", "manifests");
+        }
+    }
+
     private static IServiceProvider ConfigureServices()
     {
         var services = new ServiceCollection();
@@ -133,6 +146,18 @@ public partial class App : Application
             client.Timeout = TimeSpan.FromMinutes(5));
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddHttpClient<DataLinkService>();
+
+        // Image discovery (probe-job coordinator + per-image manifest cache)
+        services.AddSingleton<IProbeScriptProvider>(_ => EmbeddedProbeScripts.FromAssembly(typeof(App).Assembly));
+        services.AddSingleton<IManifestStore>(_ => new JsonManifestStore(ResolveManifestCacheDir()));
+        services.AddSingleton<IHeadlessProbeLauncher, HeadlessProbeAdapter>();
+        services.AddSingleton<IVoSpaceFileTransfer, VoSpaceFileTransferAdapter>();
+        services.AddSingleton(sp => new ImageDiscoveryCoordinator(
+            sp.GetRequiredService<IManifestStore>(),
+            sp.GetRequiredService<IHeadlessProbeLauncher>(),
+            sp.GetRequiredService<IVoSpaceFileTransfer>(),
+            sp.GetRequiredService<IProbeScriptProvider>(),
+            () => sp.GetRequiredService<IAuthService>().CurrentUsername ?? string.Empty));
         // CAOM2 metadata (auth'd — proprietary collections need the token; host-allowlisted)
         services.AddHttpClient<ICAOM2Service, CAOM2Service>()
             .AddHttpMessageHandler<AuthTokenHandler>();

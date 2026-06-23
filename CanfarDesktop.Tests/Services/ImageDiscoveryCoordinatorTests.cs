@@ -86,7 +86,7 @@ public class ImageDiscoveryCoordinatorTests
     });
 
     private static ImageDiscoveryCoordinator Make(FakeStore store, FakeHeadless hl, FakeVoSpace vs)
-        => new(store, hl, vs, new FakeScripts(), "alice",
+        => new(store, hl, vs, new FakeScripts(), () => "alice",
             imageTypesLookup: _ => Task.FromResult<IReadOnlyList<string>?>(new[] { "headless" }),
             raceDelay: _ => Task.CompletedTask,
             pollDelay: () => Task.CompletedTask,

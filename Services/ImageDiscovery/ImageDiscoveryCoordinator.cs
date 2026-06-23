@@ -17,7 +17,7 @@ public class ImageDiscoveryCoordinator
     private readonly IHeadlessProbeLauncher _headless;
     private readonly IVoSpaceFileTransfer _vospace;
     private readonly IProbeScriptProvider _scripts;
-    private readonly string _username;
+    private readonly Func<string> _usernameProvider;
 
     private readonly Func<string, Task<IReadOnlyList<string>?>> _imageTypesLookup;
     private readonly Func<Task<string?>> _registryAuthProvider;
@@ -37,7 +37,7 @@ public class ImageDiscoveryCoordinator
         IHeadlessProbeLauncher headless,
         IVoSpaceFileTransfer vospace,
         IProbeScriptProvider scripts,
-        string username,
+        Func<string> usernameProvider,
         Func<string, Task<IReadOnlyList<string>?>>? imageTypesLookup = null,
         Func<Task<string?>>? registryAuthProvider = null,
         Func<Task<string>>? inspectorImageResolver = null,
@@ -49,7 +49,7 @@ public class ImageDiscoveryCoordinator
         _headless = headless;
         _vospace = vospace;
         _scripts = scripts;
-        _username = username;
+        _usernameProvider = usernameProvider;
         _imageTypesLookup = imageTypesLookup ?? (_ => Task.FromResult<IReadOnlyList<string>?>(null));
         _registryAuthProvider = registryAuthProvider ?? (() => Task.FromResult<string?>(null));
         _inspectorImageResolver = inspectorImageResolver ?? (() => Task.FromResult("images.canfar.net/skaha/terminal:1.1.2"));
@@ -193,13 +193,14 @@ public class ImageDiscoveryCoordinator
             var body = inTarget ? _scripts.ProbeBody : _scripts.InspectorBody;
             var fileName = inTarget ? _scripts.ProbeUploadFileName : _scripts.InspectorUploadFileName;
 
-            await _vospace.EnsureFolderAsync(_username, string.Empty, _scripts.HomeSubdirectory, ct);
+            var username = _usernameProvider();
+            await _vospace.EnsureFolderAsync(username, string.Empty, _scripts.HomeSubdirectory, ct);
 
             var tempPath = Path.Combine(Path.GetTempPath(), $"verbinal-{fileName}");
             await File.WriteAllTextAsync(tempPath, body, ct);
             try
             {
-                await _vospace.UploadFileAsync(_username, $"{_scripts.HomeSubdirectory}/{fileName}", tempPath, ct);
+                await _vospace.UploadFileAsync(username, $"{_scripts.HomeSubdirectory}/{fileName}", tempPath, ct);
             }
             finally
             {
@@ -243,7 +244,7 @@ public class ImageDiscoveryCoordinator
     private async Task<string> LaunchProbeJobAsync(string imageID, CancellationToken ct)
     {
         var name = DiscoveryHeuristics.MakeJobName("vp", imageID, DiscoveryHeuristics.NewJobSuffix());
-        var scriptPath = $"/arc/home/{_username}/{_scripts.HomeSubdirectory}/{_scripts.ProbeUploadFileName}";
+        var scriptPath = $"/arc/home/{_usernameProvider()}/{_scripts.HomeSubdirectory}/{_scripts.ProbeUploadFileName}";
         var p = new SessionLaunchParams
         {
             Image = imageID, Name = name, Cmd = "bash", Args = scriptPath,
@@ -258,7 +259,7 @@ public class ImageDiscoveryCoordinator
     private async Task<string> LaunchInspectorJobAsync(string targetImageID, CancellationToken ct)
     {
         var name = DiscoveryHeuristics.MakeJobName("vi", targetImageID, DiscoveryHeuristics.NewJobSuffix());
-        var scriptPath = $"/arc/home/{_username}/{_scripts.HomeSubdirectory}/{_scripts.InspectorUploadFileName}";
+        var scriptPath = $"/arc/home/{_usernameProvider()}/{_scripts.HomeSubdirectory}/{_scripts.InspectorUploadFileName}";
         var p = new SessionLaunchParams
         {
             Image = await _inspectorImageResolver(), Name = name, Cmd = "bash", Args = scriptPath,
@@ -293,7 +294,7 @@ public class ImageDiscoveryCoordinator
     private async Task<string> FetchManifestDataAsync(string imageID, CancellationToken ct)
     {
         var path = $"{_scripts.HomeSubdirectory}/manifests/{ImageManifest.Sanitize(imageID)}.json";
-        var temp = await _vospace.DownloadToTempAsync(_username, path, ct);
+        var temp = await _vospace.DownloadToTempAsync(_usernameProvider(), path, ct);
         try { return await File.ReadAllTextAsync(temp, ct); }
         finally { try { File.Delete(temp); } catch { /* best effort */ } }
     }
