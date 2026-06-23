@@ -29,7 +29,8 @@ public sealed partial class DashboardPage : Page
         IRecentLaunchService recentLaunchService,
         ISessionService sessionService,
         IImageService imageService,
-        ImageDiscoveryCoordinator imageDiscoveryCoordinator)
+        ImageDiscoveryCoordinator imageDiscoveryCoordinator,
+        ImageDiscoverySettingsService imageDiscoverySettings)
     {
         InitializeComponent();
 
@@ -41,7 +42,7 @@ public sealed partial class DashboardPage : Page
         _storageQuota = new StorageQuotaControl(storageVm);
         _batchJobs = new BatchJobsControl(sessionService);
         _recentLaunches = new RecentLaunchesControl(recentLaunchService);
-        _canfarImages = new CanfarImagesControl(imageService, imageDiscoveryCoordinator);
+        _canfarImages = new CanfarImagesControl(imageService, imageDiscoveryCoordinator, imageDiscoverySettings);
 
         SessionListContainer.Child = _sessionList;
         LaunchFormContainer.Child = _launchForm;

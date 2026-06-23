@@ -40,6 +40,7 @@
     <!-- Image discovery backend (M4b) -->
     <Compile Include="..\Models\ImageDiscovery\ImageManifest.cs" Link="Linked\ImageDiscovery\ImageManifest.cs" />
     <Compile Include="..\Models\ImageDiscovery\PackageQuery.cs" Link="Linked\ImageDiscovery\PackageQuery.cs" />
+    <Compile Include="..\Models\ImageDiscovery\ImageDiscoverySettings.cs" Link="Linked\ImageDiscovery\ImageDiscoverySettings.cs" />
     <Compile Include="..\Services\ImageDiscovery\ManifestParser.cs" Link="Linked\ImageDiscovery\ManifestParser.cs" />
     <Compile Include="..\Helpers\RollingTagPolicy.cs" Link="Linked\ImageDiscovery\RollingTagPolicy.cs" />
     <!-- Image discovery coordinator backbone (M4c) -->

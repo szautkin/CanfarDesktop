@@ -147,17 +147,29 @@ public partial class App : Application
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddHttpClient<DataLinkService>();
 
-        // Image discovery (probe-job coordinator + per-image manifest cache)
+        // Image discovery (probe-job coordinator + per-image manifest cache + settings)
         services.AddSingleton<IProbeScriptProvider>(_ => EmbeddedProbeScripts.FromAssembly(typeof(App).Assembly));
         services.AddSingleton<IManifestStore>(_ => new JsonManifestStore(ResolveManifestCacheDir()));
         services.AddSingleton<IHeadlessProbeLauncher, HeadlessProbeAdapter>();
         services.AddSingleton<IVoSpaceFileTransfer, VoSpaceFileTransferAdapter>();
+        services.AddSingleton<ImageDiscoverySettingsService>();
         services.AddSingleton(sp => new ImageDiscoveryCoordinator(
             sp.GetRequiredService<IManifestStore>(),
             sp.GetRequiredService<IHeadlessProbeLauncher>(),
             sp.GetRequiredService<IVoSpaceFileTransfer>(),
             sp.GetRequiredService<IProbeScriptProvider>(),
-            () => sp.GetRequiredService<IAuthService>().CurrentUsername ?? string.Empty));
+            () => sp.GetRequiredService<IAuthService>().CurrentUsername ?? string.Empty,
+            imageTypesLookup: async imageId =>
+            {
+                try
+                {
+                    var images = await sp.GetRequiredService<IImageService>().GetImagesAsync();
+                    return images.FirstOrDefault(i => i.Id == imageId)?.Types;
+                }
+                catch { return null; }
+            },
+            registryAuthProvider: () => Task.FromResult(sp.GetRequiredService<ImageDiscoverySettingsService>().CurrentAuthHeader()),
+            inspectorImageResolver: () => Task.FromResult(sp.GetRequiredService<ImageDiscoverySettingsService>().ResolveInspectorImage())));
         // CAOM2 metadata (auth'd — proprietary collections need the token; host-allowlisted)
         services.AddHttpClient<ICAOM2Service, CAOM2Service>()
             .AddHttpMessageHandler<AuthTokenHandler>();

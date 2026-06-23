@@ -34,15 +34,30 @@ public sealed partial class CanfarImagesControl : UserControl
 {
     private readonly IImageService _imageService;
     private readonly ImageDiscoveryCoordinator _coordinator;
+    private readonly ImageDiscoverySettingsService _settings;
     private readonly ObservableCollection<CanfarImageRow> _rows = new();
     private List<RawImage> _images = new();
 
-    public CanfarImagesControl(IImageService imageService, ImageDiscoveryCoordinator coordinator)
+    public CanfarImagesControl(IImageService imageService, ImageDiscoveryCoordinator coordinator, ImageDiscoverySettingsService settings)
     {
         InitializeComponent();
         _imageService = imageService;
         _coordinator = coordinator;
+        _settings = settings;
         ImageList.ItemsSource = _rows;
+    }
+
+    private async void OnSettingsClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new ImageDiscoverySettingsDialog(_settings) { XamlRoot = XamlRoot };
+            await dialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Image discovery settings error: {ex.Message}");
+        }
     }
 
     public async Task LoadAsync()

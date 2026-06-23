@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="CanfarDesktop.Views.Dialogs.ImageDiscoverySettingsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Image Discovery settings"
+    PrimaryButtonText="Save"
+    SecondaryButtonText="Reset to defaults"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12" Width="440">
+            <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Text="Choose the host image used to inspect non-headless images, and (optionally) registry credentials for pulling private images." />
+
+            <TextBox x:Name="InspectorImageBox" Header="Inspector image"
+                     PlaceholderText="images.canfar.net/skaha/terminal:1.1.2" />
+            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       Text="The headless host that runs syft against a non-headless target image. Must ship bash + python3 + curl/wget. Leave blank to use the default." />
+
+            <TextBox x:Name="RegistryHostBox" Header="Registry host" PlaceholderText="images.canfar.net" />
+            <TextBox x:Name="UsernameBox" Header="Registry username" />
+
+            <StackPanel Spacing="4">
+                <PasswordBox x:Name="SecretBox" Header="Registry secret (Harbor CLI secret)" />
+                <TextBlock x:Name="SecretStatus" Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <InfoBar x:Name="ErrorBar" IsOpen="False" IsClosable="True" Severity="Error" />
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>
