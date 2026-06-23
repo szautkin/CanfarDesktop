@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using CanfarDesktop.Models.ImageDiscovery;
 
 namespace CanfarDesktop.ViewModels.ImageDiscovery;
@@ -13,6 +14,9 @@ public sealed class ActiveFilterChip
     public string CategoryLabel { get; }
     public string Value { get; }
     public PackageQuery.Category? Category { get; }
+
+    /// <summary>The parent VM's RemoveChip command (bound by the chip template so it needs no ElementName).</summary>
+    public ICommand? RemoveCommand { get; init; }
 
     public ActiveFilterChip(string id, string categoryLabel, string value, PackageQuery.Category? category)
     {

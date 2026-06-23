@@ -95,7 +95,7 @@ public sealed partial class CanfarImagesControl : UserControl
     {
         try
         {
-            var dialog = new ImageDiscoveryDialog(_coordinator) { XamlRoot = XamlRoot };
+            var dialog = new ImageDiscoveryDialog(_coordinator, _images) { XamlRoot = XamlRoot };
             await dialog.ShowAsync();
         }
         catch (Exception ex)

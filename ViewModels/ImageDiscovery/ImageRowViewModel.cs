@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using CanfarDesktop.Helpers.ImageDiscovery;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.ImageDiscovery;
@@ -47,11 +48,22 @@ public partial class ImageRowViewModel : ObservableObject
     [ObservableProperty] private RowState _state;
     [ObservableProperty] private bool _isSelected;
 
-    public ImageRowViewModel(ParsedImage image, RowState state)
+    private readonly Func<ImageRowViewModel, bool, Task>? _discover;
+    private readonly Action<ImageRowViewModel>? _dismiss;
+
+    public ImageRowViewModel(ParsedImage image, RowState state,
+        Func<ImageRowViewModel, bool, Task>? discover = null,
+        Action<ImageRowViewModel>? dismiss = null)
     {
         Image = image;
         _state = state;
+        _discover = discover;
+        _dismiss = dismiss;
     }
+
+    [RelayCommand] private Task Discover() => _discover?.Invoke(this, false) ?? Task.CompletedTask;
+    [RelayCommand] private Task Rediscover() => _discover?.Invoke(this, true) ?? Task.CompletedTask;
+    [RelayCommand] private void Dismiss() => _dismiss?.Invoke(this);
 
     public bool IsDiscovered => State.Kind == RowStateKind.Discovered;
     public bool IsRunning => State.Kind == RowStateKind.Running;

@@ -204,4 +204,26 @@ public class ImageDiscoveryViewModelTests
         var vm = Sample();
         Assert.Equal(new[] { "All", "notebook", "carta", "headless" }, vm.SessionTypeOptions);
     }
+
+    [Fact]
+    public void FilterItems_FlattensHeadersAndValues_ForVirtualizedList()
+    {
+        var vm = Sample();
+        // Each section header is followed by its value rows.
+        Assert.Contains(vm.FilterItems, o => o is FacetSectionViewModel);
+        Assert.Contains(vm.FilterItems, o => o is FacetValueViewModel f && f.Value == "numpy");
+    }
+
+    [Fact]
+    public void PackageSearch_FiltersFilterItems()
+    {
+        var vm = Sample();
+        vm.PackageSearchText = "scipy";
+
+        var values = vm.FilterItems.OfType<FacetValueViewModel>().Select(v => v.Value).ToList();
+        Assert.Contains("scipy", values);
+        Assert.DoesNotContain("numpy", values);
+        // Sections with no surviving values drop out entirely.
+        Assert.DoesNotContain(vm.FilterItems.OfType<FacetSectionViewModel>(), s => s.Category == PackageQuery.Category.OsFamily);
+    }
 }

@@ -41,6 +41,14 @@ public partial class ImageDiscoveryViewModel : ObservableObject
     public PackageQuery Query { get; private set; } = new();
 
     public ObservableCollection<FacetSectionViewModel> FilterSections { get; } = new();
+
+    /// <summary>
+    /// Flattened section-headers + visible value rows for a single VIRTUALIZED left-pane ListView
+    /// (a non-virtualized CheckBox-per-row panel would leak on huge dpkg/rpm lists — the data-train
+    /// rule). Headers are <see cref="FacetSectionViewModel"/>, rows are <see cref="FacetValueViewModel"/>.
+    /// </summary>
+    public ObservableCollection<object> FilterItems { get; } = new();
+
     public ObservableCollection<ActiveFilterChip> ActiveChips { get; } = new();
     public ObservableCollection<ImageRowGroup> FilteredGroups { get; } = new();
     public ObservableCollection<string> SessionTypeOptions { get; } = new();
@@ -52,10 +60,14 @@ public partial class ImageDiscoveryViewModel : ObservableObject
 
     /// <summary>The session-type filter, or null when "All" is selected.</summary>
     private string? EffectiveType => SelectedSessionType == AllTypesOption ? null : SelectedSessionType;
+    [ObservableProperty] private bool _isDiscoveryRunning;
     [ObservableProperty] private string _discoveredSubtitle = string.Empty;
     [ObservableProperty] private bool _hasActiveFilters;
     [ObservableProperty] private bool _hasFailures;
     [ObservableProperty] private bool _isEmptyResult;
+
+    public bool HasSelection => SelectedRow is not null;
+    partial void OnSelectedRowChanged(ImageRowViewModel? value) => OnPropertyChanged(nameof(HasSelection));
 
     public const string AllTypesOption = "All";
 
@@ -75,7 +87,11 @@ public partial class ImageDiscoveryViewModel : ObservableObject
         {
             var parsed = ImageParser.Parse(raw);
             _allImages.Add(parsed);
-            _rowsById[parsed.Id] = new ImageRowViewModel(parsed, RowState.FromOutcome(_coordinator.Outcome(parsed.Id)));
+            _rowsById[parsed.Id] = new ImageRowViewModel(
+                parsed,
+                RowState.FromOutcome(_coordinator.Outcome(parsed.Id)),
+                discover: (row, force) => RunDiscoveryAsync(row, force),
+                dismiss: DismissError);
         }
 
         SessionTypeOptions.Clear();
@@ -164,24 +180,22 @@ public partial class ImageDiscoveryViewModel : ObservableObject
     {
         var section = FilterSections.FirstOrDefault(s => s.Category == PackageQuery.Category.OsVersion);
         var values = CandidateValues(PackageQuery.Category.OsVersion);
-        if (section is null)
+
+        if (section is null && values.Count > 0)
         {
-            if (values.Count == 0) return;
             // Insert in pinned position (right after OS family).
-            var rebuilt = new FacetSectionViewModel("OS version", PackageQuery.Category.OsVersion);
-            foreach (var v in values)
-                rebuilt.Values.Add(new FacetValueViewModel(v, PackageQuery.Category.OsVersion, Query.OsVersions.Contains(v), OnFacetToggled));
-            rebuilt.CountBadge = rebuilt.Values.Count;
-            var familyIdx = IndexOfSection(PackageQuery.Category.OsFamily);
-            FilterSections.Insert(familyIdx + 1, rebuilt);
-            return;
+            section = new FacetSectionViewModel("OS version", PackageQuery.Category.OsVersion);
+            FilterSections.Insert(IndexOfSection(PackageQuery.Category.OsFamily) + 1, section);
         }
+        if (section is null) return; // none existed and none to show
 
         section.Values.Clear();
         foreach (var v in values)
             section.Values.Add(new FacetValueViewModel(v, PackageQuery.Category.OsVersion, Query.OsVersions.Contains(v), OnFacetToggled));
         section.CountBadge = section.Values.Count;
         if (values.Count == 0) FilterSections.Remove(section);
+
+        ApplyPackageSearch(); // sets IsVisible on the new values + reflattens FilterItems
     }
 
     private int IndexOfSection(PackageQuery.Category category)
@@ -232,7 +246,7 @@ public partial class ImageDiscoveryViewModel : ObservableObject
     {
         ActiveChips.Clear();
         if (EffectiveType is { } type)
-            ActiveChips.Add(new ActiveFilterChip($"type:{type}", "Type", type, null));
+            ActiveChips.Add(new ActiveFilterChip($"type:{type}", "Type", type, null) { RemoveCommand = RemoveChipCommand });
 
         AddChips(PackageQuery.Category.OsFamily, "OS family", Query.OsFamilies);
         AddChips(PackageQuery.Category.OsVersion, "OS version", Query.OsVersions);
@@ -247,7 +261,7 @@ public partial class ImageDiscoveryViewModel : ObservableObject
     private void AddChips(PackageQuery.Category category, string label, IEnumerable<string> values)
     {
         foreach (var v in values.OrderBy(x => x, StringComparer.Ordinal))
-            ActiveChips.Add(new ActiveFilterChip($"{category}:{v}", label, v, category));
+            ActiveChips.Add(new ActiveFilterChip($"{category}:{v}", label, v, category) { RemoveCommand = RemoveChipCommand });
     }
 
     private void RecomputeFiltered()
@@ -300,6 +314,20 @@ public partial class ImageDiscoveryViewModel : ObservableObject
             section.CountBadge = visible;
             section.HasVisibleValues = visible > 0;
         }
+        RebuildFilterItems();
+    }
+
+    /// <summary>Reflatten <see cref="FilterSections"/> (visible rows only) into <see cref="FilterItems"/>.</summary>
+    private void RebuildFilterItems()
+    {
+        FilterItems.Clear();
+        foreach (var section in FilterSections)
+        {
+            var visible = section.Values.Where(v => v.IsVisible).ToList();
+            if (visible.Count == 0) continue;
+            FilterItems.Add(section);
+            foreach (var v in visible) FilterItems.Add(v);
+        }
     }
 
     partial void OnImageSearchTextChanged(string value) => RecomputeFiltered();
@@ -349,6 +377,52 @@ public partial class ImageDiscoveryViewModel : ObservableObject
 
         if (chip.Category.Value == PackageQuery.Category.OsFamily)
             RebuildOsVersionSection();
+        AfterFilterChanged();
+    }
+
+    // ── Per-row discovery (opt-in probing; invoked from the row VMs' commands) ─
+
+    private async Task RunDiscoveryAsync(ImageRowViewModel? row, bool force)
+    {
+        if (row is null) return;
+        row.State = RowState.Running();
+        IsDiscoveryRunning = true;
+        AfterFilterChanged();
+        try
+        {
+            await _coordinator.DiscoverAsync(row.Id, force);
+        }
+        catch
+        {
+            // Failure is persisted in the cache; the row picks it up below.
+        }
+        finally
+        {
+            row.State = RowState.FromOutcome(_coordinator.Outcome(row.Id));
+            _allPackages = _coordinator.AllPackages();
+            _discovered = _coordinator.DiscoveredManifests();
+            BuildSections();           // a fresh probe may have surfaced new packages
+            IsDiscoveryRunning = false;
+            AfterFilterChanged();
+        }
+    }
+
+    private void DismissError(ImageRowViewModel? row)
+    {
+        if (row is null) return;
+        _coordinator.Invalidate(row.Id);
+        row.State = RowState.NeverDiscovered;
+        AfterFilterChanged();
+    }
+
+    [RelayCommand]
+    private void ClearAllFailures()
+    {
+        foreach (var row in _rowsById.Values.Where(r => r.State.Kind == RowStateKind.Failed).ToList())
+        {
+            _coordinator.Invalidate(row.Id);
+            row.State = RowState.NeverDiscovered;
+        }
         AfterFilterChanged();
     }
 }
