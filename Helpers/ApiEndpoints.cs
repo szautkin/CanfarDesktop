@@ -48,4 +48,7 @@ public class ApiEndpoints
     public string Caom2OpsBaseUrl { get; set; } = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops";
     public string DataLinkUrl(string publisherID) => $"{Caom2OpsBaseUrl}/datalink?id={Uri.EscapeDataString(publisherID)}&request=downloads-only";
     public string DownloadUrl(string publisherID) => $"{Caom2OpsBaseUrl}/pkg?ID={Uri.EscapeDataString(publisherID)}";
+
+    // CAOM2 observation metadata (caom:{collection}/{observationID})
+    public string Caom2MetaUrl(string observationUri) => $"{Caom2OpsBaseUrl}/meta?ID={Uri.EscapeDataString(observationUri)}";
 }

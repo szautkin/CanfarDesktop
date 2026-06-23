@@ -130,6 +130,9 @@ public partial class App : Application
             client.Timeout = TimeSpan.FromMinutes(5));
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddHttpClient<DataLinkService>();
+        // CAOM2 metadata (auth'd — proprietary collections need the token; host-allowlisted)
+        services.AddHttpClient<ICAOM2Service, CAOM2Service>()
+            .AddHttpMessageHandler<AuthTokenHandler>();
 
         // FITS viewer services
         services.AddSingleton<ICoordinateStoreService, CoordinateStoreService>();
