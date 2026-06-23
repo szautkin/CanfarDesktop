@@ -36,6 +36,11 @@
     <Compile Include="..\Models\ImageDiscovery\PackageQuery.cs" Link="Linked\ImageDiscovery\PackageQuery.cs" />
     <Compile Include="..\Services\ImageDiscovery\ManifestParser.cs" Link="Linked\ImageDiscovery\ManifestParser.cs" />
     <Compile Include="..\Helpers\RollingTagPolicy.cs" Link="Linked\ImageDiscovery\RollingTagPolicy.cs" />
+    <!-- Image discovery coordinator backbone (M4c) -->
+    <Compile Include="..\Models\ImageDiscovery\LastOutcome.cs" Link="Linked\ImageDiscovery\LastOutcome.cs" />
+    <Compile Include="..\Services\ImageDiscovery\ImageDiscoveryException.cs" Link="Linked\ImageDiscovery\ImageDiscoveryException.cs" />
+    <Compile Include="..\Helpers\DiscoveryHeuristics.cs" Link="Linked\ImageDiscovery\DiscoveryHeuristics.cs" />
+    <Compile Include="..\Services\ImageDiscovery\JsonManifestStore.cs" Link="Linked\ImageDiscovery\JsonManifestStore.cs" />
     <Compile Include="..\Helpers\ApiEndpoints.cs" Link="Linked\ApiEndpoints.cs" />
     <!-- M1 security + legal (pure, no WinUI deps) -->
     <Compile Include="..\Helpers\Sexagesimal.cs" Link="Linked\Sexagesimal.cs" />
