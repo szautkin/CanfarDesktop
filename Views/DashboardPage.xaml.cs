@@ -66,6 +66,7 @@ public sealed partial class DashboardPage : Page
         _sessionList.SessionEventsRequested += OnSessionEvents;
         _launchForm.LaunchRequested += OnLaunchRequested;
         _recentLaunches.RelaunchRequested += OnRelaunchRequested;
+        _canfarImages.UseImageRequested += OnUseImageRequested;
 
         // Update session limit whenever sessions are refreshed (including by polling)
         _sessionListVm.SessionsRefreshed += (_, _) =>
@@ -162,6 +163,12 @@ public sealed partial class DashboardPage : Page
                 await _sessionLaunchVm.LaunchCommand.ExecuteAsync(null);
                 return _sessionLaunchVm.LaunchSuccess;
             });
+    }
+
+    private void OnUseImageRequested(object? sender, string imageId)
+    {
+        _sessionLaunchVm.SelectImageById(imageId);
+        _launchForm.StartBringIntoView(); // scroll the launch form into view so the change is visible
     }
 
     private async void OnRelaunchRequested(object? sender, RecentLaunch launch)

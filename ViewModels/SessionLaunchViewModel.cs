@@ -235,6 +235,38 @@ public partial class SessionLaunchViewModel : ObservableObject
                 img.Id.EndsWith(defaultName, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Pre-select an image in the launch form by its full id (used by the find-by-package "Use this
+    /// image" action). Picks a session type the form supports, switches to its project, and selects
+    /// the image; cascading type/project changes are applied first, then the exact image is restored.
+    /// Falls back to the custom-image URL when the id isn't a launchable catalogue image. Returns true
+    /// when it matched a catalogue image.
+    /// </summary>
+    public bool SelectImageById(string imageId)
+    {
+        if (string.IsNullOrWhiteSpace(imageId)) return false;
+
+        foreach (var type in _imagesByTypeAndProject.Keys.Where(SessionTypes.Contains))
+        {
+            foreach (var (project, images) in _imagesByTypeAndProject[type])
+            {
+                if (images.All(img => img.Id != imageId)) continue;
+
+                UseCustomImage = false;
+                SelectedType = type;        // → UpdateProjects (resets SelectedProject)
+                SelectedProject = project;  // → UpdateImages (populates Images, picks a default)
+                SelectedImage = Images.FirstOrDefault(img => img.Id == imageId)
+                                ?? images.First(img => img.Id == imageId);
+                return true;
+            }
+        }
+
+        // Not a launchable catalogue image (e.g. a private image only known to discovery) → custom URL.
+        UseCustomImage = true;
+        CustomImageUrl = imageId;
+        return false;
+    }
+
     [RelayCommand]
     private async Task LaunchAsync()
     {

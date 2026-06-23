@@ -74,6 +74,9 @@ public sealed partial class CanfarImagesControl : UserControl
     private readonly ObservableCollection<CanfarImageRow> _rows = new();
     private List<RawImage> _images = new();
 
+    /// <summary>Raised when the user picks an image via "Use this image" in the find-by-package dialog.</summary>
+    public event EventHandler<string>? UseImageRequested;
+
     public CanfarImagesControl(IImageService imageService, ImageDiscoveryCoordinator coordinator, ImageDiscoverySettingsService settings)
     {
         InitializeComponent();
@@ -142,8 +145,10 @@ public sealed partial class CanfarImagesControl : UserControl
         try
         {
             var dialog = new ImageDiscoveryDialog(_coordinator, _images) { XamlRoot = XamlRoot };
-            await dialog.ShowAsync();
+            var result = await dialog.ShowAsync();
             RefreshStatuses(); // the dialog may have probed images
+            if (result == ContentDialogResult.Primary && dialog.PickedImageId is { } imageId)
+                UseImageRequested?.Invoke(this, imageId);
         }
         catch (Exception ex)
         {
