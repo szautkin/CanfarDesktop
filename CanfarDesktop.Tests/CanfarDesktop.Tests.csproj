@@ -41,6 +41,9 @@
     <Compile Include="..\Services\ImageDiscovery\ImageDiscoveryException.cs" Link="Linked\ImageDiscovery\ImageDiscoveryException.cs" />
     <Compile Include="..\Helpers\DiscoveryHeuristics.cs" Link="Linked\ImageDiscovery\DiscoveryHeuristics.cs" />
     <Compile Include="..\Services\ImageDiscovery\JsonManifestStore.cs" Link="Linked\ImageDiscovery\JsonManifestStore.cs" />
+    <Compile Include="..\Helpers\Sha256.cs" Link="Linked\ImageDiscovery\Sha256.cs" />
+    <Compile Include="..\Services\ImageDiscovery\ImageProbeFacades.cs" Link="Linked\ImageDiscovery\ImageProbeFacades.cs" />
+    <Compile Include="..\Services\ImageDiscovery\ImageDiscoveryCoordinator.cs" Link="Linked\ImageDiscovery\ImageDiscoveryCoordinator.cs" />
     <Compile Include="..\Helpers\ApiEndpoints.cs" Link="Linked\ApiEndpoints.cs" />
     <!-- M1 security + legal (pure, no WinUI deps) -->
     <Compile Include="..\Helpers\Sexagesimal.cs" Link="Linked\Sexagesimal.cs" />

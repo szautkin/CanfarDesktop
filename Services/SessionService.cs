@@ -103,12 +103,14 @@ public class SessionService : ISessionService
             {
                 Content = new FormUrlEncodedContent(pairs)
             };
-            if (!string.IsNullOrEmpty(launchParams.RegistryUsername))
-            {
-                var authValue = Convert.ToBase64String(
-                    System.Text.Encoding.UTF8.GetBytes($"{launchParams.RegistryUsername}:{launchParams.RegistrySecret ?? ""}"));
-                request.Headers.Add("x-skaha-registry-auth", authValue);
-            }
+            var authHeader = !string.IsNullOrEmpty(launchParams.RegistryAuthHeader)
+                ? launchParams.RegistryAuthHeader
+                : !string.IsNullOrEmpty(launchParams.RegistryUsername)
+                    ? Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(
+                        $"{launchParams.RegistryUsername}:{launchParams.RegistrySecret ?? ""}"))
+                    : null;
+            if (!string.IsNullOrEmpty(authHeader))
+                request.Headers.Add("x-skaha-registry-auth", authHeader);
 
             string? id = null;
             string? failure = null;

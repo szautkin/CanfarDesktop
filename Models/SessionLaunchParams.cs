@@ -22,4 +22,7 @@ public class SessionLaunchParams
 
     public string? RegistryUsername { get; set; }
     public string? RegistrySecret { get; set; }
+    /// <summary>Pre-built <c>x-skaha-registry-auth</c> value (base64 of user:secret). Used in
+    /// preference to <see cref="RegistryUsername"/>/<see cref="RegistrySecret"/> when set.</summary>
+    public string? RegistryAuthHeader { get; set; }
 }
