@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
+using CanfarDesktop.Services.Database;
 using CanfarDesktop.ViewModels;
 
 namespace CanfarDesktop.Views;
@@ -10,12 +11,28 @@ namespace CanfarDesktop.Views;
 public sealed partial class ResearchPage : UserControl
 {
     public ResearchViewModel ViewModel { get; }
+    private readonly ObservationNoteStore _noteStore;
     private CancellationTokenSource? _previewCts;
 
-    public ResearchPage(ResearchViewModel viewModel)
+    // Research-notes editor state. _noteEditId is the publisher ID the editor currently holds;
+    // saving always writes under it, and we flush under the OUTGOING id before loading a new one,
+    // so quick selection switches never cross-contaminate notes.
+    private readonly DispatcherTimer _noteSaveTimer;
+    private string? _noteEditId;
+    private bool _suppressNoteEvents;
+    private TextBox? _noteBox;
+    private RatingControl? _ratingControl;
+    private TextBox? _tagsBox;
+
+    public ResearchPage(ResearchViewModel viewModel, ObservationNoteStore noteStore)
     {
         ViewModel = viewModel;
+        _noteStore = noteStore;
         InitializeComponent();
+
+        _noteSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
+        _noteSaveTimer.Tick += (_, _) => SaveNoteNow();
+
         RefreshList();
     }
 
@@ -36,9 +53,11 @@ public sealed partial class ResearchPage : UserControl
     private void OnFileSelected(object sender, SelectionChangedEventArgs e)
     {
         _previewCts?.Cancel();
+        FlushNote(); // persist the outgoing observation's note before switching
 
         if (e.AddedItems.Count == 0 || e.AddedItems[0] is not DownloadedObservation obs)
         {
+            _noteEditId = null;
             ViewModel.SelectedObservation = null;
             EmptyState.Visibility = Visibility.Visible;
             DetailPanel.Visibility = Visibility.Collapsed;
@@ -151,7 +170,99 @@ public sealed partial class ResearchPage : UserControl
         if (obs.FileSize.HasValue) AddRow("Size", obs.FormattedSize);
         AddRow("Downloaded", obs.DownloadedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"));
         AddRow("File exists", obs.FileExists ? "Yes" : "Missing");
+
+        BuildNotesEditor(obs);
     }
+
+    #region Research notes editor
+
+    private void BuildNotesEditor(DownloadedObservation obs)
+    {
+        // Notes are keyed by publisher ID; without one there's nothing to persist against.
+        if (string.IsNullOrEmpty(obs.PublisherID))
+        {
+            _noteEditId = null;
+            return;
+        }
+
+        // Build the editor, then load the saved note with change events suppressed so the load
+        // itself doesn't trigger an autosave.
+        _suppressNoteEvents = true;
+        _noteEditId = obs.PublisherID;
+
+        var header = new TextBlock
+        {
+            Text = "Research Notes",
+            Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
+            Margin = new Thickness(0, 8, 0, 0),
+        };
+        DetailContent.Children.Add(header);
+
+        _ratingControl = new RatingControl { IsClearEnabled = true, Caption = "rating" };
+        _ratingControl.ValueChanged += (_, _) => OnNoteEdited();
+        DetailContent.Children.Add(_ratingControl);
+
+        _noteBox = new TextBox
+        {
+            PlaceholderText = "Add a note…",
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            MinHeight = 96,
+            Header = "Note",
+        };
+        _noteBox.TextChanged += (_, _) => OnNoteEdited();
+        DetailContent.Children.Add(_noteBox);
+
+        _tagsBox = new TextBox
+        {
+            PlaceholderText = "comma-separated tags",
+            Header = "Tags",
+        };
+        _tagsBox.TextChanged += (_, _) => OnNoteEdited();
+        DetailContent.Children.Add(_tagsBox);
+
+        var saved = string.IsNullOrEmpty(obs.PublisherID) ? null : _noteStore.Get(obs.PublisherID);
+        _noteBox.Text = saved?.Note ?? string.Empty;
+        _ratingControl.Value = saved is { Rating: > 0 } ? saved.Rating : -1; // -1 = unrated placeholder
+        _tagsBox.Text = saved is { Tags.Count: > 0 } ? string.Join(", ", saved.Tags) : string.Empty;
+
+        _suppressNoteEvents = false;
+    }
+
+    private void OnNoteEdited()
+    {
+        if (_suppressNoteEvents) return;
+        _noteSaveTimer.Stop();
+        _noteSaveTimer.Start(); // debounce
+    }
+
+    /// <summary>Persist the editor's current values immediately under the id it is editing.</summary>
+    private void SaveNoteNow()
+    {
+        _noteSaveTimer.Stop();
+        if (_noteEditId is null || _noteBox is null || _ratingControl is null || _tagsBox is null) return;
+
+        var rating = _ratingControl.Value < 0 ? 0 : (int)Math.Round(_ratingControl.Value);
+        var tags = _tagsBox.Text
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        _noteStore.Upsert(new ObservationNote
+        {
+            PublisherID = _noteEditId,
+            Note = _noteBox.Text.Trim(),
+            Rating = rating,
+            Tags = tags,
+            UpdatedUtc = DateTimeOffset.UtcNow,
+        });
+    }
+
+    /// <summary>Flush any pending edit immediately (called before switching observations).</summary>
+    private void FlushNote()
+    {
+        if (_noteSaveTimer.IsEnabled) SaveNoteNow();
+    }
+
+    #endregion
 
     private void AddRow(string label, string value)
     {

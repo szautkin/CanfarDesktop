@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
+using CanfarDesktop.Services.Database;
 
 namespace CanfarDesktop.ViewModels;
 
@@ -9,6 +10,7 @@ public partial class ResearchViewModel : ObservableObject
 {
     private readonly ObservationStore _store;
     private readonly DataLinkService _dataLinkService;
+    private readonly ObservationNoteStore _noteStore;
 
     [ObservableProperty]
     private DownloadedObservation? _selectedObservation;
@@ -22,10 +24,11 @@ public partial class ResearchViewModel : ObservableObject
     [ObservableProperty]
     private int _observationCount;
 
-    public ResearchViewModel(ObservationStore store, DataLinkService dataLinkService)
+    public ResearchViewModel(ObservationStore store, DataLinkService dataLinkService, ObservationNoteStore noteStore)
     {
         _store = store;
         _dataLinkService = dataLinkService;
+        _noteStore = noteStore;
         Refresh();
     }
 
@@ -34,8 +37,22 @@ public partial class ResearchViewModel : ObservableObject
     [RelayCommand]
     public void Refresh()
     {
-        FilteredObservations = _store.Filter(FilterText);
-        ObservationCount = FilteredObservations.Count;
+        // Metadata match, then union with observations whose notes/tags match the FTS index.
+        var result = _store.Filter(FilterText);
+        if (!string.IsNullOrWhiteSpace(FilterText))
+        {
+            var noteIds = _noteStore.SearchPublisherIds(FilterText).ToHashSet();
+            if (noteIds.Count > 0)
+            {
+                var already = result.Select(o => o.PublisherID).ToHashSet();
+                var byNote = _store.Observations
+                    .Where(o => noteIds.Contains(o.PublisherID) && !already.Contains(o.PublisherID));
+                result = result.Concat(byNote).ToList();
+            }
+        }
+
+        FilteredObservations = result;
+        ObservationCount = result.Count;
     }
 
     [RelayCommand]
