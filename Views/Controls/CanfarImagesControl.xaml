@@ -50,17 +50,22 @@
                     <DataTemplate x:DataType="local:CanfarImageRow">
                         <Grid ColumnSpacing="8" Padding="0,4" HorizontalAlignment="Stretch">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <FontIcon Grid.Column="0" FontSize="16" VerticalAlignment="Center"
+                                      Glyph="{x:Bind StatusGlyph, Mode=OneWay}"
+                                      Foreground="{x:Bind StatusBrush, Mode=OneWay}"
+                                      ToolTipService.ToolTip="{x:Bind StatusTooltip, Mode=OneWay}" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind Label}" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{x:Bind Status, Mode=OneWay}"
+                                <TextBlock Text="{x:Bind MetaLine, Mode=OneWay}"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
-                            <Button Grid.Column="1" Content="Inspect" Click="OnInspectClick"
+                            <Button Grid.Column="2" Content="Inspect" Click="OnInspectClick"
                                     VerticalAlignment="Center"
                                     ToolTipService.ToolTip="Discover the packages installed in this image" />
                         </Grid>

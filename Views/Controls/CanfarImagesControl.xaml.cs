@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using CanfarDesktop.Helpers.ImageDiscovery;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.ImageDiscovery;
 using CanfarDesktop.Services;
@@ -10,25 +12,59 @@ using CanfarDesktop.Views.Dialogs;
 
 namespace CanfarDesktop.Views.Controls;
 
-/// <summary>One image row in the Canfar Images widget, with a live discovery status.</summary>
+/// <summary>3-state discovery status for an image row (mirrors macOS CanfarImageRow.Status).</summary>
+public enum ImageDiscoveryStatus { Unknown, Discovered, Failed }
+
+/// <summary>One image row in the Canfar Images widget, with a live discovery status glyph.</summary>
 public partial class CanfarImageRow : ObservableObject
 {
     public string ImageId { get; }
     public string Label { get; }
+    public string[] Types { get; }
 
-    [ObservableProperty]
-    private string _status = string.Empty;
+    [ObservableProperty] private ImageDiscoveryStatus _status;
+    [ObservableProperty] private string _metaLine = string.Empty;
 
-    public CanfarImageRow(string imageId, string label)
+    public CanfarImageRow(string imageId, string label, string[] types)
     {
         ImageId = imageId;
         Label = label;
+        Types = types;
+    }
+
+    // Segoe Fluent glyphs: discovered = filled check circle, failed = warning, unknown = empty circle.
+    public string StatusGlyph => char.ConvertFromUtf32(Status switch
+    {
+        ImageDiscoveryStatus.Discovered => 0xEC61, // CompletedSolid (filled check circle)
+        ImageDiscoveryStatus.Failed => 0xE7BA,      // Warning
+        _ => 0xECCA,                                // RadioBtnOff (empty circle)
+    });
+
+    public Brush StatusBrush => (Brush)Application.Current.Resources[Status switch
+    {
+        ImageDiscoveryStatus.Discovered => "SystemFillColorSuccessBrush",
+        ImageDiscoveryStatus.Failed => "SystemFillColorCautionBrush",
+        _ => "TextFillColorTertiaryBrush",
+    }];
+
+    public string StatusTooltip => Status switch
+    {
+        ImageDiscoveryStatus.Discovered => "Manifest cached",
+        ImageDiscoveryStatus.Failed => "Last probe failed",
+        _ => "Not yet inspected",
+    };
+
+    partial void OnStatusChanged(ImageDiscoveryStatus value)
+    {
+        OnPropertyChanged(nameof(StatusGlyph));
+        OnPropertyChanged(nameof(StatusBrush));
+        OnPropertyChanged(nameof(StatusTooltip));
     }
 }
 
 /// <summary>
-/// Dashboard widget listing CANFAR session container images by type, with a per-image "Inspect"
-/// action that runs the image-discovery probe and surfaces the package count inline.
+/// Dashboard widget listing CANFAR session container images by type, each with a per-image "Inspect"
+/// action and a live discovery status glyph (discovered / failed / not-inspected, discovered first).
 /// </summary>
 public sealed partial class CanfarImagesControl : UserControl
 {
@@ -87,8 +123,18 @@ public sealed partial class CanfarImagesControl : UserControl
     {
         var type = sender.SelectedItem?.Tag as string ?? string.Empty;
         _rows.Clear();
-        foreach (var image in _images.Where(i => i.Types.Contains(type)).OrderBy(i => i.Id, StringComparer.Ordinal))
-            _rows.Add(new CanfarImageRow(image.Id, ToLabel(image.Id)));
+        var rows = _images
+            .Where(i => i.Types.Contains(type))
+            .Select(ImageParser.Parse)
+            .Select(p =>
+            {
+                var row = new CanfarImageRow(p.Id, p.Label, p.Types);
+                ApplyStatus(row);
+                return row;
+            })
+            .OrderBy(r => StatusOrder(r.Status))
+            .ThenBy(r => r.ImageId, StringComparer.Ordinal);
+        foreach (var row in rows) _rows.Add(row);
     }
 
     private async void OnFindByPackage(object sender, RoutedEventArgs e)
@@ -97,6 +143,7 @@ public sealed partial class CanfarImagesControl : UserControl
         {
             var dialog = new ImageDiscoveryDialog(_coordinator, _images) { XamlRoot = XamlRoot };
             await dialog.ShowAsync();
+            RefreshStatuses(); // the dialog may have probed images
         }
         catch (Exception ex)
         {
@@ -108,38 +155,72 @@ public sealed partial class CanfarImagesControl : UserControl
     {
         if (((Button)sender).DataContext is not CanfarImageRow row) return;
 
-        // Show a cached outcome instantly without re-probing.
-        var cached = _coordinator.Outcome(row.ImageId);
-        if (cached is { IsSuccess: true, Manifest: { } cachedManifest })
+        // Cached outcome shows instantly without re-probing.
+        if (_coordinator.Outcome(row.ImageId) is { IsSuccess: true })
         {
-            row.Status = $"{PackageCount(cachedManifest)} packages (cached)";
+            ApplyStatus(row);
             return;
         }
 
-        row.Status = "Discovering…";
+        row.MetaLine = "Inspecting…";
         try
         {
-            var manifest = await _coordinator.DiscoverAsync(row.ImageId);
-            row.Status = $"{PackageCount(manifest)} packages found";
+            await _coordinator.DiscoverAsync(row.ImageId);
         }
-        catch (ImageDiscoveryException ide)
+        catch
         {
-            row.Status = ide.Message;
+            // Failure is persisted in the cache; ApplyStatus reflects it.
         }
-        catch (Exception ex)
+        ApplyStatus(row);
+        ReSort();
+    }
+
+    private void ApplyStatus(CanfarImageRow row)
+    {
+        var outcome = _coordinator.Outcome(row.ImageId);
+        if (outcome is { IsSuccess: true, Manifest: { } m })
         {
-            row.Status = ex.Message;
+            row.Status = ImageDiscoveryStatus.Discovered;
+            var os = m.OsFamily != "unknown" ? $"{m.OsFamily} {m.OsVersion} · " : string.Empty;
+            row.MetaLine = $"{os}{PackageCount(m)} packages";
+        }
+        else if (outcome is { IsSuccess: false })
+        {
+            row.Status = ImageDiscoveryStatus.Failed;
+            row.MetaLine = outcome.Message ?? "Probe failed";
+        }
+        else
+        {
+            row.Status = ImageDiscoveryStatus.Unknown;
+            row.MetaLine = row.ImageId;
         }
     }
+
+    private void RefreshStatuses()
+    {
+        foreach (var row in _rows) ApplyStatus(row);
+        ReSort();
+    }
+
+    private void ReSort()
+    {
+        var sorted = _rows
+            .OrderBy(r => StatusOrder(r.Status))
+            .ThenBy(r => r.ImageId, StringComparer.Ordinal)
+            .ToList();
+        _rows.Clear();
+        foreach (var row in sorted) _rows.Add(row);
+    }
+
+    private static int StatusOrder(ImageDiscoveryStatus s) => s switch
+    {
+        ImageDiscoveryStatus.Discovered => 0,
+        ImageDiscoveryStatus.Failed => 1,
+        _ => 2,
+    };
 
     private static int PackageCount(ImageManifest m)
         => m.DpkgPackages.Count + m.RpmPackages.Count + m.ApkPackages.Count + m.PythonPackages.Count + m.RPackages.Count;
-
-    private static string ToLabel(string imageId)
-    {
-        var slash = imageId.LastIndexOf('/');
-        return slash >= 0 && slash < imageId.Length - 1 ? imageId[(slash + 1)..] : imageId;
-    }
 
     private static string Capitalize(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s[1..];
 }
