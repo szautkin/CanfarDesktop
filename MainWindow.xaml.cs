@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
+using CanfarDesktop.Services;
 using CanfarDesktop.Services.HttpClients;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views;
@@ -16,6 +18,7 @@ public sealed partial class MainWindow : Window
     private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer }
 
     private readonly MainViewModel _viewModel;
+    private readonly ILegalAgreementService _legal;
     private readonly LandingView _landingView;
     private DashboardPage? _dashboardPage;
     private SearchPage? _searchPage;
@@ -43,6 +46,8 @@ public sealed partial class MainWindow : Window
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.TokenExpired += OnTokenExpired;
 
+        _legal = App.Services.GetRequiredService<ILegalAgreementService>();
+
         var tokenProvider = App.Services.GetRequiredService<AuthTokenProvider>();
         tokenProvider.Unauthorized += OnUnauthorized;
 
@@ -57,6 +62,8 @@ public sealed partial class MainWindow : Window
         LandingContainer.Child = _landingView;
 
         Activated += OnWindowActivated;
+
+        ShowTermsGateIfNeeded();
     }
 
     #region File Browser Panel
@@ -515,6 +522,12 @@ public sealed partial class MainWindow : Window
             HorizontalAlignment = HorizontalAlignment.Center
         };
 
+        var termsLink = new HyperlinkButton
+        {
+            Content = "Terms of Use",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+
         var panel = new StackPanel { Spacing = 12, MinWidth = 300 };
         panel.Children.Add(logo);
         panel.Children.Add(title);
@@ -522,6 +535,7 @@ public sealed partial class MainWindow : Window
         panel.Children.Add(version);
         panel.Children.Add(copyright);
         panel.Children.Add(link);
+        panel.Children.Add(termsLink);
 
         var dialog = new ContentDialog
         {
@@ -529,6 +543,13 @@ public sealed partial class MainWindow : Window
             Content = panel,
             CloseButtonText = "Close",
             XamlRoot = Content.XamlRoot
+        };
+
+        // Only one ContentDialog may be open at a time — close About before showing Terms.
+        termsLink.Click += async (_, _) =>
+        {
+            dialog.Hide();
+            await ShowTermsViewerAsync();
         };
 
         await dialog.ShowAsync();
@@ -539,6 +560,61 @@ public sealed partial class MainWindow : Window
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
         var version = assembly.GetName().Version;
         return version is not null ? $"{version.Major}.{version.Minor}.{version.Build}" : "0.0.0";
+    }
+
+    #endregion
+
+    #region Terms of Use
+
+    private static bool UseFrenchTerms()
+        => LegalTerms.IsFrench(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
+
+    /// <summary>Show the blocking first-launch Terms gate if the current terms are unaccepted.</summary>
+    private void ShowTermsGateIfNeeded()
+    {
+        if (_legal.HasAcceptedCurrent) return;
+
+        var french = UseFrenchTerms();
+        TermsTitle.Text = LegalTerms.Title(french);
+        TermsBody.Text = LegalTerms.Body(french);
+        TermsGateOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void OnTermsAccept(object sender, RoutedEventArgs e)
+    {
+        _legal.Accept();
+        TermsGateOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnTermsDecline(object sender, RoutedEventArgs e)
+    {
+        Application.Current.Exit();
+    }
+
+    /// <summary>Dismissible Terms viewer reachable from the About dialog.</summary>
+    private async Task ShowTermsViewerAsync()
+    {
+        var french = UseFrenchTerms();
+        var body = new TextBlock
+        {
+            Text = LegalTerms.Body(french),
+            TextWrapping = TextWrapping.Wrap,
+            IsTextSelectionEnabled = true
+        };
+        var scroll = new ScrollViewer
+        {
+            Content = body,
+            MaxHeight = 480,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+        var dialog = new ContentDialog
+        {
+            Title = LegalTerms.Title(french),
+            Content = scroll,
+            CloseButtonText = "Close",
+            XamlRoot = Content.XamlRoot
+        };
+        await dialog.ShowAsync();
     }
 
     #endregion

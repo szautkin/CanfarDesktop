@@ -29,6 +29,12 @@
     <Compile Include="..\Services\SessionService.cs" Link="Linked\SessionService.cs" />
     <Compile Include="..\Services\ISessionService.cs" Link="Linked\ISessionService.cs" />
     <Compile Include="..\Helpers\ApiEndpoints.cs" Link="Linked\ApiEndpoints.cs" />
+    <!-- M1 security + legal (pure, no WinUI deps) -->
+    <Compile Include="..\Helpers\TrustedHosts.cs" Link="Linked\TrustedHosts.cs" />
+    <Compile Include="..\Helpers\LogScrubber.cs" Link="Linked\LogScrubber.cs" />
+    <Compile Include="..\Helpers\LegalTerms.cs" Link="Linked\LegalTerms.cs" />
+    <Compile Include="..\Services\HttpClients\AuthTokenProvider.cs" Link="Linked\AuthTokenProvider.cs" />
+    <Compile Include="..\Services\HttpClients\AuthTokenHandler.cs" Link="Linked\AuthTokenHandler.cs" />
     <Compile Include="..\Models\Session.cs" Link="Linked\Session.cs" />
     <Compile Include="..\Models\SessionLaunchParams.cs" Link="Linked\SessionLaunchParams.cs" />
     <Compile Include="..\ViewModels\SessionListViewModel.cs" Link="Linked\SessionListViewModel.cs" />

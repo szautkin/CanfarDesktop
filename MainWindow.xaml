@@ -101,5 +101,41 @@
                 <Border x:Name="FitsViewerContainer" Visibility="Collapsed" />
             </Grid>
         </Grid>
+
+        <!-- Terms-of-Use gate: full-window blocking overlay shown on first launch.
+             Opaque background blocks all interaction with the app behind it until
+             the user Accepts; it is not a ContentDialog so it cannot be light-dismissed. -->
+        <Grid x:Name="TermsGateOverlay" Grid.Row="0" Grid.RowSpan="2"
+              Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+              Canvas.ZIndex="1000" Visibility="Collapsed">
+            <Border MaxWidth="640" MaxHeight="640" Margin="24"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="24">
+                <Grid RowSpacing="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="TermsTitle" Grid.Row="0"
+                               Style="{StaticResource TitleTextBlockStyle}" />
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <TextBlock x:Name="TermsBody" TextWrapping="Wrap"
+                                   IsTextSelectionEnabled="True"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </ScrollViewer>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal"
+                                HorizontalAlignment="Right" Spacing="8">
+                        <Button x:Name="TermsDeclineButton" Content="Decline &amp; Exit"
+                                Click="OnTermsDecline" />
+                        <Button x:Name="TermsAcceptButton" Content="Accept"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Click="OnTermsAccept" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

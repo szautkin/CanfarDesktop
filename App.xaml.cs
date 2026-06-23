@@ -20,6 +20,7 @@ public partial class App : Application
 
     public App()
     {
+        CrashLogger.Initialize();
         InitializeComponent();
         UnhandledException += OnUnhandledException;
         Services = ConfigureServices();
@@ -27,8 +28,8 @@ public partial class App : Application
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
+        CrashLogger.Log("Application.UnhandledException", e.Exception);
         e.Handled = true;
-        System.Diagnostics.Debug.WriteLine($"Unhandled exception: {e.Exception}");
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -114,6 +115,9 @@ public partial class App : Application
 
         // Settings
         services.AddSingleton<ISettingsService, SettingsService>();
+
+        // Legal / Terms of Use
+        services.AddSingleton<ILegalAgreementService, LegalAgreementService>();
 
         // Recent launches
         services.AddSingleton<IRecentLaunchService, RecentLaunchService>();

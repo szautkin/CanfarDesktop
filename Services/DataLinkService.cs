@@ -133,6 +133,14 @@ public class DataLinkService
 
             if (string.IsNullOrWhiteSpace(url)) continue;
 
+            // Security: reject any access_url that is not HTTPS (downgrade / SSRF defense).
+            // CADC DataLink rows that are not HTTPS are not trusted and are dropped.
+            if (!IsHttpsUrl(url))
+            {
+                System.Diagnostics.Debug.WriteLine($"DataLink rejected non-https access_url: {url}");
+                continue;
+            }
+
             if (semantics == "#thumbnail")
                 result.Thumbnails.Add(url);
             else if (semantics == "#preview" && contentType.Contains("image", StringComparison.OrdinalIgnoreCase))
@@ -150,6 +158,10 @@ public class DataLinkService
         System.Diagnostics.Debug.WriteLine($"DataLink parsed: {result.Thumbnails.Count} thumbnails, {result.Previews.Count} previews");
         return result;
     }
+
+    private static bool IsHttpsUrl(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri)
+        && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Parse TD cells handling both <TD>value</TD> and <TD/> (self-closing empty).

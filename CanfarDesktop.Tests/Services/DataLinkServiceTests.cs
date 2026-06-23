@@ -124,6 +124,34 @@ public class DataLinkServiceTests
     }
 
     [Fact]
+    public void ParseVOTable_RejectsNonHttpsAccessUrl()
+    {
+        // http (downgrade) and ftp (off-scheme) rows must be dropped; only https is kept.
+        var xml = """
+            <VOTABLE>
+            <RESOURCE><TABLE>
+            <FIELD name="access_url"/>
+            <FIELD name="semantics"/>
+            <FIELD name="content_type"/>
+            <FIELD name="error_message"/>
+            <DATA><TABLEDATA>
+            <TR><TD>http://insecure.example.com/thumb.jpg</TD><TD>#thumbnail</TD><TD>image/jpeg</TD><TD></TD></TR>
+            <TR><TD>ftp://example.com/data.fits</TD><TD>#this</TD><TD>application/fits</TD><TD></TD></TR>
+            <TR><TD>https://example.com/ok.png</TD><TD>#preview</TD><TD>image/png</TD><TD></TD></TR>
+            </TABLEDATA></DATA>
+            </TABLE></RESOURCE>
+            </VOTABLE>
+            """;
+
+        var result = ParseVOTable(xml);
+
+        Assert.Empty(result.Thumbnails);   // http rejected
+        Assert.Empty(result.DirectFiles);  // ftp rejected
+        Assert.Single(result.Previews);    // https kept
+        Assert.Equal("https://example.com/ok.png", result.Previews[0]);
+    }
+
+    [Fact]
     public void ParseVOTable_EmptyXml_ReturnsEmptyResult()
     {
         var result = ParseVOTable("<VOTABLE></VOTABLE>");
