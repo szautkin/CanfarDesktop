@@ -6,6 +6,7 @@ using CanfarDesktop.Models;
 using CanfarDesktop.Models.ImageDiscovery;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.ImageDiscovery;
+using CanfarDesktop.Views.Dialogs;
 
 namespace CanfarDesktop.Views.Controls;
 
@@ -73,6 +74,19 @@ public sealed partial class CanfarImagesControl : UserControl
         _rows.Clear();
         foreach (var image in _images.Where(i => i.Types.Contains(type)).OrderBy(i => i.Id, StringComparer.Ordinal))
             _rows.Add(new CanfarImageRow(image.Id, ToLabel(image.Id)));
+    }
+
+    private async void OnFindByPackage(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new ImageDiscoveryDialog(_coordinator) { XamlRoot = XamlRoot };
+            await dialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Discovery dialog error: {ex.Message}");
+        }
     }
 
     private async void OnInspectClick(object sender, RoutedEventArgs e)

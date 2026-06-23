@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="CanfarDesktop.Views.Dialogs.ImageDiscoveryDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Find images by package"
+    CloseButtonText="Close"
+    DefaultButton="Close">
+
+    <Grid Width="720" Height="460" ColumnSpacing="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: Python package filter (virtualized, multi-select) -->
+        <Grid Grid.Column="0" RowSpacing="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Text="Python packages" Style="{StaticResource BodyStrongTextBlockStyle}" />
+            <TextBox Grid.Row="1" x:Name="SearchBox" PlaceholderText="Scroll to a package…" TextChanged="OnSearch" />
+            <ListView Grid.Row="2" x:Name="PackageList" SelectionMode="Multiple"
+                      SelectionChanged="OnPackageSelectionChanged"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" />
+        </Grid>
+
+        <!-- Right: matching images -->
+        <Grid Grid.Column="1" RowSpacing="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" x:Name="MatchHeader" Style="{StaticResource BodyStrongTextBlockStyle}"
+                       Text="Select packages to find images" />
+            <ListView Grid.Row="1" x:Name="MatchList" SelectionMode="None"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" />
+        </Grid>
+    </Grid>
+</ContentDialog>
