@@ -94,6 +94,10 @@ public static class McpToolCatalog
             new ListPendingProposalsTool(),
             new GetProposalStateTool(),
             new WithdrawProposalTool(),
+
+            // Live ViewState writes: steer the user's view (no proposal)
+            new NavigateToTool(mode => viewState.NavigateAsync(mode)),
+            new SetSearchFocusTool((ra, dec) => viewState.SetSearchFocusActionAsync(ra, dec)),
         };
     }
 

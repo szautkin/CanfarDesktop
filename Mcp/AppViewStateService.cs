@@ -1,11 +1,13 @@
+using CanfarDesktop.Mcp.Tools.Write;
+
 namespace CanfarDesktop.Mcp;
 
 /// <summary>
-/// Bridges the live UI's navigation context to the <c>get_current_view</c> MCP tool. The UI PUSHES
-/// immutable state on the UI thread (mode, Search sky focus, open FITS paths); the tool READS a
-/// consistent snapshot from the MCP connection thread. Push (rather than pull) keeps the cross-thread
-/// access safe — the reader never iterates a live ObservableCollection or tears a multi-word value;
-/// every field is a volatile reference to an immutable value.
+/// Bridges the live UI to the MCP view-state tools. For reads (<c>get_current_view</c>) the UI PUSHES
+/// immutable state on the UI thread (mode, Search sky focus, open FITS paths) and the tool READS a
+/// consistent volatile snapshot from the MCP connection thread. For the live ViewState WRITE tools
+/// (<c>navigate_to</c>, <c>set_search_focus</c>) the UI registers action delegates that marshal to the
+/// UI thread; the tools invoke them. Push (not pull) keeps cross-thread access safe.
 /// </summary>
 public sealed class AppViewStateService
 {
@@ -45,4 +47,22 @@ public sealed class AppViewStateService
         var focus = _searchFocus;
         return new ModeView(_mode, _modeTitle, focus?.Ra, focus?.Dec, _openFitsPaths);
     }
+
+    // ── Live ViewState write actions (registered by the UI; invoked by the write tools) ──────────
+
+    private volatile Func<string, Task<NavigationOutcome>>? _navigate;
+    private volatile Func<double, double, Task>? _setSearchFocus;
+
+    /// <summary>The UI registers the navigation + focus actions (each marshals to the UI thread).</summary>
+    public void SetActions(Func<string, Task<NavigationOutcome>> navigate, Func<double, double, Task> setSearchFocus)
+    {
+        _navigate = navigate;
+        _setSearchFocus = setSearchFocus;
+    }
+
+    public Task<NavigationOutcome> NavigateAsync(string mode)
+        => _navigate?.Invoke(mode) ?? Task.FromResult(new NavigationOutcome(false, mode, mode));
+
+    public Task SetSearchFocusActionAsync(double ra, double dec)
+        => _setSearchFocus?.Invoke(ra, dec) ?? Task.CompletedTask;
 }

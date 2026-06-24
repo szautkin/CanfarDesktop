@@ -77,7 +77,56 @@ public sealed partial class MainWindow : Window
         _viewState = App.Services.GetRequiredService<CanfarDesktop.Mcp.AppViewStateService>();
         var fitsHost = App.Services.GetRequiredService<FitsTabHostViewModel>();
         fitsHost.Tabs.CollectionChanged += (_, _) => PublishOpenFits(fitsHost);
+        _viewState.SetActions(NavigateByKeyAsync, SetSearchFocusActionAsync);
         PublishViewMode();
+    }
+
+    // ── Live ViewState write actions (invoked off-thread by the MCP tools; marshal to the UI thread) ──
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.NavigationOutcome> NavigateByKeyAsync(string mode)
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Mcp.Tools.Write.NavigationOutcome>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try { tcs.SetResult(NavigateByKey(mode)); }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(new CanfarDesktop.Mcp.Tools.Write.NavigationOutcome(false, mode, mode));
+        return tcs.Task;
+    }
+
+    private CanfarDesktop.Mcp.Tools.Write.NavigationOutcome NavigateByKey(string mode)
+    {
+        switch (mode)
+        {
+            case "landing": GoHome(); return new(true, "landing", "Home");
+            case "portal": EnsureDashboard(); NavigateTo(AppMode.Portal); return new(true, "portal", "Portal");
+            case "search": EnsureSearchPage(); NavigateTo(AppMode.Search); return new(true, "search", "Search");
+            case "research": EnsureResearchPage(); NavigateTo(AppMode.Research); return new(true, "research", "Research");
+            case "storage": OpenStorageBrowser(); return new(true, "storage", "Storage");
+            case "notebook": OpenNotebook(); return new(true, "notebook", "Notebook");
+            case "fitsViewer": NavigateTo(AppMode.FitsViewer); return new(true, "fitsViewer", "FITS Viewer");
+            default: return new(false, mode, mode);
+        }
+    }
+
+    private Task SetSearchFocusActionAsync(double ra, double dec)
+    {
+        var tcs = new TaskCompletionSource();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                EnsureSearchPage();
+                _searchPage!.ViewModel.ResolvedRA = ra;
+                _searchPage.ViewModel.ResolvedDec = dec;
+                NavigateTo(AppMode.Search);
+                tcs.SetResult();
+            }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult();
+        return tcs.Task;
     }
 
     /// <summary>Map the current AppMode to the MCP mode name + title and publish it (UI thread).</summary>
@@ -242,7 +291,9 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnHomeClick(object sender, RoutedEventArgs e)
+    private void OnHomeClick(object sender, RoutedEventArgs e) => GoHome();
+
+    private void GoHome()
     {
         _navigationStack.Clear();
         _currentMode = AppMode.Landing; // set directly to avoid re-pushing
