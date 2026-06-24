@@ -74,6 +74,18 @@ public sealed record ContentTypeMismatch(string Detail) : ToolFailureReason
     public override string AuditTag => "content_type_mismatch";
 }
 
+public sealed record PreviewNotFound(string Detail) : ToolFailureReason
+{
+    public override string Description => Clip($"No preview image: {Detail}");
+    public override string AuditTag => "preview_not_found";
+}
+
+public sealed record PreviewTooLarge(int Bytes) : ToolFailureReason
+{
+    public override string Description => $"Preview image is too large ({Bytes} bytes) for the response limit.";
+    public override string AuditTag => "preview_too_large";
+}
+
 /// <summary>Thrown by a tool's handler to surface a typed failure (mapped to <see cref="FailedResult"/>).</summary>
 public sealed class McpToolException : Exception
 {

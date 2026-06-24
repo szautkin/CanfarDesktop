@@ -122,6 +122,7 @@
     <Compile Include="..\Mcp\Tools\ToolAbstractions.cs" Link="Linked\Mcp\ToolAbstractions.cs" />
     <Compile Include="..\Mcp\Tools\JsonReadTool.cs" Link="Linked\Mcp\JsonReadTool.cs" />
     <Compile Include="..\Mcp\Tools\Builtin\FoundationalTools.cs" Link="Linked\Mcp\FoundationalTools.cs" />
+    <Compile Include="..\Mcp\Tools\ViewState\ViewStateTools.cs" Link="Linked\Mcp\ViewStateTools.cs" />
     <Compile Include="..\Mcp\Audit\Audit.cs" Link="Linked\Mcp\Audit.cs" />
     <Compile Include="..\Mcp\McpToolRouter.cs" Link="Linked\Mcp\McpToolRouter.cs" />
     <Compile Include="..\Mcp\Transport\IMcpTransport.cs" Link="Linked\Mcp\IMcpTransport.cs" />

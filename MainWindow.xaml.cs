@@ -64,7 +64,30 @@ public sealed partial class MainWindow : Window
 
         Activated += OnWindowActivated;
 
+        RegisterViewStateProvider();
+
         ShowTermsGateIfNeeded();
+    }
+
+    /// <summary>Expose the live navigation mode to the MCP get_current_view tool (read on demand, off-thread).</summary>
+    private void RegisterViewStateProvider()
+    {
+        App.Services.GetRequiredService<CanfarDesktop.Mcp.AppViewStateService>().SetProvider(() =>
+        {
+            var (mode, title) = _currentMode switch
+            {
+                AppMode.Landing => ("landing", "Home"),
+                AppMode.Portal => ("portal", "Portal"),
+                AppMode.Search => ("search", "Search"),
+                AppMode.Research => ("research", "Research"),
+                AppMode.Storage => ("storage", "Storage"),
+                AppMode.Notebook => ("notebook", "Notebook"),
+                AppMode.FitsViewer => ("fitsViewer", "FITS Viewer"),
+                AppMode.ObservationDetail => ("observationDetail", "Observation"),
+                _ => ("landing", "Home"),
+            };
+            return new CanfarDesktop.Mcp.AppViewStateService.ModeView(mode, title, null, null, Array.Empty<string>());
+        });
     }
 
     #region File Browser Panel
