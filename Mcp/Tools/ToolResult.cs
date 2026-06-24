@@ -1,0 +1,82 @@
+namespace CanfarDesktop.Mcp.Tools;
+
+/// <summary>
+/// Outcome of a tool invocation. The read surface returns <see cref="DataResult"/> (JSON payload),
+/// <see cref="FailedResult"/> (typed reason), or <see cref="ImageToolResult"/>. Mirrors the macOS
+/// ToolResult discriminants (proposal/undo variants arrive with the M6 write surface).
+/// </summary>
+public abstract record ToolResult
+{
+    public static ToolResult Ok(byte[] json) => new DataResult(json);
+    public static ToolResult Fail(ToolFailureReason reason) => new FailedResult(reason);
+    public static ToolResult ImageResult(byte[] data, string mimeType, string? caption = null)
+        => new ImageToolResult(data, mimeType, caption);
+}
+
+public sealed record DataResult(byte[] Json) : ToolResult;
+public sealed record FailedResult(ToolFailureReason Reason) : ToolResult;
+public sealed record ImageToolResult(byte[] Data, string MimeType, string? Caption) : ToolResult;
+
+/// <summary>A typed, PII-safe failure reason with a user-facing message + a stable audit tag.</summary>
+public abstract record ToolFailureReason
+{
+    public abstract string Description { get; }
+    public abstract string AuditTag { get; }
+
+    protected static string Clip(string s) => s.Length <= 200 ? s : s[..200];
+}
+
+public sealed record InvalidArgument(string Detail) : ToolFailureReason
+{
+    public override string Description => Clip($"Invalid argument: {Detail}");
+    public override string AuditTag => "invalid_argument";
+}
+
+public sealed record UnknownTarget(string Detail) : ToolFailureReason
+{
+    public override string Description => Clip($"Unknown target: {Detail}");
+    public override string AuditTag => "unknown_target";
+}
+
+public sealed record TargetNotResolved(string Detail) : ToolFailureReason
+{
+    public override string Description => Clip($"Could not resolve: {Detail}");
+    public override string AuditTag => "target_not_resolved";
+}
+
+public sealed record AuthRequired(string Detail = "Sign in to CADC/CANFAR is required for this tool.") : ToolFailureReason
+{
+    public override string Description => Clip(Detail);
+    public override string AuditTag => "auth_required";
+}
+
+public sealed record BackendError(string Detail) : ToolFailureReason
+{
+    public override string Description => Clip($"Backend error: {Detail}");
+    public override string AuditTag => "backend_error";
+}
+
+public sealed record NotImplemented(string Detail = "Not implemented") : ToolFailureReason
+{
+    public override string Description => Clip(Detail);
+    public override string AuditTag => "not_implemented";
+}
+
+public sealed record UpstreamTimeout : ToolFailureReason
+{
+    public override string Description => "The upstream service timed out.";
+    public override string AuditTag => "timeout";
+}
+
+public sealed record ContentTypeMismatch(string Detail) : ToolFailureReason
+{
+    public override string Description => Clip($"Unexpected content type: {Detail}");
+    public override string AuditTag => "content_type_mismatch";
+}
+
+/// <summary>Thrown by a tool's handler to surface a typed failure (mapped to <see cref="FailedResult"/>).</summary>
+public sealed class McpToolException : Exception
+{
+    public ToolFailureReason Reason { get; }
+    public McpToolException(ToolFailureReason reason) : base(reason.Description) => Reason = reason;
+}
