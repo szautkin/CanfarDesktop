@@ -25,6 +25,7 @@
     <Compile Include="..\Mcp\Transport\StreamTransport.cs" Link="Linked\StreamTransport.cs" />
     <Compile Include="..\Mcp\Transport\OsTransports.cs" Link="Linked\OsTransports.cs" />
     <Compile Include="..\Mcp\McpConstants.cs" Link="Linked\McpConstants.cs" />
+    <Compile Include="..\Mcp\McpPipeName.cs" Link="Linked\McpPipeName.cs" />
     <Compile Include="..\Mcp\Listener\McpSidecar.cs" Link="Linked\McpSidecar.cs" />
     <Compile Include="..\Mcp\Bridge\BridgeRelay.cs" Link="Linked\BridgeRelay.cs" />
   </ItemGroup>

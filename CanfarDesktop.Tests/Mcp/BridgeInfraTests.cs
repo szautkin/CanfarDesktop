@@ -26,6 +26,16 @@ public class BridgeInfraTests
     }
 
     [Fact]
+    public void PipeNameForCurrentUser_IsDeterministicAndWellFormed()
+    {
+        var name = McpPipeName.ForCurrentUser();
+        Assert.StartsWith("verbinal-canfar-mcp-", name);
+        Assert.Equal("verbinal-canfar-mcp-".Length + 32, name.Length);   // 32 hex suffix
+        Assert.Matches("^verbinal-canfar-mcp-[0-9a-f]{32}$", name);
+        Assert.Equal(name, McpPipeName.ForCurrentUser());                // stable across calls (no sidecar needed)
+    }
+
+    [Fact]
     public void PipeSddl_OwnerOnly_IsProtectedFullAccessForSid()
         => Assert.Equal("D:P(A;;FA;;;S-1-5-21-1-2-3-1001)", McpPipeSddl.OwnerOnly("S-1-5-21-1-2-3-1001"));
 

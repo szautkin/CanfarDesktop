@@ -38,7 +38,9 @@ public sealed class McpListenerService : IAsyncDisposable
     public void Start(Guid launchId)
     {
         if (_acceptLoop is not null) return;
-        PipeName = McpConstants.NewPipeName(launchId);
+        // Deterministic per-user name (no sidecar handoff) — the bridge computes the same name. The
+        // sidecar is still written as a diagnostic / back-compat breadcrumb, but is no longer required.
+        PipeName = McpPipeName.ForCurrentUser();
         _sidecar.Write(PipeName);
         _cts = new CancellationTokenSource();
         _acceptLoop = Task.Run(() => AcceptLoopAsync(PipeName, _cts.Token));
