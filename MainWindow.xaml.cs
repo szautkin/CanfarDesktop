@@ -64,31 +64,46 @@ public sealed partial class MainWindow : Window
 
         Activated += OnWindowActivated;
 
-        RegisterViewStateProvider();
+        InitViewStateTracking();
 
         ShowTermsGateIfNeeded();
     }
 
-    /// <summary>Expose the live navigation mode to the MCP get_current_view tool (read on demand, off-thread).</summary>
-    private void RegisterViewStateProvider()
+    private CanfarDesktop.Mcp.AppViewStateService? _viewState;
+
+    /// <summary>Push the live navigation context to the MCP get_current_view tool (mode + open FITS paths).</summary>
+    private void InitViewStateTracking()
     {
-        App.Services.GetRequiredService<CanfarDesktop.Mcp.AppViewStateService>().SetProvider(() =>
-        {
-            var (mode, title) = _currentMode switch
-            {
-                AppMode.Landing => ("landing", "Home"),
-                AppMode.Portal => ("portal", "Portal"),
-                AppMode.Search => ("search", "Search"),
-                AppMode.Research => ("research", "Research"),
-                AppMode.Storage => ("storage", "Storage"),
-                AppMode.Notebook => ("notebook", "Notebook"),
-                AppMode.FitsViewer => ("fitsViewer", "FITS Viewer"),
-                AppMode.ObservationDetail => ("observationDetail", "Observation"),
-                _ => ("landing", "Home"),
-            };
-            return new CanfarDesktop.Mcp.AppViewStateService.ModeView(mode, title, null, null, Array.Empty<string>());
-        });
+        _viewState = App.Services.GetRequiredService<CanfarDesktop.Mcp.AppViewStateService>();
+        var fitsHost = App.Services.GetRequiredService<FitsTabHostViewModel>();
+        fitsHost.Tabs.CollectionChanged += (_, _) => PublishOpenFits(fitsHost);
+        PublishViewMode();
     }
+
+    /// <summary>Map the current AppMode to the MCP mode name + title and publish it (UI thread).</summary>
+    private void PublishViewMode()
+    {
+        var (mode, title) = _currentMode switch
+        {
+            AppMode.Landing => ("landing", "Home"),
+            AppMode.Portal => ("portal", "Portal"),
+            AppMode.Search => ("search", "Search"),
+            AppMode.Research => ("research", "Research"),
+            AppMode.Storage => ("storage", "Storage"),
+            AppMode.Notebook => ("notebook", "Notebook"),
+            AppMode.FitsViewer => ("fitsViewer", "FITS Viewer"),
+            AppMode.ObservationDetail => ("observationDetail", "Observation"),
+            _ => ("landing", "Home"),
+        };
+        _viewState?.SetMode(mode, title);
+    }
+
+    private void PublishOpenFits(FitsTabHostViewModel host)
+        => _viewState?.SetOpenFitsPaths(host.Tabs
+            .Select(t => t.ViewModel.FilePath)
+            .Where(p => !string.IsNullOrEmpty(p))
+            .Select(p => p!)
+            .ToList());
 
     #region File Browser Panel
 
@@ -202,6 +217,7 @@ public sealed partial class MainWindow : Window
         ObsDetailContainer.Visibility = mode == AppMode.ObservationDetail ? Visibility.Visible : Visibility.Collapsed;
 
         BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        PublishViewMode();
     }
 
     private void OnToggleFilePanel(object sender, RoutedEventArgs e) => ToggleFilePanel();
@@ -222,6 +238,7 @@ public sealed partial class MainWindow : Window
             ObsDetailContainer.Visibility = previous == AppMode.ObservationDetail ? Visibility.Visible : Visibility.Collapsed;
 
             BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            PublishViewMode();
         }
     }
 
@@ -238,6 +255,7 @@ public sealed partial class MainWindow : Window
         FitsViewerContainer.Visibility = Visibility.Collapsed;
         ObsDetailContainer.Visibility = Visibility.Collapsed;
         BackButton.Visibility = Visibility.Collapsed;
+        PublishViewMode();
     }
 
     private async void OnPortalRequested(object? sender, EventArgs e)
@@ -276,6 +294,16 @@ public sealed partial class MainWindow : Window
         _searchPage = App.Services.GetRequiredService<SearchPage>();
         _searchPage.ObservationDetailRequested += OpenObservationDetail;
         SearchContainer.Child = _searchPage;
+
+        // Surface the Search form's resolved sky focus to the MCP get_current_view tool.
+        var searchVm = _searchPage.ViewModel;
+        searchVm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(SearchViewModel.ResolvedRA) or nameof(SearchViewModel.ResolvedDec))
+                _viewState?.SetSearchFocus(searchVm.ResolvedRA, searchVm.ResolvedDec);
+        };
+        _viewState?.SetSearchFocus(searchVm.ResolvedRA, searchVm.ResolvedDec);
+
         _searchPage.LoadAsync();
     }
 
