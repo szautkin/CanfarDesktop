@@ -147,6 +147,11 @@ public partial class App : Application
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddHttpClient<DataLinkService>();
 
+        // Export bundle (Research + Search → Claude-friendly bundle)
+        services.AddSingleton<CanfarDesktop.Services.Export.ExportService>();
+        services.AddSingleton<CanfarDesktop.Services.Export.IExportableModule, CanfarDesktop.Services.Export.ResearchExporter>();
+        services.AddSingleton<CanfarDesktop.Services.Export.IExportableModule, CanfarDesktop.Services.Export.SearchExporter>();
+
         // Image discovery (probe-job coordinator + per-image manifest cache + settings)
         services.AddSingleton<IProbeScriptProvider>(_ => EmbeddedProbeScripts.FromAssembly(typeof(App).Assembly));
         services.AddSingleton<IManifestStore>(_ => new JsonManifestStore(ResolveManifestCacheDir()));

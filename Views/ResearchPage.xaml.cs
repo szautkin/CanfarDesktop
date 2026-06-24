@@ -3,7 +3,9 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
+using CanfarDesktop.Services;
 using CanfarDesktop.Services.Database;
+using CanfarDesktop.Services.Export;
 using CanfarDesktop.ViewModels;
 
 namespace CanfarDesktop.Views;
@@ -12,6 +14,10 @@ public sealed partial class ResearchPage : UserControl
 {
     public ResearchViewModel ViewModel { get; }
     private readonly ObservationNoteStore _noteStore;
+    private readonly ExportService _exportService;
+    private readonly IReadOnlyList<IExportableModule> _exportModules;
+    private readonly IStorageService _storage;
+    private readonly IAuthService _auth;
     private CancellationTokenSource? _previewCts;
 
     // Research-notes editor state. _noteEditId is the publisher ID the editor currently holds;
@@ -24,10 +30,16 @@ public sealed partial class ResearchPage : UserControl
     private RatingControl? _ratingControl;
     private TextBox? _tagsBox;
 
-    public ResearchPage(ResearchViewModel viewModel, ObservationNoteStore noteStore)
+    public ResearchPage(ResearchViewModel viewModel, ObservationNoteStore noteStore,
+        ExportService exportService, IEnumerable<IExportableModule> exportModules,
+        IStorageService storage, IAuthService auth)
     {
         ViewModel = viewModel;
         _noteStore = noteStore;
+        _exportService = exportService;
+        _exportModules = exportModules.ToList();
+        _storage = storage;
+        _auth = auth;
         InitializeComponent();
 
         _noteSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
@@ -48,6 +60,103 @@ public sealed partial class ResearchPage : UserControl
         ViewModel.FilterText = FilterBox.Text;
         FileList.ItemsSource = ViewModel.FilteredObservations;
         CountText.Text = $"({ViewModel.ObservationCount})";
+    }
+
+    private async void OnExportClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // 1. Options
+            var includeNotes = new CheckBox { Content = "Include research notes", IsChecked = true };
+            var includeHistory = new CheckBox { Content = "Include saved queries & search history", IsChecked = true };
+            var includeFiles = new CheckBox { Content = "Include downloaded files (larger bundle)", IsChecked = false };
+            var uploadVo = new CheckBox { Content = "Also upload the zip to VOSpace (Verbinal-Exports/)", IsChecked = false };
+            var panel = new StackPanel { Spacing = 8 };
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Exports your downloaded observations + notes and saved searches as a Claude-friendly bundle (manifest.json + README + per-module folders), zipped.",
+                TextWrapping = TextWrapping.Wrap,
+                Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+            });
+            panel.Children.Add(includeNotes);
+            panel.Children.Add(includeHistory);
+            panel.Children.Add(includeFiles);
+            panel.Children.Add(uploadVo);
+
+            var optionsDialog = new ContentDialog
+            {
+                Title = "Export data",
+                Content = panel,
+                PrimaryButtonText = "Choose folder & export…",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+            };
+            if (await optionsDialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+            var options = new ExportOptions
+            {
+                IncludeNotes = includeNotes.IsChecked == true,
+                IncludeSearchHistory = includeHistory.IsChecked == true,
+                IncludeFileCopies = includeFiles.IsChecked == true,
+            };
+
+            // 2. Destination folder
+            var hwnd = WindowHelper.ActiveWindows.Count > 0
+                ? WinRT.Interop.WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0])
+                : nint.Zero;
+            if (hwnd == nint.Zero) return;
+
+            var picker = new Windows.Storage.Pickers.FolderPicker { SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Downloads };
+            picker.FileTypeFilter.Add("*");
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder is null) return;
+
+            // 3. Build → zip → optional upload
+            var bundleDir = await _exportService.BuildBundleAsync(
+                folder.Path, _exportModules, options, DateTimeOffset.Now, AppVersion(), Environment.MachineName);
+            var zipPath = _exportService.ZipBundle(bundleDir);
+
+            string? remote = null;
+            if (uploadVo.IsChecked == true && _auth.CurrentUsername is { Length: > 0 } username)
+                remote = await _exportService.UploadBundleToVoSpaceAsync(zipPath, _storage, username);
+
+            var message = $"Bundle: {bundleDir}\nZip: {zipPath}";
+            if (remote is not null) message += $"\nUploaded to VOSpace: {remote}";
+            else if (uploadVo.IsChecked == true) message += "\n\n(VOSpace upload skipped — not signed in.)";
+            await ShowExportResultAsync("Export complete", message);
+        }
+        catch (ExportException ex)
+        {
+            await ShowExportResultAsync("Export failed", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            await ShowExportResultAsync("Export failed", ex.Message);
+        }
+    }
+
+    private Task ShowExportResultAsync(string title, string message)
+        => new ContentDialog
+        {
+            Title = title,
+            Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true },
+            CloseButtonText = "Close",
+            XamlRoot = XamlRoot,
+        }.ShowAsync().AsTask();
+
+    private static string AppVersion()
+    {
+        try
+        {
+            var v = Windows.ApplicationModel.Package.Current.Id.Version;
+            return $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
+        }
+        catch
+        {
+            return "unknown";
+        }
     }
 
     private void OnFileSelected(object sender, SelectionChangedEventArgs e)
