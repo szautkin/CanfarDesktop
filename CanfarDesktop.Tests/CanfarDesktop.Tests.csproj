@@ -124,6 +124,8 @@
     <Compile Include="..\Mcp\Tools\Builtin\FoundationalTools.cs" Link="Linked\Mcp\FoundationalTools.cs" />
     <Compile Include="..\Mcp\Audit\Audit.cs" Link="Linked\Mcp\Audit.cs" />
     <Compile Include="..\Mcp\McpToolRouter.cs" Link="Linked\Mcp\McpToolRouter.cs" />
+    <Compile Include="..\Mcp\Transport\IMcpTransport.cs" Link="Linked\Mcp\IMcpTransport.cs" />
+    <Compile Include="..\Mcp\McpServerService.cs" Link="Linked\Mcp\McpServerService.cs" />
     <Compile Include="..\Models\StorageQuota.cs" Link="Linked\StorageQuota.cs" />
     <Compile Include="..\ViewModels\StorageBrowserViewModel.cs" Link="Linked\StorageBrowserViewModel.cs" />
     <!-- Notebook document core (Milestone 2) -->
