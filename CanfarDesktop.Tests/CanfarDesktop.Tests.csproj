@@ -122,6 +122,8 @@
     <Compile Include="..\Mcp\Tools\ToolAbstractions.cs" Link="Linked\Mcp\ToolAbstractions.cs" />
     <Compile Include="..\Mcp\Tools\JsonReadTool.cs" Link="Linked\Mcp\JsonReadTool.cs" />
     <Compile Include="..\Mcp\Tools\Builtin\FoundationalTools.cs" Link="Linked\Mcp\FoundationalTools.cs" />
+    <Compile Include="..\Mcp\Audit\Audit.cs" Link="Linked\Mcp\Audit.cs" />
+    <Compile Include="..\Mcp\McpToolRouter.cs" Link="Linked\Mcp\McpToolRouter.cs" />
     <Compile Include="..\Models\StorageQuota.cs" Link="Linked\StorageQuota.cs" />
     <Compile Include="..\ViewModels\StorageBrowserViewModel.cs" Link="Linked\StorageBrowserViewModel.cs" />
     <!-- Notebook document core (Milestone 2) -->
