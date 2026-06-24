@@ -28,6 +28,18 @@
                 </StackPanel>
             </Border>
 
+            <TextBlock Text="Agent autonomy" Style="{StaticResource BodyStrongTextBlockStyle}" />
+            <ToggleSwitch x:Name="AutoApplyToggle" Header="Auto-apply agent writes"
+                          OnContent="On" OffContent="Off" Toggled="OnAutoApplyToggled" />
+            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       Text="When on, an agent's writes (e.g. saving a query) apply immediately and show in the activity feed below. When off, they queue for you to review." />
+            <ToggleSwitch x:Name="FollowActivityToggle" Header="Follow agent activity"
+                          OnContent="On" OffContent="Off" Toggled="OnFollowActivityToggled" />
+            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       Text="Navigate to the relevant view after an applied write." />
+
             <TextBlock Text="Connect Claude Desktop" Style="{StaticResource BodyStrongTextBlockStyle}" />
             <TextBlock x:Name="ConnectIntro" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -72,6 +84,29 @@
                     <FontIcon Glyph="&#xE8C8;" FontSize="14" />
                 </Button>
             </Grid>
+
+            <TextBlock Text="Recent agent activity" Style="{StaticResource BodyStrongTextBlockStyle}" />
+            <TextBlock x:Name="NoActivityText" Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="No agent activity yet." />
+            <ItemsControl x:Name="ActivityList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="0,4" ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Glyph="{Binding Glyph}" FontSize="14" VerticalAlignment="Top"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Subtitle}" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
         </StackPanel>
     </ScrollViewer>

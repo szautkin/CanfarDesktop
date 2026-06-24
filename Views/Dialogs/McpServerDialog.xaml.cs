@@ -3,18 +3,20 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
 using CanfarDesktop.Mcp;
+using CanfarDesktop.Mcp.Agents;
 using CanfarDesktop.Mcp.Config;
 
 namespace CanfarDesktop.Views.Dialogs;
 
 /// <summary>
-/// The opt-in MCP server panel: toggle the local named-pipe server on/off, see its run status, and
-/// (on explicit confirmation) add the stdio bridge to the Claude Desktop config — or copy the
-/// <c>claude mcp add</c> command for Claude Code. Resolves <see cref="McpHost"/> from DI.
+/// The opt-in MCP server panel: toggle the local named-pipe server on/off, see its run status, manage
+/// agent autonomy (auto-apply + follow-activity), review recent agent activity, and (on explicit
+/// confirmation) add the stdio bridge to the Claude Desktop config. Resolves <see cref="McpHost"/> from DI.
 /// </summary>
 public sealed partial class McpServerDialog : ContentDialog
 {
     private readonly McpHost _host;
+    private readonly McpSettingsService _settings;
     private readonly ClaudeConfigRepair _repair = new();
     private readonly string? _bridgeCommand;
     private bool _suppressToggle;
@@ -23,18 +25,69 @@ public sealed partial class McpServerDialog : ContentDialog
     {
         InitializeComponent();
         _host = App.Services.GetRequiredService<McpHost>();
+        _settings = App.Services.GetRequiredService<McpSettingsService>();
         _bridgeCommand = McpBridgeLocator.Resolve();
 
         _suppressToggle = true;
         EnableToggle.IsOn = _host.IsRunning;
+        AutoApplyToggle.IsOn = _settings.AutoApplyEnabled;
+        FollowActivityToggle.IsOn = _settings.FollowAgentActivityEnabled;
         _suppressToggle = false;
 
         RefreshStatus();
         InitConnectSection();
+        LoadActivity();
     }
 
     public static Task ShowAsync(XamlRoot root)
         => new McpServerDialog { XamlRoot = root }.ShowAsync().AsTask();
+
+    private void OnAutoApplyToggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressToggle) return;
+        _settings.AutoApplyEnabled = AutoApplyToggle.IsOn;
+    }
+
+    private void OnFollowActivityToggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressToggle) return;
+        _settings.FollowAgentActivityEnabled = FollowActivityToggle.IsOn;
+    }
+
+    private void LoadActivity()
+    {
+        var rows = _host.Activity.Recent(25).Select(ActivityRow.From).ToList();
+        ActivityList.ItemsSource = rows;
+        NoActivityText.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Display row for one agent-activity entry.</summary>
+    public sealed class ActivityRow
+    {
+        public string Glyph { get; init; } = string.Empty;
+        public string Summary { get; init; } = string.Empty;
+        public string Subtitle { get; init; } = string.Empty;
+
+        public static ActivityRow From(AgentActivityEntry e) => new()
+        {
+            Glyph = char.ConvertFromUtf32(e.Outcome switch
+            {
+                AgentActivityOutcome.Applied => 0xE73E,    // CheckMark
+                AgentActivityOutcome.Rejected => 0xE711,   // Cancel
+                AgentActivityOutcome.Withdrawn => 0xE7A7,  // Undo
+                _ => 0xE946,                               // Info (live op)
+            }),
+            Summary = e.Summary,
+            Subtitle = string.Join(" · ",
+                new[]
+                {
+                    e.Kind,
+                    $"{e.OriginLabel} ({e.OriginFingerprint})",
+                    e.AutoApplied ? "auto" : null,
+                    e.Timestamp.ToLocalTime().ToString("t"),
+                }.Where(s => !string.IsNullOrEmpty(s))),
+        };
+    }
 
     private void RefreshStatus()
     {
