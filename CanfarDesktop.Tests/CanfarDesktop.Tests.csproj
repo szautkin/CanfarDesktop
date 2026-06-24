@@ -133,6 +133,7 @@
     <Compile Include="..\Mcp\Tools\Write\ProposalLifecycleTools.cs" Link="Linked\Mcp\ProposalLifecycleTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ViewStateWriteTools.cs" Link="Linked\Mcp\ViewStateWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\SavedQueryWriteTools.cs" Link="Linked\Mcp\SavedQueryWriteTools.cs" />
+    <Compile Include="..\Mcp\Agents\AgentActivity.cs" Link="Linked\Mcp\AgentActivity.cs" />
     <Compile Include="..\Mcp\Audit\Audit.cs" Link="Linked\Mcp\Audit.cs" />
     <Compile Include="..\Mcp\McpToolRouter.cs" Link="Linked\Mcp\McpToolRouter.cs" />
     <Compile Include="..\Mcp\Transport\IMcpTransport.cs" Link="Linked\Mcp\IMcpTransport.cs" />

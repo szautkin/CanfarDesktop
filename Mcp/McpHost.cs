@@ -1,4 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
 using CanfarDesktop.Helpers;
+using CanfarDesktop.Mcp.Agents;
 using CanfarDesktop.Mcp.Listener;
 using CanfarDesktop.Mcp.Tools.Proposals;
 
@@ -20,6 +22,9 @@ public sealed class McpHost : IAsyncDisposable
     private readonly string _appVersion;
 
     private McpListenerService? _listener;
+
+    /// <summary>Newest-first feed of agent writes (for the review-after UI under auto-apply).</summary>
+    public AgentActivityLog Activity { get; } = new();
 
     public McpHost(IServiceProvider services, McpSettingsService settings, string appVersion)
     {
@@ -64,6 +69,9 @@ public sealed class McpHost : IAsyncDisposable
                     ?? throw ProposalApplyException.NoApplierForKind(proposal.Kind);
                 await applier.ApplyAsync(proposal);
                 proposals.MarkApplied(proposalId);
+
+                Activity.Append(AgentActivityEntry.Applied(proposal, autoApplied: true, DateTimeOffset.UtcNow));
+                FollowActivity(proposal.Kind);
             });
 
         var router = new McpToolRouter(tools, autoApplyHook: autoApply); // default LoggingAuditSink
@@ -73,6 +81,21 @@ public sealed class McpHost : IAsyncDisposable
             log: CrashLogger.Info);
         _listener.Start(Guid.NewGuid());
         CrashLogger.Info($"MCP host started; pipe={_listener.PipeName}");
+    }
+
+    /// <summary>After an applied write, send the user to the relevant view (when follow-activity is on).</summary>
+    private void FollowActivity(string kind)
+    {
+        if (!_settings.FollowAgentActivityEnabled) return;
+        var mode = kind switch
+        {
+            "save_query" or "delete_saved_query" => "search",
+            "update_observation_note" or "bulk_update_observation_notes" => "research",
+            _ => null,
+        };
+        if (mode is null) return;
+        try { _ = _services.GetRequiredService<AppViewStateService>().NavigateAsync(mode); }
+        catch { /* navigation is best-effort */ }
     }
 
     /// <summary>Stop the server and remove the sidecar (idempotent).</summary>
