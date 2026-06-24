@@ -1,9 +1,12 @@
+using CanfarDesktop.Mcp.Tools.Proposals;
+
 namespace CanfarDesktop.Mcp.Tools;
 
 /// <summary>
 /// Outcome of a tool invocation. The read surface returns <see cref="DataResult"/> (JSON payload),
-/// <see cref="FailedResult"/> (typed reason), or <see cref="ImageToolResult"/>. Mirrors the macOS
-/// ToolResult discriminants (proposal/undo variants arrive with the M6 write surface).
+/// <see cref="FailedResult"/> (typed reason), or <see cref="ImageToolResult"/>. A write tool returns
+/// <see cref="ProposedResult"/> (a queued proposal); the router may turn it into a DataResult on
+/// auto-apply. Mirrors the macOS ToolResult discriminants.
 /// </summary>
 public abstract record ToolResult
 {
@@ -11,11 +14,13 @@ public abstract record ToolResult
     public static ToolResult Fail(ToolFailureReason reason) => new FailedResult(reason);
     public static ToolResult ImageResult(byte[] data, string mimeType, string? caption = null)
         => new ImageToolResult(data, mimeType, caption);
+    public static ToolResult Proposed(PendingProposal proposal) => new ProposedResult(proposal);
 }
 
 public sealed record DataResult(byte[] Json) : ToolResult;
 public sealed record FailedResult(ToolFailureReason Reason) : ToolResult;
 public sealed record ImageToolResult(byte[] Data, string MimeType, string? Caption) : ToolResult;
+public sealed record ProposedResult(PendingProposal Proposal) : ToolResult;
 
 /// <summary>A typed, PII-safe failure reason with a user-facing message + a stable audit tag.</summary>
 public abstract record ToolFailureReason
@@ -84,6 +89,12 @@ public sealed record PreviewTooLarge(int Bytes) : ToolFailureReason
 {
     public override string Description => $"Preview image is too large ({Bytes} bytes) for the response limit.";
     public override string AuditTag => "preview_too_large";
+}
+
+public sealed record PerTurnProposalCapExceeded(int Limit) : ToolFailureReason
+{
+    public override string Description => $"Per-turn proposal cap exceeded (limit {Limit}). Apply or withdraw pending proposals before submitting more.";
+    public override string AuditTag => "per_turn_proposal_cap_exceeded";
 }
 
 /// <summary>Thrown by a tool's handler to surface a typed failure (mapped to <see cref="FailedResult"/>).</summary>
