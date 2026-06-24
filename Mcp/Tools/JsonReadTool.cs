@@ -12,8 +12,8 @@ namespace CanfarDesktop.Mcp.Tools;
 /// </summary>
 public abstract class JsonReadTool<TArgs, TOutput> : IMcpTool where TArgs : new()
 {
-    public McpVerbClass VerbClass => McpVerbClass.Read;
-    public bool AgentSafe => true;
+    public virtual McpVerbClass VerbClass => McpVerbClass.Read;
+    public virtual bool AgentSafe => true;
     public abstract ToolDescriptor Descriptor { get; }
 
     protected virtual TimeSpan Timeout => TimeSpan.FromSeconds(60);

@@ -9,6 +9,7 @@ using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Builtin;
 using CanfarDesktop.Mcp.Tools.Read;
 using CanfarDesktop.Mcp.Tools.ViewState;
+using CanfarDesktop.Mcp.Tools.Write;
 
 namespace CanfarDesktop.Mcp;
 
@@ -88,6 +89,11 @@ public static class McpToolCatalog
             new GetPreviewImageTool(
                 publisherId => ResolvePreviewImagesAsync(dataLink, publisherId),
                 (url, maxBytes) => FetchPreviewAsync(httpFactory, url, maxBytes)),
+
+            // Proposal lifecycle: let the agent see + manage its queued write proposals
+            new ListPendingProposalsTool(),
+            new GetProposalStateTool(),
+            new WithdrawProposalTool(),
         };
     }
 
