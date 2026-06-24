@@ -129,8 +129,13 @@
     <Compile Include="..\Mcp\Config\ClaudeConfigMerge.cs" Link="Linked\Mcp\ClaudeConfigMerge.cs" />
     <Compile Include="..\Mcp\Tools\Read\ResearchReadTools.cs" Link="Linked\Mcp\ResearchReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\SearchReadTools.cs" Link="Linked\Mcp\SearchReadTools.cs" />
+    <Compile Include="..\Mcp\Tools\Read\SearchExecTools.cs" Link="Linked\Mcp\SearchExecTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\SessionReadTools.cs" Link="Linked\Mcp\SessionReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\ImageDiscoveryReadTool.cs" Link="Linked\Mcp\ImageDiscoveryReadTool.cs" />
+    <Compile Include="..\Mcp\Tools\Read\Caom2ReadTools.cs" Link="Linked\Mcp\Caom2ReadTools.cs" />
+    <Compile Include="..\Mcp\Tools\Read\CatalogJobReadTools.cs" Link="Linked\Mcp\CatalogJobReadTools.cs" />
+    <Compile Include="..\Mcp\Tools\Read\VoSpaceFitsReadTools.cs" Link="Linked\Mcp\VoSpaceFitsReadTools.cs" />
+    <Compile Include="..\Models\RecentLaunch.cs" Link="Linked\RecentLaunch.cs" />
     <Compile Include="..\Models\StorageQuota.cs" Link="Linked\StorageQuota.cs" />
     <Compile Include="..\ViewModels\StorageBrowserViewModel.cs" Link="Linked\StorageBrowserViewModel.cs" />
     <!-- Notebook document core (Milestone 2) -->
