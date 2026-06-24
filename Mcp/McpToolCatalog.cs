@@ -108,6 +108,8 @@ public static class McpToolCatalog
             // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
             new SaveQueryTool(),
             new DeleteSavedQueryTool(),
+            new UpdateObservationNoteTool(),
+            new BulkUpdateObservationNotesTool(),
         };
     }
 
@@ -115,6 +117,8 @@ public static class McpToolCatalog
     public static IReadOnlyList<IProposalApplier> BuildAppliers(IServiceProvider sp)
     {
         var searchStore = sp.GetRequiredService<ISearchStoreService>();
+        var noteStore = sp.GetRequiredService<ObservationNoteStore>();
+
         return new IProposalApplier[]
         {
             new SaveQueryApplier(payload =>
@@ -127,8 +131,21 @@ public static class McpToolCatalog
                 searchStore.DeleteQuery(payload.Name);
                 return Task.CompletedTask;
             }),
+            new UpdateObservationNoteApplier(payload =>
+            {
+                ApplyNote(noteStore, payload);
+                return Task.CompletedTask;
+            }),
+            new BulkUpdateObservationNotesApplier(items =>
+            {
+                foreach (var payload in items) ApplyNote(noteStore, payload);
+                return Task.CompletedTask;
+            }),
         };
     }
+
+    private static void ApplyNote(ObservationNoteStore store, UpdateObservationNotePayload payload)
+        => store.Upsert(ObservationNoteMerge.Apply(store.Get(payload.PublisherId), payload, DateTimeOffset.UtcNow));
 
     /// <summary>Resolve a CADC observation's preview images from DataLink (direct image files + #preview URLs).</summary>
     private static async Task<IReadOnlyList<PreviewArtifact>> ResolvePreviewImagesAsync(DataLinkService dataLink, string publisherId)
