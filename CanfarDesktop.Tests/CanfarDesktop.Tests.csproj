@@ -112,6 +112,7 @@
     <Compile Include="..\Services\Export\IExportableModule.cs" Link="Linked\Export\IExportableModule.cs" />
     <Compile Include="..\Models\Export\ExportManifest.cs" Link="Linked\Export\ExportManifest.cs" />
     <Compile Include="..\Services\Export\ExportService.cs" Link="Linked\Export\ExportService.cs" />
+    <Compile Include="..\Services\Export\ResearchExportBuilder.cs" Link="Linked\Export\ResearchExportBuilder.cs" />
     <Compile Include="..\Models\StorageQuota.cs" Link="Linked\StorageQuota.cs" />
     <Compile Include="..\ViewModels\StorageBrowserViewModel.cs" Link="Linked\StorageBrowserViewModel.cs" />
     <!-- Notebook document core (Milestone 2) -->
