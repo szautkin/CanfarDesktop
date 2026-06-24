@@ -53,7 +53,7 @@ public static class BridgeRelay
     {
         try
         {
-            var request = JsonRpcRequest.Parse(JsonValue.Parse(Encoding.UTF8.GetString(requestBytes)));
+            var request = JsonRpcRequest.Parse(JsonValue.Parse((ReadOnlySpan<byte>)requestBytes));
             if (request.IsNotification) return null;
             var response = JsonRpcResponse.Failure(request.Id,
                 new JsonRpcErrorPayload(JsonRpcErrorCode.ServiceUnavailable,

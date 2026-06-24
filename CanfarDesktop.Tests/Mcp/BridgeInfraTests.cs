@@ -60,6 +60,17 @@ public class BridgeInfraTests
         => Assert.Null(BridgeRelay.ServiceUnavailableFor(Encoding.UTF8.GetBytes(@"{""jsonrpc"":""2.0"",""method"":""x""}")));
 
     [Fact]
+    public void ServiceUnavailableFor_ToleratesLeadingBom()
+    {
+        // A client may newline-frame a message that carries a UTF-8 BOM; we must still answer it.
+        var withBom = new byte[] { 0xEF, 0xBB, 0xBF }
+            .Concat(Encoding.UTF8.GetBytes(@"{""jsonrpc"":""2.0"",""id"":9,""method"":""ping""}")).ToArray();
+        var bytes = BridgeRelay.ServiceUnavailableFor(withBom)!;
+        var resp = (JsonObject)JsonValue.Parse(Encoding.UTF8.GetString(bytes));
+        Assert.Equal(9, ((JsonInt)resp["id"]!).Value);
+    }
+
+    [Fact]
     public async Task Relay_PumpsBothDirections()
     {
         var stdio = new InMemoryTransport();

@@ -65,7 +65,7 @@ public sealed class McpServerService
     public async Task<byte[]?> HandleFrameAsync(byte[] frame, CancellationToken cancellationToken = default)
     {
         JsonValue root;
-        try { root = JsonValue.Parse(Encoding.UTF8.GetString(frame)); }
+        try { root = JsonValue.Parse((ReadOnlySpan<byte>)frame); }
         catch { return Encode(JsonRpcResponse.Failure(JsonRpcId.Null, Err(JsonRpcErrorCode.ParseError, "parse error"))); }
 
         JsonRpcRequest request;

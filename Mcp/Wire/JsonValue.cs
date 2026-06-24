@@ -24,6 +24,18 @@ public abstract record JsonValue
     public static JsonValue Parse(string json)
         => JsonSerializer.Deserialize<JsonValue>(json) ?? Null;
 
+    /// <summary>
+    /// Parse a UTF-8 JSON document from raw bytes, tolerating a leading byte-order mark. Used at the
+    /// transport boundary where a client may newline-frame a message that carries a BOM (RFC 8259
+    /// lets parsers ignore one). Throws on malformed JSON.
+    /// </summary>
+    public static JsonValue Parse(ReadOnlySpan<byte> utf8)
+    {
+        if (utf8.Length >= 3 && utf8[0] == 0xEF && utf8[1] == 0xBB && utf8[2] == 0xBF)
+            utf8 = utf8[3..];
+        return JsonSerializer.Deserialize<JsonValue>(utf8) ?? Null;
+    }
+
     /// <summary>Serialize this value back to JSON.</summary>
     public string ToJsonString() => JsonSerializer.Serialize(this);
 

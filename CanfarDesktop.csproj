@@ -21,6 +21,10 @@
     <Compile Remove="CanfarDesktop.Tests\**" />
     <Content Remove="CanfarDesktop.Tests\**" />
     <None Remove="CanfarDesktop.Tests\**" />
+    <!-- The MCP bridge is a separate exe project nested in this folder; keep it out of the app build. -->
+    <Compile Remove="CanfarDesktop.McpBridge\**" />
+    <Content Remove="CanfarDesktop.McpBridge\**" />
+    <None Remove="CanfarDesktop.McpBridge\**" />
   </ItemGroup>
 
   <ItemGroup>
