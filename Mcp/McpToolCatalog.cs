@@ -7,6 +7,7 @@ using CanfarDesktop.Services.Database;
 using CanfarDesktop.Services.ImageDiscovery;
 using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Builtin;
+using CanfarDesktop.Mcp.Tools.Proposals;
 using CanfarDesktop.Mcp.Tools.Read;
 using CanfarDesktop.Mcp.Tools.ViewState;
 using CanfarDesktop.Mcp.Tools.Write;
@@ -78,13 +79,18 @@ public static class McpToolCatalog
             new GetObservationCaom2Tool(id => caom2.GetByPublisherIdAsync(id)),
             new GetDataLinksTool(id => dataLink.GetLinksAsync(id)),
 
-            // View state: what the user is looking at + server-side preview fetch
-            new GetCurrentViewTool(() =>
+            // View state: what the user is looking at + autonomy/budget + server-side preview fetch
+            new GetCurrentViewTool(ctx =>
             {
                 var v = viewState.Capture();
+                var pending = ctx.Proposals?.List().Count ?? 0;
+                var cap = ctx.Budget?.Limit ?? 0;
+                var remaining = ctx.Budget?.Remaining(ctx.Origin) ?? 0;
                 return Task.FromResult(new AppViewSnapshot(
                     v.Mode, v.ModeTitle, auth.IsAuthenticated, auth.CurrentUsername ?? string.Empty,
-                    v.SearchFocusRA, v.SearchFocusDec, v.OpenFitsPaths, settings.Enabled));
+                    v.SearchFocusRA, v.SearchFocusDec, v.OpenFitsPaths,
+                    settings.Enabled, settings.AutoApplyEnabled, settings.FollowAgentActivityEnabled,
+                    pending, new BudgetSnapshot(cap, remaining)));
             }),
             new GetPreviewImageTool(
                 publisherId => ResolvePreviewImagesAsync(dataLink, publisherId),
@@ -98,6 +104,29 @@ public static class McpToolCatalog
             // Live ViewState writes: steer the user's view (no proposal)
             new NavigateToTool(mode => viewState.NavigateAsync(mode)),
             new SetSearchFocusTool((ra, dec) => viewState.SetSearchFocusActionAsync(ra, dec)),
+
+            // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
+            new SaveQueryTool(),
+            new DeleteSavedQueryTool(),
+        };
+    }
+
+    /// <summary>Build the proposal appliers bound to the live stores (registered by the host).</summary>
+    public static IReadOnlyList<IProposalApplier> BuildAppliers(IServiceProvider sp)
+    {
+        var searchStore = sp.GetRequiredService<ISearchStoreService>();
+        return new IProposalApplier[]
+        {
+            new SaveQueryApplier(payload =>
+            {
+                searchStore.SaveQuery(new SavedQuery { Name = payload.Name, Adql = payload.Adql, SavedAt = DateTime.UtcNow });
+                return Task.CompletedTask;
+            }),
+            new DeleteSavedQueryApplier(payload =>
+            {
+                searchStore.DeleteQuery(payload.Name);
+                return Task.CompletedTask;
+            }),
         };
     }
 

@@ -12,6 +12,9 @@ namespace CanfarDesktop.Mcp.Tools.ViewState;
 // observation PREVIEW server-side and returns it as an inline image block.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// <summary>Proposal-budget snapshot surfaced in <c>get_current_view</c> so an agent can self-throttle.</summary>
+public sealed record BudgetSnapshot(int Cap, int Remaining);
+
 /// <summary>What the user is currently looking at — the output of <c>get_current_view</c>.</summary>
 public sealed record AppViewSnapshot(
     string Mode,
@@ -21,30 +24,38 @@ public sealed record AppViewSnapshot(
     double? SearchFocusRA,
     double? SearchFocusDec,
     IReadOnlyList<string> OpenFitsPaths,
-    bool AgentsEnabled);
+    bool AgentsEnabled,
+    bool AutoApplyEnabled,
+    bool FollowAgentActivityEnabled,
+    int PendingProposalsCount,
+    BudgetSnapshot ProposalBudget);
 
 /// <summary>
-/// <c>get_current_view</c> — return navigation state + light per-mode context so an agent can reason
-/// in the user's current frame. Bodies/payloads are never exposed — only mode, auth, the Search form's
-/// sky focus, and the open FITS paths. The host supplies a live snapshot via the injected delegate.
+/// <c>get_current_view</c> — return navigation state + light per-mode context + the agent-autonomy
+/// signals so an agent can reason in the user's current frame and pace its writes. Bodies/payloads are
+/// never exposed — only mode, auth, Search sky focus, open FITS paths, and the autonomy/budget state.
+/// The host supplies a live snapshot via the injected delegate (which reads the call context for the
+/// per-origin budget + pending-proposal count).
 /// </summary>
 public sealed class GetCurrentViewTool : JsonReadTool<EmptyArgs, AppViewSnapshot>
 {
     private const string Schema = """{"type":"object","properties":{},"additionalProperties":false}""";
 
-    private readonly Func<Task<AppViewSnapshot>> _snapshot;
+    private readonly Func<McpToolContext, Task<AppViewSnapshot>> _snapshot;
 
-    public GetCurrentViewTool(Func<Task<AppViewSnapshot>> snapshot) => _snapshot = snapshot;
+    public GetCurrentViewTool(Func<McpToolContext, Task<AppViewSnapshot>> snapshot) => _snapshot = snapshot;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_current_view",
         "Return what the user is currently looking at: the mode (landing/search/research/portal/storage/" +
-        "fitsViewer), auth state + username, the Search form's sky focus (RA/Dec) when in Search, and the " +
-        "open FITS file paths when in the FITS viewer. Read-only; lets you reason in the user's context.",
+        "fitsViewer), auth state + username, the Search form's sky focus (RA/Dec) when in Search, the open " +
+        "FITS file paths when in the FITS viewer, plus the autonomy state: autoApplyEnabled (do writes apply " +
+        "immediately or queue for review?), followAgentActivityEnabled (does the app navigate after a write?), " +
+        "the pending-proposal count, and your remaining per-turn proposal budget. Read-only.",
         Schema);
 
     protected override Task<AppViewSnapshot> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
-        => _snapshot();
+        => _snapshot(context);
 }
 
 /// <summary>A preview artifact resolved from DataLink/CAOM-2 (band is null when unknown).</summary>

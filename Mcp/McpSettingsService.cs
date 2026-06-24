@@ -10,6 +10,8 @@ namespace CanfarDesktop.Mcp;
 public sealed class McpSettingsService
 {
     private const string KeyEnabled = "Mcp.Enabled";
+    private const string KeyAutoApply = "Mcp.AutoApplyWrites";
+    private const string KeyFollowActivity = "Mcp.FollowAgentActivity";
 
     private readonly ApplicationDataContainer? _localSettings;
 
@@ -19,10 +21,32 @@ public sealed class McpSettingsService
         catch { _localSettings = null; }
     }
 
-    /// <summary>Whether the MCP server should run. Defaults to false (the user must opt in).</summary>
+    /// <summary>Whether the MCP server should run. Defaults to false (the user must opt in to the server).</summary>
     public bool Enabled
     {
-        get => _localSettings?.Values.TryGetValue(KeyEnabled, out var v) == true && v is bool b && b;
-        set { if (_localSettings is not null) _localSettings.Values[KeyEnabled] = value; }
+        get => ReadBool(KeyEnabled, defaultValue: false);
+        set => WriteBool(KeyEnabled, value);
+    }
+
+    /// <summary>Whether agent write proposals auto-apply (vs. queue for review). Defaults to true (1-to-1 with macOS).</summary>
+    public bool AutoApplyEnabled
+    {
+        get => ReadBool(KeyAutoApply, defaultValue: true);
+        set => WriteBool(KeyAutoApply, value);
+    }
+
+    /// <summary>Whether the app navigates the user to the relevant view after an applied write. Defaults to true.</summary>
+    public bool FollowAgentActivityEnabled
+    {
+        get => ReadBool(KeyFollowActivity, defaultValue: true);
+        set => WriteBool(KeyFollowActivity, value);
+    }
+
+    private bool ReadBool(string key, bool defaultValue)
+        => _localSettings?.Values.TryGetValue(key, out var v) == true && v is bool b ? b : defaultValue;
+
+    private void WriteBool(string key, bool value)
+    {
+        if (_localSettings is not null) _localSettings.Values[key] = value;
     }
 }

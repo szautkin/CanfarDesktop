@@ -45,12 +45,28 @@ public sealed class McpHost : IAsyncDisposable
         if (_listener is not null) return;
 
         var tools = McpToolCatalog.Build(_services, _appVersion);
-        var router = new McpToolRouter(tools); // default LoggingAuditSink
         var identity = new ServerIdentity(ServerName, _appVersion);
 
-        // Shared write-surface state across connections (auto-apply hook + appliers wired in a later increment).
+        // Shared write-surface state across connections.
         var proposals = new InMemoryProposalStore();
         var budget = new ProposalBudget();
+
+        // Appliers bound to the real stores + the auto-apply hook (gated by the user's autonomy toggle).
+        var registry = new ProposalApplierRegistry();
+        registry.Register(McpToolCatalog.BuildAppliers(_services));
+        var autoApply = new AutoApplyHook(
+            (verb, proposal) => Task.FromResult(_settings.AutoApplyEnabled),
+            async proposalId =>
+            {
+                var proposal = proposals.Get(proposalId)
+                    ?? throw ProposalApplyException.BackendError("proposal no longer pending");
+                var applier = registry.ApplierFor(proposal.Kind)
+                    ?? throw ProposalApplyException.NoApplierForKind(proposal.Kind);
+                await applier.ApplyAsync(proposal);
+                proposals.MarkApplied(proposalId);
+            });
+
+        var router = new McpToolRouter(tools, autoApplyHook: autoApply); // default LoggingAuditSink
 
         _listener = new McpListenerService(
             () => new McpServerService(router, identity, proposals: proposals, budget: budget),

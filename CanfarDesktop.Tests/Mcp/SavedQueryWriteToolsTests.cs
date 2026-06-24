@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Xunit;
+using CanfarDesktop.Mcp;
 using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Proposals;
 using CanfarDesktop.Mcp.Tools.Write;
@@ -94,5 +95,36 @@ public class SavedQueryWriteToolsTests
         var applier = new DeleteSavedQueryApplier(p => { deleted = p.Name; return Task.CompletedTask; });
         await applier.ApplyAsync(ProposalWith("delete_saved_query", new DeleteSavedQueryPayload("Gone")));
         Assert.Equal("Gone", deleted);
+    }
+
+    // ── End-to-end: save_query through the router with auto-apply + a real applier ─────────────
+
+    [Fact]
+    public async Task SaveQuery_AutoApply_EndToEnd_AppliesAndMarks()
+    {
+        var store = new InMemoryProposalStore();
+        var ctx = McpToolContext.ForExternal("c1", Guid.NewGuid(), store, new ProposalBudget());
+
+        SaveQueryPayload? saved = null;
+        var registry = new ProposalApplierRegistry();
+        registry.Register(new SaveQueryApplier(p => { saved = p; return Task.CompletedTask; }));
+
+        var hook = new AutoApplyHook(
+            (verb, proposal) => Task.FromResult(true),
+            async id =>
+            {
+                var proposal = store.Get(id)!;
+                await registry.ApplierFor(proposal.Kind)!.ApplyAsync(proposal);
+                store.MarkApplied(id);
+            });
+        var router = new McpToolRouter(new IMcpTool[] { new SaveQueryTool() }, autoApplyHook: hook);
+
+        var result = await router.DispatchAsync("save_query", Args("""{"name":"N","adql":"SELECT 1"}"""), ctx, default);
+
+        var doc = JsonDocument.Parse(Assert.IsType<DataResult>(result).Json).RootElement;
+        Assert.True(doc.GetProperty("applied").GetBoolean());
+        Assert.Equal("N", saved!.Name);
+        Assert.Equal(ProposalState.Applied, store.State(Guid.Parse(doc.GetProperty("proposalId").GetString()!)));
+        Assert.Empty(store.List());
     }
 }

@@ -19,8 +19,9 @@ public class ViewStateToolsTests
     public async Task GetCurrentView_ReturnsSnapshotJson()
     {
         var snap = new AppViewSnapshot("search", "Search", true, "alice", 180.0, -0.5,
-            new[] { "/tmp/a.fits" }, AgentsEnabled: true);
-        var tool = new GetCurrentViewTool(() => Task.FromResult(snap));
+            new[] { "/tmp/a.fits" }, AgentsEnabled: true, AutoApplyEnabled: true,
+            FollowAgentActivityEnabled: false, PendingProposalsCount: 2, ProposalBudget: new BudgetSnapshot(8, 7));
+        var tool = new GetCurrentViewTool(_ => Task.FromResult(snap));
 
         var result = await tool.InvokeAsync(JsonValue.Null, Ctx, default);
 
@@ -31,6 +32,9 @@ public class ViewStateToolsTests
         Assert.Equal(180.0, doc.GetProperty("searchFocusRA").GetDouble());
         Assert.Equal("/tmp/a.fits", doc.GetProperty("openFitsPaths")[0].GetString());
         Assert.True(doc.GetProperty("agentsEnabled").GetBoolean());
+        Assert.True(doc.GetProperty("autoApplyEnabled").GetBoolean());
+        Assert.Equal(2, doc.GetProperty("pendingProposalsCount").GetInt32());
+        Assert.Equal(7, doc.GetProperty("proposalBudget").GetProperty("remaining").GetInt32());
     }
 
     // ── get_preview_image ─────────────────────────────────────────────────────
