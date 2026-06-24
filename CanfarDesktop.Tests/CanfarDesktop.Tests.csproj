@@ -114,6 +114,10 @@
     <Compile Include="..\Services\Export\ExportService.cs" Link="Linked\Export\ExportService.cs" />
     <Compile Include="..\Services\Export\ResearchExportBuilder.cs" Link="Linked\Export\ResearchExportBuilder.cs" />
     <Compile Include="..\Services\Export\SearchExportBuilder.cs" Link="Linked\Export\SearchExportBuilder.cs" />
+    <!-- MCP wire protocol (pure) -->
+    <Compile Include="..\Mcp\Wire\JsonValue.cs" Link="Linked\Mcp\JsonValue.cs" />
+    <Compile Include="..\Mcp\Wire\JsonRpc.cs" Link="Linked\Mcp\JsonRpc.cs" />
+    <Compile Include="..\Mcp\Wire\McpMessages.cs" Link="Linked\Mcp\McpMessages.cs" />
     <Compile Include="..\Models\StorageQuota.cs" Link="Linked\StorageQuota.cs" />
     <Compile Include="..\ViewModels\StorageBrowserViewModel.cs" Link="Linked\StorageBrowserViewModel.cs" />
     <!-- Notebook document core (Milestone 2) -->
