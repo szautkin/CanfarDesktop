@@ -22,13 +22,17 @@ public static class CellFormatter
 
         var key = CleanKey(columnKey);
 
-        if (ColumnUnitCatalog.HasMenu(key))
-            return FormatWithUnit(key, trimmed, unitId ?? ColumnUnitCatalog.DefaultUnitId(key)!);
+        // An explicit unit chosen from the column's menu overrides the default rendering.
+        if (unitId is not null && ColumnUnitCatalog.HasMenu(key))
+            return FormatWithUnit(key, trimmed, unitId);
 
+        // No explicit unit: RA/Dec default to sexagesimal (the new feature); every other column keeps
+        // its readable legacy default (the unit menu switches them on demand).
         return key switch
         {
             "startdate" or "enddate" or "provelastexecuted" => FormatMjdDate(trimmed),
-            "ra(j20000)" or "dec(j20000)" => FormatCoordinate(trimmed, 5),
+            "ra(j20000)" => Sexagesimal.FormatRaHms(trimmed),
+            "dec(j20000)" => Sexagesimal.FormatDecDms(trimmed),
             "inttime" => FormatIntegrationTime(trimmed),
             "callev" => FormatCalibrationLevel(trimmed),
             "download" or "movingtarget" => FormatBoolean(trimmed),

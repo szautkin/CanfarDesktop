@@ -23,8 +23,8 @@ public class CellFormatterUnitTests
     [Theory]
     [InlineData("Min Wavelength", "0.0000005", "nm", "500.0 nm")]
     [InlineData("Int Time", "3600", "hours", "1.000 h")]
-    [InlineData("Int Time", "3600", null, "3600.000 s")] // default seconds
-    [InlineData("Start Date", "59000", "mjd", "59000")]  // raw MJD
+    [InlineData("Int Time", "3600", null, "1h")]        // default = readable legacy adaptive
+    [InlineData("Start Date", "59000", "mjd", "59000")] // raw MJD
     public void UnitColumns_RenderInChosenUnit(string header, string raw, string? unit, string expected)
         => Assert.Equal(expected, CellFormatter.Format(header, raw, unit));
 

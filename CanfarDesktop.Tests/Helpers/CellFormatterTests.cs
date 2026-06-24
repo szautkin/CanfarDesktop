@@ -42,16 +42,23 @@ public class CellFormatterTests
         Assert.Equal("-30.000000", CellFormatter.Format("dec(j20000)", "-30", "degrees"));  // 6dp, always-signed
     }
 
-    // Integration time now defaults to fixed seconds (macOS); minutes/hours/days via the unit menu.
+    // Integration time keeps its readable adaptive default; seconds/minutes/hours/days via the menu.
     [Theory]
-    [InlineData("3600", "3600.000 s")]
-    [InlineData("90", "90.000 s")]
-    [InlineData("45", "45.000 s")]
-    [InlineData("0.5", "0.500 s")]
-    public void Format_IntTime_DefaultsToSeconds(string input, string expected)
+    [InlineData("3600", "1h")]
+    [InlineData("7200", "2h")]
+    [InlineData("5400", "1.5h")]
+    [InlineData("300", "5m")]
+    [InlineData("90", "1.5m")]
+    [InlineData("45", "45s")]
+    [InlineData("0.5", "0.5s")]
+    public void Format_IntTime_DefaultStaysAdaptive(string input, string expected)
     {
         Assert.Equal(expected, CellFormatter.Format("inttime", input));
     }
+
+    [Fact]
+    public void Format_IntTime_UnitMenuOverridesToFixedUnit()
+        => Assert.Equal("1.000 h", CellFormatter.Format("inttime", "3600", "hours"));
 
     // Calibration level
     [Theory]
@@ -85,11 +92,11 @@ public class CellFormatterTests
     }
 
     [Fact]
-    public void Format_Wavelength_NormalValue_RendersWithUnit()
+    public void Format_Wavelength_NormalValue_UsesStandard()
     {
-        // minwavelength now defaults to metres with a "value m" render (macOS spectral set).
-        var result = CellFormatter.Format("minwavelength", "0.5");
-        Assert.Equal("0.500 m", result);
+        // Default keeps the legacy compact render; the unit menu switches to "value m"/nm/GHz/etc.
+        Assert.Equal("0.5", CellFormatter.Format("minwavelength", "0.5"));
+        Assert.Equal("0.500 m", CellFormatter.Format("minwavelength", "0.5", "m"));
     }
 
     // Timestamp
