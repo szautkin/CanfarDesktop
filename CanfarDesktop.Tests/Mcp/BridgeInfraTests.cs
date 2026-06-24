@@ -26,6 +26,10 @@ public class BridgeInfraTests
     }
 
     [Fact]
+    public void PipeSddl_OwnerOnly_IsProtectedFullAccessForSid()
+        => Assert.Equal("D:P(A;;FA;;;S-1-5-21-1-2-3-1001)", McpPipeSddl.OwnerOnly("S-1-5-21-1-2-3-1001"));
+
+    [Fact]
     public void Sidecar_WriteReadDelete_RoundTrips()
     {
         var dir = Path.Combine(Path.GetTempPath(), "sidecar-" + Guid.NewGuid().ToString("N"));
