@@ -21,6 +21,10 @@ public sealed class McpHost : IAsyncDisposable
     private readonly McpSettingsService _settings;
     private readonly string _appVersion;
 
+    // Serializes write APPLIES — concurrent dispatch means two write tools can auto-apply at once, and
+    // the backing stores (e.g. the file-based saved-query store) do unguarded read-modify-write.
+    private readonly SemaphoreSlim _applyGate = new(1, 1);
+
     private McpListenerService? _listener;
 
     /// <summary>Newest-first feed of agent writes (for the review-after UI under auto-apply).</summary>
@@ -67,8 +71,17 @@ public sealed class McpHost : IAsyncDisposable
                     ?? throw ProposalApplyException.BackendError("proposal no longer pending");
                 var applier = registry.ApplierFor(proposal.Kind)
                     ?? throw ProposalApplyException.NoApplierForKind(proposal.Kind);
-                await applier.ApplyAsync(proposal);
-                proposals.MarkApplied(proposalId);
+
+                await _applyGate.WaitAsync();
+                try
+                {
+                    await applier.ApplyAsync(proposal);
+                    proposals.MarkApplied(proposalId);
+                }
+                finally
+                {
+                    _applyGate.Release();
+                }
 
                 Activity.Append(AgentActivityEntry.Applied(proposal, autoApplied: true, DateTimeOffset.UtcNow));
                 FollowActivity(proposal.Kind);

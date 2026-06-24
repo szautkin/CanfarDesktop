@@ -38,22 +38,36 @@ public abstract class JsonWriteTool<TArgs> : IMcpTool where TArgs : new()
             return ToolResult.Fail(new InvalidArgument(ex.Message));
         }
 
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var handler = ExecuteAsync(args, context, cts.Token);
+
+        // Respond with a typed timeout even if PlanAsync ignores the token (see JsonReadTool).
+        if (await Task.WhenAny(handler, Task.Delay(Timeout)).ConfigureAwait(false) == handler)
+        {
+            cts.Dispose();
+            return await handler;
+        }
+
+        cts.Cancel();
+        ToolTimeout.ObserveInBackground(handler, cts);
+        return ToolResult.Fail(new UpstreamTimeout());
+    }
+
+    private async Task<ToolResult> ExecuteAsync(TArgs args, McpToolContext context, CancellationToken ct)
+    {
         try
         {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(Timeout);
-
-            var plan = await PlanAsync(args, context, cts.Token);
+            var plan = await PlanAsync(args, context, ct);
             var proposal = PendingProposal.Create(
                 Descriptor.Name, plan.Kind, plan.Summary, plan.Payload, context.Origin, context.RequestId);
-            context.Proposals.Enqueue(proposal);
+            context.Proposals!.Enqueue(proposal);
             return ToolResult.Proposed(proposal);
         }
         catch (McpToolException ex)
         {
             return ToolResult.Fail(ex.Reason);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException)
         {
             return ToolResult.Fail(new UpstreamTimeout());
         }

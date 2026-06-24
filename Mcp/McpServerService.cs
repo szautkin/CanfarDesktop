@@ -62,12 +62,31 @@ public sealed class McpServerService
 
     public async Task ServeAsync(IMcpTransport transport, CancellationToken cancellationToken = default)
     {
+        // Dispatch each request CONCURRENTLY: a slow tool (e.g. a multi-second backend query) must not
+        // stall every other request queued behind it on the connection. Responses are matched by id, so
+        // out-of-order completion is fine; the transport serializes the actual writes.
+        var inflight = new List<Task>();
         await foreach (var frame in transport.Incoming.ReadAllAsync(cancellationToken))
         {
             if (frame.Length == 0) continue; // keep-alive
-            var response = await HandleFrameAsync(frame, cancellationToken);
+            inflight.Add(ProcessFrameAsync(frame, transport, cancellationToken));
+            inflight.RemoveAll(t => t.IsCompleted);
+        }
+
+        try { await Task.WhenAll(inflight); } catch { /* per-frame errors already became responses */ }
+    }
+
+    private async Task ProcessFrameAsync(byte[] frame, IMcpTransport transport, CancellationToken ct)
+    {
+        try
+        {
+            var response = await HandleFrameAsync(frame, ct);
             if (response is not null)
-                await transport.SendAsync(response, cancellationToken);
+                await transport.SendAsync(response, ct);
+        }
+        catch
+        {
+            // Transport closed mid-send or similar — the connection is ending; nothing more to do.
         }
     }
 

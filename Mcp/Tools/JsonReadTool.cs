@@ -32,18 +32,35 @@ public abstract class JsonReadTool<TArgs, TOutput> : IMcpTool where TArgs : new(
             return ToolResult.Fail(new InvalidArgument(ex.Message));
         }
 
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var handler = ExecuteAsync(args, context, cts.Token);
+
+        // Enforce the timeout even when HandleAsync ignores the token (e.g. a backend call whose
+        // signature takes no CancellationToken) — the client gets a typed timeout at the budget instead
+        // of hanging to the HttpClient limit. The orphaned handler is cancelled + its result observed.
+        if (await Task.WhenAny(handler, Task.Delay(Timeout)).ConfigureAwait(false) == handler)
+        {
+            cts.Dispose();
+            return await handler;
+        }
+
+        cts.Cancel();
+        ToolTimeout.ObserveInBackground(handler, cts);
+        return ToolResult.Fail(new UpstreamTimeout());
+    }
+
+    private async Task<ToolResult> ExecuteAsync(TArgs args, McpToolContext context, CancellationToken ct)
+    {
         try
         {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(Timeout);
-            var output = await HandleAsync(args, context, cts.Token);
+            var output = await HandleAsync(args, context, ct);
             return ToolResult.Ok(JsonSerializer.SerializeToUtf8Bytes(output, McpJson.Options));
         }
         catch (McpToolException ex)
         {
             return ToolResult.Fail(ex.Reason);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException)
         {
             return ToolResult.Fail(new UpstreamTimeout());
         }

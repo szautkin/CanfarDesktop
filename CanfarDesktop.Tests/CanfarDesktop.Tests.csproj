@@ -121,6 +121,7 @@
     <Compile Include="..\Mcp\Tools\ToolResult.cs" Link="Linked\Mcp\ToolResult.cs" />
     <Compile Include="..\Mcp\Tools\ToolAbstractions.cs" Link="Linked\Mcp\ToolAbstractions.cs" />
     <Compile Include="..\Mcp\Tools\JsonReadTool.cs" Link="Linked\Mcp\JsonReadTool.cs" />
+    <Compile Include="..\Mcp\Tools\ToolTimeout.cs" Link="Linked\Mcp\ToolTimeout.cs" />
     <Compile Include="..\Mcp\Tools\Builtin\FoundationalTools.cs" Link="Linked\Mcp\FoundationalTools.cs" />
     <Compile Include="..\Mcp\Tools\ViewState\ViewStateTools.cs" Link="Linked\Mcp\ViewStateTools.cs" />
     <Compile Include="..\Mcp\AppViewStateService.cs" Link="Linked\Mcp\AppViewStateService.cs" />
