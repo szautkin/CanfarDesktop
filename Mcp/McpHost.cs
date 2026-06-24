@@ -76,8 +76,13 @@ public sealed class McpHost : IAsyncDisposable
 
         var router = new McpToolRouter(tools, autoApplyHook: autoApply); // default LoggingAuditSink
 
+        // Write the sidecar to the REAL %LOCALAPPDATA% (un-redirected) so the UNPACKAGED bridge can find
+        // it — a packaged app's default AppData is sandboxed to its package container (PackagePaths).
+        var sidecar = new McpSidecar(Path.Combine(PackagePaths.RealLocalAppData(), McpConstants.SidecarFolderName));
+
         _listener = new McpListenerService(
             () => new McpServerService(router, identity, proposals: proposals, budget: budget),
+            sidecar: sidecar,
             log: CrashLogger.Info);
         _listener.Start(Guid.NewGuid());
         CrashLogger.Info($"MCP host started; pipe={_listener.PipeName}");

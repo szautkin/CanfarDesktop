@@ -17,7 +17,9 @@ public sealed partial class McpServerDialog : ContentDialog
 {
     private readonly McpHost _host;
     private readonly McpSettingsService _settings;
-    private readonly ClaudeConfigRepair _repair = new();
+    // Target the config Claude Desktop actually reads (its Store container or a traditional install),
+    // resolved on the real un-redirected AppData — never our own sandboxed copy.
+    private readonly ClaudeConfigRepair _repair = new(ClaudeConfigLocator.Resolve());
     private readonly string? _bridgeCommand;
     private bool _suppressToggle;
 

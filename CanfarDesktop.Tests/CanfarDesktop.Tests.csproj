@@ -147,6 +147,8 @@
     <Compile Include="..\Mcp\McpServerService.cs" Link="Linked\Mcp\McpServerService.cs" />
     <Compile Include="..\Mcp\Config\ClaudeConfigMerge.cs" Link="Linked\Mcp\ClaudeConfigMerge.cs" />
     <Compile Include="..\Mcp\Config\ClaudeConfigRepair.cs" Link="Linked\Mcp\ClaudeConfigRepair.cs" />
+    <Compile Include="..\Helpers\PackagePaths.cs" Link="Linked\Mcp\PackagePaths.cs" />
+    <Compile Include="..\Mcp\Config\ClaudeConfigLocator.cs" Link="Linked\Mcp\ClaudeConfigLocator.cs" />
     <Compile Include="..\Mcp\Tools\Read\ResearchReadTools.cs" Link="Linked\Mcp\ResearchReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\SearchReadTools.cs" Link="Linked\Mcp\SearchReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\SearchExecTools.cs" Link="Linked\Mcp\SearchExecTools.cs" />
