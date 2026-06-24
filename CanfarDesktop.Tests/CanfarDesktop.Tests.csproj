@@ -127,6 +127,8 @@
     <Compile Include="..\Mcp\Transport\IMcpTransport.cs" Link="Linked\Mcp\IMcpTransport.cs" />
     <Compile Include="..\Mcp\McpServerService.cs" Link="Linked\Mcp\McpServerService.cs" />
     <Compile Include="..\Mcp\Config\ClaudeConfigMerge.cs" Link="Linked\Mcp\ClaudeConfigMerge.cs" />
+    <Compile Include="..\Mcp\Tools\Read\ResearchReadTools.cs" Link="Linked\Mcp\ResearchReadTools.cs" />
+    <Compile Include="..\Mcp\Tools\Read\SearchReadTools.cs" Link="Linked\Mcp\SearchReadTools.cs" />
     <Compile Include="..\Models\StorageQuota.cs" Link="Linked\StorageQuota.cs" />
     <Compile Include="..\ViewModels\StorageBrowserViewModel.cs" Link="Linked\StorageBrowserViewModel.cs" />
     <!-- Notebook document core (Milestone 2) -->
