@@ -12,6 +12,9 @@ public interface IProposalStore
     /// <summary>Pending proposals in FIFO order, optionally filtered to one origin.</summary>
     IReadOnlyList<PendingProposal> List(OperationOrigin? origin = null);
 
+    /// <summary>The pending proposal with this id, or null if absent/resolved (for the apply path).</summary>
+    PendingProposal? Get(Guid id);
+
     ProposalState State(Guid id);
 
     bool MarkApplied(Guid id);
@@ -56,6 +59,11 @@ public sealed class InMemoryProposalStore : IProposalStore
                 .Select(id => _pending[id])
                 .Where(p => origin is null || p.Origin == origin)
                 .ToList();
+    }
+
+    public PendingProposal? Get(Guid id)
+    {
+        lock (_gate) return _pending.TryGetValue(id, out var p) ? p : null;
     }
 
     public ProposalState State(Guid id)
