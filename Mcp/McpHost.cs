@@ -1,0 +1,75 @@
+using CanfarDesktop.Helpers;
+using CanfarDesktop.Mcp.Listener;
+
+namespace CanfarDesktop.Mcp;
+
+/// <summary>
+/// App-side owner of the MCP server. Assembles the router from the live tool catalog, runs the named-pipe
+/// <see cref="McpListenerService"/>, and gates the whole thing behind the opt-in
+/// <see cref="McpSettingsService"/>. A single router (stateless, shared) backs a fresh
+/// <see cref="McpServerService"/> per connection. Registered as a DI singleton; started on launch
+/// (when enabled) and stopped on shutdown.
+/// </summary>
+public sealed class McpHost : IAsyncDisposable
+{
+    private const string ServerName = "verbinal-canfar";
+
+    private readonly IServiceProvider _services;
+    private readonly McpSettingsService _settings;
+    private readonly string _appVersion;
+
+    private McpListenerService? _listener;
+
+    public McpHost(IServiceProvider services, McpSettingsService settings, string appVersion)
+    {
+        _services = services;
+        _settings = settings;
+        _appVersion = appVersion;
+    }
+
+    public bool IsRunning => _listener?.IsRunning == true;
+
+    /// <summary>The live pipe name, or null when not running. For the diagnostics/config UI.</summary>
+    public string? PipeName => _listener?.PipeName;
+
+    /// <summary>Start the server only if the user has opted in. Safe to call once on launch.</summary>
+    public void StartIfEnabled()
+    {
+        if (_settings.Enabled) Start();
+    }
+
+    /// <summary>Start the named-pipe server (idempotent).</summary>
+    public void Start()
+    {
+        if (_listener is not null) return;
+
+        var tools = McpToolCatalog.Build(_services, _appVersion);
+        var router = new McpToolRouter(tools); // default LoggingAuditSink
+        var identity = new ServerIdentity(ServerName, _appVersion);
+
+        _listener = new McpListenerService(
+            () => new McpServerService(router, identity),
+            log: CrashLogger.Info);
+        _listener.Start(Guid.NewGuid());
+        CrashLogger.Info($"MCP host started; pipe={_listener.PipeName}");
+    }
+
+    /// <summary>Stop the server and remove the sidecar (idempotent).</summary>
+    public async Task StopAsync()
+    {
+        if (_listener is null) return;
+        await _listener.DisposeAsync();
+        _listener = null;
+        CrashLogger.Info("MCP host stopped");
+    }
+
+    /// <summary>Persist the enable toggle and start/stop the server to match.</summary>
+    public async Task SetEnabledAsync(bool enabled)
+    {
+        _settings.Enabled = enabled;
+        if (enabled) Start();
+        else await StopAsync();
+    }
+
+    public async ValueTask DisposeAsync() => await StopAsync();
+}

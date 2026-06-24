@@ -55,6 +55,15 @@ public partial class App : Application
         _window = new MainWindow();
         _window.Activate();
 
+        // Start the MCP server if the user has opted in; stop it cleanly on window close.
+        try { Services.GetRequiredService<CanfarDesktop.Mcp.McpHost>().StartIfEnabled(); }
+        catch (Exception ex) { CrashLogger.Log("McpHost.StartIfEnabled", ex); }
+        _window.Closed += (_, _) =>
+        {
+            try { _ = Services.GetRequiredService<CanfarDesktop.Mcp.McpHost>().StopAsync(); }
+            catch (Exception ex) { CrashLogger.Log("McpHost.StopAsync", ex); }
+        };
+
         // Handle file activation on initial launch
         HandleFileActivation(Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs());
     }
@@ -84,6 +93,19 @@ public partial class App : Application
                     mw.OpenNotebook(filePath);
                 mw.Activate();
             });
+        }
+    }
+
+    private static string AppVersion()
+    {
+        try
+        {
+            var v = Windows.ApplicationModel.Package.Current.Id.Version;
+            return $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
+        }
+        catch
+        {
+            return "unknown";
         }
     }
 
@@ -179,6 +201,11 @@ public partial class App : Application
         // CAOM2 metadata (auth'd — proprietary collections need the token; host-allowlisted)
         services.AddHttpClient<ICAOM2Service, CAOM2Service>()
             .AddHttpMessageHandler<AuthTokenHandler>();
+
+        // MCP server (in-app named-pipe MCP for Claude Desktop / claude mcp; opt-in, off by default)
+        services.AddSingleton<CanfarDesktop.Mcp.McpSettingsService>();
+        services.AddSingleton(sp => new CanfarDesktop.Mcp.McpHost(
+            sp, sp.GetRequiredService<CanfarDesktop.Mcp.McpSettingsService>(), AppVersion()));
 
         // FITS viewer services
         services.AddSingleton<ICoordinateStoreService, CoordinateStoreService>();
