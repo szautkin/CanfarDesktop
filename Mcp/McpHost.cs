@@ -1,5 +1,6 @@
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Mcp.Listener;
+using CanfarDesktop.Mcp.Tools.Proposals;
 
 namespace CanfarDesktop.Mcp;
 
@@ -47,8 +48,12 @@ public sealed class McpHost : IAsyncDisposable
         var router = new McpToolRouter(tools); // default LoggingAuditSink
         var identity = new ServerIdentity(ServerName, _appVersion);
 
+        // Shared write-surface state across connections (auto-apply hook + appliers wired in a later increment).
+        var proposals = new InMemoryProposalStore();
+        var budget = new ProposalBudget();
+
         _listener = new McpListenerService(
-            () => new McpServerService(router, identity),
+            () => new McpServerService(router, identity, proposals: proposals, budget: budget),
             log: CrashLogger.Info);
         _listener.Start(Guid.NewGuid());
         CrashLogger.Info($"MCP host started; pipe={_listener.PipeName}");

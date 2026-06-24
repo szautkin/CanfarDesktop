@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CanfarDesktop.Mcp.Wire;
+using CanfarDesktop.Mcp.Tools.Proposals;
 
 namespace CanfarDesktop.Mcp.Tools;
 
@@ -20,11 +21,21 @@ public abstract record OperationOrigin
 public sealed record UserOrigin : OperationOrigin;
 public sealed record ExternalOrigin(string ClientId) : OperationOrigin;
 
-/// <summary>Capabilities + provenance injected into every tool invocation.</summary>
-public sealed record McpToolContext(OperationOrigin Origin, Guid RequestId)
+/// <summary>
+/// Capabilities + provenance injected into every tool invocation. The proposal store + budget are
+/// present for the write surface (read-path callers leave them null).
+/// </summary>
+public sealed record McpToolContext(
+    OperationOrigin Origin,
+    Guid RequestId,
+    IProposalStore? Proposals = null,
+    ProposalBudget? Budget = null)
 {
-    public static McpToolContext ForExternal(string clientId, Guid requestId) => new(OperationOrigin.External(clientId), requestId);
-    public static McpToolContext ForUser(Guid requestId) => new(OperationOrigin.User, requestId);
+    public static McpToolContext ForExternal(string clientId, Guid requestId, IProposalStore? proposals = null, ProposalBudget? budget = null)
+        => new(OperationOrigin.External(clientId), requestId, proposals, budget);
+
+    public static McpToolContext ForUser(Guid requestId, IProposalStore? proposals = null, ProposalBudget? budget = null)
+        => new(OperationOrigin.User, requestId, proposals, budget);
 }
 
 /// <summary>A tool's manifest entry (<c>tools/list</c>). The schema is parsed once at construction.</summary>

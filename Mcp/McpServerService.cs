@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using CanfarDesktop.Mcp.Tools;
+using CanfarDesktop.Mcp.Tools.Proposals;
 using CanfarDesktop.Mcp.Transport;
 using CanfarDesktop.Mcp.Wire;
 
@@ -39,15 +40,24 @@ public sealed class McpServerService
     private readonly McpToolRouter _router;
     private readonly ServerIdentity _identity;
     private readonly IApprovalGate _gate;
+    private readonly IProposalStore? _proposals;
+    private readonly ProposalBudget? _budget;
 
     private bool _initialized;
     private string _clientId = "unknown-client";
 
-    public McpServerService(McpToolRouter router, ServerIdentity identity, IApprovalGate? gate = null)
+    public McpServerService(
+        McpToolRouter router,
+        ServerIdentity identity,
+        IApprovalGate? gate = null,
+        IProposalStore? proposals = null,
+        ProposalBudget? budget = null)
     {
         _router = router;
         _identity = identity;
         _gate = gate ?? AllowAllGate.Instance;
+        _proposals = proposals;
+        _budget = budget;
     }
 
     public async Task ServeAsync(IMcpTransport transport, CancellationToken cancellationToken = default)
@@ -124,7 +134,7 @@ public sealed class McpServerService
         try { p = CallToolParams.Parse(req.Params); }
         catch (JsonException ex) { return JsonRpcResponse.Failure(req.Id, Err(JsonRpcErrorCode.InvalidParams, ex.Message)); }
 
-        var context = McpToolContext.ForExternal(_clientId, Guid.NewGuid());
+        var context = McpToolContext.ForExternal(_clientId, Guid.NewGuid(), _proposals, _budget);
         var result = await _router.DispatchAsync(p.Name, p.Arguments, context, ct);
         return JsonRpcResponse.Success(req.Id, MapToolResult(result).ToJson());
     }
@@ -134,8 +144,15 @@ public sealed class McpServerService
         DataResult d => new CallToolResult(new[] { CallToolContent.Text(Encoding.UTF8.GetString(d.Json)) }, IsError: false),
         FailedResult f => new CallToolResult(new[] { CallToolContent.Text(f.Reason.Description) }, IsError: true),
         ImageToolResult img => new CallToolResult(BuildImageContent(img), IsError: false),
+        ProposedResult p => new CallToolResult(new[] { CallToolContent.Text(ProposedJson(p.Proposal)) }, IsError: false),
         _ => new CallToolResult(new[] { CallToolContent.Text("Unknown tool result") }, IsError: true),
     };
+
+    /// <summary>The envelope an agent gets for a queued (not-yet-applied) write proposal.</summary>
+    private static string ProposedJson(PendingProposal proposal)
+        => JsonSerializer.Serialize(
+            new { queued = true, proposalId = proposal.Id, kind = proposal.Kind, summary = proposal.Summary, state = "pending" },
+            McpJson.Options);
 
     private static IReadOnlyList<CallToolContent> BuildImageContent(ImageToolResult img)
     {

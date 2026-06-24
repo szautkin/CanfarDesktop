@@ -2,7 +2,7 @@ using CanfarDesktop.Mcp.Tools;
 
 namespace CanfarDesktop.Mcp.Audit;
 
-public enum AuditOutcome { Success, Failed, Rejected, Unknown }
+public enum AuditOutcome { Success, Failed, Rejected, Unknown, Proposed, Applied }
 
 /// <summary>
 /// One PII-safe audit record per tool dispatch. The raw arguments are NEVER logged — only a SHA-256

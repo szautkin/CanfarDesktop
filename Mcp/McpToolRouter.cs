@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using CanfarDesktop.Mcp.Audit;
 using CanfarDesktop.Mcp.Tools;
+using CanfarDesktop.Mcp.Tools.Proposals;
 using CanfarDesktop.Mcp.Wire;
 
 namespace CanfarDesktop.Mcp;
@@ -16,12 +18,14 @@ public sealed class McpToolRouter
 {
     private readonly IReadOnlyDictionary<string, IMcpTool> _tools;
     private readonly IAuditSink _audit;
+    private readonly AutoApplyHook? _autoApplyHook;
 
     /// <summary>The agent-safe tool descriptors exposed to external clients via <c>tools/list</c>.</summary>
     public IReadOnlyList<ToolDescriptor> ExternalManifest { get; }
 
-    public McpToolRouter(IEnumerable<IMcpTool> tools, IAuditSink? audit = null)
+    public McpToolRouter(IEnumerable<IMcpTool> tools, IAuditSink? audit = null, AutoApplyHook? autoApplyHook = null)
     {
+        _autoApplyHook = autoApplyHook;
         var dict = new Dictionary<string, IMcpTool>(StringComparer.Ordinal);
         foreach (var tool in tools)
         {
@@ -59,8 +63,58 @@ public sealed class McpToolRouter
         }
 
         var result = await tool.InvokeAsync(arguments, context, cancellationToken);
+
+        if (result is ProposedResult proposed)
+            return await ResolveProposalAsync(tool, proposed.Proposal, context, sw, hash);
+
         Audit(context, name, tool.VerbClass, result is FailedResult ? AuditOutcome.Failed : AuditOutcome.Success, sw, hash);
         return result;
+    }
+
+    /// <summary>
+    /// The write-path decision after a tool enqueues a proposal: non-write verb classes pass through;
+    /// SemanticWrite/Destructive either auto-apply (host hook opts in) or queue, consuming per-turn
+    /// budget and withdrawing the proposal when the cap is hit. 1-to-1 with the macOS router.
+    /// </summary>
+    private async Task<ToolResult> ResolveProposalAsync(IMcpTool tool, PendingProposal proposal, McpToolContext context, Stopwatch sw, string hash)
+    {
+        var verb = tool.VerbClass;
+        var name = tool.Descriptor.Name;
+
+        // Non-write proposals (rare) bypass the budget/auto-apply machinery.
+        if (verb is not (McpVerbClass.SemanticWrite or McpVerbClass.Destructive))
+        {
+            Audit(context, name, verb, AuditOutcome.Proposed, sw, hash);
+            return ToolResult.Proposed(proposal);
+        }
+
+        // Auto-apply path: the host opts this proposal into immediate apply.
+        if (_autoApplyHook is { } hook && await hook.ShouldAutoApply(verb, proposal))
+        {
+            try
+            {
+                await hook.Apply(proposal.Id);
+                Audit(context, name, verb, AuditOutcome.Applied, sw, hash);
+                return ToolResult.Ok(JsonSerializer.SerializeToUtf8Bytes(AutoAppliedAck.From(proposal), McpJson.Options));
+            }
+            catch (Exception ex)
+            {
+                // Leave the proposal queued so the user can retry/reject from the strip.
+                Audit(context, name, verb, AuditOutcome.Failed, sw, hash);
+                return ToolResult.Fail(new BackendError($"auto-apply failed: {ex.Message}"));
+            }
+        }
+
+        // Queue path: consume per-turn budget; on refusal, withdraw so no partial batch lands.
+        if (context.Budget is { } budget && !budget.TryAccept(context.Origin))
+        {
+            context.Proposals?.Withdraw(proposal.Id);
+            Audit(context, name, verb, AuditOutcome.Failed, sw, hash);
+            return ToolResult.Fail(new PerTurnProposalCapExceeded(budget.Limit));
+        }
+
+        Audit(context, name, verb, AuditOutcome.Proposed, sw, hash);
+        return ToolResult.Proposed(proposal);
     }
 
     private void Audit(McpToolContext ctx, string name, McpVerbClass verb, AuditOutcome outcome, Stopwatch sw, string hash)
