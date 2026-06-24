@@ -126,6 +126,9 @@
     <Compile Include="..\Mcp\McpToolRouter.cs" Link="Linked\Mcp\McpToolRouter.cs" />
     <Compile Include="..\Mcp\Transport\IMcpTransport.cs" Link="Linked\Mcp\IMcpTransport.cs" />
     <Compile Include="..\Mcp\Transport\FrameCodec.cs" Link="Linked\Mcp\FrameCodec.cs" />
+    <Compile Include="..\Mcp\McpConstants.cs" Link="Linked\Mcp\McpConstants.cs" />
+    <Compile Include="..\Mcp\Listener\McpSidecar.cs" Link="Linked\Mcp\McpSidecar.cs" />
+    <Compile Include="..\Mcp\Bridge\BridgeRelay.cs" Link="Linked\Mcp\BridgeRelay.cs" />
     <Compile Include="..\Mcp\McpServerService.cs" Link="Linked\Mcp\McpServerService.cs" />
     <Compile Include="..\Mcp\Config\ClaudeConfigMerge.cs" Link="Linked\Mcp\ClaudeConfigMerge.cs" />
     <Compile Include="..\Mcp\Tools\Read\ResearchReadTools.cs" Link="Linked\Mcp\ResearchReadTools.cs" />
