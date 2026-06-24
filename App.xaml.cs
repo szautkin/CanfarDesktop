@@ -145,6 +145,7 @@ public partial class App : Application
         services.AddHttpClient<ITAPService, TAPService>(client =>
             client.Timeout = TimeSpan.FromMinutes(5));
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
+        services.AddSingleton<IColumnUnitStore, LocalSettingsColumnUnitStore>(); // per-column display units
         services.AddHttpClient<DataLinkService>();
 
         // Export bundle (Research + Search → Claude-friendly bundle)

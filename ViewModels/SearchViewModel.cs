@@ -11,6 +11,7 @@ public partial class SearchViewModel : ObservableObject
 {
     private readonly ITAPService _tapService;
     private readonly ISearchStoreService _storeService;
+    private readonly IColumnUnitStore _unitStore;
     private List<DataTrainRow> _allDataTrainRows = [];
     public IReadOnlyList<DataTrainRow> AllDataTrainRows => _allDataTrainRows;
     private CancellationTokenSource? _resolverCts;
@@ -128,10 +129,11 @@ public partial class SearchViewModel : ObservableObject
     // For ComboBox binding
     public string[] ResolverServices { get; } = ["ALL", "SIMBAD", "NED", "VIZIER", "NONE"];
 
-    public SearchViewModel(ITAPService tapService, ISearchStoreService storeService)
+    public SearchViewModel(ITAPService tapService, ISearchStoreService storeService, IColumnUnitStore unitStore)
     {
         _tapService = tapService;
         _storeService = storeService;
+        _unitStore = unitStore;
     }
 
     #region Data train
@@ -637,7 +639,13 @@ public partial class SearchViewModel : ObservableObject
     }
 
     public string FormatCell(string columnKey, string rawValue) =>
-        CellFormatter.Format(columnKey, rawValue);
+        CellFormatter.Format(columnKey, rawValue, _unitStore.GetSelectedUnit(columnKey));
+
+    /// <summary>The user's chosen display unit for a column, or null (the column default).</summary>
+    public string? SelectedUnit(string columnKey) => _unitStore.GetSelectedUnit(columnKey);
+
+    /// <summary>Set (or clear, when null) the display unit for a column. Re-render to apply.</summary>
+    public void SetUnit(string columnKey, string? unitId) => _unitStore.SetSelectedUnit(columnKey, unitId);
 
     #endregion
 

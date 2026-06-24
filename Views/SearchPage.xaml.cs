@@ -538,22 +538,21 @@ public sealed partial class SearchPage : Page
             }
             else if (isHeader && key != "download" && key != "preview")
             {
-                // Sortable header cell
+                // Sortable header cell (+ a unit-menu dropdown for unit columns).
                 var label = ViewModel.GetColumnLabel(key);
                 var sort = ViewModel.CurrentSort;
                 if (sort.Key == key)
                     label += sort.Ascending ? " \u25B2" : " \u25BC";
 
+                var capturedKey = key;
                 var headerText = new TextBlock
                 {
                     Text = label,
-                    Width = width,
                     FontSize = 12,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     TextTrimming = TextTrimming.CharacterEllipsis,
                     VerticalAlignment = VerticalAlignment.Center
                 };
-                var capturedKey = key;
                 headerText.Tapped += (_, _) =>
                 {
                     ViewModel.SortBy(capturedKey);
@@ -561,20 +560,60 @@ public sealed partial class SearchPage : Page
                 };
                 headerText.PointerEntered += (s, _) => ((TextBlock)s).Opacity = 0.6;
                 headerText.PointerExited += (s, _) => ((TextBlock)s).Opacity = 1.0;
-                sp.Children.Add(headerText);
+
+                if (CanfarDesktop.Helpers.ColumnUnitCatalog.HasMenu(key))
+                {
+                    sp.Children.Add(BuildUnitHeader(capturedKey, headerText, width));
+                }
+                else
+                {
+                    headerText.Width = width;
+                    sp.Children.Add(headerText);
+                }
             }
-            else
+            else if (isHeader)
             {
-                var text = isHeader ? ViewModel.GetColumnLabel(key) : ViewModel.FormatCell(key, row?.Get(ViewModel.GetColumnHeader(key)) ?? "");
                 sp.Children.Add(new TextBlock
                 {
-                    Text = text,
+                    Text = ViewModel.GetColumnLabel(key),
                     Width = width,
                     FontSize = 12,
-                    FontWeight = isHeader ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     TextTrimming = TextTrimming.CharacterEllipsis,
                     VerticalAlignment = VerticalAlignment.Center
                 });
+            }
+            else
+            {
+                var rawValue = row?.Get(ViewModel.GetColumnHeader(key)) ?? "";
+                var tb = new TextBlock
+                {
+                    Text = ViewModel.FormatCell(key, rawValue),
+                    Width = width,
+                    FontSize = 12,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+
+                // Identity columns become "narrow to this value" links (client-side filter + Apply-to-ADQL).
+                if (IsNarrowable(key) && !string.IsNullOrEmpty(rawValue))
+                {
+                    var ck = key;
+                    var cv = rawValue;
+                    tb.Tag = "action"; // suppress row-detail open
+                    ToolTipService.SetToolTip(tb, $"Narrow results to “{cv}”");
+                    tb.Tapped += (_, _) =>
+                    {
+                        ViewModel.SetColumnFilter(ck, cv);
+                        ViewModel.UpdatePagination();
+                        RenderResultsPage(rebuildHeader: false);
+                        UpdateApplyFiltersButton();
+                    };
+                    tb.PointerEntered += (s, _) => ((TextBlock)s).Opacity = 0.55;
+                    tb.PointerExited += (s, _) => ((TextBlock)s).Opacity = 1.0;
+                }
+
+                sp.Children.Add(tb);
             }
         }
 
@@ -586,6 +625,71 @@ public sealed partial class SearchPage : Page
             border.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
 
         return border;
+    }
+
+    // Identity columns whose cell values can be clicked to "narrow to this value".
+    private static readonly HashSet<string> NarrowableKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "collection", "instrument", "targetname", "proposalid", "piname"
+    };
+
+    private static bool IsNarrowable(string key) => NarrowableKeys.Contains(key);
+
+    /// <summary>A header cell = the sortable label + a unit-menu dropdown, sized to the column width.</summary>
+    private FrameworkElement BuildUnitHeader(string key, TextBlock headerText, int width)
+    {
+        var grid = new Grid { Width = width };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(headerText, 0);
+        grid.Children.Add(headerText);
+
+        var menuBtn = new Button
+        {
+            Padding = new Thickness(2, 0, 2, 0),
+            MinWidth = 0,
+            Background = null,
+            BorderThickness = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Content = new FontIcon { Glyph = char.ConvertFromUtf32(0xE70D), FontSize = 9 }, // chevron down
+            Tag = "action"
+        };
+
+        var flyout = new MenuFlyout();
+        var active = ViewModel.SelectedUnit(key);
+        var isCoord = key is "ra(j20000)" or "dec(j20000)";
+        var defaultId = CanfarDesktop.Helpers.ColumnUnitCatalog.DefaultUnitId(key);
+
+        // Non-coordinate columns keep a readable legacy default → offer an explicit "Default" choice.
+        if (!isCoord)
+        {
+            var defItem = new ToggleMenuFlyoutItem { Text = "Default", IsChecked = active is null };
+            defItem.Click += (_, _) => { ViewModel.SetUnit(key, null); RenderResultsPage(rebuildHeader: true); };
+            flyout.Items.Add(defItem);
+            flyout.Items.Add(new MenuFlyoutSeparator());
+        }
+
+        foreach (var choice in CanfarDesktop.Helpers.ColumnUnitCatalog.AvailableUnits(key))
+        {
+            var cid = choice.Id;
+            var item = new ToggleMenuFlyoutItem
+            {
+                Text = choice.Label,
+                IsChecked = active == cid || (active is null && isCoord && cid == defaultId)
+            };
+            item.Click += (_, _) =>
+            {
+                // Coord default choice (hms/dms) maps back to null (the sexagesimal default render).
+                ViewModel.SetUnit(key, isCoord && cid == defaultId ? null : cid);
+                RenderResultsPage(rebuildHeader: true);
+            };
+            flyout.Items.Add(item);
+        }
+
+        menuBtn.Flyout = flyout;
+        Grid.SetColumn(menuBtn, 1);
+        grid.Children.Add(menuBtn);
+        return grid;
     }
 
     private async void OnColumnsClick(object sender, RoutedEventArgs e)
