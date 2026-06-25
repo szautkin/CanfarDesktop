@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.Fits;
 using CanfarDesktop.Services;
@@ -43,6 +45,7 @@ public static class McpToolCatalog
         var dataLink = sp.GetRequiredService<DataLinkService>();
         var storage = sp.GetRequiredService<IStorageService>();
         var platform = sp.GetRequiredService<IPlatformService>();
+        var endpoints = sp.GetRequiredService<ApiEndpoints>();
         var viewState = sp.GetRequiredService<AppViewStateService>();
         var settings = sp.GetRequiredService<McpSettingsService>();
         var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -93,8 +96,9 @@ public static class McpToolCatalog
             new GetFitsHeaderTool(ParseFitsHeadersAsync),
             new GetFitsWcsTool(ParseFitsHeadersAsync),
 
-            // Platform load
+            // Platform load + upstream service health
             new GetPlatformLoadTool(() => platform.GetStatsAsync()),
+            new GetServiceHealthTool(() => ProbeServicesAsync(httpFactory, endpoints)),
 
             // View state: what the user is looking at + autonomy/budget + server-side preview fetch
             new GetCurrentViewTool(ctx =>
@@ -240,6 +244,37 @@ public static class McpToolCatalog
         var name = publisherId;
         foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
         return name.Length > 80 ? name[^80..] : name;
+    }
+
+    /// <summary>Probe the upstream services concurrently: any HTTP response = host reachable.</summary>
+    private static async Task<IReadOnlyList<ServiceHealthEntry>> ProbeServicesAsync(IHttpClientFactory factory, ApiEndpoints endpoints)
+    {
+        var targets = new[]
+        {
+            ("CADC TAP (search)", endpoints.TapBaseUrl),
+            ("Skaha (sessions)", endpoints.SkahaBaseUrl),
+            ("ARC/VOSpace (storage)", endpoints.StorageBaseUrl),
+            ("CADC auth", endpoints.LoginBaseUrl),
+        };
+        return await Task.WhenAll(targets.Select(t => ProbeOneAsync(factory, t.Item1, t.Item2)));
+    }
+
+    private static async Task<ServiceHealthEntry> ProbeOneAsync(IHttpClientFactory factory, string name, string url)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var client = factory.CreateClient();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            sw.Stop();
+            return new ServiceHealthEntry(name, url, Reachable: true, (int)response.StatusCode, sw.ElapsedMilliseconds, null);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return new ServiceHealthEntry(name, url, Reachable: false, null, sw.ElapsedMilliseconds, ex.GetType().Name);
+        }
     }
 
     /// <summary>A safe Skaha session name (lowercase, hyphenated) — generated when the agent omits one.</summary>

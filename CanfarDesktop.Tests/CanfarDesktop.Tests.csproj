@@ -157,6 +157,7 @@
     <Compile Include="..\Mcp\Tools\Read\ResearchReadTools.cs" Link="Linked\Mcp\ResearchReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\SearchReadTools.cs" Link="Linked\Mcp\SearchReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\PlatformReadTools.cs" Link="Linked\Mcp\PlatformReadTools.cs" />
+    <Compile Include="..\Mcp\Tools\Read\ServiceHealthTool.cs" Link="Linked\Mcp\ServiceHealthTool.cs" />
     <Compile Include="..\Models\PlatformLoad.cs" Link="Linked\Mcp\PlatformLoad.cs" />
     <Compile Include="..\Mcp\Tools\Read\SearchExecTools.cs" Link="Linked\Mcp\SearchExecTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\SessionReadTools.cs" Link="Linked\Mcp\SessionReadTools.cs" />
