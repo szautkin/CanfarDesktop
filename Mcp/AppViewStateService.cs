@@ -19,6 +19,10 @@ public sealed class AppViewStateService
         double? SearchFocusDec,
         IReadOnlyList<string> OpenFitsPaths);
 
+    /// <summary>Raised when an agent invokes a tool; carries the tool name and the module it concerns
+    /// (null for meta tools). The UI shows a transient "agent is working" indicator.</summary>
+    public sealed record AgentActivitySignal(string ToolName, string? Module);
+
     private sealed record SkyFocus(double Ra, double Dec);
 
     private volatile string _mode = "landing";
@@ -47,6 +51,14 @@ public sealed class AppViewStateService
         var focus = _searchFocus;
         return new ModeView(_mode, _modeTitle, focus?.Ra, focus?.Dec, _openFitsPaths);
     }
+
+    /// <summary>Raised (off the UI thread) each time an agent begins a tool call. The UI subscribes and
+    /// marshals to its thread to show + auto-hide the "agent is working" indicator.</summary>
+    public event Action<AgentActivitySignal>? AgentActivity;
+
+    /// <summary>Signal that an agent invoked <paramref name="toolName"/> (working in <paramref name="module"/>).</summary>
+    public void NotifyAgentActivity(string toolName, string? module)
+        => AgentActivity?.Invoke(new AgentActivitySignal(toolName, module));
 
     // ── Live ViewState write actions (registered by the UI; invoked by the write tools) ──────────
 

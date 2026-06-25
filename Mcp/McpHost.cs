@@ -120,7 +120,12 @@ public sealed class McpHost : IAsyncDisposable
 
         // onAgentActivity makes the app follow the agent's reads (navigate to the module it's working in);
         // writes follow on the apply path (FollowActivity). Both gated by FollowAgentActivityEnabled.
-        var router = new McpToolRouter(tools, autoApplyHook: autoApply, onAgentActivity: FollowToolActivity);
+        // onAgentDispatchStart pulses the transient "agent is working" indicator for every agent call.
+        var router = new McpToolRouter(
+            tools,
+            autoApplyHook: autoApply,
+            onAgentActivity: FollowToolActivity,
+            onAgentDispatchStart: NotifyAgentWorking);
 
         // Write the sidecar to the REAL %LOCALAPPDATA% (un-redirected) so the UNPACKAGED bridge can find
         // it — a packaged app's default AppData is sandboxed to its package container (PackagePaths).
@@ -148,6 +153,14 @@ public sealed class McpHost : IAsyncDisposable
     {
         if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(ModeForTool(toolName));
         return Task.CompletedTask;
+    }
+
+    /// <summary>Pulse the "agent is working" indicator for any agent tool call (independent of the
+    /// follow-activity navigation toggle — the indicator always reflects that the agent is active).</summary>
+    private void NotifyAgentWorking(string toolName)
+    {
+        try { _services.GetRequiredService<AppViewStateService>().NotifyAgentActivity(toolName, ModeForTool(toolName)); }
+        catch { /* indicator is best-effort */ }
     }
 
     private void NavigateBestEffort(string? mode)

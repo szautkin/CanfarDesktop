@@ -135,4 +135,32 @@ public class RouterTests
 
         Assert.False(fired); // don't navigate on a failed read
     }
+
+    // ── Dispatch-start hook (drives the "agent is working" indicator) ────────────────────────
+
+    [Fact]
+    public async Task ExternalDispatch_FiresDispatchStart_EvenWhenCallFails()
+    {
+        string? started = null;
+        var router = new McpToolRouter(
+            new IMcpTool[] { new FakeReadTool("get_data_links", ToolResult.Fail(new BackendError("boom"))) },
+            onAgentDispatchStart: name => started = name);
+
+        await router.DispatchAsync("get_data_links", JsonValue.Null, McpToolContext.ForExternal("c", Guid.Empty), default);
+
+        Assert.Equal("get_data_links", started); // the indicator pulses at the start, even for a failing call
+    }
+
+    [Fact]
+    public async Task InternalCaller_DoesNotFireDispatchStart()
+    {
+        var fired = false;
+        var router = new McpToolRouter(
+            new IMcpTool[] { new FakeReadTool("get_data_links", ToolResult.Ok(new byte[] { (byte)'1' })) },
+            onAgentDispatchStart: _ => fired = true);
+
+        await router.DispatchAsync("get_data_links", JsonValue.Null, McpToolContext.ForUser(Guid.Empty), default);
+
+        Assert.False(fired); // the app's own internal calls don't pulse the indicator
+    }
 }

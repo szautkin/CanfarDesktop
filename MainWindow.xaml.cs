@@ -78,6 +78,7 @@ public sealed partial class MainWindow : Window
         var fitsHost = App.Services.GetRequiredService<FitsTabHostViewModel>();
         fitsHost.Tabs.CollectionChanged += (_, _) => PublishOpenFits(fitsHost);
         _viewState.SetActions(NavigateByKeyAsync, SetSearchFocusActionAsync, OpenFitsActionAsync);
+        _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
     }
 
@@ -183,6 +184,49 @@ public sealed partial class MainWindow : Window
             .Where(p => !string.IsNullOrEmpty(p))
             .Select(p => p!)
             .ToList());
+
+    // ── "Agent is working" indicator ─────────────────────────────────────────
+    // Raised off the MCP connection thread on each agent tool call; marshal to the UI thread, show the
+    // pill, and (re)arm an idle timer that hides it once the agent has been quiet for a couple of seconds.
+
+    private DispatcherTimer? _agentActivityTimer;
+
+    private void OnAgentActivity(CanfarDesktop.Mcp.AppViewStateService.AgentActivitySignal signal)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            AgentActivityText.Text = signal.Module is { } module
+                ? $"Agent is working — {TitleForModule(module)}"
+                : "Agent is working…";
+            AgentActivityIndicator.Visibility = Visibility.Visible;
+
+            _agentActivityTimer ??= CreateAgentActivityTimer();
+            _agentActivityTimer.Stop();
+            _agentActivityTimer.Start();
+        });
+    }
+
+    private DispatcherTimer CreateAgentActivityTimer()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            AgentActivityIndicator.Visibility = Visibility.Collapsed;
+        };
+        return timer;
+    }
+
+    private static string TitleForModule(string mode) => mode switch
+    {
+        "search" => "Search",
+        "portal" => "Portal",
+        "storage" => "Storage",
+        "research" => "Research",
+        "fitsViewer" => "FITS Viewer",
+        "notebook" => "Notebook",
+        _ => "the app",
+    };
 
     #region File Browser Panel
 

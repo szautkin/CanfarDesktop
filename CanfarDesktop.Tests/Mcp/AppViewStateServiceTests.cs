@@ -16,6 +16,33 @@ public class AppViewStateServiceTests
     }
 
     [Fact]
+    public void NotifyAgentActivity_RaisesEvent_WithToolAndModule()
+    {
+        var svc = new AppViewStateService();
+        AppViewStateService.AgentActivitySignal? got = null;
+        svc.AgentActivity += s => got = s;
+
+        svc.NotifyAgentActivity("list_sessions", "portal");
+
+        Assert.NotNull(got);
+        Assert.Equal("list_sessions", got!.ToolName);
+        Assert.Equal("portal", got.Module);
+    }
+
+    [Fact]
+    public void NotifyAgentActivity_NullModule_ForMetaTools()
+    {
+        var svc = new AppViewStateService();
+        AppViewStateService.AgentActivitySignal? got = null;
+        svc.AgentActivity += s => got = s;
+
+        svc.NotifyAgentActivity("describe_app", null);
+
+        Assert.Equal("describe_app", got!.ToolName);
+        Assert.Null(got.Module);
+    }
+
+    [Fact]
     public void Push_ReflectedInSnapshot()
     {
         var svc = new AppViewStateService();

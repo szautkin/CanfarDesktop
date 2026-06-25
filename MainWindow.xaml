@@ -117,6 +117,25 @@
             </Grid>
         </Grid>
 
+        <!-- Transient "agent is working" indicator: pulses while an MCP agent invokes tools and
+             auto-hides ~2.5s after activity stops. Floats over the content; non-interactive. -->
+        <Border x:Name="AgentActivityIndicator" Grid.Row="1"
+                HorizontalAlignment="Center" VerticalAlignment="Top"
+                Margin="0,12,0,0" Padding="12,6"
+                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                CornerRadius="14" Canvas.ZIndex="900"
+                Visibility="Collapsed" IsHitTestVisible="False"
+                AutomationProperties.Name="Agent activity">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <ProgressRing IsActive="True" Width="16" Height="16"
+                              Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                <TextBlock x:Name="AgentActivityText" Text="Agent is working&#x2026;"
+                           VerticalAlignment="Center"
+                           Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                           Style="{StaticResource CaptionTextBlockStyle}" />
+            </StackPanel>
+        </Border>
+
         <!-- Terms-of-Use gate: full-window blocking overlay shown on first launch.
              Opaque background blocks all interaction with the app behind it until
              the user Accepts; it is not a ContentDialog so it cannot be light-dismissed. -->

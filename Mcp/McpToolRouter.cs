@@ -20,6 +20,7 @@ public sealed class McpToolRouter
     private readonly IAuditSink _audit;
     private readonly AutoApplyHook? _autoApplyHook;
     private readonly Func<string, Task>? _onAgentActivity;
+    private readonly Action<string>? _onAgentDispatchStart;
 
     /// <summary>The agent-safe tool descriptors exposed to external clients via <c>tools/list</c>.</summary>
     public IReadOnlyList<ToolDescriptor> ExternalManifest { get; }
@@ -28,10 +29,12 @@ public sealed class McpToolRouter
         IEnumerable<IMcpTool> tools,
         IAuditSink? audit = null,
         AutoApplyHook? autoApplyHook = null,
-        Func<string, Task>? onAgentActivity = null)
+        Func<string, Task>? onAgentActivity = null,
+        Action<string>? onAgentDispatchStart = null)
     {
         _autoApplyHook = autoApplyHook;
         _onAgentActivity = onAgentActivity;
+        _onAgentDispatchStart = onAgentDispatchStart;
         var dict = new Dictionary<string, IMcpTool>(StringComparer.Ordinal);
         foreach (var tool in tools)
         {
@@ -66,6 +69,14 @@ public sealed class McpToolRouter
         {
             Audit(context, name, tool.VerbClass, AuditOutcome.Rejected, sw, hash);
             return ToolResult.Fail(new UnknownTarget(name));
+        }
+
+        // An agent call is starting: pulse the "agent is working" indicator now (before the call runs,
+        // so it shows during slow/failing calls too). Best-effort, synchronous, external callers only.
+        if (context.Origin.IsExternal)
+        {
+            try { _onAgentDispatchStart?.Invoke(name); }
+            catch { /* indicator is best-effort */ }
         }
 
         var result = await tool.InvokeAsync(arguments, context, cancellationToken);
