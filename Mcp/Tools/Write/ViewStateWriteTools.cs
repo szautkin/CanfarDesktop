@@ -3,6 +3,39 @@ namespace CanfarDesktop.Mcp.Tools.Write;
 /// <summary>Result of a <c>navigate_to</c>: whether the app switched, and the resolved mode + title.</summary>
 public sealed record NavigationOutcome(bool Navigated, string Mode, string ModeTitle);
 
+/// <summary>Result of an <c>open_fits_file</c>: whether the viewer opened, the resolved id + local path.</summary>
+public sealed record OpenFitsOutcome(bool Opened, string ObservationId, string? LocalPath, string? Message);
+
+/// <summary>
+/// <c>open_fits_file</c> — open a DOWNLOADED observation's FITS in the viewer and switch to it. The
+/// observation must already be downloaded (use download_observation first). Verb class ViewState:
+/// live-applied, no proposal. 1-to-1 with the macOS open_fits_file.
+/// </summary>
+public sealed class OpenFitsFileTool : JsonReadTool<OpenFitsFileTool.Args, OpenFitsOutcome>
+{
+    private readonly Func<string, Task<OpenFitsOutcome>> _open;
+
+    public OpenFitsFileTool(Func<string, Task<OpenFitsOutcome>> open) => _open = open;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "open_fits_file",
+        "Open a DOWNLOADED observation's FITS file in the viewer (by its local id or publisher id from " +
+        "list_downloaded_observations) and switch the app to the FITS viewer. The observation must already " +
+        "be downloaded — use download_observation first. Live-applied (no proposal).",
+        """{"type":"object","properties":{"observationId":{"type":"string"}},"required":["observationId"],"additionalProperties":false}""");
+
+    protected override async Task<OpenFitsOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var id = (args.ObservationId ?? string.Empty).Trim();
+        if (id.Length == 0) throw new McpToolException(new InvalidArgument("observationId is required"));
+        return await _open(id);
+    }
+
+    public sealed record Args { public string? ObservationId { get; init; } }
+}
+
 /// <summary>
 /// <c>navigate_to</c> — switch the app to a top-level mode so the user is looking at the relevant view
 /// (e.g. after an agent saves a query, send them to Search). Verb class ViewState: live-applied, no

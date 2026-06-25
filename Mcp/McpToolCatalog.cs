@@ -121,6 +121,7 @@ public static class McpToolCatalog
             // Live ViewState writes: steer the user's view (no proposal)
             new NavigateToTool(mode => viewState.NavigateAsync(mode)),
             new SetSearchFocusTool((ra, dec) => viewState.SetSearchFocusActionAsync(ra, dec)),
+            new OpenFitsFileTool(id => viewState.OpenFitsAsync(id)),
 
             // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
             new SaveQueryTool(),

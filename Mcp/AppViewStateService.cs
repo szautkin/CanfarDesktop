@@ -52,12 +52,17 @@ public sealed class AppViewStateService
 
     private volatile Func<string, Task<NavigationOutcome>>? _navigate;
     private volatile Func<double, double, Task>? _setSearchFocus;
+    private volatile Func<string, Task<OpenFitsOutcome>>? _openFits;
 
-    /// <summary>The UI registers the navigation + focus actions (each marshals to the UI thread).</summary>
-    public void SetActions(Func<string, Task<NavigationOutcome>> navigate, Func<double, double, Task> setSearchFocus)
+    /// <summary>The UI registers the live ViewState actions (each marshals to the UI thread).</summary>
+    public void SetActions(
+        Func<string, Task<NavigationOutcome>> navigate,
+        Func<double, double, Task> setSearchFocus,
+        Func<string, Task<OpenFitsOutcome>> openFits)
     {
         _navigate = navigate;
         _setSearchFocus = setSearchFocus;
+        _openFits = openFits;
     }
 
     public Task<NavigationOutcome> NavigateAsync(string mode)
@@ -65,4 +70,7 @@ public sealed class AppViewStateService
 
     public Task SetSearchFocusActionAsync(double ra, double dec)
         => _setSearchFocus?.Invoke(ra, dec) ?? Task.CompletedTask;
+
+    public Task<OpenFitsOutcome> OpenFitsAsync(string id)
+        => _openFits?.Invoke(id) ?? Task.FromResult(new OpenFitsOutcome(false, id, null, "FITS viewer unavailable"));
 }

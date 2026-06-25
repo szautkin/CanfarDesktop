@@ -71,4 +71,31 @@ public class ViewStateWriteToolsTests
         var result = await tool.InvokeAsync(Args("""{"raDeg":10}"""), Ctx, default);
         Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
     }
+
+    // ── open_fits_file ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task OpenFits_InvokesClosure_ReturnsOutcome()
+    {
+        string? seen = null;
+        var tool = new OpenFitsFileTool(id => { seen = id; return Task.FromResult(new OpenFitsOutcome(true, id, "/tmp/a.fits", null)); });
+
+        var doc = Json(await tool.InvokeAsync(Args("""{"observationId":"obs-1"}"""), Ctx, default));
+
+        Assert.Equal("obs-1", seen);
+        Assert.True(doc.GetProperty("opened").GetBoolean());
+        Assert.Equal("/tmp/a.fits", doc.GetProperty("localPath").GetString());
+    }
+
+    [Fact]
+    public async Task OpenFits_NotDownloaded_ReportsNotOpened()
+    {
+        var tool = new OpenFitsFileTool(id => Task.FromResult(new OpenFitsOutcome(false, id, null, "not downloaded yet")));
+        var doc = Json(await tool.InvokeAsync(Args("""{"observationId":"obs-1"}"""), Ctx, default));
+        Assert.False(doc.GetProperty("opened").GetBoolean());
+    }
+
+    [Fact]
+    public void OpenFits_IsViewStateVerb()
+        => Assert.Equal(McpVerbClass.ViewState, new OpenFitsFileTool(_ => Task.FromResult(new OpenFitsOutcome(true, "x", null, null))).VerbClass);
 }

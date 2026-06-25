@@ -77,7 +77,7 @@ public sealed partial class MainWindow : Window
         _viewState = App.Services.GetRequiredService<CanfarDesktop.Mcp.AppViewStateService>();
         var fitsHost = App.Services.GetRequiredService<FitsTabHostViewModel>();
         fitsHost.Tabs.CollectionChanged += (_, _) => PublishOpenFits(fitsHost);
-        _viewState.SetActions(NavigateByKeyAsync, SetSearchFocusActionAsync);
+        _viewState.SetActions(NavigateByKeyAsync, SetSearchFocusActionAsync, OpenFitsActionAsync);
         PublishViewMode();
     }
 
@@ -126,6 +126,31 @@ public sealed partial class MainWindow : Window
             catch (Exception ex) { tcs.SetException(ex); }
         }))
             tcs.SetResult();
+        return tcs.Task;
+    }
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome> OpenFitsActionAsync(string id)
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                var store = App.Services.GetRequiredService<ObservationStore>();
+                var obs = store.Observations.FirstOrDefault(o => o.Id == id || o.PublisherID == id);
+                if (obs is null)
+                    tcs.SetResult(new(false, id, null, "observation not found in Research"));
+                else if (!obs.FileExists)
+                    tcs.SetResult(new(false, id, obs.LocalPath, "not downloaded yet — use download_observation first"));
+                else
+                {
+                    OpenFitsViewer(obs.LocalPath);
+                    tcs.SetResult(new(true, obs.Id, obs.LocalPath, null));
+                }
+            }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(new(false, id, null, "could not dispatch to UI"));
         return tcs.Task;
     }
 
