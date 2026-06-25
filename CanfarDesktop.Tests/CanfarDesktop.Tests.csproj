@@ -139,6 +139,7 @@
     <Compile Include="..\Mcp\Tools\Write\SessionWriteTools.cs" Link="Linked\Mcp\SessionWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ObservationWriteTools.cs" Link="Linked\Mcp\ObservationWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\VoSpaceWriteTools.cs" Link="Linked\Mcp\VoSpaceWriteTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\ImageDiscoveryWriteTools.cs" Link="Linked\Mcp\ImageDiscoveryWriteTools.cs" />
     <Compile Include="..\Mcp\Audit\Audit.cs" Link="Linked\Mcp\Audit.cs" />
     <Compile Include="..\Mcp\McpToolRouter.cs" Link="Linked\Mcp\McpToolRouter.cs" />
     <Compile Include="..\Mcp\Transport\IMcpTransport.cs" Link="Linked\Mcp\IMcpTransport.cs" />

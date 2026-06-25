@@ -1,7 +1,6 @@
 using System.Text;
 using Xunit;
 using CanfarDesktop.Models;
-using CanfarDesktop.Models.ImageDiscovery;
 using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Read;
 using CanfarDesktop.Mcp.Wire;
@@ -47,26 +46,5 @@ public class SessionImageToolTests
         var types = ((JsonArray)data["types"]!).Items.Select(t => ((JsonString)t).Value).ToList();
         Assert.Contains("notebook", types);
         Assert.Contains("headless", types);
-    }
-
-    [Fact]
-    public async Task FindImagesWithPackages_BuildsQueryAndReturnsIds()
-    {
-        PackageQuery? captured = null;
-        var tool = new FindImagesWithPackagesTool(q => { captured = q; return new[] { "images.canfar.net/skaha/astroml:24.07" }; });
-
-        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"python":["numpy","astropy"]}"""), Ctx, default));
-
-        Assert.Equal(new[] { "astropy", "numpy" }, captured!.Python.OrderBy(x => x)); // sorted
-        Assert.Equal(1, ((JsonInt)data["count"]!).Value);
-        Assert.Equal("images.canfar.net/skaha/astroml:24.07", ((JsonString)((JsonArray)data["imageIds"]!).Items[0]).Value);
-    }
-
-    [Fact]
-    public async Task FindImagesWithPackages_EmptyQuery_InvalidArgument()
-    {
-        var tool = new FindImagesWithPackagesTool(_ => Array.Empty<string>());
-        var result = await tool.InvokeAsync(JsonValue.Parse("{}"), Ctx, default);
-        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
     }
 }

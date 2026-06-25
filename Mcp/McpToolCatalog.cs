@@ -83,7 +83,26 @@ public static class McpToolCatalog
             // Image catalog + recent launches + package discovery
             new ListSessionImagesTool(ct => imageCatalog.GetImagesAsync(ct)),
             new ListRecentLaunchesTool(() => recentLaunches.Load()),
-            new FindImagesWithPackagesTool(query => discovery.Search(query)),
+            new FindImagesWithPackagesTool(
+                query => discovery.Search(query),
+                async ct =>
+                {
+                    try
+                    {
+                        var raw = await imageCatalog.GetImagesAsync(ct);
+                        return (IReadOnlyList<CatalogueImage>)raw.Select(i => new CatalogueImage(i.Id, i.Types)).ToList();
+                    }
+                    catch
+                    {
+                        // Catalogue endpoint flaky → synthesize from probed manifests (loses types, so
+                        // type-filtered queries match nothing) rather than failing the call. Mirrors macOS.
+                        return discovery.KnownImages().Select(id => new CatalogueImage(id, Array.Empty<string>())).ToList();
+                    }
+                },
+                () => discovery.KnownImages(),
+                (query, minScore, limit) => discovery.SearchPartial(query, minScore, limit)),
+            // discover_image_packages (write) — probe an image so find_images_with_packages can match it.
+            new DiscoverImagePackagesTool(),
 
             // CAOM2 metadata + DataLink (download/preview URLs)
             new GetObservationCaom2Tool((id, ct) => caom2.GetByPublisherIdAsync(id, ct)),
@@ -159,6 +178,7 @@ public static class McpToolCatalog
         var observations = sp.GetRequiredService<ObservationStore>();
         var dataLink = sp.GetRequiredService<DataLinkService>();
         var storage = sp.GetRequiredService<IStorageService>();
+        var discovery = sp.GetRequiredService<ImageDiscoveryCoordinator>();
 
         return new IProposalApplier[]
         {
@@ -209,6 +229,10 @@ public static class McpToolCatalog
                 storage.UploadFileAsync(p.Path, new MemoryStream(Encoding.UTF8.GetBytes(p.Content)), p.ContentType ?? "text/plain")),
             new CreateVoSpaceFolderApplier(p => storage.CreateFolderAsync(p.Path, p.Name)),
             new DeleteVoSpaceNodeApplier(p => storage.DeleteNodeAsync(p.Path)),
+
+            new DiscoverImagePackagesApplier(p => p.Force
+                ? discovery.RediscoverAsync(p.Image)
+                : discovery.DiscoverAsync(p.Image)),
         };
     }
 
