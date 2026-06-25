@@ -288,7 +288,9 @@ public static class McpToolCatalog
     private static Task<List<FitsHeader>> ParseFitsHeadersAsync(string localPath)
         => Task.Run(() =>
         {
-            using var stream = File.OpenRead(localPath);
+            // Unwrap a tar/gzip container the same way the FITS viewer does, so get_fits_header /
+            // get_fits_wcs work on CADC's tar-bundled downloads too.
+            using var stream = FitsContainer.OpenFits(localPath);
             return FitsParser.ParseHeaders(stream);
         });
 

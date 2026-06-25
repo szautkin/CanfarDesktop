@@ -56,7 +56,9 @@ public partial class FitsViewerViewModel : ObservableObject
 
             _hdus = await Task.Run(() =>
             {
-                using var stream = File.OpenRead(filePath);
+                // Unwrap a tar/gzip container (CADC ships multi-product downloads as tar bundles)
+                // so the parser sees a single FITS member, not the archive header.
+                using var stream = FitsContainer.OpenFits(filePath);
                 return FitsParser.Parse(stream);
             });
 
