@@ -108,7 +108,9 @@ public sealed class McpHost : IAsyncDisposable
         var mode = kind switch
         {
             "save_query" or "delete_saved_query" => "search",
-            "update_observation_note" or "bulk_update_observation_notes" => "research",
+            "update_observation_note" or "bulk_update_observation_notes"
+                or "download_observation" or "delete_downloaded_observation" => "research",
+            "launch_session" or "launch_headless_job" or "delete_session" or "renew_session" => "portal",
             _ => null,
         };
         if (mode is null) return;

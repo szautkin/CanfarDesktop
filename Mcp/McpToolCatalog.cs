@@ -127,6 +127,10 @@ public static class McpToolCatalog
             new LaunchHeadlessJobTool(),
             new DeleteSessionTool(),
             new RenewSessionTool(),
+
+            // Research: download / remove observations
+            new DownloadObservationTool(),
+            new DeleteDownloadedObservationTool(),
         };
     }
 
@@ -136,6 +140,8 @@ public static class McpToolCatalog
         var searchStore = sp.GetRequiredService<ISearchStoreService>();
         var noteStore = sp.GetRequiredService<ObservationNoteStore>();
         var sessions = sp.GetRequiredService<ISessionService>();
+        var observations = sp.GetRequiredService<ObservationStore>();
+        var dataLink = sp.GetRequiredService<DataLinkService>();
 
         return new IProposalApplier[]
         {
@@ -173,7 +179,49 @@ public static class McpToolCatalog
             })),
             new DeleteSessionApplier(p => sessions.DeleteSessionAsync(p.Id)),
             new RenewSessionApplier(p => sessions.RenewSessionAsync(p.Id)),
+
+            new DownloadObservationApplier(p => DownloadObservationAsync(dataLink, observations, p.PublisherId)),
+            new DeleteDownloadedObservationApplier(p =>
+            {
+                var match = observations.Observations.FirstOrDefault(o => o.Id == p.Id || o.PublisherID == p.Id);
+                if (match is not null) observations.Remove(match);
+                return Task.CompletedTask;
+            }),
         };
+    }
+
+    /// <summary>Resolve an observation's FITS URL, stream it to ~/Downloads/Verbinal, and register it in Research.</summary>
+    private static async Task DownloadObservationAsync(DataLinkService dataLink, ObservationStore store, string publisherId)
+    {
+        var links = await dataLink.GetLinksAsync(publisherId);
+        var url = links.DirectFileUrl ?? dataLink.GetDownloadUrl(publisherId);
+
+        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Verbinal");
+        Directory.CreateDirectory(dir);
+        var localPath = Path.Combine(dir, SafeFileName(publisherId) + ".fits");
+        var tmp = localPath + ".tmp";
+
+        using (var response = await dataLink.DownloadAsync(url, timeoutSeconds: 300))
+        {
+            response.EnsureSuccessStatusCode();
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            await using var fs = new FileStream(tmp, FileMode.Create);
+            await stream.CopyToAsync(fs);
+        }
+        if (File.Exists(localPath)) File.Delete(localPath);
+        File.Move(tmp, localPath);
+
+        var observation = new DownloadedObservation { PublisherID = publisherId, LocalPath = localPath };
+        var info = new FileInfo(localPath);
+        if (info.Exists) observation.FileSize = info.Length;
+        store.Save(observation);
+    }
+
+    private static string SafeFileName(string publisherId)
+    {
+        var name = publisherId;
+        foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+        return name.Length > 80 ? name[^80..] : name;
     }
 
     /// <summary>A safe Skaha session name (lowercase, hyphenated) — generated when the agent omits one.</summary>
