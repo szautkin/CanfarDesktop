@@ -5,9 +5,9 @@ namespace CanfarDesktop.Mcp.Tools.Read;
 /// <summary><c>get_storage_quota</c> — the user's VOSpace/ARC storage usage vs quota.</summary>
 public sealed class GetStorageQuotaTool : JsonReadTool<EmptyArgs, GetStorageQuotaTool.Output>
 {
-    private readonly Func<Task<StorageQuota?>> _quota;
+    private readonly Func<CancellationToken, Task<StorageQuota?>> _quota;
 
-    public GetStorageQuotaTool(Func<Task<StorageQuota?>> quota) => _quota = quota;
+    public GetStorageQuotaTool(Func<CancellationToken, Task<StorageQuota?>> quota) => _quota = quota;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_storage_quota",
@@ -16,7 +16,7 @@ public sealed class GetStorageQuotaTool : JsonReadTool<EmptyArgs, GetStorageQuot
 
     protected override async Task<Output> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
     {
-        var q = await _quota();
+        var q = await _quota(ct);
         if (q is null)
             throw new McpToolException(new TargetNotResolved("storage quota is unavailable (sign in to CADC/CANFAR?)"));
 
@@ -29,9 +29,9 @@ public sealed class GetStorageQuotaTool : JsonReadTool<EmptyArgs, GetStorageQuot
 /// <summary><c>get_platform_load</c> — current CANFAR Science Platform CPU/RAM headroom + instance counts.</summary>
 public sealed class GetPlatformLoadTool : JsonReadTool<EmptyArgs, GetPlatformLoadTool.Output>
 {
-    private readonly Func<Task<SkahaStatsResponse?>> _stats;
+    private readonly Func<CancellationToken, Task<SkahaStatsResponse?>> _stats;
 
-    public GetPlatformLoadTool(Func<Task<SkahaStatsResponse?>> stats) => _stats = stats;
+    public GetPlatformLoadTool(Func<CancellationToken, Task<SkahaStatsResponse?>> stats) => _stats = stats;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_platform_load",
@@ -41,7 +41,7 @@ public sealed class GetPlatformLoadTool : JsonReadTool<EmptyArgs, GetPlatformLoa
 
     protected override async Task<Output> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
     {
-        var s = await _stats();
+        var s = await _stats(ct);
         if (s is null)
             throw new McpToolException(new TargetNotResolved("platform stats are unavailable"));
 

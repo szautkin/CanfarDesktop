@@ -23,7 +23,7 @@ public class CatalogJobToolTests
     [Fact]
     public async Task ListSessionImages_ReturnsIdsAndTypes()
     {
-        var tool = new ListSessionImagesTool(() => Task.FromResult(SampleImages()));
+        var tool = new ListSessionImagesTool(_ => Task.FromResult(SampleImages()));
 
         var data = Data(await tool.InvokeAsync(JsonValue.Null, Ctx, default));
 
@@ -37,7 +37,7 @@ public class CatalogJobToolTests
     [Fact]
     public async Task ListSessionImages_FiltersByType_CaseInsensitive()
     {
-        var tool = new ListSessionImagesTool(() => Task.FromResult(SampleImages()));
+        var tool = new ListSessionImagesTool(_ => Task.FromResult(SampleImages()));
 
         var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"type":"HEADLESS"}"""), Ctx, default));
 
@@ -104,7 +104,7 @@ public class CatalogJobToolTests
             new() { Id = "s2", SessionName = "job", SessionType = "Headless", Status = "Succeeded",
                     ContainerImage = "img:1", StartedTime = "t0", ExpiresTime = "t1" },
         };
-        var tool = new ListHeadlessJobsTool(() => Task.FromResult<IReadOnlyList<Session>>(sessions));
+        var tool = new ListHeadlessJobsTool(_ => Task.FromResult<IReadOnlyList<Session>>(sessions));
 
         var data = Data(await tool.InvokeAsync(JsonValue.Null, Ctx, default));
 
@@ -118,7 +118,7 @@ public class CatalogJobToolTests
     [Fact]
     public async Task GetHeadlessJobLogs_FoundAndMissing()
     {
-        var tool = new GetHeadlessJobLogsTool(id => Task.FromResult<string?>(id == "s2" ? "log line\n" : null));
+        var tool = new GetHeadlessJobLogsTool((id, _) => Task.FromResult<string?>(id == "s2" ? "log line\n" : null));
 
         var found = Data(await tool.InvokeAsync(JsonValue.Parse("""{"id":"s2"}"""), Ctx, default));
         Assert.Equal("s2", ((JsonString)found["id"]!).Value);
@@ -131,7 +131,7 @@ public class CatalogJobToolTests
     [Fact]
     public async Task GetHeadlessJobLogs_MissingId_InvalidArgument()
     {
-        var tool = new GetHeadlessJobLogsTool(_ => Task.FromResult<string?>(null));
+        var tool = new GetHeadlessJobLogsTool((_, _) => Task.FromResult<string?>(null));
         var result = await tool.InvokeAsync(JsonValue.Parse("{}"), Ctx, default);
         Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
     }
@@ -139,7 +139,7 @@ public class CatalogJobToolTests
     [Fact]
     public async Task GetHeadlessJobEvents_FoundAndMissing()
     {
-        var tool = new GetHeadlessJobEventsTool(id => Task.FromResult<string?>(id == "s2" ? "Scheduled" : null));
+        var tool = new GetHeadlessJobEventsTool((id, _) => Task.FromResult<string?>(id == "s2" ? "Scheduled" : null));
 
         var found = Data(await tool.InvokeAsync(JsonValue.Parse("""{"id":"s2"}"""), Ctx, default));
         Assert.Equal("s2", ((JsonString)found["id"]!).Value);

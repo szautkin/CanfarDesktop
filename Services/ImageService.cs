@@ -20,13 +20,14 @@ public class ImageService : IImageService
         _endpoints = endpoints;
     }
 
-    public async Task<List<RawImage>> GetImagesAsync()
+    public async Task<List<RawImage>> GetImagesAsync(CancellationToken cancellationToken = default)
     {
         if (_cachedImages is not null && DateTime.UtcNow - _cacheTime < CacheDuration)
             return _cachedImages;
 
-        // Bound the image-catalog fetch so it can't hang (no per-request timeout otherwise).
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        // Bound the image-catalog fetch so it can't hang, but honour the caller's cancellation too.
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(30));
         var response = await _httpClient.GetAsync(_endpoints.ImagesUrl, cts.Token);
         response.EnsureSuccessStatusCode();
         var json = await response.Content.ReadAsStringAsync(cts.Token);

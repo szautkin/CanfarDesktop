@@ -4,5 +4,5 @@ namespace CanfarDesktop.Services;
 
 public interface IPlatformService
 {
-    Task<SkahaStatsResponse?> GetStatsAsync();
+    Task<SkahaStatsResponse?> GetStatsAsync(CancellationToken cancellationToken = default);
 }

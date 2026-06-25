@@ -10,9 +10,9 @@ namespace CanfarDesktop.Mcp.Tools.Read;
 /// </summary>
 public sealed class ResolveTargetTool : JsonReadTool<ResolveTargetTool.Args, ResolveTargetTool.Output>
 {
-    private readonly Func<string, string, Task<ResolverResult?>> _resolve;
+    private readonly Func<string, string, CancellationToken, Task<ResolverResult?>> _resolve;
 
-    public ResolveTargetTool(Func<string, string, Task<ResolverResult?>> resolve) => _resolve = resolve;
+    public ResolveTargetTool(Func<string, string, CancellationToken, Task<ResolverResult?>> resolve) => _resolve = resolve;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "resolve_target",
@@ -31,7 +31,7 @@ public sealed class ResolveTargetTool : JsonReadTool<ResolveTargetTool.Args, Res
 
         var service = string.IsNullOrWhiteSpace(args.Service) ? "ALL" : args.Service.Trim();
 
-        var result = await _resolve(args.Target.Trim(), service);
+        var result = await _resolve(args.Target.Trim(), service, ct);
         if (result is null)
             throw new McpToolException(new TargetNotResolved(args.Target.Trim()));
 
@@ -63,12 +63,12 @@ public sealed class SearchObservationsTool : JsonReadTool<SearchObservationsTool
     /// <summary>Default cone radius (degrees) when a spatial target is given without a radius (~1 arcmin).</summary>
     private const double DefaultRadiusDeg = 0.0167;
 
-    private readonly Func<string, int, Task<SearchResults>> _execute;
-    private readonly Func<string, string, Task<ResolverResult?>> _resolve;
+    private readonly Func<string, int, CancellationToken, Task<SearchResults>> _execute;
+    private readonly Func<string, string, CancellationToken, Task<ResolverResult?>> _resolve;
 
     public SearchObservationsTool(
-        Func<string, int, Task<SearchResults>> execute,
-        Func<string, string, Task<ResolverResult?>> resolve)
+        Func<string, int, CancellationToken, Task<SearchResults>> execute,
+        Func<string, string, CancellationToken, Task<ResolverResult?>> resolve)
     {
         _execute = execute;
         _resolve = resolve;
@@ -94,9 +94,9 @@ public sealed class SearchObservationsTool : JsonReadTool<SearchObservationsTool
     {
         var maxRows = args.MaxRows is > 0 ? Math.Min(args.MaxRows.Value, MaxRowsCap) : MaxRowsCap;
 
-        var adql = await BuildAdqlAsync(args, maxRows);
+        var adql = await BuildAdqlAsync(args, maxRows, ct);
 
-        var results = await _execute(adql, maxRows);
+        var results = await _execute(adql, maxRows, ct);
 
         var rows = results.Rows
             .Take(maxRows)
@@ -106,7 +106,7 @@ public sealed class SearchObservationsTool : JsonReadTool<SearchObservationsTool
         return new Output(adql, results.Columns, rows.Count, results.TotalRows, rows);
     }
 
-    private async Task<string> BuildAdqlAsync(Args args, int maxRows)
+    private async Task<string> BuildAdqlAsync(Args args, int maxRows, CancellationToken ct)
     {
         if (!string.IsNullOrWhiteSpace(args.Adql))
             return args.Adql.Trim();
@@ -119,7 +119,7 @@ public sealed class SearchObservationsTool : JsonReadTool<SearchObservationsTool
         }
         else if (!string.IsNullOrWhiteSpace(args.Target))
         {
-            var resolved = await _resolve(args.Target.Trim(), "ALL");
+            var resolved = await _resolve(args.Target.Trim(), "ALL", ct);
             if (resolved is null)
                 throw new McpToolException(new TargetNotResolved(args.Target.Trim()));
             ra = resolved.RA;

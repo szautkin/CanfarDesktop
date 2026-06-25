@@ -15,9 +15,9 @@ public sealed record SessionSummary(
 /// <summary><c>list_sessions</c> — the user's active Skaha sessions.</summary>
 public sealed class ListSessionsTool : JsonReadTool<EmptyArgs, ListSessionsTool.Output>
 {
-    private readonly Func<Task<IReadOnlyList<Session>>> _sessions;
+    private readonly Func<CancellationToken, Task<IReadOnlyList<Session>>> _sessions;
 
-    public ListSessionsTool(Func<Task<IReadOnlyList<Session>>> sessions) => _sessions = sessions;
+    public ListSessionsTool(Func<CancellationToken, Task<IReadOnlyList<Session>>> sessions) => _sessions = sessions;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_sessions",
@@ -26,7 +26,7 @@ public sealed class ListSessionsTool : JsonReadTool<EmptyArgs, ListSessionsTool.
 
     protected override async Task<Output> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
     {
-        var items = (await _sessions()).Select(SessionSummary.From).ToList();
+        var items = (await _sessions(ct)).Select(SessionSummary.From).ToList();
         return new Output(items.Count, items);
     }
 
@@ -36,9 +36,9 @@ public sealed class ListSessionsTool : JsonReadTool<EmptyArgs, ListSessionsTool.
 /// <summary><c>get_session</c> — one session by id.</summary>
 public sealed class GetSessionTool : JsonReadTool<GetSessionTool.Args, SessionSummary>
 {
-    private readonly Func<string, Task<Session?>> _get;
+    private readonly Func<string, CancellationToken, Task<Session?>> _get;
 
-    public GetSessionTool(Func<string, Task<Session?>> get) => _get = get;
+    public GetSessionTool(Func<string, CancellationToken, Task<Session?>> get) => _get = get;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_session",
@@ -49,7 +49,7 @@ public sealed class GetSessionTool : JsonReadTool<GetSessionTool.Args, SessionSu
     {
         if (string.IsNullOrWhiteSpace(args.Id))
             throw new McpToolException(new InvalidArgument("id is required"));
-        var session = await _get(args.Id);
+        var session = await _get(args.Id, ct);
         if (session is null)
             throw new McpToolException(new UnknownTarget(args.Id));
         return SessionSummary.From(session);

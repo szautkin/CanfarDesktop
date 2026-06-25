@@ -5,9 +5,9 @@ namespace CanfarDesktop.Services;
 
 public interface ITAPService
 {
-    Task<SearchResults> ExecuteQueryAsync(string adql, int maxRecords = 10000);
+    Task<SearchResults> ExecuteQueryAsync(string adql, int maxRecords = 10000, CancellationToken cancellationToken = default);
     Task<List<DataTrainRow>> GetDataTrainAsync();
-    Task<ResolverResult?> ResolveTargetAsync(string target, string service = "ALL");
+    Task<ResolverResult?> ResolveTargetAsync(string target, string service = "ALL", CancellationToken cancellationToken = default);
 }
 
 public class TAPService : ITAPService
@@ -21,7 +21,7 @@ public class TAPService : ITAPService
         _endpoints = endpoints;
     }
 
-    public async Task<SearchResults> ExecuteQueryAsync(string adql, int maxRecords = 10000)
+    public async Task<SearchResults> ExecuteQueryAsync(string adql, int maxRecords = 10000, CancellationToken cancellationToken = default)
     {
         using var content = new FormUrlEncodedContent(new[]
         {
@@ -31,14 +31,14 @@ public class TAPService : ITAPService
             new KeyValuePair<string, string>("QUERY", adql)
         });
 
-        using var response = await _httpClient.PostAsync(_endpoints.TapSyncUrl, content);
+        using var response = await _httpClient.PostAsync(_endpoints.TapSyncUrl, content, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsStringAsync();
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new HttpRequestException($"TAP query failed ({(int)response.StatusCode}): {body}");
         }
 
-        var csv = await response.Content.ReadAsStringAsync();
+        var csv = await response.Content.ReadAsStringAsync(cancellationToken);
         return ParseCsv(csv, adql);
     }
 
@@ -74,15 +74,15 @@ public class TAPService : ITAPService
         return await Task.Run(() => ParseDataTrainCsv(csv));
     }
 
-    public async Task<ResolverResult?> ResolveTargetAsync(string target, string service = "ALL")
+    public async Task<ResolverResult?> ResolveTargetAsync(string target, string service = "ALL", CancellationToken cancellationToken = default)
     {
         var url = $"{_endpoints.ResolverUrl}?target={Uri.EscapeDataString(target)}" +
                   $"&service={service}&format=ascii&detail=max&cached=true";
 
-        using var response = await _httpClient.GetAsync(url);
+        using var response = await _httpClient.GetAsync(url, cancellationToken);
         if (!response.IsSuccessStatusCode) return null;
 
-        var text = await response.Content.ReadAsStringAsync();
+        var text = await response.Content.ReadAsStringAsync(cancellationToken);
         return ParseResolverResponse(text, target);
     }
 

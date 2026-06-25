@@ -18,7 +18,7 @@ public class DataLinkService
         _endpoints = endpoints;
     }
 
-    public async Task<DataLinkResult> GetLinksAsync(string publisherID)
+    public async Task<DataLinkResult> GetLinksAsync(string publisherID, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(publisherID))
             return new DataLinkResult();
@@ -32,8 +32,9 @@ public class DataLinkService
             request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/x-votable+xml"));
 
             // Bound the DataLink resolution so it can't hang (the host is reachable but link resolution
-            // can be slow and the client has no per-request timeout otherwise).
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            // can be slow), but honour the caller's cancellation too.
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
             using var response = await _httpClient.SendAsync(request, cts.Token);
             if (!response.IsSuccessStatusCode)
                 return CacheAndReturn(publisherID, new DataLinkResult());

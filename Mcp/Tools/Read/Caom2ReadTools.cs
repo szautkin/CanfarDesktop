@@ -32,9 +32,9 @@ public sealed record Caom2PlaneSummary(
 /// <summary><c>get_observation_caom2</c> — the CAOM2 metadata document for one publisher id.</summary>
 public sealed class GetObservationCaom2Tool : JsonReadTool<GetObservationCaom2Tool.Args, Caom2ObservationSummary>
 {
-    private readonly Func<string, Task<Caom2Result>> _get;
+    private readonly Func<string, CancellationToken, Task<Caom2Result>> _get;
 
-    public GetObservationCaom2Tool(Func<string, Task<Caom2Result>> get) => _get = get;
+    public GetObservationCaom2Tool(Func<string, CancellationToken, Task<Caom2Result>> get) => _get = get;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_observation_caom2",
@@ -46,7 +46,7 @@ public sealed class GetObservationCaom2Tool : JsonReadTool<GetObservationCaom2To
         if (string.IsNullOrWhiteSpace(args.PublisherId))
             throw new McpToolException(new InvalidArgument("publisherId is required"));
 
-        var result = await _get(args.PublisherId);
+        var result = await _get(args.PublisherId, ct);
         switch (result.Status)
         {
             case Caom2Status.Success when result.Observation is not null:
@@ -77,9 +77,9 @@ public sealed record DataLinkFileView(string Url, string ContentType, string Des
 /// <summary><c>get_data_links</c> — download / preview / thumbnail links for one publisher id.</summary>
 public sealed class GetDataLinksTool : JsonReadTool<GetDataLinksTool.Args, GetDataLinksTool.Output>
 {
-    private readonly Func<string, Task<DataLinkResult>> _get;
+    private readonly Func<string, CancellationToken, Task<DataLinkResult>> _get;
 
-    public GetDataLinksTool(Func<string, Task<DataLinkResult>> get) => _get = get;
+    public GetDataLinksTool(Func<string, CancellationToken, Task<DataLinkResult>> get) => _get = get;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_data_links",
@@ -91,7 +91,7 @@ public sealed class GetDataLinksTool : JsonReadTool<GetDataLinksTool.Args, GetDa
         if (string.IsNullOrWhiteSpace(args.PublisherId))
             throw new McpToolException(new InvalidArgument("publisherId is required"));
 
-        var result = await _get(args.PublisherId);
+        var result = await _get(args.PublisherId, ct);
         var files = result.DirectFiles.Select(DataLinkFileView.From).ToList();
         return new Output(
             result.DownloadUrl,

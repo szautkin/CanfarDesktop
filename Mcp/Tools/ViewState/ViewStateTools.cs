@@ -85,13 +85,13 @@ public sealed class GetPreviewImageTool : IMcpTool
     /// <summary>Default/maximum raw image size (≈696 KB → ~928 KB base64).</summary>
     public const int DefaultMaxBytes = 680 * 1024;
 
-    private readonly Func<string, Task<IReadOnlyList<PreviewArtifact>>> _resolvePreviews;
-    private readonly Func<Uri, int, Task<PreviewBytes>> _fetchImage;
+    private readonly Func<string, CancellationToken, Task<IReadOnlyList<PreviewArtifact>>> _resolvePreviews;
+    private readonly Func<Uri, int, CancellationToken, Task<PreviewBytes>> _fetchImage;
     private readonly TimeSpan _timeout;
 
     public GetPreviewImageTool(
-        Func<string, Task<IReadOnlyList<PreviewArtifact>>> resolvePreviews,
-        Func<Uri, int, Task<PreviewBytes>> fetchImage,
+        Func<string, CancellationToken, Task<IReadOnlyList<PreviewArtifact>>> resolvePreviews,
+        Func<Uri, int, CancellationToken, Task<PreviewBytes>> fetchImage,
         TimeSpan? timeout = null)
     {
         _resolvePreviews = resolvePreviews;
@@ -131,8 +131,8 @@ public sealed class GetPreviewImageTool : IMcpTool
         var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var handler = ExecuteAsync(publisherId, args.Band, maxBytes, cts.Token);
 
-        // Enforce the timeout even though the injected DataLink resolve / image fetch ignore the token
-        // (no CancellationToken in their signatures) — return a typed timeout instead of hanging.
+        // Enforce the timeout: on expiry cancel the linked token (the injected DataLink resolve / image
+        // fetch honour it and abort their HTTP calls) and return a typed timeout instead of hanging.
         if (await Task.WhenAny(handler, Task.Delay(Timeout)).ConfigureAwait(false) == handler)
         {
             cts.Dispose();
@@ -156,7 +156,7 @@ public sealed class GetPreviewImageTool : IMcpTool
     private async Task<ToolResult> RunAsync(string publisherId, string? band, int maxBytes, CancellationToken ct)
     {
         // 1. Resolve preview artifacts; keep only image previews — never a science frame.
-        var artifacts = await _resolvePreviews(publisherId);
+        var artifacts = await _resolvePreviews(publisherId, ct);
         var previews = artifacts
             .Where(a => ImageMagic.IsImageContentType(a.ContentType) || ImageMagic.HasImageExtension(a.Filename))
             .ToList();
@@ -187,7 +187,7 @@ public sealed class GetPreviewImageTool : IMcpTool
             throw new McpToolException(new PreviewTooLarge((int)Math.Min(len, int.MaxValue)));
 
         // 4. Fetch the bytes server-side (auth'd, follows redirects). Typed failures via PreviewFetchException.
-        var fetched = await _fetchImage(chosen.Url, maxBytes);
+        var fetched = await _fetchImage(chosen.Url, maxBytes, ct);
 
         // 5. Verify the bytes are actually an image (magic bytes authoritative; declared image/* otherwise,
         //    unless the payload looks like a text/markup error body shipped with an image content type).

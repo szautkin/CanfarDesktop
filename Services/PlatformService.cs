@@ -16,16 +16,16 @@ public class PlatformService : IPlatformService
         _endpoints = endpoints;
     }
 
-    public async Task<SkahaStatsResponse?> GetStatsAsync()
+    public async Task<SkahaStatsResponse?> GetStatsAsync(CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync(_endpoints.StatsUrl);
+        var response = await _httpClient.GetAsync(_endpoints.StatsUrl, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsStringAsync();
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
             System.Diagnostics.Debug.WriteLine($"Stats API {response.StatusCode}: {body}");
             throw new HttpRequestException($"Stats returned {(int)response.StatusCode} {response.ReasonPhrase}");
         }
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         return JsonSerializer.Deserialize<SkahaStatsResponse>(json, JsonOptions);
     }
 }

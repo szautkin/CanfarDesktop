@@ -68,36 +68,36 @@ public static class McpToolCatalog
 
             // Live observation search (TAP / ADQL + name resolution)
             new SearchObservationsTool(
-                (adql, max) => tap.ExecuteQueryAsync(adql, max),
-                (target, service) => tap.ResolveTargetAsync(target, service)),
-            new ResolveTargetTool((target, service) => tap.ResolveTargetAsync(target, service)),
+                (adql, max, ct) => tap.ExecuteQueryAsync(adql, max, ct),
+                (target, service, ct) => tap.ResolveTargetAsync(target, service, ct)),
+            new ResolveTargetTool((target, service, ct) => tap.ResolveTargetAsync(target, service, ct)),
 
             // Skaha sessions / headless jobs
-            new ListSessionsTool(async () => (IReadOnlyList<Session>)await sessions.GetSessionsAsync()),
-            new GetSessionTool(id => sessions.GetSessionAsync(id)),
+            new ListSessionsTool(async ct => (IReadOnlyList<Session>)await sessions.GetSessionsAsync(ct)),
+            new GetSessionTool((id, ct) => sessions.GetSessionAsync(id, ct)),
             new ListSessionTypesTool(),
-            new ListHeadlessJobsTool(async () => (IReadOnlyList<Session>)await sessions.GetSessionsAsync()),
-            new GetHeadlessJobLogsTool(id => sessions.GetSessionLogsAsync(id)),
-            new GetHeadlessJobEventsTool(id => sessions.GetSessionEventsAsync(id)),
+            new ListHeadlessJobsTool(async ct => (IReadOnlyList<Session>)await sessions.GetSessionsAsync(ct)),
+            new GetHeadlessJobLogsTool((id, ct) => sessions.GetSessionLogsAsync(id, ct)),
+            new GetHeadlessJobEventsTool((id, ct) => sessions.GetSessionEventsAsync(id, ct)),
 
             // Image catalog + recent launches + package discovery
-            new ListSessionImagesTool(() => imageCatalog.GetImagesAsync()),
+            new ListSessionImagesTool(ct => imageCatalog.GetImagesAsync(ct)),
             new ListRecentLaunchesTool(() => recentLaunches.Load()),
             new FindImagesWithPackagesTool(query => discovery.Search(query)),
 
             // CAOM2 metadata + DataLink (download/preview URLs)
-            new GetObservationCaom2Tool(id => caom2.GetByPublisherIdAsync(id)),
-            new GetDataLinksTool(id => dataLink.GetLinksAsync(id)),
+            new GetObservationCaom2Tool((id, ct) => caom2.GetByPublisherIdAsync(id, ct)),
+            new GetDataLinksTool((id, ct) => dataLink.GetLinksAsync(id, ct)),
 
             // VOSpace/ARC storage (read) + local FITS introspection
-            new ListVoSpacePathTool(req => storage.ListNodesAsync(req.Path, req.Limit)),
-            new ReadVoSpaceFileTool(path => storage.DownloadFileAsync(path)),
-            new GetStorageQuotaTool(() => storage.GetQuotaAsync(auth.CurrentUsername ?? string.Empty)),
+            new ListVoSpacePathTool((req, ct) => storage.ListNodesAsync(req.Path, req.Limit, ct)),
+            new ReadVoSpaceFileTool((path, ct) => storage.DownloadFileAsync(path, ct)),
+            new GetStorageQuotaTool(ct => storage.GetQuotaAsync(auth.CurrentUsername ?? string.Empty, ct)),
             new GetFitsHeaderTool(ParseFitsHeadersAsync),
             new GetFitsWcsTool(ParseFitsHeadersAsync),
 
             // Platform load + upstream service health
-            new GetPlatformLoadTool(() => platform.GetStatsAsync()),
+            new GetPlatformLoadTool(ct => platform.GetStatsAsync(ct)),
             new GetServiceHealthTool(() => ProbeServicesAsync(httpFactory, endpoints)),
 
             // View state: what the user is looking at + autonomy/budget + server-side preview fetch
@@ -114,8 +114,8 @@ public static class McpToolCatalog
                     pending, new BudgetSnapshot(cap, remaining)));
             }),
             new GetPreviewImageTool(
-                publisherId => ResolvePreviewImagesAsync(dataLink, publisherId),
-                (url, maxBytes) => FetchPreviewAsync(httpFactory, url, maxBytes)),
+                (publisherId, ct) => ResolvePreviewImagesAsync(dataLink, publisherId, ct),
+                (url, maxBytes, ct) => FetchPreviewAsync(httpFactory, url, maxBytes, ct)),
 
             // Proposal lifecycle: let the agent see + manage its queued write proposals
             new ListPendingProposalsTool(),
@@ -293,9 +293,9 @@ public static class McpToolCatalog
         });
 
     /// <summary>Resolve a CADC observation's preview images from DataLink (direct image files + #preview URLs).</summary>
-    private static async Task<IReadOnlyList<PreviewArtifact>> ResolvePreviewImagesAsync(DataLinkService dataLink, string publisherId)
+    private static async Task<IReadOnlyList<PreviewArtifact>> ResolvePreviewImagesAsync(DataLinkService dataLink, string publisherId, CancellationToken ct)
     {
-        var links = await dataLink.GetLinksAsync(publisherId);
+        var links = await dataLink.GetLinksAsync(publisherId, ct);
         var artifacts = new List<PreviewArtifact>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -319,7 +319,7 @@ public static class McpToolCatalog
     }
 
     /// <summary>Authenticated, redirect-following, size-bounded image fetch. Throws typed PreviewFetchException.</summary>
-    private static async Task<PreviewBytes> FetchPreviewAsync(IHttpClientFactory factory, Uri url, int maxBytes)
+    private static async Task<PreviewBytes> FetchPreviewAsync(IHttpClientFactory factory, Uri url, int maxBytes, CancellationToken ct)
     {
         // The named client carries AuthTokenHandler (attaches the CADC token only to allow-listed hosts);
         // the redirect to signed minoc storage is pre-signed and needs no token.
@@ -328,7 +328,7 @@ public static class McpToolCatalog
         HttpResponseMessage response;
         try
         {
-            response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
         }
         catch (HttpRequestException ex)
         {
@@ -346,19 +346,19 @@ public static class McpToolCatalog
             if (declaredLength is > 0 && declaredLength > maxBytes)
                 throw new PreviewFetchException(new PreviewTooLarge((int)Math.Min(declaredLength.Value, int.MaxValue)));
 
-            await using var stream = await response.Content.ReadAsStreamAsync();
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
             var buffer = new byte[maxBytes];
             var total = 0;
             while (total < maxBytes)
             {
-                var read = await stream.ReadAsync(buffer.AsMemory(total, maxBytes - total));
+                var read = await stream.ReadAsync(buffer.AsMemory(total, maxBytes - total), ct);
                 if (read == 0) break;
                 total += read;
             }
 
             // One more byte means the body exceeded the cap.
             var extra = new byte[1];
-            if (total == maxBytes && await stream.ReadAsync(extra.AsMemory(0, 1)) > 0)
+            if (total == maxBytes && await stream.ReadAsync(extra.AsMemory(0, 1), ct) > 0)
                 throw new PreviewFetchException(new PreviewTooLarge(maxBytes + 1));
 
             var data = total == buffer.Length ? buffer : buffer.AsSpan(0, total).ToArray();

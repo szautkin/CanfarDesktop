@@ -16,25 +16,25 @@ public class SessionService : ISessionService
         _endpoints = endpoints;
     }
 
-    public async Task<List<Session>> GetSessionsAsync()
+    public async Task<List<Session>> GetSessionsAsync(CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync(_endpoints.SessionsUrl);
+        var response = await _httpClient.GetAsync(_endpoints.SessionsUrl, cancellationToken);
         response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         var raw = JsonSerializer.Deserialize<List<SkahaSessionResponse>>(json, JsonOptions) ?? [];
         return raw.Select(MapSession).ToList();
     }
 
-    public async Task<Session?> GetSessionAsync(string id)
+    public async Task<Session?> GetSessionAsync(string id, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync(_endpoints.SessionUrl(id));
+        var response = await _httpClient.GetAsync(_endpoints.SessionUrl(id), cancellationToken);
         if (!response.IsSuccessStatusCode) return null;
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         var raw = JsonSerializer.Deserialize<SkahaSessionResponse>(json, JsonOptions);
         return raw is not null ? MapSession(raw) : null;
     }
 
-    public async Task<string?> LaunchSessionAsync(SessionLaunchParams launchParams)
+    public async Task<string?> LaunchSessionAsync(SessionLaunchParams launchParams, CancellationToken cancellationToken = default)
     {
         var formData = new List<KeyValuePair<string, string>>
         {
@@ -67,16 +67,16 @@ public class SessionService : ISessionService
             request.Headers.Add("x-skaha-registry-auth", authValue);
         }
 
-        var response = await _httpClient.SendAsync(request);
+        var response = await _httpClient.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
-            var errorBody = await response.Content.ReadAsStringAsync();
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
             System.Diagnostics.Debug.WriteLine($"Launch failed {response.StatusCode}: {errorBody}");
             throw new HttpRequestException($"Launch failed: {(int)response.StatusCode} {response.ReasonPhrase} - {errorBody}");
         }
 
-        var body = (await response.Content.ReadAsStringAsync()).Trim();
+        var body = (await response.Content.ReadAsStringAsync(cancellationToken)).Trim();
         if (body.StartsWith("["))
         {
             var ids = JsonSerializer.Deserialize<string[]>(body);
@@ -161,35 +161,35 @@ public class SessionService : ISessionService
         return body.Length == 0 ? null : body;
     }
 
-    public async Task<bool> DeleteSessionAsync(string id)
+    public async Task<bool> DeleteSessionAsync(string id, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.DeleteAsync(_endpoints.SessionUrl(id));
+        var response = await _httpClient.DeleteAsync(_endpoints.SessionUrl(id), cancellationToken);
         return response.IsSuccessStatusCode;
     }
 
-    public async Task RenewSessionAsync(string id)
+    public async Task RenewSessionAsync(string id, CancellationToken cancellationToken = default)
     {
         var content = new FormUrlEncodedContent([]);
-        var response = await _httpClient.PostAsync(_endpoints.SessionRenewUrl(id), content);
+        var response = await _httpClient.PostAsync(_endpoints.SessionRenewUrl(id), content, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
-            var errorBody = await response.Content.ReadAsStringAsync();
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new HttpRequestException(
                 $"Renew failed: {(int)response.StatusCode} {response.ReasonPhrase} - {errorBody}");
         }
     }
 
-    public async Task<string?> GetSessionEventsAsync(string id)
+    public async Task<string?> GetSessionEventsAsync(string id, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync(_endpoints.SessionEventsUrl(id));
-        return response.IsSuccessStatusCode ? await response.Content.ReadAsStringAsync() : null;
+        var response = await _httpClient.GetAsync(_endpoints.SessionEventsUrl(id), cancellationToken);
+        return response.IsSuccessStatusCode ? await response.Content.ReadAsStringAsync(cancellationToken) : null;
     }
 
-    public async Task<string?> GetSessionLogsAsync(string id)
+    public async Task<string?> GetSessionLogsAsync(string id, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync(_endpoints.SessionLogsUrl(id));
-        return response.IsSuccessStatusCode ? await response.Content.ReadAsStringAsync() : null;
+        var response = await _httpClient.GetAsync(_endpoints.SessionLogsUrl(id), cancellationToken);
+        return response.IsSuccessStatusCode ? await response.Content.ReadAsStringAsync(cancellationToken) : null;
     }
 
     private static Session MapSession(SkahaSessionResponse raw) => new()

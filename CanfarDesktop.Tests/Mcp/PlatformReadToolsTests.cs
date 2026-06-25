@@ -19,7 +19,7 @@ public class PlatformReadToolsTests
     public async Task StorageQuota_ReturnsUsageFields()
     {
         var quota = new StorageQuota { QuotaBytes = 10L * 1024 * 1024 * 1024, UsedBytes = 5L * 1024 * 1024 * 1024 };
-        var tool = new GetStorageQuotaTool(() => Task.FromResult<StorageQuota?>(quota));
+        var tool = new GetStorageQuotaTool(_ => Task.FromResult<StorageQuota?>(quota));
 
         var doc = Json(await tool.InvokeAsync(JsonValue.Null, Ctx, default));
         Assert.Equal(10.0, doc.GetProperty("quotaGB").GetDouble());
@@ -29,7 +29,7 @@ public class PlatformReadToolsTests
     [Fact]
     public async Task StorageQuota_Null_TargetNotResolved()
     {
-        var tool = new GetStorageQuotaTool(() => Task.FromResult<StorageQuota?>(null));
+        var tool = new GetStorageQuotaTool(_ => Task.FromResult<StorageQuota?>(null));
         var result = await tool.InvokeAsync(JsonValue.Null, Ctx, default);
         Assert.IsType<TargetNotResolved>(Assert.IsType<FailedResult>(result).Reason);
     }
@@ -43,7 +43,7 @@ public class PlatformReadToolsTests
             Ram = new RamStats { RequestedRAM = "480G", RamAvailable = "160G" },
             Instances = new InstanceStats { Session = 12, DesktopApp = 1, Headless = 3, Total = 16 },
         };
-        var tool = new GetPlatformLoadTool(() => Task.FromResult<SkahaStatsResponse?>(stats));
+        var tool = new GetPlatformLoadTool(_ => Task.FromResult<SkahaStatsResponse?>(stats));
 
         var doc = Json(await tool.InvokeAsync(JsonValue.Null, Ctx, default));
         Assert.Equal(40.0, doc.GetProperty("cpuCoresAvailable").GetDouble());
@@ -54,7 +54,7 @@ public class PlatformReadToolsTests
     [Fact]
     public async Task PlatformLoad_Null_TargetNotResolved()
     {
-        var tool = new GetPlatformLoadTool(() => Task.FromResult<SkahaStatsResponse?>(null));
+        var tool = new GetPlatformLoadTool(_ => Task.FromResult<SkahaStatsResponse?>(null));
         var result = await tool.InvokeAsync(JsonValue.Null, Ctx, default);
         Assert.IsType<TargetNotResolved>(Assert.IsType<FailedResult>(result).Reason);
     }

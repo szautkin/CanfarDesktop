@@ -15,9 +15,9 @@ public sealed record VoSpaceNodeSummary(string Name, string Path, string Type, l
 /// <summary><c>list_vospace_path</c> — children of a VOSpace/ARC container path.</summary>
 public sealed class ListVoSpacePathTool : JsonReadTool<ListVoSpacePathTool.Args, ListVoSpacePathTool.Output>
 {
-    private readonly Func<(string Path, int? Limit), Task<List<VoSpaceNode>>> _list;
+    private readonly Func<(string Path, int? Limit), CancellationToken, Task<List<VoSpaceNode>>> _list;
 
-    public ListVoSpacePathTool(Func<(string Path, int? Limit), Task<List<VoSpaceNode>>> list) => _list = list;
+    public ListVoSpacePathTool(Func<(string Path, int? Limit), CancellationToken, Task<List<VoSpaceNode>>> list) => _list = list;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_vospace_path",
@@ -34,7 +34,7 @@ public sealed class ListVoSpacePathTool : JsonReadTool<ListVoSpacePathTool.Args,
         List<VoSpaceNode> nodes;
         try
         {
-            nodes = await _list((args.Path, args.Limit));
+            nodes = await _list((args.Path, args.Limit), ct);
         }
         catch (HttpRequestException ex) when (IsAuthFailure(ex))
         {
@@ -63,9 +63,9 @@ public sealed class ReadVoSpaceFileTool : JsonReadTool<ReadVoSpaceFileTool.Args,
     private const int DefaultMaxBytes = 65536;
     private const int MaxBytesCap = 1048576;
 
-    private readonly Func<string, Task<Stream>> _download;
+    private readonly Func<string, CancellationToken, Task<Stream>> _download;
 
-    public ReadVoSpaceFileTool(Func<string, Task<Stream>> download) => _download = download;
+    public ReadVoSpaceFileTool(Func<string, CancellationToken, Task<Stream>> download) => _download = download;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "read_vospace_file",
@@ -89,7 +89,7 @@ public sealed class ReadVoSpaceFileTool : JsonReadTool<ReadVoSpaceFileTool.Args,
         Stream stream;
         try
         {
-            stream = await _download(args.Path);
+            stream = await _download(args.Path, ct);
         }
         catch (HttpRequestException ex) when (ListVoSpacePathTool.IsAuthFailure(ex))
         {

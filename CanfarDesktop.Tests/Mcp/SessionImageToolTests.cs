@@ -17,7 +17,7 @@ public class SessionImageToolTests
     [Fact]
     public async Task ListSessions_ReturnsSummaries()
     {
-        var tool = new ListSessionsTool(() => Task.FromResult<IReadOnlyList<Session>>(new List<Session>
+        var tool = new ListSessionsTool(_ => Task.FromResult<IReadOnlyList<Session>>(new List<Session>
         {
             new() { Id = "s1", SessionName = "nb", SessionType = "notebook", Status = "Running" },
         }));
@@ -31,7 +31,7 @@ public class SessionImageToolTests
     [Fact]
     public async Task GetSession_FoundAndMissing()
     {
-        var tool = new GetSessionTool(id => Task.FromResult<Session?>(id == "s1" ? new Session { Id = "s1", SessionName = "nb" } : null));
+        var tool = new GetSessionTool((id, _) => Task.FromResult<Session?>(id == "s1" ? new Session { Id = "s1", SessionName = "nb" } : null));
 
         var found = Data(await tool.InvokeAsync(JsonValue.Parse("""{"id":"s1"}"""), Ctx, default));
         Assert.Equal("nb", ((JsonString)found["name"]!).Value);

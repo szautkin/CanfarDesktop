@@ -26,22 +26,22 @@ public class ExportServiceTests
         public List<(string Remote, string? ContentType)> Uploads { get; } = new();
         public List<(string Path, string Folder)> Folders { get; } = new();
 
-        public Task UploadFileAsync(string remotePath, Stream content, string? contentType = null)
+        public Task UploadFileAsync(string remotePath, Stream content, string? contentType = null, CancellationToken cancellationToken = default)
         {
             Uploads.Add((remotePath, contentType));
             return Task.CompletedTask;
         }
 
-        public Task CreateFolderAsync(string remotePath, string folderName)
+        public Task CreateFolderAsync(string remotePath, string folderName, CancellationToken cancellationToken = default)
         {
             Folders.Add((remotePath, folderName));
             return Task.CompletedTask;
         }
 
-        public Task<StorageQuota?> GetQuotaAsync(string username) => throw new NotImplementedException();
-        public Task<List<VoSpaceNode>> ListNodesAsync(string path, int? limit = null) => throw new NotImplementedException();
-        public Task<Stream> DownloadFileAsync(string remotePath) => throw new NotImplementedException();
-        public Task DeleteNodeAsync(string remotePath) => throw new NotImplementedException();
+        public Task<StorageQuota?> GetQuotaAsync(string username, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<List<VoSpaceNode>> ListNodesAsync(string path, int? limit = null, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<Stream> DownloadFileAsync(string remotePath, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task DeleteNodeAsync(string remotePath, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     private static string TempDir()

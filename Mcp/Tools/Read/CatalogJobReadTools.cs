@@ -11,9 +11,9 @@ public sealed record SessionImageView(string Id, IReadOnlyList<string> Types)
 /// <summary><c>list_session_images</c> — the container images in the Skaha catalog, optionally filtered by type.</summary>
 public sealed class ListSessionImagesTool : JsonReadTool<ListSessionImagesTool.Args, ListSessionImagesTool.Output>
 {
-    private readonly Func<Task<List<RawImage>>> _images;
+    private readonly Func<CancellationToken, Task<List<RawImage>>> _images;
 
-    public ListSessionImagesTool(Func<Task<List<RawImage>>> images) => _images = images;
+    public ListSessionImagesTool(Func<CancellationToken, Task<List<RawImage>>> images) => _images = images;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_session_images",
@@ -22,7 +22,7 @@ public sealed class ListSessionImagesTool : JsonReadTool<ListSessionImagesTool.A
 
     protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
-        var images = (await _images()).AsEnumerable();
+        var images = (await _images(ct)).AsEnumerable();
         if (!string.IsNullOrWhiteSpace(args.Type))
             images = images.Where(i => i.Types.Any(t => string.Equals(t, args.Type, StringComparison.OrdinalIgnoreCase)));
 
@@ -84,9 +84,9 @@ public sealed class ListRecentLaunchesTool : JsonReadTool<ListRecentLaunchesTool
 /// <summary><c>list_headless_jobs</c> — the user's headless (batch) sessions.</summary>
 public sealed class ListHeadlessJobsTool : JsonReadTool<EmptyArgs, ListHeadlessJobsTool.Output>
 {
-    private readonly Func<Task<IReadOnlyList<Session>>> _sessions;
+    private readonly Func<CancellationToken, Task<IReadOnlyList<Session>>> _sessions;
 
-    public ListHeadlessJobsTool(Func<Task<IReadOnlyList<Session>>> sessions) => _sessions = sessions;
+    public ListHeadlessJobsTool(Func<CancellationToken, Task<IReadOnlyList<Session>>> sessions) => _sessions = sessions;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_headless_jobs",
@@ -95,7 +95,7 @@ public sealed class ListHeadlessJobsTool : JsonReadTool<EmptyArgs, ListHeadlessJ
 
     protected override async Task<Output> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
     {
-        var items = (await _sessions())
+        var items = (await _sessions(ct))
             .Where(s => string.Equals(s.SessionType, "headless", StringComparison.OrdinalIgnoreCase))
             .Select(s => new HeadlessJobView(s.Id, s.SessionName, s.Status, s.ContainerImage, s.StartedTime, s.ExpiresTime))
             .ToList();
@@ -109,9 +109,9 @@ public sealed class ListHeadlessJobsTool : JsonReadTool<EmptyArgs, ListHeadlessJ
 /// <summary><c>get_headless_job_logs</c> — the stdout/stderr logs of one headless job.</summary>
 public sealed class GetHeadlessJobLogsTool : JsonReadTool<GetHeadlessJobLogsTool.Args, GetHeadlessJobLogsTool.Output>
 {
-    private readonly Func<string, Task<string?>> _logs;
+    private readonly Func<string, CancellationToken, Task<string?>> _logs;
 
-    public GetHeadlessJobLogsTool(Func<string, Task<string?>> logs) => _logs = logs;
+    public GetHeadlessJobLogsTool(Func<string, CancellationToken, Task<string?>> logs) => _logs = logs;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_headless_job_logs",
@@ -122,7 +122,7 @@ public sealed class GetHeadlessJobLogsTool : JsonReadTool<GetHeadlessJobLogsTool
     {
         if (string.IsNullOrWhiteSpace(args.Id))
             throw new McpToolException(new InvalidArgument("id is required"));
-        var logs = await _logs(args.Id);
+        var logs = await _logs(args.Id, ct);
         if (logs is null)
             throw new McpToolException(new UnknownTarget(args.Id));
         return new Output(args.Id, logs);
@@ -139,9 +139,9 @@ public sealed class GetHeadlessJobLogsTool : JsonReadTool<GetHeadlessJobLogsTool
 /// <summary><c>get_headless_job_events</c> — the Kubernetes events of one headless job.</summary>
 public sealed class GetHeadlessJobEventsTool : JsonReadTool<GetHeadlessJobEventsTool.Args, GetHeadlessJobEventsTool.Output>
 {
-    private readonly Func<string, Task<string?>> _events;
+    private readonly Func<string, CancellationToken, Task<string?>> _events;
 
-    public GetHeadlessJobEventsTool(Func<string, Task<string?>> events) => _events = events;
+    public GetHeadlessJobEventsTool(Func<string, CancellationToken, Task<string?>> events) => _events = events;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_headless_job_events",
@@ -152,7 +152,7 @@ public sealed class GetHeadlessJobEventsTool : JsonReadTool<GetHeadlessJobEvents
     {
         if (string.IsNullOrWhiteSpace(args.Id))
             throw new McpToolException(new InvalidArgument("id is required"));
-        var events = await _events(args.Id);
+        var events = await _events(args.Id, ct);
         if (events is null)
             throw new McpToolException(new UnknownTarget(args.Id));
         return new Output(args.Id, events);

@@ -29,7 +29,7 @@ public class SearchExecToolTests
     public async Task ResolveTarget_ReturnsCoordinates()
     {
         string? capturedTarget = null, capturedService = null;
-        var tool = new ResolveTargetTool((t, s) =>
+        var tool = new ResolveTargetTool((t, s, _) =>
         {
             capturedTarget = t;
             capturedService = s;
@@ -54,7 +54,7 @@ public class SearchExecToolTests
     public async Task ResolveTarget_DefaultsServiceToAll()
     {
         string? capturedService = null;
-        var tool = new ResolveTargetTool((t, s) =>
+        var tool = new ResolveTargetTool((t, s, _) =>
         {
             capturedService = s;
             return Task.FromResult<ResolverResult?>(new ResolverResult { Target = t, RA = 1, Dec = 2 });
@@ -68,7 +68,7 @@ public class SearchExecToolTests
     [Fact]
     public async Task ResolveTarget_Unresolved_TargetNotResolved()
     {
-        var tool = new ResolveTargetTool((_, _) => Task.FromResult<ResolverResult?>(null));
+        var tool = new ResolveTargetTool((_, _, _) => Task.FromResult<ResolverResult?>(null));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"target":"ZZZ-not-a-target"}"""), Ctx, default);
         Assert.IsType<TargetNotResolved>(Assert.IsType<FailedResult>(result).Reason);
     }
@@ -76,7 +76,7 @@ public class SearchExecToolTests
     [Fact]
     public async Task ResolveTarget_EmptyTarget_InvalidArgument()
     {
-        var tool = new ResolveTargetTool((_, _) => Task.FromResult<ResolverResult?>(new ResolverResult()));
+        var tool = new ResolveTargetTool((_, _, _) => Task.FromResult<ResolverResult?>(new ResolverResult()));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"target":"  "}"""), Ctx, default);
         Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
     }
@@ -101,8 +101,8 @@ public class SearchExecToolTests
     {
         string? capturedAdql = null;
         var tool = new SearchObservationsTool(
-            (adql, _) => { capturedAdql = adql; return Task.FromResult(SampleResults(2)); },
-            (_, _) => Task.FromResult<ResolverResult?>(null));
+            (adql, _, _) => { capturedAdql = adql; return Task.FromResult(SampleResults(2)); },
+            (_, _, _) => Task.FromResult<ResolverResult?>(null));
 
         var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"adql":"SELECT 1 FROM caom2.Plane"}"""), Ctx, default));
 
@@ -122,8 +122,8 @@ public class SearchExecToolTests
     {
         string? capturedAdql = null;
         var tool = new SearchObservationsTool(
-            (adql, _) => { capturedAdql = adql; return Task.FromResult(SampleResults(1)); },
-            (_, _) => Task.FromResult<ResolverResult?>(null));
+            (adql, _, _) => { capturedAdql = adql; return Task.FromResult(SampleResults(1)); },
+            (_, _, _) => Task.FromResult<ResolverResult?>(null));
 
         await tool.InvokeAsync(JsonValue.Parse("""{"ra":10.68,"dec":41.27,"radius":0.1}"""), Ctx, default);
 
@@ -137,8 +137,8 @@ public class SearchExecToolTests
         string? capturedAdql = null;
         string? resolvedTarget = null;
         var tool = new SearchObservationsTool(
-            (adql, _) => { capturedAdql = adql; return Task.FromResult(SampleResults(1)); },
-            (t, _) =>
+            (adql, _, _) => { capturedAdql = adql; return Task.FromResult(SampleResults(1)); },
+            (t, _, _) =>
             {
                 resolvedTarget = t;
                 return Task.FromResult<ResolverResult?>(new ResolverResult { Target = t, RA = 10.68, Dec = 41.27 });
@@ -154,8 +154,8 @@ public class SearchExecToolTests
     public async Task SearchObservations_TargetUnresolved_TargetNotResolved()
     {
         var tool = new SearchObservationsTool(
-            (_, _) => Task.FromResult(SampleResults(0)),
-            (_, _) => Task.FromResult<ResolverResult?>(null));
+            (_, _, _) => Task.FromResult(SampleResults(0)),
+            (_, _, _) => Task.FromResult<ResolverResult?>(null));
 
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"target":"ZZZ"}"""), Ctx, default);
         Assert.IsType<TargetNotResolved>(Assert.IsType<FailedResult>(result).Reason);
@@ -165,8 +165,8 @@ public class SearchExecToolTests
     public async Task SearchObservations_NoAdqlNoSpatial_InvalidArgument()
     {
         var tool = new SearchObservationsTool(
-            (_, _) => Task.FromResult(SampleResults(0)),
-            (_, _) => Task.FromResult<ResolverResult?>(null));
+            (_, _, _) => Task.FromResult(SampleResults(0)),
+            (_, _, _) => Task.FromResult<ResolverResult?>(null));
 
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"maxRows":5}"""), Ctx, default);
         Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
@@ -177,8 +177,8 @@ public class SearchExecToolTests
     {
         int capturedMax = -1;
         var tool = new SearchObservationsTool(
-            (_, max) => { capturedMax = max; return Task.FromResult(SampleResults(0)); },
-            (_, _) => Task.FromResult<ResolverResult?>(null));
+            (_, max, _) => { capturedMax = max; return Task.FromResult(SampleResults(0)); },
+            (_, _, _) => Task.FromResult<ResolverResult?>(null));
 
         await tool.InvokeAsync(JsonValue.Parse("""{"adql":"SELECT 1","maxRows":99999}"""), Ctx, default);
 
@@ -191,8 +191,8 @@ public class SearchExecToolTests
     {
         // Backend returns more rows than maxRows; output is capped but totalRows reflects the full set.
         var tool = new SearchObservationsTool(
-            (_, _) => Task.FromResult(SampleResults(5)),
-            (_, _) => Task.FromResult<ResolverResult?>(null));
+            (_, _, _) => Task.FromResult(SampleResults(5)),
+            (_, _, _) => Task.FromResult<ResolverResult?>(null));
 
         var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"adql":"SELECT 1","maxRows":3}"""), Ctx, default));
 

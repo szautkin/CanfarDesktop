@@ -24,7 +24,7 @@ public class VoSpaceFitsToolTests
     public async Task ListVoSpacePath_ReturnsNodeSummaries()
     {
         (string Path, int? Limit) captured = default;
-        var tool = new ListVoSpacePathTool(req =>
+        var tool = new ListVoSpacePathTool((req, _) =>
         {
             captured = req;
             return Task.FromResult(new List<VoSpaceNode>
@@ -53,7 +53,7 @@ public class VoSpaceFitsToolTests
     [Fact]
     public async Task ListVoSpacePath_MissingPath_InvalidArgument()
     {
-        var tool = new ListVoSpacePathTool(_ => Task.FromResult(new List<VoSpaceNode>()));
+        var tool = new ListVoSpacePathTool((_, _) => Task.FromResult(new List<VoSpaceNode>()));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"path":"  "}"""), Ctx, default);
         Assert.IsType<InvalidArgument>(Fail(result));
     }
@@ -61,7 +61,7 @@ public class VoSpaceFitsToolTests
     [Fact]
     public async Task ListVoSpacePath_AuthFailure_MapsToAuthRequired()
     {
-        var tool = new ListVoSpacePathTool(_ =>
+        var tool = new ListVoSpacePathTool((_, _) =>
             throw new HttpRequestException("denied", null, HttpStatusCode.Unauthorized));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"path":"/private"}"""), Ctx, default);
         Assert.IsType<AuthRequired>(Fail(result));
@@ -73,7 +73,7 @@ public class VoSpaceFitsToolTests
     public async Task ReadVoSpaceFile_Utf8_ReturnsText()
     {
         var payload = Encoding.UTF8.GetBytes("hello world");
-        var tool = new ReadVoSpaceFileTool(_ => Task.FromResult<Stream>(new MemoryStream(payload)));
+        var tool = new ReadVoSpaceFileTool((_, _) => Task.FromResult<Stream>(new MemoryStream(payload)));
 
         var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"path":"/home/u/readme.txt"}"""), Ctx, default));
 
@@ -87,7 +87,7 @@ public class VoSpaceFitsToolTests
     public async Task ReadVoSpaceFile_RespectsMaxBytesAndReportsTruncation()
     {
         var payload = Encoding.UTF8.GetBytes("abcdefghij"); // 10 bytes
-        var tool = new ReadVoSpaceFileTool(_ => Task.FromResult<Stream>(new MemoryStream(payload)));
+        var tool = new ReadVoSpaceFileTool((_, _) => Task.FromResult<Stream>(new MemoryStream(payload)));
 
         var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"path":"/big","maxBytes":4}"""), Ctx, default));
 
@@ -100,7 +100,7 @@ public class VoSpaceFitsToolTests
     public async Task ReadVoSpaceFile_Base64_ReturnsEncoded()
     {
         var payload = new byte[] { 0x00, 0xFF, 0x10, 0x42 }; // not valid utf8
-        var tool = new ReadVoSpaceFileTool(_ => Task.FromResult<Stream>(new MemoryStream(payload)));
+        var tool = new ReadVoSpaceFileTool((_, _) => Task.FromResult<Stream>(new MemoryStream(payload)));
 
         var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"path":"/bin","encoding":"base64"}"""), Ctx, default));
 
@@ -113,7 +113,7 @@ public class VoSpaceFitsToolTests
     public async Task ReadVoSpaceFile_BinaryAsUtf8_ContentTypeMismatch()
     {
         var payload = new byte[] { 0x00, 0xFF, 0xFE }; // invalid utf8
-        var tool = new ReadVoSpaceFileTool(_ => Task.FromResult<Stream>(new MemoryStream(payload)));
+        var tool = new ReadVoSpaceFileTool((_, _) => Task.FromResult<Stream>(new MemoryStream(payload)));
 
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"path":"/bin"}"""), Ctx, default);
         Assert.IsType<ContentTypeMismatch>(Fail(result));
@@ -122,7 +122,7 @@ public class VoSpaceFitsToolTests
     [Fact]
     public async Task ReadVoSpaceFile_BadEncoding_InvalidArgument()
     {
-        var tool = new ReadVoSpaceFileTool(_ => Task.FromResult<Stream>(new MemoryStream()));
+        var tool = new ReadVoSpaceFileTool((_, _) => Task.FromResult<Stream>(new MemoryStream()));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"path":"/x","encoding":"hex"}"""), Ctx, default);
         Assert.IsType<InvalidArgument>(Fail(result));
     }
@@ -130,7 +130,7 @@ public class VoSpaceFitsToolTests
     [Fact]
     public async Task ReadVoSpaceFile_AuthFailure_MapsToAuthRequired()
     {
-        var tool = new ReadVoSpaceFileTool(_ =>
+        var tool = new ReadVoSpaceFileTool((_, _) =>
             throw new HttpRequestException("denied", null, HttpStatusCode.Forbidden));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"path":"/private"}"""), Ctx, default);
         Assert.IsType<AuthRequired>(Fail(result));

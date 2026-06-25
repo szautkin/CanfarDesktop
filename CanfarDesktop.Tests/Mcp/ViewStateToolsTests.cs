@@ -43,10 +43,10 @@ public class ViewStateToolsTests
 
     private static GetPreviewImageTool Tool(
         IReadOnlyList<PreviewArtifact> previews,
-        Func<Uri, int, Task<PreviewBytes>>? fetch = null)
+        Func<Uri, int, CancellationToken, Task<PreviewBytes>>? fetch = null)
         => new(
-            _ => Task.FromResult(previews),
-            fetch ?? ((_, _) => Task.FromResult(new PreviewBytes(PngBytes, "image/png"))));
+            (_, _) => Task.FromResult(previews),
+            fetch ?? ((_, _, _) => Task.FromResult(new PreviewBytes(PngBytes, "image/png"))));
 
     private static PreviewArtifact Png(string? band = null)
         => new(band, new Uri("https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/preview"), "image/png", null, "prev.png");
@@ -102,7 +102,7 @@ public class ViewStateToolsTests
     {
         // A 403 error body shipped with an image content type must not pass as an image.
         var errorBody = Encoding.UTF8.GetBytes("<html>403 host_not_allowed</html>");
-        var tool = Tool(new[] { Png() }, (_, _) => Task.FromResult(new PreviewBytes(errorBody, "image/png")));
+        var tool = Tool(new[] { Png() }, (_, _, _) => Task.FromResult(new PreviewBytes(errorBody, "image/png")));
         var result = await tool.InvokeAsync(Args("""{"publisherId":"ivo://cadc/X"}"""), Ctx, default);
         Assert.IsType<ContentTypeMismatch>(Assert.IsType<FailedResult>(result).Reason);
     }
@@ -110,7 +110,7 @@ public class ViewStateToolsTests
     [Fact]
     public async Task PreviewImage_FetchAuthFailure_AuthRequired()
     {
-        var tool = Tool(new[] { Png() }, (_, _) => throw new PreviewFetchException(new AuthRequired()));
+        var tool = Tool(new[] { Png() }, (_, _, _) => throw new PreviewFetchException(new AuthRequired()));
         var result = await tool.InvokeAsync(Args("""{"publisherId":"ivo://cadc/X"}"""), Ctx, default);
         Assert.IsType<AuthRequired>(Assert.IsType<FailedResult>(result).Reason);
     }
@@ -119,8 +119,8 @@ public class ViewStateToolsTests
     public async Task PreviewImage_Timeout_FiresEvenWhenFetchIgnoresToken()
     {
         var tool = new GetPreviewImageTool(
-            _ => Task.FromResult<IReadOnlyList<PreviewArtifact>>(new[] { Png() }),
-            async (_, _) => { await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None); return new PreviewBytes(PngBytes, "image/png"); },
+            (_, _) => Task.FromResult<IReadOnlyList<PreviewArtifact>>(new[] { Png() }),
+            async (_, _, _) => { await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None); return new PreviewBytes(PngBytes, "image/png"); },
             timeout: TimeSpan.FromMilliseconds(60));
 
         var result = await tool.InvokeAsync(Args("""{"publisherId":"ivo://cadc/X"}"""), Ctx, default);

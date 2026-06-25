@@ -15,13 +15,13 @@ public class StorageService : IStorageService
         _endpoints = endpoints;
     }
 
-    public async Task<StorageQuota?> GetQuotaAsync(string username)
+    public async Task<StorageQuota?> GetQuotaAsync(string username, CancellationToken cancellationToken = default)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, _endpoints.StorageUrl(username));
         request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/xml"));
-        using var response = await _httpClient.SendAsync(request);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
 
-        var xml = await response.Content.ReadAsStringAsync();
+        var xml = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             System.Diagnostics.Debug.WriteLine($"Storage API {response.StatusCode}: {xml}");
@@ -30,37 +30,37 @@ public class StorageService : IStorageService
         return ParseVoSpaceXml(xml);
     }
 
-    public async Task<List<VoSpaceNode>> ListNodesAsync(string path, int? limit = null)
+    public async Task<List<VoSpaceNode>> ListNodesAsync(string path, int? limit = null, CancellationToken cancellationToken = default)
     {
         var url = _endpoints.StorageNodeListUrl(path, limit);
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/xml"));
 
-        using var response = await _httpClient.SendAsync(request);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var xml = await response.Content.ReadAsStringAsync();
+        var xml = await response.Content.ReadAsStringAsync(cancellationToken);
         return VoSpaceParser.ParseNodeList(xml);
     }
 
-    public async Task UploadFileAsync(string remotePath, Stream content, string? contentType = null)
+    public async Task UploadFileAsync(string remotePath, Stream content, string? contentType = null, CancellationToken cancellationToken = default)
     {
         var url = _endpoints.StorageFilesUrl(remotePath);
         using var streamContent = new StreamContent(content);
         if (!string.IsNullOrEmpty(contentType))
             streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
-        using var response = await _httpClient.PutAsync(url, streamContent);
+        using var response = await _httpClient.PutAsync(url, streamContent, cancellationToken);
         if (!response.IsSuccessStatusCode)
             CanfarDesktop.Helpers.CrashLogger.Info($"[Storage] PUT {url} -> {(int)response.StatusCode} {response.ReasonPhrase}");
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task<Stream> DownloadFileAsync(string remotePath)
+    public async Task<Stream> DownloadFileAsync(string remotePath, CancellationToken cancellationToken = default)
     {
         var url = _endpoints.StorageFilesUrl(remotePath);
         try
         {
-            return await _httpClient.GetStreamAsync(url);
+            return await _httpClient.GetStreamAsync(url, cancellationToken);
         }
         catch (HttpRequestException ex)
         {
@@ -69,7 +69,7 @@ public class StorageService : IStorageService
         }
     }
 
-    public async Task CreateFolderAsync(string remotePath, string folderName)
+    public async Task CreateFolderAsync(string remotePath, string folderName, CancellationToken cancellationToken = default)
     {
         if (folderName.Contains("..") || folderName.Contains('/') || folderName.Contains('\\'))
             throw new ArgumentException("Folder name contains invalid characters.");
@@ -82,16 +82,16 @@ public class StorageService : IStorageService
 
         var xml = VoSpaceParser.BuildContainerNodeXml(nodeUri);
         using var xmlContent = new StringContent(xml, System.Text.Encoding.UTF8, "text/xml");
-        using var response = await _httpClient.PutAsync(url, xmlContent);
+        using var response = await _httpClient.PutAsync(url, xmlContent, cancellationToken);
         if (!response.IsSuccessStatusCode)
             CanfarDesktop.Helpers.CrashLogger.Info($"[Storage] MKDIR(node) PUT {url} -> {(int)response.StatusCode} {response.ReasonPhrase}");
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task DeleteNodeAsync(string remotePath)
+    public async Task DeleteNodeAsync(string remotePath, CancellationToken cancellationToken = default)
     {
         var url = _endpoints.StorageNodeUrl(remotePath);
-        using var response = await _httpClient.DeleteAsync(url);
+        using var response = await _httpClient.DeleteAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 

@@ -36,7 +36,7 @@ public class Caom2ReadToolTests
                 new Caom2Plane { ProductID = "1234567p", DataProductType = "image", CalibrationLevel = 2, Quality = "good" },
             },
         };
-        var tool = new GetObservationCaom2Tool(_ =>
+        var tool = new GetObservationCaom2Tool((_, _) =>
             Task.FromResult(new Caom2Result(Caom2Status.Success, observation, null)));
 
         var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":"ivo://cadc/CFHT?1234567p"}"""), Ctx, default));
@@ -55,7 +55,7 @@ public class Caom2ReadToolTests
     [Fact]
     public async Task GetObservationCaom2_AuthRequired_MapsToAuthRequired()
     {
-        var tool = new GetObservationCaom2Tool(_ =>
+        var tool = new GetObservationCaom2Tool((_, _) =>
             Task.FromResult(new Caom2Result(Caom2Status.AuthRequired, null, "This observation requires CADC sign-in.")));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":"ivo://cadc/X"}"""), Ctx, default);
         Assert.IsType<AuthRequired>(Reason(result));
@@ -64,7 +64,7 @@ public class Caom2ReadToolTests
     [Fact]
     public async Task GetObservationCaom2_NotFound_MapsToUnknownTarget()
     {
-        var tool = new GetObservationCaom2Tool(_ =>
+        var tool = new GetObservationCaom2Tool((_, _) =>
             Task.FromResult(new Caom2Result(Caom2Status.NotFound, null, "Observation not found.")));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":"ivo://cadc/missing"}"""), Ctx, default);
         Assert.IsType<UnknownTarget>(Reason(result));
@@ -73,7 +73,7 @@ public class Caom2ReadToolTests
     [Fact]
     public async Task GetObservationCaom2_InvalidId_MapsToInvalidArgument()
     {
-        var tool = new GetObservationCaom2Tool(_ =>
+        var tool = new GetObservationCaom2Tool((_, _) =>
             Task.FromResult(new Caom2Result(Caom2Status.InvalidId, null, "Cannot derive an observation URI.")));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":"garbage"}"""), Ctx, default);
         Assert.IsType<InvalidArgument>(Reason(result));
@@ -82,7 +82,7 @@ public class Caom2ReadToolTests
     [Fact]
     public async Task GetObservationCaom2_ServerError_MapsToBackendError()
     {
-        var tool = new GetObservationCaom2Tool(_ =>
+        var tool = new GetObservationCaom2Tool((_, _) =>
             Task.FromResult(new Caom2Result(Caom2Status.ServerError, null, "HTTP 500.")));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":"ivo://cadc/X"}"""), Ctx, default);
         Assert.IsType<BackendError>(Reason(result));
@@ -91,7 +91,7 @@ public class Caom2ReadToolTests
     [Fact]
     public async Task GetObservationCaom2_MissingPublisherId_InvalidArgument()
     {
-        var tool = new GetObservationCaom2Tool(_ => Task.FromResult(new Caom2Result(Caom2Status.Success, null, null)));
+        var tool = new GetObservationCaom2Tool((_, _) => Task.FromResult(new Caom2Result(Caom2Status.Success, null, null)));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":""}"""), Ctx, default);
         Assert.IsType<InvalidArgument>(Reason(result));
     }
@@ -111,7 +111,7 @@ public class Caom2ReadToolTests
             Previews = { "https://ws.cadc/preview/1234567p.png" },
             Thumbnails = { "https://ws.cadc/thumb/1234567p.png" },
         };
-        var tool = new GetDataLinksTool(_ => Task.FromResult(dataLink));
+        var tool = new GetDataLinksTool((_, _) => Task.FromResult(dataLink));
 
         var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":"ivo://cadc/CFHT?1234567p"}"""), Ctx, default));
 
@@ -129,7 +129,7 @@ public class Caom2ReadToolTests
     [Fact]
     public async Task GetDataLinks_Empty_ReturnsZeroCounts()
     {
-        var tool = new GetDataLinksTool(_ => Task.FromResult(new DataLinkResult()));
+        var tool = new GetDataLinksTool((_, _) => Task.FromResult(new DataLinkResult()));
         var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":"ivo://cadc/X"}"""), Ctx, default));
         Assert.Equal(0, ((JsonInt)data["directFileCount"]!).Value);
         Assert.Equal(0, ((JsonInt)data["previewCount"]!).Value);
@@ -141,7 +141,7 @@ public class Caom2ReadToolTests
     [Fact]
     public async Task GetDataLinks_MissingPublisherId_InvalidArgument()
     {
-        var tool = new GetDataLinksTool(_ => Task.FromResult(new DataLinkResult()));
+        var tool = new GetDataLinksTool((_, _) => Task.FromResult(new DataLinkResult()));
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":""}"""), Ctx, default);
         Assert.IsType<InvalidArgument>(Reason(result));
     }
