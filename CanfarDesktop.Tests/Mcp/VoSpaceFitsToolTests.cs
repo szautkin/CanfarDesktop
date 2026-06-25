@@ -234,4 +234,54 @@ public class VoSpaceFitsToolTests
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"localPath":"empty.fits"}"""), Ctx, default);
         Assert.IsType<UnknownTarget>(Fail(result));
     }
+
+    // ---- get_fits_wcs must never hang -----------------------------------------------------
+    // Regression for the smoke-test "WCS-solve bug" misdiagnosis: WcsInfo.FromHeader and the
+    // accessors it uses (FitsHeader.Get*, Sexagesimal.Parse*) are pure, loop-free code. Guard
+    // that the tool returns promptly on diverse / degenerate / exotic-projection headers — the
+    // same shape that was reported (wrongly) as an infinite hang.
+
+    private static FitsHeader HeaderFrom(params (string Key, string Value)[] cards)
+    {
+        var h = new FitsHeader();
+        foreach (var (k, v) in cards) h.Add(new FitsCard(k, v, ""));
+        return h;
+    }
+
+    public static IEnumerable<(string Name, FitsHeader Header)> WcsHeaderVariants()
+    {
+        yield return ("IRIS SFL projection", HeaderFrom(
+            ("NAXIS", "2"), ("NAXIS1", "500"), ("NAXIS2", "500"),
+            ("CRPIX1", "250"), ("CRPIX2", "250"), ("CRVAL1", "266.4"), ("CRVAL2", "-28.9"),
+            ("CD1_1", "-0.025"), ("CD1_2", "0"), ("CD2_1", "0"), ("CD2_2", "0.025"),
+            ("CTYPE1", "RA---SFL"), ("CTYPE2", "DEC--SFL")));
+        yield return ("CDELT + CROTA2", HeaderFrom(
+            ("NAXIS", "2"), ("NAXIS1", "500"), ("NAXIS2", "500"),
+            ("CRPIX1", "250"), ("CRPIX2", "250"), ("CRVAL1", "10"), ("CRVAL2", "20"),
+            ("CDELT1", "-0.0125"), ("CDELT2", "0.0125"), ("CROTA2", "33.3"),
+            ("CTYPE1", "RA---TAN"), ("CTYPE2", "DEC--TAN")));
+        yield return ("Degenerate CD -> legacy RA/DEC", HeaderFrom(
+            ("NAXIS", "2"), ("NAXIS1", "256"), ("NAXIS2", "256"),
+            ("CD1_1", "0"), ("CD1_2", "0"), ("CD2_1", "0"), ("CD2_2", "0"),
+            ("RA", "17:45:40.04"), ("DEC", "-29:00:28.1"), ("SECPIX", "1.5")));
+        yield return ("No WCS keywords", HeaderFrom(("NAXIS", "2"), ("NAXIS1", "10"), ("NAXIS2", "10")));
+        yield return ("Large CD values", HeaderFrom(
+            ("NAXIS", "2"), ("NAXIS1", "10"), ("NAXIS2", "10"),
+            ("CRPIX1", "5"), ("CRPIX2", "5"), ("CRVAL1", "0"), ("CRVAL2", "0"),
+            ("CD1_1", "1e100"), ("CD1_2", "1e100"), ("CD2_1", "1e100"), ("CD2_2", "1e100"),
+            ("CTYPE1", "RA---TAN"), ("CTYPE2", "DEC--TAN")));
+    }
+
+    [Fact]
+    public async Task GetFitsWcs_ReturnsPromptly_NeverHangs()
+    {
+        foreach (var (name, header) in WcsHeaderVariants())
+        {
+            var tool = new GetFitsWcsTool(_ => Task.FromResult(new List<FitsHeader> { header }));
+            var invoke = tool.InvokeAsync(JsonValue.Parse("""{"localPath":"x.fits"}"""), Ctx, default);
+            var done = await Task.WhenAny(invoke, Task.Delay(TimeSpan.FromSeconds(5)));
+            Assert.True(done == invoke, $"get_fits_wcs hung on header variant '{name}'");
+            Assert.IsType<DataResult>(await invoke);
+        }
+    }
 }

@@ -132,7 +132,7 @@ public sealed partial class MainWindow : Window
     private Task<CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome> OpenFitsActionAsync(string id)
     {
         var tcs = new TaskCompletionSource<CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome>();
-        if (!DispatcherQueue.TryEnqueue(() =>
+        if (!DispatcherQueue.TryEnqueue(async () =>
         {
             try
             {
@@ -144,8 +144,13 @@ public sealed partial class MainWindow : Window
                     tcs.SetResult(new(false, id, obs.LocalPath, "not downloaded yet — use download_observation first"));
                 else
                 {
-                    OpenFitsViewer(obs.LocalPath);
-                    tcs.SetResult(new(true, obs.Id, obs.LocalPath, null));
+                    // Await the actual parse and report opened:true only on a confirmed load — so a file
+                    // that won't parse (e.g. a non-FITS download) returns the real error, not optimism.
+                    var page = await OpenFitsViewerAsync(obs.LocalPath);
+                    var error = page?.ViewModel.LoadError;
+                    tcs.SetResult(error is null
+                        ? new(true, obs.Id, obs.LocalPath, null)
+                        : new(false, obs.Id, obs.LocalPath, error));
                 }
             }
             catch (Exception ex) { tcs.SetException(ex); }
@@ -457,26 +462,32 @@ public sealed partial class MainWindow : Window
 
     public async void OpenFitsViewer(string? filePath = null)
     {
-        try
-        {
-            if (_fitsTabHost is null)
-            {
-                var hostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
-                _fitsTabHost = new Views.FitsViewer.FitsTabHost(hostVm);
-                _fitsTabHost.SearchAtPositionRequested += OnSearchAtFitsPosition;
-                _fitsTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
-                FitsViewerContainer.Child = _fitsTabHost;
-            }
+        try { await OpenFitsViewerAsync(filePath); }
+        catch (Exception ex) { StatusText.Text = $"FITS viewer error: {ex.Message}"; }
+    }
 
-            if (filePath is not null)
-                await _fitsTabHost.AddTabForFileAsync(filePath);
-
-            NavigateTo(AppMode.FitsViewer);
-        }
-        catch (Exception ex)
+    /// <summary>
+    /// Ensure the FITS tab host exists, open <paramref name="filePath"/> in a new tab (awaiting the
+    /// actual parse), navigate to the viewer, and return the loaded page so the caller can inspect
+    /// the real load outcome (<see cref="FitsViewerViewModel.LoadError"/>). Returns null when no file.
+    /// </summary>
+    private async Task<Views.FitsViewer.FitsViewerPage?> OpenFitsViewerAsync(string? filePath)
+    {
+        if (_fitsTabHost is null)
         {
-            StatusText.Text = $"FITS viewer error: {ex.Message}";
+            var hostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
+            _fitsTabHost = new Views.FitsViewer.FitsTabHost(hostVm);
+            _fitsTabHost.SearchAtPositionRequested += OnSearchAtFitsPosition;
+            _fitsTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
+            FitsViewerContainer.Child = _fitsTabHost;
         }
+
+        Views.FitsViewer.FitsViewerPage? page = null;
+        if (filePath is not null)
+            page = await _fitsTabHost.AddTabForFileAsync(filePath);
+
+        NavigateTo(AppMode.FitsViewer);
+        return page;
     }
 
     private void OnSearchAtFitsPosition(double ra, double dec)

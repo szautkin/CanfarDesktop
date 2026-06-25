@@ -43,11 +43,16 @@ public partial class FitsViewerViewModel : ObservableObject
 
     public string? FilePath { get; private set; }
 
+    /// <summary>Null after a successful load; the parse error message when the last open failed.
+    /// Lets a caller (e.g. the MCP open_fits_file action) report a real success/failure, not optimism.</summary>
+    public string? LoadError { get; private set; }
+
     [RelayCommand]
     public async Task OpenFileAsync(string filePath)
     {
         IsLoading = true;
         StatusMessage = $"Loading {Path.GetFileName(filePath)}...";
+        LoadError = null;
 
         try
         {
@@ -86,6 +91,7 @@ public partial class FitsViewerViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"Error: {ex.Message}";
+            LoadError = ex.Message;
         }
         finally
         {
