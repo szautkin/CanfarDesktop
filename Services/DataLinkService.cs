@@ -31,11 +31,14 @@ public class DataLinkService
             var request = new HttpRequestMessage(HttpMethod.Get, _endpoints.DataLinkUrl(publisherID));
             request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/x-votable+xml"));
 
-            using var response = await _httpClient.SendAsync(request);
+            // Bound the DataLink resolution so it can't hang (the host is reachable but link resolution
+            // can be slow and the client has no per-request timeout otherwise).
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var response = await _httpClient.SendAsync(request, cts.Token);
             if (!response.IsSuccessStatusCode)
                 return CacheAndReturn(publisherID, new DataLinkResult());
 
-            var xml = await response.Content.ReadAsStringAsync();
+            var xml = await response.Content.ReadAsStringAsync(cts.Token);
             var result = ParseVOTable(xml);
             result.DownloadUrl = _endpoints.DownloadUrl(publisherID);
             return CacheAndReturn(publisherID, result);

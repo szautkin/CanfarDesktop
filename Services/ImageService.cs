@@ -25,9 +25,11 @@ public class ImageService : IImageService
         if (_cachedImages is not null && DateTime.UtcNow - _cacheTime < CacheDuration)
             return _cachedImages;
 
-        var response = await _httpClient.GetAsync(_endpoints.ImagesUrl);
+        // Bound the image-catalog fetch so it can't hang (no per-request timeout otherwise).
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var response = await _httpClient.GetAsync(_endpoints.ImagesUrl, cts.Token);
         response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cts.Token);
         _cachedImages = JsonSerializer.Deserialize<List<RawImage>>(json, JsonOptions) ?? [];
         _cacheTime = DateTime.UtcNow;
         return _cachedImages;

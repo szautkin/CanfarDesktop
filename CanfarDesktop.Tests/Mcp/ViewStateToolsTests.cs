@@ -115,6 +115,18 @@ public class ViewStateToolsTests
         Assert.IsType<AuthRequired>(Assert.IsType<FailedResult>(result).Reason);
     }
 
+    [Fact]
+    public async Task PreviewImage_Timeout_FiresEvenWhenFetchIgnoresToken()
+    {
+        var tool = new GetPreviewImageTool(
+            _ => Task.FromResult<IReadOnlyList<PreviewArtifact>>(new[] { Png() }),
+            async (_, _) => { await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None); return new PreviewBytes(PngBytes, "image/png"); },
+            timeout: TimeSpan.FromMilliseconds(60));
+
+        var result = await tool.InvokeAsync(Args("""{"publisherId":"ivo://cadc/X"}"""), Ctx, default);
+        Assert.IsType<UpstreamTimeout>(Assert.IsType<FailedResult>(result).Reason);
+    }
+
     // ── ImageMagic ────────────────────────────────────────────────────────────
 
     [Theory]

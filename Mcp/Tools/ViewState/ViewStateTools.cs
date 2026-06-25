@@ -87,19 +87,22 @@ public sealed class GetPreviewImageTool : IMcpTool
 
     private readonly Func<string, Task<IReadOnlyList<PreviewArtifact>>> _resolvePreviews;
     private readonly Func<Uri, int, Task<PreviewBytes>> _fetchImage;
+    private readonly TimeSpan _timeout;
 
     public GetPreviewImageTool(
         Func<string, Task<IReadOnlyList<PreviewArtifact>>> resolvePreviews,
-        Func<Uri, int, Task<PreviewBytes>> fetchImage)
+        Func<Uri, int, Task<PreviewBytes>> fetchImage,
+        TimeSpan? timeout = null)
     {
         _resolvePreviews = resolvePreviews;
         _fetchImage = fetchImage;
+        _timeout = timeout ?? TimeSpan.FromSeconds(30);
     }
 
     public McpVerbClass VerbClass => McpVerbClass.Read;
     public bool AgentSafe => true;
 
-    private static TimeSpan Timeout => TimeSpan.FromSeconds(30);
+    private TimeSpan Timeout => _timeout;
 
     public ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_preview_image",
@@ -125,15 +128,28 @@ public sealed class GetPreviewImageTool : IMcpTool
 
         var maxBytes = Math.Min(Math.Max(1, args.MaxBytes ?? DefaultMaxBytes), DefaultMaxBytes);
 
-        try
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var handler = ExecuteAsync(publisherId, args.Band, maxBytes, cts.Token);
+
+        // Enforce the timeout even though the injected DataLink resolve / image fetch ignore the token
+        // (no CancellationToken in their signatures) — return a typed timeout instead of hanging.
+        if (await Task.WhenAny(handler, Task.Delay(Timeout)).ConfigureAwait(false) == handler)
         {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(Timeout);
-            return await RunAsync(publisherId, args.Band, maxBytes, cts.Token);
+            cts.Dispose();
+            return await handler;
         }
+
+        cts.Cancel();
+        ToolTimeout.ObserveInBackground(handler, cts);
+        return ToolResult.Fail(new UpstreamTimeout());
+    }
+
+    private async Task<ToolResult> ExecuteAsync(string publisherId, string? band, int maxBytes, CancellationToken ct)
+    {
+        try { return await RunAsync(publisherId, band, maxBytes, ct); }
         catch (McpToolException ex) { return ToolResult.Fail(ex.Reason); }
         catch (PreviewFetchException ex) { return ToolResult.Fail(ex.Reason); }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { return ToolResult.Fail(new UpstreamTimeout()); }
+        catch (OperationCanceledException) { return ToolResult.Fail(new UpstreamTimeout()); }
         catch (Exception ex) { return ToolResult.Fail(new BackendError(ex.Message)); }
     }
 
