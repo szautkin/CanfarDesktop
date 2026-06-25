@@ -121,6 +121,12 @@ public static class McpToolCatalog
             new DeleteSavedQueryTool(),
             new UpdateObservationNoteTool(),
             new BulkUpdateObservationNotesTool(),
+
+            // Skaha session lifecycle
+            new LaunchSessionTool(),
+            new LaunchHeadlessJobTool(),
+            new DeleteSessionTool(),
+            new RenewSessionTool(),
         };
     }
 
@@ -129,6 +135,7 @@ public static class McpToolCatalog
     {
         var searchStore = sp.GetRequiredService<ISearchStoreService>();
         var noteStore = sp.GetRequiredService<ObservationNoteStore>();
+        var sessions = sp.GetRequiredService<ISessionService>();
 
         return new IProposalApplier[]
         {
@@ -152,8 +159,26 @@ public static class McpToolCatalog
                 foreach (var payload in items) ApplyNote(noteStore, payload);
                 return Task.CompletedTask;
             }),
+
+            new LaunchSessionApplier(p => sessions.LaunchSessionAsync(new SessionLaunchParams
+            {
+                Type = p.Type, Image = p.Image, Name = SessionName(p.Name, p.Type),
+                Cores = p.Cores ?? 2, Ram = p.Ram ?? 8, Gpus = p.Gpus ?? 0,
+            })),
+            new LaunchHeadlessApplier(p => sessions.LaunchHeadlessAsync(new SessionLaunchParams
+            {
+                Type = "headless", Image = p.Image, Name = SessionName(p.Name, "headless"),
+                Cores = p.Cores ?? 2, Ram = p.Ram ?? 8, Gpus = p.Gpus ?? 0,
+                Args = p.Args, Replicas = p.Replicas ?? 1,
+            })),
+            new DeleteSessionApplier(p => sessions.DeleteSessionAsync(p.Id)),
+            new RenewSessionApplier(p => sessions.RenewSessionAsync(p.Id)),
         };
     }
+
+    /// <summary>A safe Skaha session name (lowercase, hyphenated) — generated when the agent omits one.</summary>
+    private static string SessionName(string? name, string type)
+        => string.IsNullOrWhiteSpace(name) ? $"{type}-agent-{Guid.NewGuid().ToString("N")[..6]}" : name.Trim();
 
     private static void ApplyNote(ObservationNoteStore store, UpdateObservationNotePayload payload)
         => store.Upsert(ObservationNoteMerge.Apply(store.Get(payload.PublisherId), payload, DateTimeOffset.UtcNow));
