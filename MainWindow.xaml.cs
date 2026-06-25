@@ -528,7 +528,12 @@ public sealed partial class MainWindow : Window
 
         Views.FitsViewer.FitsViewerPage? page = null;
         if (filePath is not null)
+        {
             page = await _fitsTabHost.AddTabForFileAsync(filePath);
+            // The tab's FilePath is only set during the (async) load — after the CollectionChanged publish
+            // already ran with an empty path. Re-publish now so get_current_view.openFitsPaths is correct.
+            PublishOpenFits(_fitsTabHost.ViewModel);
+        }
 
         NavigateTo(AppMode.FitsViewer);
         return page;

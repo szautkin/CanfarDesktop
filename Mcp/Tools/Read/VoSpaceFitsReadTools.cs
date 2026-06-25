@@ -62,6 +62,7 @@ public sealed class ReadVoSpaceFileTool : JsonReadTool<ReadVoSpaceFileTool.Args,
 {
     private const int DefaultMaxBytes = 65536;
     private const int MaxBytesCap = 1048576;
+    private const int DownloadTimeoutSeconds = 30;
 
     private readonly Func<string, CancellationToken, Task<Stream>> _download;
 
@@ -86,10 +87,17 @@ public sealed class ReadVoSpaceFileTool : JsonReadTool<ReadVoSpaceFileTool.Args,
 
         var maxBytes = Math.Min(args.MaxBytes ?? DefaultMaxBytes, MaxBytesCap);
 
+        // Bound the whole fetch (connect + streamed body) so a stalled VOSpace download can't run to the
+        // tool's 60s ceiling and orphan the connection — honour the caller's token too. Storage's download
+        // path has no internal timeout of its own (unlike DataLink/CAOM2), so the bound lives here.
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(DownloadTimeoutSeconds));
+        var token = cts.Token;
+
         Stream stream;
         try
         {
-            stream = await _download(args.Path, ct);
+            stream = await _download(args.Path, token);
         }
         catch (HttpRequestException ex) when (ListVoSpacePathTool.IsAuthFailure(ex))
         {
@@ -105,14 +113,14 @@ public sealed class ReadVoSpaceFileTool : JsonReadTool<ReadVoSpaceFileTool.Args,
             var total = 0;
             while (total < maxBytes)
             {
-                var read = await stream.ReadAsync(buffer.AsMemory(total, maxBytes - total), ct);
+                var read = await stream.ReadAsync(buffer.AsMemory(total, maxBytes - total), token);
                 if (read == 0) break;
                 total += read;
             }
 
             // Probe one more byte: if anything remains, the file was larger than maxBytes.
             var extra = new byte[1];
-            truncated = total == maxBytes && await stream.ReadAsync(extra.AsMemory(0, 1), ct) > 0;
+            truncated = total == maxBytes && await stream.ReadAsync(extra.AsMemory(0, 1), token) > 0;
 
             bytes = total == buffer.Length ? buffer : buffer.AsSpan(0, total).ToArray();
         }

@@ -136,6 +136,40 @@ public class VoSpaceFitsToolTests
         Assert.IsType<AuthRequired>(Fail(result));
     }
 
+    /// <summary>A read stream that blocks until its token is cancelled — models a stalled VOSpace body.</summary>
+    private sealed class HangingStream : Stream
+    {
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+        {
+            await Task.Delay(System.Threading.Timeout.Infinite, ct);
+            return 0;
+        }
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => 0; set { } }
+        public override void Flush() { }
+        public override int Read(byte[] b, int o, int c) => throw new NotSupportedException();
+        public override long Seek(long o, SeekOrigin r) => throw new NotSupportedException();
+        public override void SetLength(long v) { }
+        public override void Write(byte[] b, int o, int c) { }
+    }
+
+    [Fact]
+    public async Task ReadVoSpaceFile_StalledBody_TimesOut_DoesNotHang()
+    {
+        // The download "succeeds" (returns a stream) but the body never arrives. The bounded read must
+        // surface a typed timeout, not block. (Caller token cancels fast so the test is quick; in prod the
+        // tool's own 30s bound covers it.)
+        var tool = new ReadVoSpaceFileTool((_, _) => Task.FromResult<Stream>(new HangingStream()));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+
+        var result = await tool.InvokeAsync(JsonValue.Parse("""{"path":"/stalled"}"""), Ctx, cts.Token);
+
+        Assert.IsType<UpstreamTimeout>(Fail(result));
+    }
+
     // ---- get_fits_header ------------------------------------------------------------------
 
     private static FitsHeader HeaderWithWcs()
