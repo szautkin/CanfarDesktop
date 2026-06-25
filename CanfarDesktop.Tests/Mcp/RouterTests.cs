@@ -19,6 +19,21 @@ public class RouterTests
         public Task<ToolResult> InvokeAsync(JsonValue a, McpToolContext c, CancellationToken ct) => Task.FromResult(ToolResult.Ok(new byte[] { (byte)'1' }));
     }
 
+    /// <summary>An agent-safe read tool returning a fixed result, for exercising the activity callback.</summary>
+    private sealed class FakeReadTool : IMcpTool
+    {
+        private readonly ToolResult _result;
+        public FakeReadTool(string name, ToolResult result)
+        {
+            Descriptor = ToolDescriptor.WithStaticSchema(name, name, """{"type":"object"}""");
+            _result = result;
+        }
+        public McpVerbClass VerbClass => McpVerbClass.Read;
+        public bool AgentSafe => true;
+        public ToolDescriptor Descriptor { get; }
+        public Task<ToolResult> InvokeAsync(JsonValue a, McpToolContext c, CancellationToken ct) => Task.FromResult(_result);
+    }
+
     [Fact]
     public void DuplicateToolName_Throws()
         => Assert.Throws<InvalidOperationException>(() => new McpToolRouter(new[] { Describe(), Describe() }));
@@ -78,5 +93,46 @@ public class RouterTests
         var names = router.ExternalManifest.Select(d => d.Name).ToList();
 
         Assert.Equal(new[] { "describe_app", "get_auth_state" }, names); // user_only excluded, sorted
+    }
+
+    // ── Agent-activity callback (drives "app follows the agent" navigation) ──────────────────
+
+    [Fact]
+    public async Task ExternalRead_FiresAgentActivity_WithToolName()
+    {
+        string? captured = null;
+        var router = new McpToolRouter(
+            new IMcpTool[] { new FakeReadTool("list_sessions", ToolResult.Ok(new byte[] { (byte)'1' })) },
+            onAgentActivity: name => { captured = name; return Task.CompletedTask; });
+
+        await router.DispatchAsync("list_sessions", JsonValue.Null, McpToolContext.ForExternal("Claude/1.0", Guid.Empty), default);
+
+        Assert.Equal("list_sessions", captured);
+    }
+
+    [Fact]
+    public async Task InternalCaller_DoesNotFireAgentActivity()
+    {
+        var fired = false;
+        var router = new McpToolRouter(
+            new IMcpTool[] { new FakeReadTool("list_sessions", ToolResult.Ok(new byte[] { (byte)'1' })) },
+            onAgentActivity: _ => { fired = true; return Task.CompletedTask; });
+
+        await router.DispatchAsync("list_sessions", JsonValue.Null, McpToolContext.ForUser(Guid.Empty), default);
+
+        Assert.False(fired); // only agent (external) calls move the user's view
+    }
+
+    [Fact]
+    public async Task FailedRead_DoesNotFireAgentActivity()
+    {
+        var fired = false;
+        var router = new McpToolRouter(
+            new IMcpTool[] { new FakeReadTool("list_sessions", ToolResult.Fail(new BackendError("boom"))) },
+            onAgentActivity: _ => { fired = true; return Task.CompletedTask; });
+
+        await router.DispatchAsync("list_sessions", JsonValue.Null, McpToolContext.ForExternal("c", Guid.Empty), default);
+
+        Assert.False(fired); // don't navigate on a failed read
     }
 }

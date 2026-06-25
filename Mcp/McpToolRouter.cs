@@ -19,13 +19,19 @@ public sealed class McpToolRouter
     private readonly IReadOnlyDictionary<string, IMcpTool> _tools;
     private readonly IAuditSink _audit;
     private readonly AutoApplyHook? _autoApplyHook;
+    private readonly Func<string, Task>? _onAgentActivity;
 
     /// <summary>The agent-safe tool descriptors exposed to external clients via <c>tools/list</c>.</summary>
     public IReadOnlyList<ToolDescriptor> ExternalManifest { get; }
 
-    public McpToolRouter(IEnumerable<IMcpTool> tools, IAuditSink? audit = null, AutoApplyHook? autoApplyHook = null)
+    public McpToolRouter(
+        IEnumerable<IMcpTool> tools,
+        IAuditSink? audit = null,
+        AutoApplyHook? autoApplyHook = null,
+        Func<string, Task>? onAgentActivity = null)
     {
         _autoApplyHook = autoApplyHook;
+        _onAgentActivity = onAgentActivity;
         var dict = new Dictionary<string, IMcpTool>(StringComparer.Ordinal);
         foreach (var tool in tools)
         {
@@ -66,6 +72,13 @@ public sealed class McpToolRouter
 
         if (result is ProposedResult proposed)
             return await ResolveProposalAsync(tool, proposed.Proposal, context, sw, hash);
+
+        // Successful agent read/non-write call: let the host follow the activity (navigate to the
+        // relevant module) so the user can see what the agent is doing. Fire-and-forget — the callback
+        // swallows its own errors and never blocks or fails the tool response. Writes navigate on the
+        // apply path instead (see McpHost.FollowActivity).
+        if (context.Origin.IsExternal && result is not FailedResult && _onAgentActivity is { } activity)
+            _ = activity(name);
 
         Audit(context, name, tool.VerbClass, result is FailedResult ? AuditOutcome.Failed : AuditOutcome.Success, sw, hash);
         return result;

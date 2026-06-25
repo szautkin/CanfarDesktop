@@ -118,7 +118,9 @@ public sealed class McpHost : IAsyncDisposable
                 FollowActivity(proposal.Kind);
             });
 
-        var router = new McpToolRouter(tools, autoApplyHook: autoApply); // default LoggingAuditSink
+        // onAgentActivity makes the app follow the agent's reads (navigate to the module it's working in);
+        // writes follow on the apply path (FollowActivity). Both gated by FollowAgentActivityEnabled.
+        var router = new McpToolRouter(tools, autoApplyHook: autoApply, onAgentActivity: FollowToolActivity);
 
         // Write the sidecar to the REAL %LOCALAPPDATA% (un-redirected) so the UNPACKAGED bridge can find
         // it — a packaged app's default AppData is sandboxed to its package container (PackagePaths).
@@ -135,20 +137,51 @@ public sealed class McpHost : IAsyncDisposable
     /// <summary>After an applied write, send the user to the relevant view (when follow-activity is on).</summary>
     private void FollowActivity(string kind)
     {
-        if (!_settings.FollowAgentActivityEnabled) return;
-        var mode = kind switch
-        {
-            "save_query" or "delete_saved_query" => "search",
-            "update_observation_note" or "bulk_update_observation_notes"
-                or "download_observation" or "delete_downloaded_observation" => "research",
-            "launch_session" or "launch_headless_job" or "delete_session" or "renew_session" => "portal",
-            "upload_text_to_vospace" or "create_vospace_folder" or "delete_vospace_node" => "storage",
-            _ => null,
-        };
+        if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(ModeForTool(kind));
+    }
+
+    /// <summary>
+    /// After a successful agent read, follow it to the module it concerns so the user can see the agent
+    /// working (search/portal/storage/research). Invoked fire-and-forget by the router; never throws.
+    /// </summary>
+    private Task FollowToolActivity(string toolName)
+    {
+        if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(ModeForTool(toolName));
+        return Task.CompletedTask;
+    }
+
+    private void NavigateBestEffort(string? mode)
+    {
         if (mode is null) return;
-        try { _ = _services.GetRequiredService<AppViewStateService>().NavigateAsync(mode); }
+        try
+        {
+            var nav = _services.GetRequiredService<AppViewStateService>().NavigateAsync(mode);
+            _ = nav.ContinueWith(static t => { _ = t.Exception; }, TaskScheduler.Default); // observe, swallow
+        }
         catch { /* navigation is best-effort */ }
     }
+
+    /// <summary>
+    /// Map a tool name (read) or applied write kind to the app module to navigate to. Returns null for
+    /// tools that should not move the view: foundational/meta tools (describe_app, get_current_view,
+    /// get_auth_state, …), the view-state writes that navigate themselves (navigate_to, open_fits_file),
+    /// and the local FITS readers / preview fetch.
+    /// </summary>
+    private static string? ModeForTool(string name) => name switch
+    {
+        "search_observations" or "resolve_target" or "list_saved_queries" or "get_saved_query"
+            or "list_recent_searches" or "save_query" or "delete_saved_query" => "search",
+        "list_downloaded_observations" or "get_downloaded_observation" or "get_observation_notes"
+            or "get_observation_caom2" or "get_data_links" or "update_observation_note"
+            or "bulk_update_observation_notes" or "download_observation" or "delete_downloaded_observation" => "research",
+        "list_sessions" or "get_session" or "list_session_types" or "list_headless_jobs"
+            or "get_headless_job_logs" or "get_headless_job_events" or "list_session_images"
+            or "list_recent_launches" or "find_images_with_packages" or "get_platform_load"
+            or "launch_session" or "launch_headless_job" or "delete_session" or "renew_session" => "portal",
+        "get_storage_quota" or "list_vospace_path" or "read_vospace_file"
+            or "upload_text_to_vospace" or "create_vospace_folder" or "delete_vospace_node" => "storage",
+        _ => null,
+    };
 
     /// <summary>Stop the server and remove the sidecar (idempotent).</summary>
     public async Task StopAsync()
