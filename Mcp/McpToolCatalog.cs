@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.Fits;
@@ -131,6 +132,11 @@ public static class McpToolCatalog
             // Research: download / remove observations
             new DownloadObservationTool(),
             new DeleteDownloadedObservationTool(),
+
+            // VOSpace/ARC storage writes
+            new UploadTextToVoSpaceTool(),
+            new CreateVoSpaceFolderTool(),
+            new DeleteVoSpaceNodeTool(),
         };
     }
 
@@ -142,6 +148,7 @@ public static class McpToolCatalog
         var sessions = sp.GetRequiredService<ISessionService>();
         var observations = sp.GetRequiredService<ObservationStore>();
         var dataLink = sp.GetRequiredService<DataLinkService>();
+        var storage = sp.GetRequiredService<IStorageService>();
 
         return new IProposalApplier[]
         {
@@ -187,6 +194,11 @@ public static class McpToolCatalog
                 if (match is not null) observations.Remove(match);
                 return Task.CompletedTask;
             }),
+
+            new UploadTextToVoSpaceApplier(p =>
+                storage.UploadFileAsync(p.Path, new MemoryStream(Encoding.UTF8.GetBytes(p.Content)), p.ContentType ?? "text/plain")),
+            new CreateVoSpaceFolderApplier(p => storage.CreateFolderAsync(p.Path, p.Name)),
+            new DeleteVoSpaceNodeApplier(p => storage.DeleteNodeAsync(p.Path)),
         };
     }
 
