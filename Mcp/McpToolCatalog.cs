@@ -223,7 +223,9 @@ public static class McpToolCatalog
         var localPath = Path.Combine(dir, SafeFileName(publisherId) + ".fits");
         var tmp = localPath + ".tmp";
 
-        using (var response = await dataLink.DownloadAsync(url, timeoutSeconds: 300))
+        // Bounded below McpHost's apply backstop so a stuck download fails with its own error (and
+        // releases the apply gate) rather than tripping the generic apply timeout.
+        using (var response = await dataLink.DownloadAsync(url, timeoutSeconds: 120))
         {
             response.EnsureSuccessStatusCode();
             await using var stream = await response.Content.ReadAsStreamAsync();

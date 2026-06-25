@@ -25,6 +25,14 @@ public sealed class McpHost : IAsyncDisposable
     // the backing stores (e.g. the file-based saved-query store) do unguarded read-modify-write.
     private readonly SemaphoreSlim _applyGate = new(1, 1);
 
+    // A queued apply waits at most this long for the gate, then fails fast — so a slow/stuck apply can't
+    // make later writes hang indefinitely behind it (the "bulk-note-write stuck behind a hung download"
+    // cascade the smoke tests hit). Reads are never gated.
+    private static readonly TimeSpan ApplyGateWait = TimeSpan.FromSeconds(45);
+    // Backstop: a single apply running longer than this is reported to the agent as a timeout. Set above
+    // the longest legitimate applier (the observation download) so genuine work isn't false-failed.
+    private static readonly TimeSpan ApplyTimeout = TimeSpan.FromSeconds(150);
+
     private McpListenerService? _listener;
 
     /// <summary>Newest-first feed of agent writes (for the review-after UI under auto-apply).</summary>
@@ -72,14 +80,37 @@ public sealed class McpHost : IAsyncDisposable
                 var applier = registry.ApplierFor(proposal.Kind)
                     ?? throw ProposalApplyException.NoApplierForKind(proposal.Kind);
 
-                await _applyGate.WaitAsync();
+                if (!await _applyGate.WaitAsync(ApplyGateWait))
+                    throw ProposalApplyException.BackendError(
+                        "the apply queue is busy (another write is still applying); try again shortly");
+
+                var applyCts = new CancellationTokenSource(ApplyTimeout);
+                var applyTask = applier.ApplyAsync(proposal, applyCts.Token);
+                using (var delayCts = new CancellationTokenSource())
+                {
+                    var completed = await Task.WhenAny(applyTask, Task.Delay(ApplyTimeout, delayCts.Token));
+                    delayCts.Cancel(); // stop the timer regardless of which finished first
+
+                    if (completed != applyTask)
+                    {
+                        // The apply blew the backstop. Cancel it and hold the gate until it actually
+                        // unwinds, so the next apply can't race the same store; report a typed timeout now.
+                        applyCts.Cancel();
+                        _ = applyTask.ContinueWith(
+                            _ => { applyCts.Dispose(); _applyGate.Release(); }, TaskScheduler.Default);
+                        throw ProposalApplyException.BackendError(
+                            $"apply timed out after {ApplyTimeout.TotalSeconds:0}s");
+                    }
+                }
+
                 try
                 {
-                    await applier.ApplyAsync(proposal);
+                    await applyTask; // surface the applier's own success / failure
                     proposals.MarkApplied(proposalId);
                 }
                 finally
                 {
+                    applyCts.Dispose();
                     _applyGate.Release();
                 }
 
