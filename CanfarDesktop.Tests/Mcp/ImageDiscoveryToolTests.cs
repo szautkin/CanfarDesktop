@@ -41,7 +41,7 @@ public class ImageDiscoveryToolTests
     public async Task MatchesPassThrough()
     {
         var doc = Json(await MakeTool(search: new[] { "a:1", "b:1" }).InvokeAsync(JsonValue.Null, Ctx, default));
-        Assert.Equal(new[] { "a:1", "b:1" }.ToHashSet(), Arr(doc, "imageIds").ToHashSet());
+        Assert.Equal(new[] { "a:1", "b:1" }.ToHashSet(), Arr(doc, "imageIDs").ToHashSet());
         Assert.True(doc.GetProperty("unfiltered").GetBoolean()); // empty args → unfiltered, NOT an error
     }
 
@@ -54,7 +54,7 @@ public class ImageDiscoveryToolTests
             catalogue: new[] { ("img:a", new[] { "headless" }), ("img:b", new[] { "headless" }), ("img:c", new[] { "notebook" }) },
             discovered: Array.Empty<string>()).InvokeAsync(JsonValue.Null, Ctx, default));
         Assert.Equal(new[] { "img:a", "img:b", "img:c" }.ToHashSet(), Arr(doc, "candidatesToProbe").ToHashSet());
-        Assert.Empty(Arr(doc, "imageIds"));
+        Assert.Empty(Arr(doc, "imageIDs"));
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class ImageDiscoveryToolTests
             search: new[] { "img:a" },
             catalogue: new[] { ("img:a", new[] { "headless" }), ("img:b", new[] { "headless" }) },
             discovered: new[] { "img:a" }).InvokeAsync(JsonValue.Null, Ctx, default));
-        Assert.Equal(new[] { "img:a" }, Arr(doc, "imageIds"));
+        Assert.Equal(new[] { "img:a" }, Arr(doc, "imageIDs"));
         Assert.Equal(new[] { "img:b" }, Arr(doc, "candidatesToProbe")); // no duplicate of the match
     }
 
@@ -135,7 +135,7 @@ public class ImageDiscoveryToolTests
             search: new[] { "a:1" },
             catalogue: new[] { ("a:1", new[] { "headless" }), ("b:1", new[] { "headless" }) },
             discovered: new[] { "a:1", "b:1" }).InvokeAsync(JsonValue.Null, Ctx, default));
-        Assert.Equal(new[] { "a:1" }, Arr(doc, "imageIds"));
+        Assert.Equal(new[] { "a:1" }, Arr(doc, "imageIDs"));
         Assert.Equal(new[] { "a:1", "b:1" }.ToHashSet(), Arr(doc, "allDiscovered").ToHashSet());
     }
 
@@ -165,10 +165,10 @@ public class ImageDiscoveryToolTests
             partial: partials);
         var doc = Json(await tool.InvokeAsync(Args("""{"python":["astropy","scipy","astroquery","numpy","fitsio","python3"]}"""), Ctx, default));
 
-        Assert.Empty(Arr(doc, "imageIds"));
+        Assert.Empty(Arr(doc, "imageIDs"));
         var pm = doc.GetProperty("partialMatches");
         Assert.Equal(2, pm.GetArrayLength());
-        Assert.Equal("img:near", pm[0].GetProperty("imageId").GetString());
+        Assert.Equal("img:near", pm[0].GetProperty("imageID").GetString());
         Assert.Equal(0.83, pm[0].GetProperty("score").GetDouble(), 4);
         Assert.Equal(new[] { "python:fitsio" }, pm[0].GetProperty("missing").EnumerateArray().Select(x => x.GetString()).ToArray());
     }
@@ -183,7 +183,7 @@ public class ImageDiscoveryToolTests
             partial: new[] { new PartialMatch("img:fake", 0.5, Array.Empty<string>()) });
         var doc = Json(await tool.InvokeAsync(Args("""{"python":["astropy"]}"""), Ctx, default));
 
-        Assert.Equal(new[] { "img:hit" }, Arr(doc, "imageIds"));
+        Assert.Equal(new[] { "img:hit" }, Arr(doc, "imageIDs"));
         Assert.Equal(0, doc.GetProperty("partialMatches").GetArrayLength());
     }
 
@@ -210,7 +210,7 @@ public class ImageDiscoveryToolTests
             partial: partials);
         var doc = Json(await tool.InvokeAsync(Args("""{"python":["astropy"],"type":"headless"}"""), Ctx, default));
 
-        var ids = doc.GetProperty("partialMatches").EnumerateArray().Select(p => p.GetProperty("imageId").GetString()).ToArray();
+        var ids = doc.GetProperty("partialMatches").EnumerateArray().Select(p => p.GetProperty("imageID").GetString()).ToArray();
         Assert.Equal(new[] { "img:headless" }, ids);
     }
 

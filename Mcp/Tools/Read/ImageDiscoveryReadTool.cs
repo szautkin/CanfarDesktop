@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using CanfarDesktop.Models.ImageDiscovery;
 
 namespace CanfarDesktop.Mcp.Tools.Read;
@@ -148,10 +149,14 @@ public sealed class FindImagesWithPackagesTool : JsonReadTool<FindImagesWithPack
     public sealed record Coverage(int Total, int Discovered, int Matching);
 
     /// <summary>One ranked near-miss image: its id, fraction of constraints satisfied, and the unmet ones.</summary>
-    public sealed record PartialMatchOut(string ImageId, double Score, IReadOnlyList<string> Missing);
+    /// <remarks>The wire key is <c>imageID</c> (capital ID) to match the macOS reference verbatim.</remarks>
+    public sealed record PartialMatchOut(
+        [property: JsonPropertyName("imageID")] string ImageId, double Score, IReadOnlyList<string> Missing);
 
     public sealed record Output(
-        IReadOnlyList<string> ImageIds,
+        // Wire key is `imageIDs` (capital ID) to match the macOS reference verbatim — the camelCase
+        // policy would otherwise emit `imageIds` and break agents/clients keying on the macOS contract.
+        [property: JsonPropertyName("imageIDs")] IReadOnlyList<string> ImageIds,
         bool Unfiltered,
         int Count,
         Coverage Coverage,
