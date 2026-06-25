@@ -42,6 +42,7 @@ public static class McpToolCatalog
         var caom2 = sp.GetRequiredService<ICAOM2Service>();
         var dataLink = sp.GetRequiredService<DataLinkService>();
         var storage = sp.GetRequiredService<IStorageService>();
+        var platform = sp.GetRequiredService<IPlatformService>();
         var viewState = sp.GetRequiredService<AppViewStateService>();
         var settings = sp.GetRequiredService<McpSettingsService>();
         var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -88,8 +89,12 @@ public static class McpToolCatalog
             // VOSpace/ARC storage (read) + local FITS introspection
             new ListVoSpacePathTool(req => storage.ListNodesAsync(req.Path, req.Limit)),
             new ReadVoSpaceFileTool(path => storage.DownloadFileAsync(path)),
+            new GetStorageQuotaTool(() => storage.GetQuotaAsync(auth.CurrentUsername ?? string.Empty)),
             new GetFitsHeaderTool(ParseFitsHeadersAsync),
             new GetFitsWcsTool(ParseFitsHeadersAsync),
+
+            // Platform load
+            new GetPlatformLoadTool(() => platform.GetStatsAsync()),
 
             // View state: what the user is looking at + autonomy/budget + server-side preview fetch
             new GetCurrentViewTool(ctx =>
