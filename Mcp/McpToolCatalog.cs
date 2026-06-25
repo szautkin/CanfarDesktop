@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
 using CanfarDesktop.Models;
+using CanfarDesktop.Models.Fits;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.Database;
+using CanfarDesktop.Services.Fits;
 using CanfarDesktop.Services.ImageDiscovery;
 using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Builtin;
@@ -38,6 +40,7 @@ public static class McpToolCatalog
         var discovery = sp.GetRequiredService<ImageDiscoveryCoordinator>();
         var caom2 = sp.GetRequiredService<ICAOM2Service>();
         var dataLink = sp.GetRequiredService<DataLinkService>();
+        var storage = sp.GetRequiredService<IStorageService>();
         var viewState = sp.GetRequiredService<AppViewStateService>();
         var settings = sp.GetRequiredService<McpSettingsService>();
         var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -55,6 +58,7 @@ public static class McpToolCatalog
 
             // Saved search state
             new ListSavedQueriesTool(() => searchStore.LoadSavedQueries()),
+            new GetSavedQueryTool(() => searchStore.LoadSavedQueries()),
             new ListRecentSearchesTool(() => searchStore.LoadRecentSearches()),
 
             // Live observation search (TAP / ADQL + name resolution)
@@ -66,6 +70,7 @@ public static class McpToolCatalog
             // Skaha sessions / headless jobs
             new ListSessionsTool(async () => (IReadOnlyList<Session>)await sessions.GetSessionsAsync()),
             new GetSessionTool(id => sessions.GetSessionAsync(id)),
+            new ListSessionTypesTool(),
             new ListHeadlessJobsTool(async () => (IReadOnlyList<Session>)await sessions.GetSessionsAsync()),
             new GetHeadlessJobLogsTool(id => sessions.GetSessionLogsAsync(id)),
             new GetHeadlessJobEventsTool(id => sessions.GetSessionEventsAsync(id)),
@@ -78,6 +83,12 @@ public static class McpToolCatalog
             // CAOM2 metadata + DataLink (download/preview URLs)
             new GetObservationCaom2Tool(id => caom2.GetByPublisherIdAsync(id)),
             new GetDataLinksTool(id => dataLink.GetLinksAsync(id)),
+
+            // VOSpace/ARC storage (read) + local FITS introspection
+            new ListVoSpacePathTool(req => storage.ListNodesAsync(req.Path, req.Limit)),
+            new ReadVoSpaceFileTool(path => storage.DownloadFileAsync(path)),
+            new GetFitsHeaderTool(ParseFitsHeadersAsync),
+            new GetFitsWcsTool(ParseFitsHeadersAsync),
 
             // View state: what the user is looking at + autonomy/budget + server-side preview fetch
             new GetCurrentViewTool(ctx =>
@@ -146,6 +157,14 @@ public static class McpToolCatalog
 
     private static void ApplyNote(ObservationNoteStore store, UpdateObservationNotePayload payload)
         => store.Upsert(ObservationNoteMerge.Apply(store.Get(payload.PublisherId), payload, DateTimeOffset.UtcNow));
+
+    /// <summary>Open a local FITS file and parse its per-HDU headers (the static parser is stream-based).</summary>
+    private static Task<List<FitsHeader>> ParseFitsHeadersAsync(string localPath)
+        => Task.Run(() =>
+        {
+            using var stream = File.OpenRead(localPath);
+            return FitsParser.ParseHeaders(stream);
+        });
 
     /// <summary>Resolve a CADC observation's preview images from DataLink (direct image files + #preview URLs).</summary>
     private static async Task<IReadOnlyList<PreviewArtifact>> ResolvePreviewImagesAsync(DataLinkService dataLink, string publisherId)
