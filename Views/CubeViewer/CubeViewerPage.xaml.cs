@@ -54,6 +54,7 @@ public sealed partial class CubeViewerPage : UserControl
     private readonly double[] _captionH = new double[9];
     private readonly CubeAxesOverlay.Frame _overlayFrame = new();
     private CubeColormap _currentColormap = CubeColormap.Inferno;
+    private string _cubeName = "";
 
     public CubeViewerPage()
     {
@@ -129,6 +130,7 @@ public sealed partial class CubeViewerPage : UserControl
 
         _renderer.SetVolume(volume);
         _meta = volume.Meta;
+        _cubeName = volume.Name;
         _volNx = volume.Nx;
         _volNy = volume.Ny;
         ViewModel.VolumeName = note;
