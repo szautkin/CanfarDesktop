@@ -115,8 +115,9 @@ public sealed class GetHeadlessJobLogsTool : JsonReadTool<GetHeadlessJobLogsTool
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_headless_job_logs",
-        "Get the logs (stdout/stderr) of one headless job by its session id.",
-        """{"type":"object","properties":{"id":{"type":"string","description":"Headless session id"}},"required":["id"],"additionalProperties":false}""");
+        "Get the logs (stdout/stderr) of a Skaha session by its id — works for any session (interactive or " +
+        "headless job).",
+        """{"type":"object","properties":{"id":{"type":"string","description":"Session id (interactive or headless)"}},"required":["id"],"additionalProperties":false}""");
 
     protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
@@ -145,8 +146,9 @@ public sealed class GetHeadlessJobEventsTool : JsonReadTool<GetHeadlessJobEvents
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_headless_job_events",
-        "Get the events (scheduling/lifecycle) of one headless job by its session id.",
-        """{"type":"object","properties":{"id":{"type":"string","description":"Headless session id"}},"required":["id"],"additionalProperties":false}""");
+        "Get the events (scheduling/lifecycle) of a Skaha session by its id — works for any session " +
+        "(interactive or headless job).",
+        """{"type":"object","properties":{"id":{"type":"string","description":"Session id (interactive or headless)"}},"required":["id"],"additionalProperties":false}""");
 
     protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {

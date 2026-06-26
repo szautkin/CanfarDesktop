@@ -40,6 +40,15 @@ public class SessionImageToolTests
     }
 
     [Fact]
+    public async Task GetSession_SurfacesConnectUrl()
+    {
+        var tool = new GetSessionTool((id, _) => Task.FromResult<Session?>(
+            new Session { Id = "s1", SessionName = "nb", ConnectUrl = "https://skaha.example/session/s1" }));
+        var found = Data(await tool.InvokeAsync(JsonValue.Parse("""{"id":"s1"}"""), Ctx, default));
+        Assert.Equal("https://skaha.example/session/s1", ((JsonString)found["connectUrl"]!).Value);
+    }
+
+    [Fact]
     public async Task ListSessionTypes_IncludesNotebookAndHeadless()
     {
         var data = Data(await new ListSessionTypesTool().InvokeAsync(JsonValue.Null, Ctx, default));

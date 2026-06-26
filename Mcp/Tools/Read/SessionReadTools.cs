@@ -5,11 +5,13 @@ namespace CanfarDesktop.Mcp.Tools.Read;
 /// <summary>Compact view of a Skaha session for MCP output.</summary>
 public sealed record SessionSummary(
     string Id, string Name, string Type, string Status, string Image,
-    string StartedTime, string ExpiresTime, string CpuAllocated, string MemoryAllocated, string? GpuAllocated)
+    string StartedTime, string ExpiresTime, string CpuAllocated, string MemoryAllocated, string? GpuAllocated,
+    string? ConnectUrl = null)
 {
     public static SessionSummary From(Session s) => new(
         s.Id, s.SessionName, s.SessionType, s.Status, s.ContainerImage,
-        s.StartedTime, s.ExpiresTime, s.CpuAllocated, s.MemoryAllocated, s.GpuAllocated);
+        s.StartedTime, s.ExpiresTime, s.CpuAllocated, s.MemoryAllocated, s.GpuAllocated,
+        s.ConnectUrl);
 }
 
 /// <summary><c>list_sessions</c> — the user's active Skaha sessions.</summary>
@@ -21,7 +23,8 @@ public sealed class ListSessionsTool : JsonReadTool<EmptyArgs, ListSessionsTool.
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_sessions",
-        "List the user's active Skaha sessions (id, name, type, status, image, resources).",
+        "List the user's active Skaha sessions (id, name, type, status, image, resources, and the connectUrl to " +
+        "open an interactive session in the browser).",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override async Task<Output> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
@@ -42,7 +45,8 @@ public sealed class GetSessionTool : JsonReadTool<GetSessionTool.Args, SessionSu
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_session",
-        "Get one Skaha session by its id.",
+        "Get one Skaha session by its id, including its connectUrl (the link to open an interactive session " +
+        "in the browser).",
         """{"type":"object","properties":{"id":{"type":"string","description":"Session id"}},"required":["id"],"additionalProperties":false}""");
 
     protected override async Task<SessionSummary> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
