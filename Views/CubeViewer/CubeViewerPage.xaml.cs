@@ -58,10 +58,20 @@ public sealed partial class CubeViewerPage : UserControl
         }
 
         _initialized = true;
+        // Resize the back buffer + re-apply the inverse-scale transform when the DPI
+        // / composition scale changes (e.g. dragged to another monitor).
+        RenderPanel.CompositionScaleChanged += OnCompositionScaleChanged;
         StatusText.Text = "Building synthetic volume…";
 
         // Generate the procedural nebula off the UI thread, then upload + start.
         _ = LoadSyntheticVolumeAsync();
+    }
+
+    private void OnCompositionScaleChanged(SwapChainPanel sender, object args)
+    {
+        if (!_initialized || _closed) return;
+        var (w, h) = PhysicalSize();
+        _renderer.Resize(w, h);
     }
 
     private async Task LoadSyntheticVolumeAsync()
@@ -112,9 +122,13 @@ public sealed partial class CubeViewerPage : UserControl
 
     private (int w, int h) PhysicalSize()
     {
-        double scale = XamlRoot?.RasterizationScale ?? 1.0;
-        int w = (int)Math.Max(1, RenderPanel.ActualWidth * scale);
-        int h = (int)Math.Max(1, RenderPanel.ActualHeight * scale);
+        // Size the back buffer in PHYSICAL pixels using the panel's composition
+        // scale — the same factor the renderer inverts via SetMatrixTransform, so
+        // the two always agree (mismatching them is what produced the dark frame).
+        double sx = RenderPanel.CompositionScaleX > 0 ? RenderPanel.CompositionScaleX : (XamlRoot?.RasterizationScale ?? 1.0);
+        double sy = RenderPanel.CompositionScaleY > 0 ? RenderPanel.CompositionScaleY : (XamlRoot?.RasterizationScale ?? 1.0);
+        int w = (int)Math.Max(1, RenderPanel.ActualWidth * sx);
+        int h = (int)Math.Max(1, RenderPanel.ActualHeight * sy);
         return (w, h);
     }
 
@@ -210,6 +224,7 @@ public sealed partial class CubeViewerPage : UserControl
             Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= OnRendering;
             _renderingHooked = false;
         }
+        RenderPanel.CompositionScaleChanged -= OnCompositionScaleChanged;
         _renderer.Dispose();
     }
 

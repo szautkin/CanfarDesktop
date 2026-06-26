@@ -50,6 +50,7 @@ public sealed class CubeVolumeRenderer : IDisposable
     private ID3D11DeviceContext _context = null!;
     private IDXGISwapChain1 _swapChain = null!;
     private ID3D11RenderTargetView? _rtv;
+    private SwapChainPanel? _panel;
 
     private ID3D11VertexShader _vs = null!;
     private ID3D11PixelShader _ps = null!;
@@ -171,6 +172,25 @@ public sealed class CubeVolumeRenderer : IDisposable
         // "The object's type must be __ComObject…" on projected objects.
         var native = panel.As<ISwapChainPanelNative>();
         Marshal.ThrowExceptionForHR(native.SetSwapChain(_swapChain.NativePointer));
+
+        _panel = panel;
+        ApplyCompositionScale();
+    }
+
+    /// <summary>
+    /// Map the physical-pixel back buffer onto the panel's DIP bounds via the
+    /// inverse composition scale. REQUIRED for SwapChainPanel + a composition swap
+    /// chain: without it, on a scaled display (e.g. 150%) the compositor shows only
+    /// the top-left fraction of the render — which for a centred volume reads as an
+    /// empty dark frame. Re-applied on resize / DPI change.
+    /// </summary>
+    private void ApplyCompositionScale()
+    {
+        if (_panel is null || _swapChain is null) return;
+        float sx = _panel.CompositionScaleX > 0 ? _panel.CompositionScaleX : 1f;
+        float sy = _panel.CompositionScaleY > 0 ? _panel.CompositionScaleY : 1f;
+        using var sc2 = _swapChain.QueryInterface<IDXGISwapChain2>();
+        sc2.MatrixTransform = new Matrix3x2(1f / sx, 0f, 0f, 1f / sy, 0f, 0f);
     }
 
     private void CreatePipeline()
@@ -325,6 +345,7 @@ public sealed class CubeVolumeRenderer : IDisposable
         _rtv = null;
         _swapChain.ResizeBuffers(2, _width, _height, Format.B8G8R8A8_UNorm, SwapChainFlags.None).CheckError();
         CreateRenderTarget();
+        ApplyCompositionScale();
     }
 
     private Matrix4x4 BuildModelMatrix()
