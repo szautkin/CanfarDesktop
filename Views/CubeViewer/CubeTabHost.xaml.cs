@@ -9,8 +9,9 @@ namespace CanfarDesktop.Views.CubeViewer;
 /// <summary>
 /// Tabbed host for the 3D Cube Viewer: each tab is a self-contained <see cref="CubeViewerPage"/>
 /// (its own GPU renderer + controls). Mirrors the FITS viewer's tabbed approach — open cubes into
-/// new tabs, close them with the per-tab ✕, and an empty-state prompt when none are open. Only the
-/// active tab renders (inactive pages collapse, pausing their render loops).
+/// new tabs, close them with the per-tab ✕, and an empty-state prompt when none are open. A WinUI
+/// TabView reparents non-selected tab content OUT of the tree, so inactive tabs raise Unloaded →
+/// PauseRendering and stop their render loop; only the selected tab ever drives a frame.
 /// </summary>
 public sealed partial class CubeTabHost : UserControl
 {

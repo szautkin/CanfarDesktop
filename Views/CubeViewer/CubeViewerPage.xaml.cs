@@ -36,6 +36,7 @@ public sealed partial class CubeViewerPage : UserControl
     private bool _initialized;
     private bool _renderingHooked;
     private bool _closed;
+    private bool _active; // true only while this tab is the selected/attached one (TabView unloads inactive tabs)
 
     // Orbit-drag state.
     private bool _isDragging;
@@ -68,10 +69,17 @@ public sealed partial class CubeViewerPage : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (_closed) return;
+        _active = true; // this tab is now the live/selected one
         if (_initialized)
         {
-            // The page was previously initialized and merely re-attached to the tree
-            // (e.g. after an Unloaded that paused us) — resume the render loop.
+            // Re-attached to the tree after a TabView tab switch (which UNLOADS inactive tabs —
+            // it reparents content out — so OnUnloaded paused us). Reconcile the back buffer to the
+            // current panel size (it may have changed while we were detached) and resume rendering.
+            if (RenderPanel.ActualWidth >= 1 && RenderPanel.ActualHeight >= 1)
+            {
+                var (rw, rh) = PhysicalSize();
+                _renderer.Resize(rw, rh);
+            }
             HookRendering();
             return;
         }
@@ -212,7 +220,10 @@ public sealed partial class CubeViewerPage : UserControl
 
     private void HookRendering()
     {
-        if (_renderingHooked || _closed) return;
+        // Only the active (selected/attached) tab may hook the loop. Guards the load-race where a
+        // background decode finishes after the user switched away: the continuation's ApplyVolume
+        // must NOT re-hook rendering on a now-detached (inactive) tab. OnLoaded re-hooks on re-show.
+        if (_renderingHooked || _closed || !_active) return;
         _renderingHooked = true;
         Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += OnRendering;
     }
@@ -577,6 +588,7 @@ public sealed partial class CubeViewerPage : UserControl
     /// <summary>Unhook the per-frame render loop without releasing GPU resources (resumable).</summary>
     private void PauseRendering()
     {
+        _active = false;
         StopPlayback();
         if (_renderingHooked)
         {
