@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using CanfarDesktop.Mcp.Tools.Proposals;
@@ -11,6 +13,7 @@ namespace CanfarDesktop.Mcp.Tools.Write;
 // ─────────────────────────────────────────────────────────────────────────────
 
 public sealed record UploadTextPayload(string Path, string Content, string? ContentType);
+public sealed record UploadFilePayload(string LocalPath, string VospacePath, string? ContentType);
 public sealed record CreateFolderPayload(string Path, string Name);
 public sealed record DeleteNodePayload(string Path);
 
@@ -95,6 +98,109 @@ public sealed class DeleteVoSpaceNodeTool : JsonWriteTool<DeleteVoSpaceNodeTool.
     public sealed record Args { public string? Path { get; init; } }
 }
 
+/// <summary><c>upload_file_to_vospace</c> — propose uploading a local file (binary OK) to a VOSpace path. SemanticWrite.</summary>
+public sealed class UploadFileToVoSpaceTool : JsonWriteTool<UploadFileToVoSpaceTool.Args>
+{
+    public override McpVerbClass VerbClass => McpVerbClass.SemanticWrite;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "upload_file_to_vospace",
+        "Propose uploading a LOCAL file (any type, including binary) to a VOSpace/ARC destination path " +
+        "(overwrites if it exists). Use this for real files; upload_text_to_vospace is only for small text " +
+        "blobs. Queues for the user to apply.",
+        """{"type":"object","properties":{"localPath":{"type":"string","description":"Local filesystem path of the file to upload"},"vospacePath":{"type":"string","description":"Destination VOSpace/ARC file path"},"contentType":{"type":"string","description":"MIME type (optional)"}},"required":["localPath","vospacePath"],"additionalProperties":false}""");
+
+    protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var local = (args.LocalPath ?? string.Empty).Trim();
+        var remote = (args.VospacePath ?? string.Empty).Trim();
+        if (local.Length == 0) throw new McpToolException(new InvalidArgument("localPath is required"));
+        if (remote.Length == 0) throw new McpToolException(new InvalidArgument("vospacePath is required"));
+        if (!Path.IsPathRooted(local)) throw new McpToolException(new InvalidArgument("localPath must be a full (rooted) path"));
+        string full;
+        try { full = Path.GetFullPath(local); } catch { throw new McpToolException(new InvalidArgument("invalid localPath")); }
+
+        var payload = new UploadFilePayload(full, remote, string.IsNullOrWhiteSpace(args.ContentType) ? null : args.ContentType!.Trim());
+        return Task.FromResult(ProposalPlan.Encoding("upload_file_to_vospace", $"Upload {Path.GetFileName(full)} → {remote}", payload));
+    }
+
+    public sealed record Args
+    {
+        public string? LocalPath { get; init; }
+        public string? VospacePath { get; init; }
+        public string? ContentType { get; init; }
+    }
+}
+
+/// <summary>
+/// <c>download_vospace_file</c> — stream a VOSpace/ARC file to a local path (handles large/binary files
+/// that read_vospace_file can't return inline). Verb class ViewState: live-applied, path-validated.
+/// </summary>
+public sealed class DownloadVoSpaceFileTool : JsonReadTool<DownloadVoSpaceFileTool.Args, DownloadVoSpaceFileTool.Output>
+{
+    private const int DownloadTimeoutSeconds = 120;
+
+    private readonly Func<string, CancellationToken, Task<Stream>> _download;
+    public DownloadVoSpaceFileTool(Func<string, CancellationToken, Task<Stream>> download) => _download = download;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "download_vospace_file",
+        "Stream a VOSpace/ARC file to a LOCAL filesystem path (handles large/binary files that " +
+        "read_vospace_file can't return inline). The local path must be a full path in an existing folder; an " +
+        "existing file is overwritten. Returns the bytes written.",
+        """{"type":"object","properties":{"path":{"type":"string","description":"VOSpace/ARC file path to download"},"localPath":{"type":"string","description":"Destination local filesystem path (full path)"}},"required":["path","localPath"],"additionalProperties":false}""");
+
+    protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var remote = (args.Path ?? string.Empty).Trim();
+        var local = (args.LocalPath ?? string.Empty).Trim();
+        if (remote.Length == 0) throw new McpToolException(new InvalidArgument("path is required"));
+        if (local.Length == 0) throw new McpToolException(new InvalidArgument("localPath is required"));
+        if (!Path.IsPathRooted(local)) throw new McpToolException(new InvalidArgument("localPath must be a full (rooted) path"));
+        string full;
+        try { full = Path.GetFullPath(local); } catch { throw new McpToolException(new InvalidArgument("invalid localPath")); }
+
+        // Bound the whole transfer so a stalled VOSpace stream can't run to the tool ceiling; honour the caller's token.
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(DownloadTimeoutSeconds));
+        var token = cts.Token;
+
+        Stream stream;
+        try { stream = await _download(remote, token); }
+        catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            throw new McpToolException(new AuthRequired());
+        }
+
+        long total = 0;
+        try
+        {
+            await using (stream)
+            await using (var fs = new FileStream(full, FileMode.Create, FileAccess.Write))
+            {
+                var buffer = new byte[81920];
+                int read;
+                while ((read = await stream.ReadAsync(buffer, token)) > 0)
+                {
+                    await fs.WriteAsync(buffer.AsMemory(0, read), token);
+                    total += read;
+                }
+            }
+        }
+        catch (DirectoryNotFoundException)
+        {
+            throw new McpToolException(new InvalidArgument($"the destination folder does not exist: {Path.GetDirectoryName(full)}"));
+        }
+
+        return new Output(remote, full, total);
+    }
+
+    public sealed record Args { public string? Path { get; init; } public string? LocalPath { get; init; } }
+    public sealed record Output(string Path, string LocalPath, long BytesWritten);
+}
+
 public sealed class UploadTextToVoSpaceApplier : IProposalApplier
 {
     private readonly Func<UploadTextPayload, Task> _upload;
@@ -103,6 +209,16 @@ public sealed class UploadTextToVoSpaceApplier : IProposalApplier
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
         => _upload(JsonSerializer.Deserialize<UploadTextPayload>(proposal.Payload, McpJson.Options)
                    ?? throw ProposalApplyException.BackendError("upload_text_to_vospace payload was empty"));
+}
+
+public sealed class UploadFileToVoSpaceApplier : IProposalApplier
+{
+    private readonly Func<UploadFilePayload, Task> _upload;
+    public UploadFileToVoSpaceApplier(Func<UploadFilePayload, Task> upload) => _upload = upload;
+    public string Kind => "upload_file_to_vospace";
+    public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
+        => _upload(JsonSerializer.Deserialize<UploadFilePayload>(proposal.Payload, McpJson.Options)
+                   ?? throw ProposalApplyException.BackendError("upload_file_to_vospace payload was empty"));
 }
 
 public sealed class CreateVoSpaceFolderApplier : IProposalApplier

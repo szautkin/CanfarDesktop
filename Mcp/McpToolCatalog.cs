@@ -111,6 +111,7 @@ public static class McpToolCatalog
             // VOSpace/ARC storage (read) + local FITS introspection
             new ListVoSpacePathTool((req, ct) => storage.ListNodesAsync(req.Path, req.Limit, ct)),
             new ReadVoSpaceFileTool((path, ct) => storage.DownloadFileAsync(path, ct)),
+            new DownloadVoSpaceFileTool((path, ct) => storage.DownloadFileAsync(path, ct)),
             new GetStorageQuotaTool(ct => storage.GetQuotaAsync(auth.CurrentUsername ?? string.Empty, ct)),
             new GetFitsHeaderTool(ParseFitsHeadersAsync),
             new GetFitsWcsTool(ParseFitsHeadersAsync),
@@ -177,6 +178,7 @@ public static class McpToolCatalog
 
             // VOSpace/ARC storage writes
             new UploadTextToVoSpaceTool(),
+            new UploadFileToVoSpaceTool(),
             new CreateVoSpaceFolderTool(),
             new DeleteVoSpaceNodeTool(),
         };
@@ -240,6 +242,11 @@ public static class McpToolCatalog
 
             new UploadTextToVoSpaceApplier(p =>
                 storage.UploadFileAsync(p.Path, new MemoryStream(Encoding.UTF8.GetBytes(p.Content)), p.ContentType ?? "text/plain")),
+            new UploadFileToVoSpaceApplier(async p =>
+            {
+                await using var fs = new FileStream(p.LocalPath, FileMode.Open, FileAccess.Read);
+                await storage.UploadFileAsync(p.VospacePath, fs, p.ContentType);
+            }),
             new CreateVoSpaceFolderApplier(p => storage.CreateFolderAsync(p.Path, p.Name)),
             new DeleteVoSpaceNodeApplier(p => storage.DeleteNodeAsync(p.Path)),
 

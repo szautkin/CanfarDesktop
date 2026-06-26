@@ -53,8 +53,76 @@ public class VoSpaceWriteToolsTests
     public void VerbClasses()
     {
         Assert.Equal(McpVerbClass.SemanticWrite, new UploadTextToVoSpaceTool().VerbClass);
+        Assert.Equal(McpVerbClass.SemanticWrite, new UploadFileToVoSpaceTool().VerbClass);
         Assert.Equal(McpVerbClass.SemanticWrite, new CreateVoSpaceFolderTool().VerbClass);
         Assert.Equal(McpVerbClass.Destructive, new DeleteVoSpaceNodeTool().VerbClass);
+        Assert.Equal(McpVerbClass.ViewState,
+            new DownloadVoSpaceFileTool((_, _) => Task.FromResult<Stream>(new MemoryStream())).VerbClass);
+    }
+
+    // ── upload_file_to_vospace ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UploadFile_BuildsProposal_WithRootedPath()
+    {
+        var (ctx, _) = Context();
+        var result = await new UploadFileToVoSpaceTool().InvokeAsync(
+            Args("""{"localPath":"C:\\data\\cube.fits","vospacePath":"/home/u/cube.fits"}"""), ctx, default);
+        var payload = JsonSerializer.Deserialize<UploadFilePayload>(Assert.IsType<ProposedResult>(result).Proposal.Payload, McpJson.Options)!;
+        Assert.Equal("/home/u/cube.fits", payload.VospacePath);
+        Assert.EndsWith("cube.fits", payload.LocalPath);
+    }
+
+    [Fact]
+    public async Task UploadFile_NonRootedPath_InvalidArgument()
+    {
+        var (ctx, store) = Context();
+        var result = await new UploadFileToVoSpaceTool().InvokeAsync(
+            Args("""{"localPath":"relative.fits","vospacePath":"/home/u/x.fits"}"""), ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
+        Assert.Empty(store.List());
+    }
+
+    [Fact]
+    public async Task UploadFileApplier_DecodesAndInvokes()
+    {
+        string? local = null, remote = null;
+        var ap = new UploadFileToVoSpaceApplier(p => { local = p.LocalPath; remote = p.VospacePath; return Task.CompletedTask; });
+        await ap.ApplyAsync(Proposal("upload_file_to_vospace", new UploadFilePayload("C:\\a\\b.fits", "/home/u/b.fits", null)));
+        Assert.Equal("C:\\a\\b.fits", local);
+        Assert.Equal("/home/u/b.fits", remote);
+    }
+
+    // ── download_vospace_file ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DownloadFile_StreamsToLocalPath()
+    {
+        var ctx = McpToolContext.ForExternal("c1", Guid.Empty);
+        var bytes = Encoding.UTF8.GetBytes("hello vospace");
+        var dest = Path.Combine(Path.GetTempPath(), $"verbinal_dl_{Guid.NewGuid():N}.bin");
+        try
+        {
+            var tool = new DownloadVoSpaceFileTool((_, _) => Task.FromResult<Stream>(new MemoryStream(bytes)));
+            var result = await tool.InvokeAsync(
+                Args(JsonSerializer.Serialize(new { path = "/home/u/x.bin", localPath = dest })), ctx, default);
+            var doc = JsonDocument.Parse(Assert.IsType<DataResult>(result).Json).RootElement;
+            Assert.Equal(bytes.Length, doc.GetProperty("bytesWritten").GetInt64());
+            Assert.Equal("hello vospace", File.ReadAllText(dest));
+        }
+        finally
+        {
+            if (File.Exists(dest)) File.Delete(dest);
+        }
+    }
+
+    [Fact]
+    public async Task DownloadFile_NonRootedPath_InvalidArgument()
+    {
+        var ctx = McpToolContext.ForExternal("c1", Guid.Empty);
+        var tool = new DownloadVoSpaceFileTool((_, _) => Task.FromResult<Stream>(new MemoryStream()));
+        var result = await tool.InvokeAsync(Args("""{"path":"/x","localPath":"relative.bin"}"""), ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
     }
 
     [Fact]
