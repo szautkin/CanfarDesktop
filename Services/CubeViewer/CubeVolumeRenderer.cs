@@ -392,18 +392,34 @@ public sealed class CubeVolumeRenderer : IDisposable
 
         try
         {
-        float aspect = _height > 0 ? (float)_width / _height : 1f;
+            // Drop the step count while the user is actively orbiting for fluid motion.
+            float steps = Interacting ? MathF.Min(160f, BaseSteps) : BaseSteps;
+            DrawVolume(_rtv, _width, _height, steps, animateJitter: true);
+
+            var pr = _swapChain.Present(1, PresentFlags.None);
+            LastError = pr.Failure ? $"present 0x{pr.Code:X8}" : $"ok {_width}x{_height}";
+        }
+        catch (Exception ex)
+        {
+            LastError = "render: " + ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// Bind the pipeline and march the volume into <paramref name="rtv"/> at the given size.
+    /// Shared by the live present path and the offscreen export path.
+    /// </summary>
+    private void DrawVolume(ID3D11RenderTargetView rtv, int w, int h, float steps, bool animateJitter)
+    {
+        float aspect = h > 0 ? (float)w / h : 1f;
         Matrix4x4 model = BuildModelMatrix();
         Vector3 eye = CubeMath.OrbitEye(CameraAzimuth, CameraElevation, CameraDistance);
         Matrix4x4 view = CubeMath.LookAt(eye, Vector3.Zero, new Vector3(0, 1, 0));
         Matrix4x4 proj = CubeMath.Perspective(38f * MathF.PI / 180f, aspect, 0.01f, 50f);
         Matrix4x4 viewProj = CubeMath.Mul(proj, view);
 
-        // Animate the jitter offset so banding dissolves across frames.
-        _jitter = (_jitter + 17.13f) % 1024f;
-
-        // Drop the step count while the user is actively orbiting for fluid motion.
-        float steps = Interacting ? MathF.Min(160f, BaseSteps) : BaseSteps;
+        // Animate the jitter offset so banding dissolves across frames (not for a still export).
+        if (animateJitter) _jitter = (_jitter + 17.13f) % 1024f;
 
         var uniforms = new CubeUniforms
         {
@@ -425,9 +441,9 @@ public sealed class CubeVolumeRenderer : IDisposable
         Marshal.StructureToPtr(uniforms, mapped.DataPointer, false);
         _context.Unmap(_cbuffer, 0);
 
-        _context.ClearRenderTargetView(_rtv, Background);
-        _context.OMSetRenderTargets(_rtv);
-        _context.RSSetViewport(new Viewport(0, 0, _width, _height, 0f, 1f));
+        _context.ClearRenderTargetView(rtv, Background);
+        _context.OMSetRenderTargets(rtv);
+        _context.RSSetViewport(new Viewport(0, 0, w, h, 0f, 1f));
         _context.RSSetState(_raster);
         _context.OMSetBlendState(_blend, (Color4?)null, unchecked((int)0xFFFFFFFF));
 
@@ -441,13 +457,65 @@ public sealed class CubeVolumeRenderer : IDisposable
         _context.PSSetSampler(0, _sampler);
 
         _context.Draw(3, 0);
+    }
 
-        var pr = _swapChain.Present(1, PresentFlags.None);
-        LastError = pr.Failure ? $"present 0x{pr.Code:X8}" : $"ok {_width}x{_height}";
+    /// <summary>
+    /// Render the current view to an offscreen target at the given size and read it back as
+    /// BGRA8 pixels (tight, top-down). Returns null if not ready or on failure. Used for export.
+    /// </summary>
+    public byte[]? RenderToBgra(int width, int height, float steps)
+    {
+        if (!IsReady || _disposed || _dataSrv is null || _cmapSrv is null || _tfSrv is null)
+            return null;
+        width = Math.Max(1, width);
+        height = Math.Max(1, height);
+
+        ID3D11Texture2D? rt = null, staging = null;
+        ID3D11RenderTargetView? rtv = null;
+        try
+        {
+            var rtDesc = new Texture2DDescription(
+                Format.B8G8R8A8_UNorm, width, height, 1, 1,
+                BindFlags.RenderTarget, D3DUsage.Default, CpuAccessFlags.None, 1, 0,
+                ResourceOptionFlags.None);
+            rt = _device.CreateTexture2D(rtDesc);
+            rtv = _device.CreateRenderTargetView(rt);
+
+            DrawVolume(rtv, width, height, steps, animateJitter: false);
+
+            var stDesc = new Texture2DDescription(
+                Format.B8G8R8A8_UNorm, width, height, 1, 1,
+                BindFlags.None, D3DUsage.Staging, CpuAccessFlags.Read, 1, 0,
+                ResourceOptionFlags.None);
+            staging = _device.CreateTexture2D(stDesc);
+            _context.CopyResource(staging, rt);
+
+            var map = _context.Map(staging, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
+            try
+            {
+                var bytes = new byte[(long)width * height * 4];
+                int rowBytes = width * 4;
+                for (int y = 0; y < height; y++)
+                    Marshal.Copy(IntPtr.Add(map.DataPointer, y * map.RowPitch), bytes, y * rowBytes, rowBytes);
+                return bytes;
+            }
+            finally
+            {
+                _context.Unmap(staging, 0);
+            }
         }
         catch (Exception ex)
         {
-            LastError = "render: " + ex.Message;
+            LastError = "export: " + ex.Message;
+            return null;
+        }
+        finally
+        {
+            rtv?.Dispose();
+            staging?.Dispose();
+            rt?.Dispose();
+            // Rebind the live render target so the next Render() is unaffected.
+            if (_rtv is not null) _context.OMSetRenderTargets(_rtv);
         }
     }
 

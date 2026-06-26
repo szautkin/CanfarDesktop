@@ -215,6 +215,15 @@
 
                 <Button Content="Reset view" HorizontalAlignment="Stretch"
                         Click="OnResetView" />
+
+                <Button x:Name="ExportButton" Content="Export PNG…" HorizontalAlignment="Stretch">
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Text="PNG 2×" Click="OnExport2x" />
+                            <MenuFlyoutItem Text="PNG 4×" Click="OnExport4x" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
             </StackPanel>
             </ScrollViewer>
         </Border>
