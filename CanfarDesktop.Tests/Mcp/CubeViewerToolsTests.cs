@@ -15,7 +15,9 @@ public class CubeViewerToolsTests
 
     private static CubeViewState SampleState() => new(
         true, "cube.fits", "M51", 256, 256, 64, "Volume", 32, "230.5 GHz",
-        "Inferno", "Asinh", "Emission", 0.0, 1.0, "Jy/beam", -0.1, 5.2);
+        "Inferno", "Asinh", "Emission", 0.0, 1.0, "Jy/beam", -0.1, 5.2,
+        Azimuth: 0.7, Elevation: 0.5, Distance: 2.6, Density: 1.0, SpectralScale: 1.5, Steps: 384,
+        Background: "dark", ShowSlicePlane: true, ShowCaptions: true, AutoOrbit: false, Playing: false);
 
     // ── open_cube ─────────────────────────────────────────────────────────────
 
@@ -73,6 +75,29 @@ public class CubeViewerToolsTests
         Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(r).Reason);
     }
 
+    [Fact]
+    public async Task SetCubeView_MapsCameraVolumeTogglesAndPlayback()
+    {
+        CubeViewArgs? seen = null;
+        var tool = new SetCubeViewTool(a => { seen = a; return Task.FromResult<CubeViewState?>(SampleState()); });
+        await tool.InvokeAsync(Args("""
+            {"azimuth":1.2,"elevation":0.3,"distance":3.5,"density":2.0,"spectralScale":2.5,"steps":512,
+             "background":"black","showSlicePlane":false,"showCaptions":false,"autoOrbit":true,"playing":true,"resetCamera":true}
+            """), Ctx, default);
+        Assert.Equal(1.2, seen!.Azimuth);
+        Assert.Equal(0.3, seen.Elevation);
+        Assert.Equal(3.5, seen.Distance);
+        Assert.Equal(2.0, seen.Density);
+        Assert.Equal(2.5, seen.SpectralScale);
+        Assert.Equal(512, seen.Steps);
+        Assert.Equal("black", seen.Background);
+        Assert.False(seen.ShowSlicePlane);
+        Assert.False(seen.ShowCaptions);
+        Assert.True(seen.AutoOrbit);
+        Assert.True(seen.Playing);
+        Assert.True(seen.ResetCamera);
+    }
+
     // ── get_cube_view ─────────────────────────────────────────────────────────
 
     [Fact]
@@ -82,6 +107,18 @@ public class CubeViewerToolsTests
         var doc = Json(await tool.InvokeAsync(Args("""{}"""), Ctx, default));
         Assert.Equal(256, doc.GetProperty("nx").GetInt32());
         Assert.Equal("Inferno", doc.GetProperty("colormap").GetString());
+    }
+
+    [Fact]
+    public async Task GetCubeView_ReturnsCameraVolumeAndToggleState()
+    {
+        var tool = new GetCubeViewTool(() => Task.FromResult<CubeViewState?>(SampleState()));
+        var doc = Json(await tool.InvokeAsync(Args("""{}"""), Ctx, default));
+        Assert.Equal(2.6, doc.GetProperty("distance").GetDouble());
+        Assert.Equal(384, doc.GetProperty("steps").GetInt32());
+        Assert.Equal("dark", doc.GetProperty("background").GetString());
+        Assert.True(doc.GetProperty("showSlicePlane").GetBoolean());
+        Assert.False(doc.GetProperty("playing").GetBoolean());
     }
 
     // ── probe_cube_spectrum ───────────────────────────────────────────────────

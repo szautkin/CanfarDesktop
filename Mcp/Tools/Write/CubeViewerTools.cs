@@ -11,7 +11,11 @@ public sealed record CubeExportOutcome(bool Exported, string? Path, string? Mess
 /// <summary>The view settings <c>set_cube_view</c> applies (each null is left unchanged).</summary>
 public sealed record CubeViewArgs(
     string? Mode, int? Channel, string? Colormap, string? Stretch,
-    string? RenderMode, double? WindowLo, double? WindowHi);
+    string? RenderMode, double? WindowLo, double? WindowHi,
+    double? Azimuth = null, double? Elevation = null, double? Distance = null,
+    double? Density = null, double? SpectralScale = null, int? Steps = null,
+    string? Background = null, bool? ShowSlicePlane = null, bool? ShowCaptions = null,
+    bool? AutoOrbit = null, bool? Playing = null, bool? ResetCamera = null);
 
 /// <summary>
 /// <c>open_cube</c> — open a FITS spectral cube (NAXIS=3) in the 3D Cube Viewer, by local file path or
@@ -55,16 +59,22 @@ public sealed class SetCubeViewTool : JsonReadTool<SetCubeViewTool.Args, CubeVie
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "set_cube_view",
-        "Steer the 3D Cube Viewer: set view mode, channel, colormap, stretch, render mode, and window " +
-        "levels. Only the fields you pass change. Returns the resulting cube view state. Live-applied.",
-        """{"type":"object","properties":{"mode":{"type":"string","enum":["volume","slice"]},"channel":{"type":"integer","minimum":0},"colormap":{"type":"string","enum":["grayscale","inverted","heat","cool","viridis","inferno","magma","plasma"]},"stretch":{"type":"string","enum":["linear","log","sqrt","squared","asinh"]},"renderMode":{"type":"string","enum":["emission","maxIntensity"]},"windowLo":{"type":"number","minimum":0,"maximum":1},"windowHi":{"type":"number","minimum":0,"maximum":1}},"additionalProperties":false}""");
+        "Steer the 3D Cube Viewer — every control the UI exposes. Display: view mode, channel, colormap, " +
+        "stretch, render mode, window levels. Camera: azimuth/elevation (radians) and distance (zoom), or " +
+        "resetCamera to recenter. Volume tuning: density (opacity 0.1–3), spectralScale (z-stretch 0.5–4), " +
+        "steps (ray-march quality 96–768). Visibility: background (dark/black/light), showSlicePlane, " +
+        "showCaptions, autoOrbit. Playback: playing (start/stop the channel animation). Only the fields you " +
+        "pass change. Returns the resulting cube view state. Live-applied.",
+        """{"type":"object","properties":{"mode":{"type":"string","enum":["volume","slice"]},"channel":{"type":"integer","minimum":0},"colormap":{"type":"string","enum":["grayscale","inverted","heat","cool","viridis","inferno","magma","plasma"]},"stretch":{"type":"string","enum":["linear","log","sqrt","squared","asinh"]},"renderMode":{"type":"string","enum":["emission","maxIntensity"]},"windowLo":{"type":"number","minimum":0,"maximum":1},"windowHi":{"type":"number","minimum":0,"maximum":1},"azimuth":{"type":"number"},"elevation":{"type":"number"},"distance":{"type":"number","minimum":0.5,"maximum":8},"density":{"type":"number","minimum":0.1,"maximum":3},"spectralScale":{"type":"number","minimum":0.5,"maximum":4},"steps":{"type":"integer","minimum":96,"maximum":768},"background":{"type":"string","enum":["dark","black","light"]},"showSlicePlane":{"type":"boolean"},"showCaptions":{"type":"boolean"},"autoOrbit":{"type":"boolean"},"playing":{"type":"boolean"},"resetCamera":{"type":"boolean"}},"additionalProperties":false}""");
 
     protected override async Task<CubeViewState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
         if (args.Channel is < 0)
             throw new McpToolException(new InvalidArgument("channel must be >= 0"));
         return await _apply(new CubeViewArgs(
-            args.Mode, args.Channel, args.Colormap, args.Stretch, args.RenderMode, args.WindowLo, args.WindowHi));
+            args.Mode, args.Channel, args.Colormap, args.Stretch, args.RenderMode, args.WindowLo, args.WindowHi,
+            args.Azimuth, args.Elevation, args.Distance, args.Density, args.SpectralScale, args.Steps,
+            args.Background, args.ShowSlicePlane, args.ShowCaptions, args.AutoOrbit, args.Playing, args.ResetCamera));
     }
 
     public sealed record Args
@@ -76,6 +86,18 @@ public sealed class SetCubeViewTool : JsonReadTool<SetCubeViewTool.Args, CubeVie
         public string? RenderMode { get; init; }
         public double? WindowLo { get; init; }
         public double? WindowHi { get; init; }
+        public double? Azimuth { get; init; }
+        public double? Elevation { get; init; }
+        public double? Distance { get; init; }
+        public double? Density { get; init; }
+        public double? SpectralScale { get; init; }
+        public int? Steps { get; init; }
+        public string? Background { get; init; }
+        public bool? ShowSlicePlane { get; init; }
+        public bool? ShowCaptions { get; init; }
+        public bool? AutoOrbit { get; init; }
+        public bool? Playing { get; init; }
+        public bool? ResetCamera { get; init; }
     }
 }
 
@@ -129,8 +151,10 @@ public sealed class GetCubeViewTool : JsonReadTool<GetCubeViewTool.Args, CubeVie
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_cube_view",
-        "Read the 3D Cube Viewer state: loaded cube name/object, dimensions, view mode, current channel " +
-        "and its spectral value, colormap, stretch, render mode, window levels, unit, and data range.",
+        "Read the full 3D Cube Viewer state: loaded cube name/object, dimensions, view mode, current channel " +
+        "and its spectral value, colormap, stretch, render mode, window levels, unit, data range, camera pose " +
+        "(azimuth/elevation/distance), density, spectral scale, ray-march steps, background, the slice-plane / " +
+        "captions / auto-orbit toggles, and whether playback is running.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<CubeViewState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct) => _get();

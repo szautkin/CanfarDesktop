@@ -36,12 +36,35 @@ public sealed partial class CubeViewerPage
             ViewModel.WindowHi,
             _meta?.Bunit ?? "",
             _meta?.DataMin ?? 0,
-            _meta?.DataMax ?? 0);
+            _meta?.DataMax ?? 0,
+            ViewModel.CameraAzimuth,
+            ViewModel.CameraElevation,
+            ViewModel.CameraDistance,
+            ViewModel.Density,
+            ViewModel.SpectralScale,
+            (int)ViewModel.VolumeSteps,
+            BackgroundName(),
+            ViewModel.ShowSlicePlane,
+            _captionsOn,
+            ViewModel.AutoOrbit,
+            ViewModel.IsPlaying);
     }
 
-    /// <summary>Apply view settings from MCP; each null/empty argument is left unchanged.</summary>
-    public void ApplyCubeView(string? mode, int? channel, string? colormap, string? stretch,
-                              string? renderMode, double? windowLo, double? windowHi)
+    private string BackgroundName() => BackgroundCombo.SelectedIndex switch { 1 => "black", 2 => "light", _ => "dark" };
+
+    /// <summary>
+    /// Apply view settings from MCP; each null/empty argument is left unchanged. Mirrors EVERY control the
+    /// UI exposes so an agent can fully drive the viewer. Where a UI control exists we set it (its change
+    /// handler updates the model + renderer); the gesture-only camera is written straight to the model
+    /// (the render loop reads it each frame).
+    /// </summary>
+    public void ApplyCubeView(
+        string? mode = null, int? channel = null, string? colormap = null, string? stretch = null,
+        string? renderMode = null, double? windowLo = null, double? windowHi = null,
+        double? azimuth = null, double? elevation = null, double? distance = null,
+        double? density = null, double? spectralScale = null, int? steps = null,
+        string? background = null, bool? showSlicePlane = null, bool? showCaptions = null,
+        bool? autoOrbit = null, bool? playing = null, bool? resetCamera = null)
     {
         if (!string.IsNullOrEmpty(mode))
             SetViewMode(mode.Equals("slice", StringComparison.OrdinalIgnoreCase) ? CubeViewMode.Slice : CubeViewMode.Volume);
@@ -57,6 +80,31 @@ public sealed partial class CubeViewerPage
 
         if (windowLo is not null || windowHi is not null)
             SetWindow((float)(windowLo ?? ViewModel.WindowLo), (float)(windowHi ?? ViewModel.WindowHi));
+
+        // Camera — gesture-driven in the UI, so write the model directly (render loop applies it). Use the
+        // same clamps as the orbit/zoom gestures so an agent can't push the camera into an invalid pose.
+        if (resetCamera == true) ViewModel.ResetCamera();
+        if (azimuth is not null) ViewModel.CameraAzimuth = (float)azimuth.Value;
+        if (elevation is not null) ViewModel.CameraElevation = Math.Clamp((float)elevation.Value, -1.4f, 1.4f);
+        if (distance is not null) ViewModel.CameraDistance = Math.Clamp((float)distance.Value, 0.5f, 8f);
+
+        // Volume tuning — drive the sliders so their handlers update the model + renderer (WinUI clamps to range).
+        if (density is not null) DensitySlider.Value = density.Value;
+        if (spectralScale is not null) SpectralSlider.Value = spectralScale.Value;
+        if (steps is not null) StepsSlider.Value = steps.Value;
+
+        // Visibility toggles + background (each control's handler does the work).
+        if (!string.IsNullOrEmpty(background))
+            BackgroundCombo.SelectedIndex = background.Trim().ToLowerInvariant() switch { "black" => 1, "light" => 2, _ => 0 };
+        if (showSlicePlane is not null) SlicePlaneToggle.IsOn = showSlicePlane.Value;
+        if (showCaptions is not null) CaptionsToggle.IsOn = showCaptions.Value;
+        if (autoOrbit is not null) AutoOrbitToggle.IsOn = autoOrbit.Value;
+
+        // Playback — start/stop the channel animation (works in both modes).
+        if (playing is not null)
+        {
+            if (playing.Value) StartPlayback(); else StopPlayback();
+        }
 
         if (channel is not null && _volume is not null)
         {

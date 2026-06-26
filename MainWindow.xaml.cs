@@ -223,8 +223,13 @@ public sealed partial class MainWindow : Window
             {
                 var cube = _cubeTabHost?.ActivePage;
                 if (cube is null) { tcs.SetResult(null); return; }
-                cube.ApplyCubeView(args.Mode, args.Channel, args.Colormap, args.Stretch,
-                    args.RenderMode, args.WindowLo, args.WindowHi);
+                cube.ApplyCubeView(
+                    mode: args.Mode, channel: args.Channel, colormap: args.Colormap, stretch: args.Stretch,
+                    renderMode: args.RenderMode, windowLo: args.WindowLo, windowHi: args.WindowHi,
+                    azimuth: args.Azimuth, elevation: args.Elevation, distance: args.Distance,
+                    density: args.Density, spectralScale: args.SpectralScale, steps: args.Steps,
+                    background: args.Background, showSlicePlane: args.ShowSlicePlane, showCaptions: args.ShowCaptions,
+                    autoOrbit: args.AutoOrbit, playing: args.Playing, resetCamera: args.ResetCamera);
                 tcs.SetResult(cube.GetCubeState());
             }
             catch (Exception ex) { tcs.SetException(ex); }
