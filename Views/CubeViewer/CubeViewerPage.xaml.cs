@@ -52,6 +52,7 @@ public sealed partial class CubeViewerPage : UserControl
     private readonly double[] _captionW = new double[9];
     private readonly double[] _captionH = new double[9];
     private readonly CubeAxesOverlay.Frame _overlayFrame = new();
+    private CubeColormap _currentColormap = CubeColormap.Inferno;
 
     public CubeViewerPage()
     {
@@ -84,6 +85,7 @@ public sealed partial class CubeViewerPage : UserControl
         // / composition scale changes (e.g. dragged to another monitor).
         RenderPanel.CompositionScaleChanged += OnCompositionScaleChanged;
         BuildOverlayVisuals();
+        PopulateColormapPicker();
         StatusText.Text = "Loading cube…";
 
         // Decode the cube off the UI thread, then upload + start.
@@ -131,6 +133,7 @@ public sealed partial class CubeViewerPage : UserControl
         ViewModel.VolumeName = note;
         StatusText.Text = string.IsNullOrEmpty(_meta?.Object) ? volume.Name : _meta!.Object;
         PopulateInfoPanel(_meta);
+        UpdateColorbar();
 
         HookRendering();
     }
@@ -389,6 +392,59 @@ public sealed partial class CubeViewerPage : UserControl
             ViewModel.Stretch = mode;
         }
     }
+
+    // ── Colormap + colorbar ────────────────────────────────────────────────────
+
+    private void PopulateColormapPicker()
+    {
+        ColormapCombo.ItemsSource = Enum.GetValues<CubeColormap>()
+            .Select(CubeColormaps.DisplayName).ToList();
+        ColormapCombo.SelectedIndex = (int)ViewModel.Colormap; // fires OnColormapChanged
+    }
+
+    private void OnColormapChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ColormapCombo.SelectedIndex < 0) return;
+        _currentColormap = (CubeColormap)ColormapCombo.SelectedIndex;
+        ViewModel.Colormap = _currentColormap;
+        var lut = CubeColormaps.Build(_currentColormap);
+        _renderer.SetColormap(lut);
+        UpdateColorbar(lut);
+    }
+
+    /// <summary>Rebuild the colorbar gradient from the active colormap + refresh the value labels.</summary>
+    private void UpdateColorbar(byte[]? lut = null)
+    {
+        lut ??= CubeColormaps.Build(_currentColormap);
+
+        var brush = new LinearGradientBrush { StartPoint = new Point(0, 0.5), EndPoint = new Point(1, 0.5) };
+        const int stops = 17;
+        for (int s = 0; s < stops; s++)
+        {
+            int idx = s * 255 / (stops - 1);
+            int o = idx * 4;
+            brush.GradientStops.Add(new GradientStop
+            {
+                Color = Color.FromArgb(255, lut[o], lut[o + 1], lut[o + 2]),
+                Offset = s / (double)(stops - 1),
+            });
+        }
+        ColorbarRect.Fill = brush;
+
+        if (_meta is not null)
+        {
+            ColorbarLo.Text = FormatColorbarValue(_meta.ValueAtNormalized(ViewModel.WindowLo));
+            ColorbarHi.Text = FormatColorbarValue(_meta.ValueAtNormalized(ViewModel.WindowHi));
+        }
+        else
+        {
+            ColorbarLo.Text = string.Empty;
+            ColorbarHi.Text = string.Empty;
+        }
+    }
+
+    private static string FormatColorbarValue(double v)
+        => v.ToString("G3", System.Globalization.CultureInfo.InvariantCulture);
 
     private void OnMipToggled(object sender, RoutedEventArgs e)
         => ViewModel.Mip = MipToggle.IsOn;

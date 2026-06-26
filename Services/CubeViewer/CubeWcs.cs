@@ -219,10 +219,17 @@ public sealed class CubeMetadata
     public double DataMax { get; init; }
     public double Median { get; init; }
 
-    /// <summary>Fraction of sampled voxels that were NaN/Inf (0..1).</summary>
+    /// <summary>Physical values the display normalization maps to 0 and 1 (the p0.5…p99.5 cut).</summary>
+    public double NormLo { get; init; }
+    public double NormHi { get; init; }
+
+    /// <summary>Fraction of voxels that were NaN/Inf (0..1).</summary>
     public double NanFraction { get; init; }
 
     public CubeWcs Wcs { get; init; } = new();
+
+    /// <summary>Physical value at a normalized display position t∈[0,1] (for colorbar labels).</summary>
+    public double ValueAtNormalized(double t) => NormLo + (NormHi - NormLo) * t;
 
     public string DimensionsText => $"{Nx} × {Ny} × {Nz}";
 

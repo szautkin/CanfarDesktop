@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CanfarDesktop.Services.CubeViewer;
 using CanfarDesktop.Services.Fits;
 
 namespace CanfarDesktop.ViewModels.CubeViewer;
@@ -49,6 +50,10 @@ public sealed partial class CubeViewerViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _autoOrbit;
+
+    /// <summary>Active colormap (default Inferno, matching macOS).</summary>
+    [ObservableProperty]
+    private CubeColormap _colormap = CubeColormap.Inferno;
 
     /// <summary>Ray-march step count (volume quality). Higher = sharper but slower.</summary>
     [ObservableProperty]

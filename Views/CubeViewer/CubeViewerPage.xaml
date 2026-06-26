@@ -138,6 +138,25 @@
                     </ComboBox>
                 </StackPanel>
 
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Colormap" Foreground="#FFE0E0E0"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+                    <ComboBox x:Name="ColormapCombo" HorizontalAlignment="Stretch"
+                              SelectionChanged="OnColormapChanged" />
+                    <!-- Live colorbar: active colormap across the window range -->
+                    <Rectangle x:Name="ColorbarRect"
+                            Height="14" Margin="0,4,0,0" RadiusX="3" RadiusY="3"
+                            Stroke="#30FFFFFF" StrokeThickness="1" />
+                    <Grid>
+                        <TextBlock x:Name="ColorbarLo" HorizontalAlignment="Left"
+                                   Foreground="#A0E0E0E0" FontFamily="Consolas"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                        <TextBlock x:Name="ColorbarHi" HorizontalAlignment="Right"
+                                   Foreground="#A0E0E0E0" FontFamily="Consolas"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                    </Grid>
+                </StackPanel>
+
                 <ToggleSwitch x:Name="MipToggle" Header="Max-intensity (MIP)"
                               OffContent="Off" OnContent="On"
                               Foreground="#FFE0E0E0"

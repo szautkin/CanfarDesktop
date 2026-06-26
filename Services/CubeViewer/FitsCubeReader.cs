@@ -77,11 +77,26 @@ internal static class FitsCubeReader
 
         if (gmin > gmax) { gmin = 0; gmax = 1; } // all-NaN edge case
 
-        // Build metadata BEFORE normalization mutates outData (median is from the strided sample).
-        var meta = BuildMetadata(header, outData, nx, ny, nz, onx, ony, oz,
-                                 gmin, gmax, (double)nan / Math.Max(1, totalVox), path);
+        // Sorted finite sample (from the strided voxels) → median + the p0.5/p99.5 cut used
+        // for both display normalization and the colorbar value range. Sorted once here.
+        var finite = new List<float>(outData.Length);
+        foreach (var v in outData)
+            if (!float.IsNaN(v) && !float.IsInfinity(v)) finite.Add(v);
+        double median = 0;
+        float normLo = (float)gmin, normHi = (float)gmax;
+        if (finite.Count > 0)
+        {
+            finite.Sort();
+            median = finite[finite.Count / 2];
+            normLo = finite[(int)(finite.Count * 0.005f)];
+            normHi = finite[Math.Min(finite.Count - 1, (int)(finite.Count * 0.995f))];
+        }
 
-        Normalize(outData);
+        var meta = BuildMetadata(header, nx, ny, nz, onx, ony, oz,
+                                 gmin, gmax, median, (double)nan / Math.Max(1, totalVox),
+                                 normLo, normHi, path);
+
+        Normalize(outData, normLo, normHi);
         var half = new Half[outData.Length];
         for (int i = 0; i < outData.Length; i++) half[i] = (Half)outData[i];
 
@@ -89,25 +104,15 @@ internal static class FitsCubeReader
     }
 
     /// <summary>
-    /// Build the display metadata. Min/max/NaN are the EXACT full-cube stats; the median is a
-    /// representative value from the strided sample (a full-cube median would need the whole array).
+    /// Build the display metadata. Min/max/NaN are the EXACT full-cube stats; the median + the
+    /// p0.5/p99.5 normalization cut come from the strided sample (sorted once by the caller).
     /// </summary>
     private static CubeMetadata BuildMetadata(
-        Models.Fits.FitsHeader header, float[] physical,
+        Models.Fits.FitsHeader header,
         int nx, int ny, int nz, int rnx, int rny, int rnz,
-        double min, double max, double nanFraction, string path)
+        double min, double max, double median, double nanFraction,
+        double normLo, double normHi, string path)
     {
-        // Median from the strided (sampled) finite voxels — robust to sub-sampling.
-        var finite = new List<float>(physical.Length);
-        foreach (var v in physical)
-            if (!float.IsNaN(v) && !float.IsInfinity(v)) finite.Add(v);
-        double median = 0;
-        if (finite.Count > 0)
-        {
-            finite.Sort();
-            median = finite[finite.Count / 2];
-        }
-
         var telescope = (header.GetString("TELESCOP") ?? "").Trim();
         var instrument = (header.GetString("INSTRUME") ?? "").Trim();
         var instr = string.Join(" · ", new[] { telescope, instrument }.Where(s => s.Length > 0));
@@ -120,24 +125,16 @@ internal static class FitsCubeReader
             Nx = nx, Ny = ny, Nz = nz,
             RenderNx = rnx, RenderNy = rny, RenderNz = rnz,
             DataMin = min, DataMax = max, Median = median,
+            NormLo = normLo, NormHi = normHi,
             NanFraction = nanFraction,
             Wcs = CubeWcs.FromHeader(header, nx, ny, nz),
         };
     }
 
-    /// <summary>Robust [0,1] normalization against the p0.5…p99.5 percentile cut, NaN/Inf → 0.</summary>
-    private static void Normalize(float[] data)
+    /// <summary>Normalize physical values into [0,1] against the given cut levels; NaN/Inf → 0.</summary>
+    private static void Normalize(float[] data, float lo, float hi)
     {
-        var finite = new List<float>(data.Length);
-        foreach (var v in data)
-            if (!float.IsNaN(v) && !float.IsInfinity(v)) finite.Add(v);
-        if (finite.Count == 0) return;
-
-        finite.Sort();
-        float lo = finite[(int)(finite.Count * 0.005f)];
-        float hi = finite[Math.Min(finite.Count - 1, (int)(finite.Count * 0.995f))];
         float range = hi > lo ? hi - lo : 1f;
-
         for (int i = 0; i < data.Length; i++)
         {
             float v = data[i];

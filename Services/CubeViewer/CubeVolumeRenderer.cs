@@ -262,8 +262,16 @@ public sealed class CubeVolumeRenderer : IDisposable
 
     private void CreateStaticResources()
     {
-        _cmapSrv = CreateLut1D(CubeColormaps.Inferno(), Format.R8G8B8A8_UNorm, 4);
+        _cmapSrv = CreateLut1D(CubeColormaps.Build(CubeColormap.Inferno), Format.R8G8B8A8_UNorm, 4);
         SetTransferFunction(CubeColormaps.DefaultTransferFunction);
+    }
+
+    /// <summary>Swap the active colormap LUT (256×1 RGBA8). Safe to call between frames.</summary>
+    public void SetColormap(byte[] rgba)
+    {
+        if (_device is null) return;
+        _cmapSrv?.Dispose();
+        _cmapSrv = CreateLut1D(rgba, Format.R8G8B8A8_UNorm, 4);
     }
 
     /// <summary>Build a 256×1 shader resource view from a packed LUT byte array.</summary>
