@@ -113,6 +113,59 @@ internal static class FitsCubeReader
     }
 
     /// <summary>
+    /// Read a SINGLE spectral channel at the cube's NATIVE resolution and normalize it to [0,1]
+    /// against the given cut levels (NaN/Inf kept as NaN). Used by the figure export to render a
+    /// crisp slice — the in-memory <see cref="VolumeData"/> is down-sampled to the GPU cap, which
+    /// looks blocky when scaled up to a figure. Reads just the requested plane (seeks past the rest).
+    /// </summary>
+    public static (float[] Norm, int Nx, int Ny)? ReadChannelNormalized(string path, int channel, double normLo, double normHi)
+    {
+        using var stream = FitsContainer.OpenFits(path);
+        var header = FitsParser.ReadHeader(stream);
+        if (header is null) return null;
+
+        int nx = header.NAxis1, ny = header.NAxis2, nz = header.GetInt("NAXIS3", 1);
+        if (nx < 1 || ny < 1 || channel < 0 || channel >= nz) return null;
+
+        int bitpix = header.BitPix;
+        int bpp = Math.Abs(bitpix) / 8;
+        if (bpp == 0) return null;
+        double bscale = header.BScale, bzero = header.BZero;
+
+        long planeBytes = (long)nx * ny * bpp;
+        SkipBytes(stream, planeBytes * channel);   // data is contiguous; skip to the wanted plane
+        var plane = new byte[planeBytes];
+        ReadFull(stream, plane);
+
+        float lo = (float)normLo, hi = (float)normHi;
+        float range = hi > lo ? hi - lo : 1f;
+        int count = nx * ny;
+        var norm = new float[count];
+        for (int i = 0; i < count; i++)
+        {
+            float v = Decode(plane, i * bpp, bitpix, bscale, bzero);
+            norm[i] = (float.IsNaN(v) || float.IsInfinity(v))
+                ? float.NaN
+                : Math.Clamp((v - lo) / range, 0f, 1f);
+        }
+        return (norm, nx, ny);
+    }
+
+    private static void SkipBytes(Stream s, long count)
+    {
+        if (count <= 0) return;
+        if (s.CanSeek) { s.Seek(count, SeekOrigin.Current); return; }
+        var buf = new byte[(int)Math.Min(count, 1 << 20)];
+        long left = count;
+        while (left > 0)
+        {
+            int n = s.Read(buf, 0, (int)Math.Min(left, buf.Length));
+            if (n == 0) throw new EndOfStreamException("FITS cube data ended early.");
+            left -= n;
+        }
+    }
+
+    /// <summary>
     /// Build the display metadata. Min/max/NaN are the EXACT full-cube stats; the median + the
     /// p0.5/p99.5 normalization cut come from the strided sample (sorted once by the caller).
     /// </summary>

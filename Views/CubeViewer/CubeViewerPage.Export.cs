@@ -81,23 +81,59 @@ public sealed partial class CubeViewerPage
         }
     }
 
-    /// <summary>Render the current channel as the export frame (2D slice; native res shown scaled).</summary>
+    /// <summary>
+    /// Render the current channel as the export frame (2D slice). The in-memory volume is down-sampled
+    /// to the GPU cap, which looks blocky in a figure — so for the export we re-read the requested
+    /// channel at NATIVE FITS resolution straight from the file. Falls back to the down-sampled plane
+    /// if the source file isn't available.
+    /// </summary>
     private (WriteableBitmap Frame, int W, int H)? CaptureSliceFrame()
     {
         if (_volume is null) return null;
-        int nx = _volume.Nx, ny = _volume.Ny;
         var lut = CubeColormaps.Build(_currentColormap);
-        var buf = new byte[(long)nx * ny * 4];
-        CubeSliceRenderer.RenderPlane(_volume, ViewModel.Channel, ViewModel.WindowLo, ViewModel.WindowHi, ViewModel.Stretch, lut, buf);
+
+        int nx, ny;
+        byte[] buf;
+
+        // Map the down-sampled channel index to the matching native channel and read that plane full-res.
+        var native = TryReadNativeChannel();
+        if (native is { } nv)
+        {
+            nx = nv.Nx; ny = nv.Ny;
+            buf = new byte[(long)nx * ny * 4];
+            CubeSliceRenderer.RenderPlaneNorm(nv.Norm, nx, ny, ViewModel.WindowLo, ViewModel.WindowHi, ViewModel.Stretch, lut, buf);
+        }
+        else
+        {
+            nx = _volume.Nx; ny = _volume.Ny;
+            buf = new byte[(long)nx * ny * 4];
+            CubeSliceRenderer.RenderPlane(_volume, ViewModel.Channel, ViewModel.WindowLo, ViewModel.WindowHi, ViewModel.Stretch, lut, buf);
+        }
 
         var wb = new WriteableBitmap(nx, ny);
         using (var s = wb.PixelBuffer.AsStream()) s.Write(buf, 0, buf.Length);
         wb.Invalidate();
 
-        // Display the (native) slice scaled so its longest spatial axis is ~1100 px.
-        double k = 1100.0 / Math.Max(nx, ny);
+        // Frame the slice so its longest spatial axis is ~1300 px (a figure-sized footprint).
+        double k = 1300.0 / Math.Max(nx, ny);
         int dw = Math.Max(1, (int)Math.Round(nx * k)), dh = Math.Max(1, (int)Math.Round(ny * k));
         return (wb, dw, dh);
+    }
+
+    /// <summary>Read the native-resolution plane matching the current (down-sampled) channel, or null.</summary>
+    private (float[] Norm, int Nx, int Ny)? TryReadNativeChannel()
+    {
+        if (_meta is null || string.IsNullOrEmpty(_cubePath) || !File.Exists(_cubePath)) return null;
+        int downNz = _volume?.Nz ?? 0, origNz = _meta.Nz;
+        if (downNz < 1 || origNz < 1) return null;
+
+        int nativeCh = (downNz > 1 && origNz > 1)
+            ? (int)Math.Round((double)ViewModel.Channel / (downNz - 1) * (origNz - 1))
+            : ViewModel.Channel;
+        nativeCh = Math.Clamp(nativeCh, 0, origNz - 1);
+
+        try { return FitsCubeReader.ReadChannelNormalized(_cubePath!, nativeCh, _meta.NormLo, _meta.NormHi); }
+        catch { return null; }
     }
 
     /// <summary>MCP entry: export the current view to a PNG/PDF path (no modal), default style.</summary>

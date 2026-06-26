@@ -57,6 +57,7 @@ public sealed partial class CubeViewerPage : UserControl
     private readonly CubeAxesOverlay.Frame _overlayFrame = new();
     private CubeColormap _currentColormap = CubeColormap.Inferno;
     private string _cubeName = "";
+    private string? _cubePath; // source file, for native-resolution slice export
     private VolumeData? _volume; // kept for the 2D slice view + spectrum probe
 
     public CubeViewerPage()
@@ -157,6 +158,7 @@ public sealed partial class CubeViewerPage : UserControl
     private async Task<bool> LoadCubeCoreAsync(string path)
     {
         StopPlayback();
+        _cubePath = path; // source file, for native-resolution slice export
         var fname = System.IO.Path.GetFileName(path);
         StatusText.Text = "Loading " + fname + "…";
         ShowLoading(fname);

@@ -42,6 +42,34 @@ internal static class CubeSliceRenderer
     }
 
     /// <summary>
+    /// Render an already-normalized [0,1] plane (Nx·Ny, row-major) through the window + stretch +
+    /// colormap into <paramref name="destBgra"/> (length = Nx·Ny·4, BGRA8, opaque). Used by the
+    /// figure export to render a single channel read back at NATIVE FITS resolution (the in-memory
+    /// volume is down-sampled), so the exported slice is crisp rather than blocky.
+    /// </summary>
+    public static void RenderPlaneNorm(
+        float[] norm, int nx, int ny, float windowLo, float windowHi,
+        ImageStretcher.StretchMode stretch, byte[] lutRgba, byte[] destBgra)
+    {
+        for (int y = 0; y < ny; y++)
+        {
+            int row = y * nx;
+            for (int x = 0; x < nx; x++)
+            {
+                float v = norm[row + x];                             // normalized [0,1] (NaN = no-data)
+                float s = ImageStretcher.Stretch(v, windowLo, windowHi, stretch);
+                int idx = Math.Clamp((int)(s * 255f + 0.5f), 0, 255);
+                int o = idx * 4;                                     // RGBA in the LUT
+                int d = (row + x) * 4;                               // BGRA out
+                destBgra[d + 0] = lutRgba[o + 2]; // B
+                destBgra[d + 1] = lutRgba[o + 1]; // G
+                destBgra[d + 2] = lutRgba[o + 0]; // R
+                destBgra[d + 3] = 255;            // A
+            }
+        }
+    }
+
+    /// <summary>
     /// Extract the spectrum (one value per channel) at spatial pixel (x,y), converted back to
     /// physical data units via the cube's normalization cut. Returns null if out of range.
     /// </summary>
