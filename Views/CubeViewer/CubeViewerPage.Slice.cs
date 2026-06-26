@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
+using Windows.System;
 using Windows.UI;
 using CanfarDesktop.Services.CubeViewer;
 using CanfarDesktop.ViewModels.CubeViewer;
@@ -78,6 +79,11 @@ public sealed partial class CubeViewerPage
         ChannelSlider.Value = mid;
         ViewModel.Channel = mid;
         _suppressChannel = false;
+
+        // Probe state must not outlive the cube it was sampled from.
+        _probeSpectrum = null;
+        _probeX = _probeY = -1;
+        SpectrumPanel.Visibility = Visibility.Collapsed;
 
         EnsureSliceBitmap();
         UpdateChannelLabel();
@@ -166,6 +172,13 @@ public sealed partial class CubeViewerPage
     private void AdvanceChannelPlayback()
     {
         if (_volume is null) return;
+        // Stop if the page was hidden (navigation toggles Visibility without raising Unloaded,
+        // so the timer would otherwise keep rendering slices off-screen) or torn down.
+        if (_closed || ViewModel.ViewMode != CubeViewMode.Slice || SliceImage.ActualWidth < 1)
+        {
+            StopPlayback();
+            return;
+        }
         int nz = Math.Max(1, _volume.Nz);
         int next = (ViewModel.Channel + 1) % nz;
         _suppressChannel = true;
@@ -233,13 +246,13 @@ public sealed partial class CubeViewerPage
     {
         SpectrumCanvas.Children.Clear();
         var sp = _probeSpectrum;
-        if (sp is null || sp.Length < 2) return;
+        if (sp is null) return;
         double w = SpectrumCanvas.Width, h = SpectrumCanvas.Height;
 
         float mn = float.MaxValue, mx = float.MinValue;
         foreach (var v in sp)
             if (float.IsFinite(v)) { if (v < mn) mn = v; if (v > mx) mx = v; }
-        if (mn > mx)
+        if (sp.Length < 2 || mn > mx) // single channel or all-masked (NaN) spaxel
         {
             SpectrumCanvas.Children.Add(new TextBlock
             {
@@ -272,5 +285,36 @@ public sealed partial class CubeViewerPage
             StrokeThickness = 1,
             StrokeDashArray = new DoubleCollection { 3, 3 },
         });
+    }
+
+    // ── Keyboard shortcuts (slice mode): Space play/pause, ←/→ ±1, ⇧←/→ ±10 ──
+
+    private void OnPlayPauseAccel(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (ViewModel.ViewMode != CubeViewMode.Slice) return;
+        args.Handled = true;
+        OnPlayPause(this, new RoutedEventArgs());
+    }
+
+    private void OnChannelStepAccel(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        if (ViewModel.ViewMode != CubeViewMode.Slice || _volume is null) return;
+        args.Handled = true;
+        int step = (sender.Modifiers & VirtualKeyModifiers.Shift) != 0 ? 10 : 1;
+        if (sender.Key == VirtualKey.Left) step = -step;
+        StepChannel(step);
+    }
+
+    private void StepChannel(int delta)
+    {
+        if (_volume is null) return;
+        int nz = _volume.Nz;
+        int c = Math.Clamp(ViewModel.Channel + delta, 0, Math.Max(0, nz - 1));
+        _suppressChannel = true;
+        ChannelSlider.Value = c;
+        _suppressChannel = false;
+        ViewModel.Channel = c;
+        RenderSlice();
+        UpdateChannelLabel();
     }
 }

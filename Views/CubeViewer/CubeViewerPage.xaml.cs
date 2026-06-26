@@ -539,6 +539,7 @@ public sealed partial class CubeViewerPage : UserControl
     /// <summary>Unhook the per-frame render loop without releasing GPU resources (resumable).</summary>
     private void PauseRendering()
     {
+        StopPlayback();
         if (_renderingHooked)
         {
             Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= OnRendering;

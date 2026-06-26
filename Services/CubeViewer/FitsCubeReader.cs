@@ -131,7 +131,11 @@ internal static class FitsCubeReader
         };
     }
 
-    /// <summary>Normalize physical values into [0,1] against the given cut levels; NaN/Inf → 0.</summary>
+    /// <summary>
+    /// Normalize physical values into [0,1] against the given cut levels. NaN/Inf (masked voxels)
+    /// are kept as NaN: the GPU ray-march skips them (its <c>r &gt; 0</c> test rejects NaN) and the
+    /// 2D slice/spectrum can flag them as no-data rather than showing a false floor value.
+    /// </summary>
     private static void Normalize(float[] data, float lo, float hi)
     {
         float range = hi > lo ? hi - lo : 1f;
@@ -139,7 +143,7 @@ internal static class FitsCubeReader
         {
             float v = data[i];
             data[i] = (float.IsNaN(v) || float.IsInfinity(v))
-                ? 0f
+                ? float.NaN
                 : Math.Clamp((v - lo) / range, 0f, 1f);
         }
     }

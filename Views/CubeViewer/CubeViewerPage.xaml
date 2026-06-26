@@ -5,6 +5,14 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Grid Background="#FF050810">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="Space" Invoked="OnPlayPauseAccel" />
+            <KeyboardAccelerator Key="Left" Invoked="OnChannelStepAccel" />
+            <KeyboardAccelerator Key="Right" Invoked="OnChannelStepAccel" />
+            <KeyboardAccelerator Key="Left" Modifiers="Shift" Invoked="OnChannelStepAccel" />
+            <KeyboardAccelerator Key="Right" Modifiers="Shift" Invoked="OnChannelStepAccel" />
+        </Grid.KeyboardAccelerators>
+
         <!-- GPU volume render surface -->
         <SwapChainPanel x:Name="RenderPanel"
                         PointerPressed="OnPointerPressed"
