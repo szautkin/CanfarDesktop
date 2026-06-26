@@ -3,6 +3,10 @@ using CanfarDesktop.Services.Fits;
 
 namespace CanfarDesktop.Services.CubeViewer;
 
+/// <summary>A cube-load progress report: the current step index, overall fraction (0..1), and a detail
+/// string (e.g. the plane counter). Steps: 0 header, 1 decoding planes, 2 normalizing, 3 uploading.</summary>
+public readonly record struct CubeLoadProgress(int Step, double Fraction, string Detail);
+
 /// <summary>
 /// Reads a 3D FITS spectral cube (NAXIS=3) into a <see cref="VolumeData"/> ready for the GPU volume
 /// renderer: decodes the BITPIX pixel array (8/16/32/-32/-64, big-endian, with BSCALE/BZERO), strides
@@ -14,8 +18,9 @@ internal static class FitsCubeReader
     /// <summary>Down-sample so max(nx,ny,nz) ≤ this (keeps the Texture3D + RAM budget sane).</summary>
     private const int MaxDim = 256;
 
-    public static VolumeData Read(string path)
+    public static VolumeData Read(string path, IProgress<CubeLoadProgress>? progress = null)
     {
+        progress?.Report(new(0, 0.01, "")); // reading header
         using var stream = FitsContainer.OpenFits(path);
         var header = FitsParser.ReadHeader(stream)
             ?? throw new InvalidDataException("No FITS header found.");
@@ -46,10 +51,13 @@ internal static class FitsCubeReader
         long totalVox = (long)nx * ny * nz;
         int planeVox = nx * ny;
 
+        int reportEvery = Math.Max(1, nz / 120); // ~120 progress updates over the decode
         int oz = 0;
         for (int z = 0; z < nz; z++)
         {
             ReadFull(stream, plane);          // every plane is read (data is contiguous); kept ones strided
+            if (z % reportEvery == 0 || z == nz - 1)
+                progress?.Report(new(1, 0.05 + 0.80 * (z + 1) / nz, $"plane {z + 1} / {nz}"));
 
             // Full-plane stats pass.
             for (int i = 0; i < planeVox; i++)
@@ -75,6 +83,7 @@ internal static class FitsCubeReader
             oz++;
         }
 
+        progress?.Report(new(2, 0.88, "")); // normalizing
         if (gmin > gmax) { gmin = 0; gmax = 1; } // all-NaN edge case
 
         // Sorted finite sample (from the strided voxels) → median + the p0.5/p99.5 cut used

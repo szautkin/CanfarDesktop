@@ -157,18 +157,27 @@ public sealed partial class CubeViewerPage : UserControl
     private async Task<bool> LoadCubeCoreAsync(string path)
     {
         StopPlayback();
-        StatusText.Text = "Loading " + System.IO.Path.GetFileName(path) + "…";
+        var fname = System.IO.Path.GetFileName(path);
+        StatusText.Text = "Loading " + fname + "…";
+        ShowLoading(fname);
         try
         {
-            var volume = await Task.Run(() => FitsCubeReader.Read(path));
-            if (_closed) return false;
+            // Progress<T> is created on the UI thread → UpdateLoadingUI is marshalled back to it.
+            var progress = new Progress<CubeLoadProgress>(UpdateLoadingUI);
+            var volume = await Task.Run(() => FitsCubeReader.Read(path, progress));
+            if (_closed) { HideLoading(); return false; }
+
+            UpdateLoadingUI(new CubeLoadProgress(3, 0.95, "")); // uploading to GPU
             SetViewMode(CubeViewMode.Volume);
             ApplyVolume(volume, $"{volume.Name} · {volume.Nx}×{volume.Ny}×{volume.Nz}");
+            UpdateLoadingUI(new CubeLoadProgress(4, 1.0, ""));  // all steps done
+            HideLoading();
             return true;
         }
         catch (Exception ex)
         {
             StatusText.Text = "Cube read failed: " + ex.Message;
+            HideLoading();
             return false;
         }
     }

@@ -260,6 +260,20 @@
             </ScrollViewer>
         </Border>
 
+        <!-- Cube load progress (bottom-center): stepped indicator + progress bar -->
+        <Border x:Name="LoadingPanel" Visibility="Collapsed" IsHitTestVisible="False"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Margin="0,0,0,40" Padding="22,16" CornerRadius="10" MinWidth="360"
+                Background="#EA0C1018" BorderBrush="#55BFD8FF" BorderThickness="1">
+            <StackPanel Spacing="10">
+                <TextBlock x:Name="LoadingTitle" FontWeight="SemiBold" Foreground="#FFF0F0F0"
+                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="380"
+                           Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <ProgressBar x:Name="LoadingBar" Minimum="0" Maximum="1" Value="0" Width="360" />
+                <StackPanel x:Name="LoadingSteps" Spacing="4" Margin="0,2,0,0" />
+            </StackPanel>
+        </Border>
+
         <!-- Spectrum probe (slice mode): flux vs channel at the clicked spaxel -->
         <Border x:Name="SpectrumPanel" Visibility="Collapsed"
                 HorizontalAlignment="Center" VerticalAlignment="Bottom"
