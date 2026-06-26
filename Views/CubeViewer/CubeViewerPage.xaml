@@ -110,7 +110,7 @@
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                         <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
                             <Button Content="Min/Max" Padding="6,1" FontSize="11" Click="OnWindowMinMax" />
-                            <Button Content="p99" Padding="6,1" FontSize="11" Click="OnWindowP99" />
+                            <Button Content="99%" Padding="6,1" FontSize="11" Click="OnWindowP99" />
                         </StackPanel>
                     </Grid>
                     <Slider x:Name="WindowLoSlider" Minimum="0" Maximum="1"

@@ -449,35 +449,41 @@ public sealed partial class CubeViewerPage : UserControl
     }
 
     private static string FormatColorbarValue(double v)
-        => v.ToString("G3", System.Globalization.CultureInfo.InvariantCulture);
+        => v.ToString("G4", System.Globalization.CultureInfo.InvariantCulture);
 
     // ── Window / levels ────────────────────────────────────────────────────────
 
     private bool _suppressWindow; // guard reentrancy when we set the sliders programmatically
 
+    private const float MinWindowGap = 0.01f;
+
     private void OnWindowLoChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_suppressWindow) return;
-        float lo = Math.Min((float)e.NewValue, ViewModel.WindowHi - 0.01f);
-        if (lo != (float)e.NewValue) { _suppressWindow = true; WindowLoSlider.Value = lo; _suppressWindow = false; }
-        ViewModel.WindowLo = Math.Max(0f, lo);
-        UpdateColorbar();
+        SetWindow((float)e.NewValue, ViewModel.WindowHi);
     }
 
     private void OnWindowHiChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_suppressWindow) return;
-        float hi = Math.Max((float)e.NewValue, ViewModel.WindowLo + 0.01f);
-        if (hi != (float)e.NewValue) { _suppressWindow = true; WindowHiSlider.Value = hi; _suppressWindow = false; }
-        ViewModel.WindowHi = Math.Min(1f, hi);
-        UpdateColorbar();
+        SetWindow(ViewModel.WindowLo, (float)e.NewValue);
     }
 
     private void OnWindowMinMax(object sender, RoutedEventArgs e) => SetWindow(0f, 1f);
     private void OnWindowP99(object sender, RoutedEventArgs e) => SetWindow(0f, 0.99f);
 
+    /// <summary>Apply a window, enforcing [0,1] bounds + a minimum gap, keeping sliders and VM in sync.</summary>
     private void SetWindow(float lo, float hi)
     {
+        lo = Math.Clamp(lo, 0f, 1f);
+        hi = Math.Clamp(hi, 0f, 1f);
+        if (hi - lo < MinWindowGap)
+        {
+            // Preserve the minimum window even at the 0/1 edges.
+            if (lo + MinWindowGap <= 1f) hi = lo + MinWindowGap;
+            else { hi = 1f; lo = 1f - MinWindowGap; }
+        }
+
         _suppressWindow = true;
         WindowLoSlider.Value = lo;
         WindowHiSlider.Value = hi;
