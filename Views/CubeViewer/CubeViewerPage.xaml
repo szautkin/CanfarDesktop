@@ -130,6 +130,9 @@
                           VerticalScrollMode="Auto" HorizontalScrollMode="Disabled">
             <StackPanel Spacing="12" Width="228">
 
+                <Button x:Name="OpenButton" Content="Open cube…" HorizontalAlignment="Stretch"
+                        Click="OnOpenCubeClick" />
+
                 <!-- ── DISPLAY ── -->
                 <TextBlock Text="DISPLAY" FontWeight="SemiBold"
                            Foreground="#90BFD8FF"

@@ -510,15 +510,20 @@ public sealed partial class MainWindow : Window
 
     private Views.CubeViewer.CubeViewerPage? _cubeViewerPage;
 
-    /// <summary>Open the 3D Cube Viewer (GPU volume render). Builds the page once and reuses it.
-    /// Increment 1 renders a synthetic procedural volume; real FITS NAXIS3 ingest is a follow-up.</summary>
-    public void OpenCubeViewer()
+    /// <summary>
+    /// Open the 3D Cube Viewer (GPU volume render). Builds the page once and reuses it. When
+    /// <paramref name="filePath"/> is given, that FITS spectral cube is loaded (from Open, Search,
+    /// Research, or an MCP tool); otherwise the viewer keeps its current/default cube.
+    /// </summary>
+    public void OpenCubeViewer(string? filePath = null)
     {
         try
         {
             _cubeViewerPage ??= new Views.CubeViewer.CubeViewerPage();
             CubeViewerContainer.Child = _cubeViewerPage;
             NavigateTo(AppMode.CubeViewer);
+            if (!string.IsNullOrEmpty(filePath))
+                _ = _cubeViewerPage.LoadCubeAsync(filePath);
         }
         catch (Exception ex)
         {

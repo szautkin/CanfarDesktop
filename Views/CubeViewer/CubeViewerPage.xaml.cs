@@ -91,8 +91,16 @@ public sealed partial class CubeViewerPage : UserControl
         PopulateColormapPicker();
         StatusText.Text = "Loading cube…";
 
-        // Decode the cube off the UI thread, then upload + start.
-        _ = LoadSyntheticVolumeAsync();
+        // Load the cube requested before init (Open / Search / MCP), else the default.
+        if (_pendingCubePath is { } pending)
+        {
+            _pendingCubePath = null;
+            _ = LoadCubeAsync(pending);
+        }
+        else
+        {
+            _ = LoadDefaultAsync();
+        }
     }
 
     private void OnCompositionScaleChanged(SwapChainPanel sender, object args)
@@ -102,33 +110,48 @@ public sealed partial class CubeViewerPage : UserControl
         _renderer.Resize(w, h);
     }
 
-    private async Task LoadSyntheticVolumeAsync()
+    private string? _pendingCubePath; // a cube requested before the renderer finished initializing
+
+    /// <summary>
+    /// Load a specific FITS spectral cube. Safe to call before the page is initialized (it is
+    /// queued and loaded once the GPU device is ready). Resets to volume mode on success.
+    /// </summary>
+    public async Task LoadCubeAsync(string path)
     {
-        VolumeData volume;
-        string note;
+        if (_closed) return;
+        if (!_initialized) { _pendingCubePath = path; return; }
+
+        StopPlayback();
+        StatusText.Text = "Loading " + System.IO.Path.GetFileName(path) + "…";
         try
         {
-            var downloads = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-            var cubePath = System.IO.Path.Combine(downloads, "dragons_FDF_clean_tot_Kgal.car.32bit.fits");
-            if (System.IO.File.Exists(cubePath))
-            {
-                volume = await Task.Run(() => FitsCubeReader.Read(cubePath));
-                note = $"{volume.Name} · {volume.Nx}×{volume.Ny}×{volume.Nz}";
-            }
-            else
-            {
-                volume = await Task.Run(() => VolumeData.GenerateSyntheticNebula(128));
-                note = volume.Name + " (cube file not found in Downloads)";
-            }
+            var volume = await Task.Run(() => FitsCubeReader.Read(path));
+            if (_closed) return;
+            SetViewMode(CubeViewMode.Volume);
+            ApplyVolume(volume, $"{volume.Name} · {volume.Nx}×{volume.Ny}×{volume.Nz}");
         }
         catch (Exception ex)
         {
-            volume = await Task.Run(() => VolumeData.GenerateSyntheticNebula(128));
-            note = "Synthetic — cube read failed: " + ex.Message;
+            StatusText.Text = "Cube read failed: " + ex.Message;
         }
-        if (_closed) return;
+    }
 
+    /// <summary>Initial load: a cube in Downloads if present, else a synthetic volume.</summary>
+    private async Task LoadDefaultAsync()
+    {
+        var downloads = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads",
+            "dragons_FDF_clean_tot_Kgal.car.32bit.fits");
+        if (System.IO.File.Exists(downloads)) { await LoadCubeAsync(downloads); return; }
+
+        var volume = await Task.Run(() => VolumeData.GenerateSyntheticNebula(128));
+        if (_closed) return;
+        ApplyVolume(volume, volume.Name + " — open a cube with Open…");
+    }
+
+    /// <summary>Upload a decoded volume to the renderer + slice view and refresh the UI.</summary>
+    private void ApplyVolume(VolumeData volume, string note)
+    {
         _renderer.SetVolume(volume);
         _meta = volume.Meta;
         _volume = volume;
@@ -140,8 +163,22 @@ public sealed partial class CubeViewerPage : UserControl
         StatusText.Text = string.IsNullOrEmpty(_meta?.Object) ? volume.Name : _meta!.Object;
         PopulateInfoPanel(_meta);
         UpdateColorbar();
-
         HookRendering();
+    }
+
+    private async void OnOpenCubeClick(object sender, RoutedEventArgs e)
+    {
+        var wins = WindowHelper.ActiveWindows;
+        var hwnd = wins.Count > 0 ? WinRT.Interop.WindowNative.GetWindowHandle(wins[0]) : nint.Zero;
+        if (hwnd == nint.Zero) return;
+
+        var picker = new Windows.Storage.Pickers.FileOpenPicker();
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.FileTypeFilter.Add(".fits");
+        picker.FileTypeFilter.Add(".fit");
+        picker.FileTypeFilter.Add(".fts");
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null) await LoadCubeAsync(file.Path);
     }
 
     /// <summary>Fill the bottom-left info panel from the cube metadata (hidden for the synthetic volume).</summary>

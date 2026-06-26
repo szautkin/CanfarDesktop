@@ -91,7 +91,7 @@ public sealed partial class CubeViewerPage
             UpdateOverlay();
             float steps = Math.Max(ViewModel.VolumeSteps, 384f);
             byte[]? volume = _renderer.RenderToBgra(w, h, steps);
-            byte[]? overlay = volume is null ? null : await RenderOverlayBgraAsync(w, h);
+            var overlay = volume is null ? null : await RenderOverlayAsync(w, h);
             _freezeRenderLoop = false;
 
             if (volume is null)
@@ -100,8 +100,10 @@ public sealed partial class CubeViewerPage
                     + ": " + (_renderer.LastError ?? "render");
                 return;
             }
-            if (overlay is not null && overlay.Length == volume.Length)
-                CompositeOver(volume, overlay);
+            // Composite the box + captions over the volume, scaling the overlay if
+            // RenderTargetBitmap didn't produce exactly w×h (it caps large requests).
+            if (overlay is not null)
+                CompositeOverScaled(volume, w, h, overlay.Value.Pixels, overlay.Value.W, overlay.Value.H);
 
             // Frame bitmap (the composited render).
             var frame = new WriteableBitmap(w, h);
@@ -217,18 +219,17 @@ public sealed partial class CubeViewerPage
         return d;
     }
 
-    /// <summary>Rasterize the overlay canvas (box + captions) at export resolution as premultiplied BGRA.</summary>
-    private async Task<byte[]?> RenderOverlayBgraAsync(int w, int h)
+    /// <summary>Rasterize the overlay canvas (box + captions) as premultiplied BGRA, returning its actual pixel size.</summary>
+    private async Task<(byte[] Pixels, int W, int H)?> RenderOverlayAsync(int w, int h)
     {
         try
         {
             var rtb = new RenderTargetBitmap();
             await rtb.RenderAsync(OverlayCanvas, w, h);
-            // RenderTargetBitmap caps very large requests; if the result isn't the exact size we
-            // asked for, the pixel grids won't line up — skip the overlay rather than misalign it.
-            if (rtb.PixelWidth != w || rtb.PixelHeight != h) return null;
-            var buf = await rtb.GetPixelsAsync();
-            return buf.ToArray();
+            int ow = rtb.PixelWidth, oh = rtb.PixelHeight;
+            if (ow <= 0 || oh <= 0) return null;
+            var buf = (await rtb.GetPixelsAsync()).ToArray();
+            return (buf, ow, oh);
         }
         catch
         {
@@ -236,19 +237,28 @@ public sealed partial class CubeViewerPage
         }
     }
 
-    /// <summary>Alpha-composite a premultiplied BGRA overlay over an opaque BGRA base, in place.</summary>
-    private static void CompositeOver(byte[] baseBgra, byte[] overlayBgra)
+    /// <summary>
+    /// Alpha-composite a premultiplied BGRA overlay (ow×oh) over an opaque BGRA base (w×h), in place,
+    /// nearest-neighbor scaling the overlay when its size differs (so the box/captions are never dropped).
+    /// </summary>
+    private static void CompositeOverScaled(byte[] baseBgra, int w, int h, byte[] ov, int ow, int oh)
     {
-        for (int i = 0; i < baseBgra.Length; i += 4)
+        for (int y = 0; y < h; y++)
         {
-            byte oa = overlayBgra[i + 3];
-            if (oa == 0) { baseBgra[i + 3] = 255; continue; }
-            int ia = 255 - oa;
-            // overlay is premultiplied: out = overlay + base·(1−a), with rounded /255.
-            baseBgra[i + 0] = (byte)Math.Min(255, overlayBgra[i + 0] + (baseBgra[i + 0] * ia + 127) / 255);
-            baseBgra[i + 1] = (byte)Math.Min(255, overlayBgra[i + 1] + (baseBgra[i + 1] * ia + 127) / 255);
-            baseBgra[i + 2] = (byte)Math.Min(255, overlayBgra[i + 2] + (baseBgra[i + 2] * ia + 127) / 255);
-            baseBgra[i + 3] = 255;
+            int oy = oh == h ? y : (int)((long)y * oh / h);
+            for (int x = 0; x < w; x++)
+            {
+                int ox = ow == w ? x : (int)((long)x * ow / w);
+                int si = (oy * ow + ox) * 4;
+                int di = (y * w + x) * 4;
+                byte oa = ov[si + 3];
+                if (oa == 0) { baseBgra[di + 3] = 255; continue; }
+                int ia = 255 - oa;
+                baseBgra[di + 0] = (byte)Math.Min(255, ov[si + 0] + (baseBgra[di + 0] * ia + 127) / 255);
+                baseBgra[di + 1] = (byte)Math.Min(255, ov[si + 1] + (baseBgra[di + 1] * ia + 127) / 255);
+                baseBgra[di + 2] = (byte)Math.Min(255, ov[si + 2] + (baseBgra[di + 2] * ia + 127) / 255);
+                baseBgra[di + 3] = 255;
+            }
         }
     }
 
