@@ -42,7 +42,7 @@ cbuffer CubeUniforms : register(b0)
     float    jitter;
     int      stretch;
     int      mip;
-    int      debug;
+    int      pad0;        // 16-byte alignment
 };
 
 Texture3D<float> dataTex  : register(t0);
@@ -117,18 +117,6 @@ float4 PSMain(VSOut input) : SV_Target
 
     float2 bounds = hitBox(ro, rd);
     bounds.x = max(bounds.x, 0.0);
-
-    // DIAGNOSTIC: bypass the volume to isolate the failure. Off-box pixels show a
-    // red/green gradient (proves the pass renders + the swap chain presents);
-    // on-box pixels show the ray entry point as RGB (proves the camera/box
-    // matrices). Disabled by setting debug=0 once the render path is confirmed.
-    if (debug == 1)
-    {
-        if (bounds.x >= bounds.y)
-            return float4(input.ndc.x * 0.5 + 0.5, input.ndc.y * 0.5 + 0.5, 0.15, 1.0);
-        float3 entry = saturate(ro + rd * bounds.x + 0.5);
-        return float4(entry, 1.0);
-    }
 
     if (bounds.x >= bounds.y)
         discard;

@@ -39,10 +39,27 @@ internal static class FitsCubeReader
         var outData = new float[(long)onx * ony * onz];
         var plane = new byte[(long)nx * ny * bytesPerSample];
 
+        // Exact value statistics accumulated over EVERY voxel (every plane is read anyway),
+        // so the info-panel RANGE / NaN% are the true cube extrema, not a strided estimate.
+        double gmin = double.PositiveInfinity, gmax = double.NegativeInfinity;
+        long nan = 0;
+        long totalVox = (long)nx * ny * nz;
+        int planeVox = nx * ny;
+
         int oz = 0;
         for (int z = 0; z < nz; z++)
         {
             ReadFull(stream, plane);          // every plane is read (data is contiguous); kept ones strided
+
+            // Full-plane stats pass.
+            for (int i = 0; i < planeVox; i++)
+            {
+                float v = Decode(plane, i * bytesPerSample, bitpix, bscale, bzero);
+                if (float.IsNaN(v) || float.IsInfinity(v)) { nan++; continue; }
+                if (v < gmin) gmin = v;
+                if (v > gmax) gmax = v;
+            }
+
             if (z % step != 0) continue;
             int oy = 0;
             for (int y = 0; y < ny; y += step, oy++)
@@ -58,11 +75,54 @@ internal static class FitsCubeReader
             oz++;
         }
 
+        if (gmin > gmax) { gmin = 0; gmax = 1; } // all-NaN edge case
+
+        // Build metadata BEFORE normalization mutates outData (median is from the strided sample).
+        var meta = BuildMetadata(header, outData, nx, ny, nz, onx, ony, oz,
+                                 gmin, gmax, (double)nan / Math.Max(1, totalVox), path);
+
         Normalize(outData);
         var half = new Half[outData.Length];
         for (int i = 0; i < outData.Length; i++) half[i] = (Half)outData[i];
 
-        return new VolumeData(onx, ony, oz, half, Path.GetFileNameWithoutExtension(path));
+        return new VolumeData(onx, ony, oz, half, Path.GetFileNameWithoutExtension(path), meta);
+    }
+
+    /// <summary>
+    /// Build the display metadata. Min/max/NaN are the EXACT full-cube stats; the median is a
+    /// representative value from the strided sample (a full-cube median would need the whole array).
+    /// </summary>
+    private static CubeMetadata BuildMetadata(
+        Models.Fits.FitsHeader header, float[] physical,
+        int nx, int ny, int nz, int rnx, int rny, int rnz,
+        double min, double max, double nanFraction, string path)
+    {
+        // Median from the strided (sampled) finite voxels — robust to sub-sampling.
+        var finite = new List<float>(physical.Length);
+        foreach (var v in physical)
+            if (!float.IsNaN(v) && !float.IsInfinity(v)) finite.Add(v);
+        double median = 0;
+        if (finite.Count > 0)
+        {
+            finite.Sort();
+            median = finite[finite.Count / 2];
+        }
+
+        var telescope = (header.GetString("TELESCOP") ?? "").Trim();
+        var instrument = (header.GetString("INSTRUME") ?? "").Trim();
+        var instr = string.Join(" · ", new[] { telescope, instrument }.Where(s => s.Length > 0));
+
+        return new CubeMetadata
+        {
+            Object = (header.GetString("OBJECT") ?? "").Trim(),
+            Instrument = instr,
+            Bunit = (header.GetString("BUNIT") ?? "").Trim(),
+            Nx = nx, Ny = ny, Nz = nz,
+            RenderNx = rnx, RenderNy = rny, RenderNz = rnz,
+            DataMin = min, DataMax = max, Median = median,
+            NanFraction = nanFraction,
+            Wcs = CubeWcs.FromHeader(header, nx, ny, nz),
+        };
     }
 
     /// <summary>Robust [0,1] normalization against the p0.5…p99.5 percentile cut, NaN/Inf → 0.</summary>

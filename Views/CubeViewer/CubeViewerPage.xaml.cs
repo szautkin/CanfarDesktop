@@ -1,8 +1,11 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
 using Windows.System;
+using Windows.UI;
 using Windows.UI.Core;
 using CanfarDesktop.Services.CubeViewer;
 using CanfarDesktop.Services.Fits;
@@ -38,7 +41,17 @@ public sealed partial class CubeViewerPage : UserControl
     private bool _isDragging;
     private Point _lastPointer;
 
-    private int _frameCount; // TEMP diagnostic
+    // ── Wireframe box + WCS caption overlay ──
+    private CubeMetadata? _meta;
+    private int _volNx = 1, _volNy = 1;
+    private bool _overlayBuilt;
+    private bool _captionsOn = true;
+    private readonly Line[] _edgeLines = new Line[12];
+    private readonly (TextBlock Shadow, TextBlock Main)[] _captions = new (TextBlock, TextBlock)[9];
+    private readonly string?[] _captionText = new string?[9];
+    private readonly double[] _captionW = new double[9];
+    private readonly double[] _captionH = new double[9];
+    private readonly CubeAxesOverlay.Frame _overlayFrame = new();
 
     public CubeViewerPage()
     {
@@ -50,7 +63,14 @@ public sealed partial class CubeViewerPage : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (_initialized || _closed) return;
+        if (_closed) return;
+        if (_initialized)
+        {
+            // The page was previously initialized and merely re-attached to the tree
+            // (e.g. after an Unloaded that paused us) — resume the render loop.
+            HookRendering();
+            return;
+        }
 
         var (pw, ph) = PhysicalSize();
         if (!_renderer.Initialize(RenderPanel, pw, ph))
@@ -63,9 +83,10 @@ public sealed partial class CubeViewerPage : UserControl
         // Resize the back buffer + re-apply the inverse-scale transform when the DPI
         // / composition scale changes (e.g. dragged to another monitor).
         RenderPanel.CompositionScaleChanged += OnCompositionScaleChanged;
-        StatusText.Text = "Building synthetic volume…";
+        BuildOverlayVisuals();
+        StatusText.Text = "Loading cube…";
 
-        // Generate the procedural nebula off the UI thread, then upload + start.
+        // Decode the cube off the UI thread, then upload + start.
         _ = LoadSyntheticVolumeAsync();
     }
 
@@ -104,10 +125,42 @@ public sealed partial class CubeViewerPage : UserControl
         if (_closed) return;
 
         _renderer.SetVolume(volume);
+        _meta = volume.Meta;
+        _volNx = volume.Nx;
+        _volNy = volume.Ny;
         ViewModel.VolumeName = note;
-        StatusText.Text = note;
+        StatusText.Text = string.IsNullOrEmpty(_meta?.Object) ? volume.Name : _meta!.Object;
+        PopulateInfoPanel(_meta);
 
         HookRendering();
+    }
+
+    /// <summary>Fill the bottom-left info panel from the cube metadata (hidden for the synthetic volume).</summary>
+    private void PopulateInfoPanel(CubeMetadata? meta)
+    {
+        if (meta is null)
+        {
+            InfoPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        InfoObject.Text = string.IsNullOrEmpty(meta.Object) ? ViewModel.VolumeName : meta.Object;
+        InfoInstrument.Text = meta.Instrument;
+        InfoInstrument.Visibility = string.IsNullOrEmpty(meta.Instrument) ? Visibility.Collapsed : Visibility.Visible;
+
+        string dims = meta.DimensionsText;
+        if (meta.RenderNx != meta.Nx || meta.RenderNy != meta.Ny || meta.RenderNz != meta.Nz)
+            dims += $"  (render {meta.RenderNx}×{meta.RenderNy}×{meta.RenderNz})";
+        InfoDims.Text = dims;
+
+        bool hasUnit = !string.IsNullOrEmpty(meta.Bunit);
+        InfoUnitLabel.Visibility = hasUnit ? Visibility.Visible : Visibility.Collapsed;
+        InfoUnit.Visibility = hasUnit ? Visibility.Visible : Visibility.Collapsed;
+        InfoUnit.Text = meta.Bunit;
+
+        InfoRange.Text = meta.RangeText;
+        InfoNan.Text = meta.NanText;
+        InfoPanel.Visibility = Visibility.Visible;
     }
 
     private void HookRendering()
@@ -120,6 +173,11 @@ public sealed partial class CubeViewerPage : UserControl
     private void OnRendering(object? sender, object e)
     {
         if (_closed || !_renderer.IsReady) return;
+
+        // Pause when the page is collapsed / off-screen. Navigation toggles the host
+        // container's Visibility (it does NOT raise Unloaded), so without this guard the
+        // render loop would keep presenting at 60fps while the user is in another module.
+        if (RenderPanel.ActualWidth < 1 || RenderPanel.ActualHeight < 1) return;
 
         ViewModel.AdvanceAutoOrbit();
 
@@ -137,12 +195,117 @@ public sealed partial class CubeViewerPage : UserControl
         _renderer.Interacting = _isDragging;
 
         _renderer.Render();
-
-        // TEMP diagnostic: surface the live render state in the readable status line.
-        if (++_frameCount % 15 == 0)
-            StatusText.Text = $"f{_frameCount} · {RenderPanel.ActualWidth:0}x{RenderPanel.ActualHeight:0} dip · " +
-                              $"s{RenderPanel.CompositionScaleX:0.##} · {_renderer.LastError ?? "(null)"}";
+        UpdateOverlay();
     }
+
+    // ── Wireframe box + WCS caption overlay ────────────────────────────────────
+
+    /// <summary>Create the 12 box edges + 9 caption labels once, parented to the overlay canvas.</summary>
+    private void BuildOverlayVisuals()
+    {
+        if (_overlayBuilt) return;
+        _overlayBuilt = true;
+
+        var edgeBrush = ArgbBrush(0x66, 0x9F, 0xC4, 0xE8); // faint cool blue
+        for (int i = 0; i < _edgeLines.Length; i++)
+        {
+            var ln = new Line { Stroke = edgeBrush, StrokeThickness = 1, Visibility = Visibility.Collapsed };
+            _edgeLines[i] = ln;
+            OverlayCanvas.Children.Add(ln);
+        }
+
+        for (int i = 0; i < _captions.Length; i++)
+        {
+            var shadow = MakeCaptionBlock(Microsoft.UI.Colors.Black);
+            var main = MakeCaptionBlock(Microsoft.UI.Colors.White);
+            _captions[i] = (shadow, main);
+            OverlayCanvas.Children.Add(shadow);
+            OverlayCanvas.Children.Add(main);
+        }
+    }
+
+    private static TextBlock MakeCaptionBlock(Color color) => new()
+    {
+        FontFamily = new FontFamily("Consolas"),
+        FontSize = 11,
+        Foreground = new SolidColorBrush(color),
+        IsHitTestVisible = false,
+        Visibility = Visibility.Collapsed,
+    };
+
+    private void OnCaptionsToggled(object sender, RoutedEventArgs e)
+        => _captionsOn = CaptionsToggle.IsOn;
+
+    /// <summary>Recompute the projected box + captions for the current camera and lay them out.</summary>
+    private void UpdateOverlay()
+    {
+        if (!_overlayBuilt) return;
+        double w = RenderPanel.ActualWidth, h = RenderPanel.ActualHeight;
+
+        var frame = _overlayFrame;
+        CubeAxesOverlay.Build(
+            frame,
+            ViewModel.CameraAzimuth, ViewModel.CameraElevation, ViewModel.CameraDistance,
+            ViewModel.SpectralScale, _volNx, _volNy, _meta, w, h);
+
+        // Box edges.
+        for (int i = 0; i < _edgeLines.Length; i++)
+        {
+            var ln = _edgeLines[i];
+            if (i < frame.Edges.Count && frame.Edges[i].A.Visible && frame.Edges[i].B.Visible)
+            {
+                var (a, b) = frame.Edges[i];
+                ln.X1 = a.X; ln.Y1 = a.Y; ln.X2 = b.X; ln.Y2 = b.Y;
+                ln.Visibility = Visibility.Visible;
+            }
+            else ln.Visibility = Visibility.Collapsed;
+        }
+
+        // Captions.
+        for (int i = 0; i < _captions.Length; i++)
+        {
+            var (shadow, main) = _captions[i];
+            bool show = _captionsOn && i < frame.Captions.Count
+                        && frame.Captions[i].At.Visible
+                        && !string.IsNullOrEmpty(frame.Captions[i].Text);
+            if (!show)
+            {
+                shadow.Visibility = Visibility.Collapsed;
+                main.Visibility = Visibility.Collapsed;
+                continue;
+            }
+
+            var cap = frame.Captions[i];
+            // Text + style are fixed per cube — (re)configure + measure only when the
+            // text for this slot actually changes (i.e. once, on load).
+            if (_captionText[i] != cap.Text)
+            {
+                _captionText[i] = cap.Text;
+                main.Text = cap.Text;
+                shadow.Text = cap.Text;
+                var color = cap.IsAxisName ? ArgbColor(0xFF, 0x73, 0xD9, 0xFF) : ArgbColor(0xF5, 0xFF, 0xFF, 0xFF);
+                main.Foreground = new SolidColorBrush(color);
+                main.FontWeight = cap.IsAxisName
+                    ? Microsoft.UI.Text.FontWeights.SemiBold
+                    : Microsoft.UI.Text.FontWeights.Normal;
+                shadow.FontWeight = main.FontWeight;
+                main.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                _captionW[i] = main.DesiredSize.Width;
+                _captionH[i] = main.DesiredSize.Height;
+            }
+
+            double tw = _captionW[i], th = _captionH[i];
+            double x = Math.Clamp(cap.At.X - tw / 2, 8, Math.Max(8, w - tw - 8));
+            double y = Math.Clamp(cap.At.Y - th / 2, 8, Math.Max(8, h - th - 8));
+            Canvas.SetLeft(main, x); Canvas.SetTop(main, y);
+            Canvas.SetLeft(shadow, x + 1); Canvas.SetTop(shadow, y + 1);
+            main.Visibility = Visibility.Visible;
+            shadow.Visibility = Visibility.Visible;
+        }
+    }
+
+    private static Color ArgbColor(byte a, byte r, byte g, byte b) => Color.FromArgb(a, r, g, b);
+    private static SolidColorBrush ArgbBrush(byte a, byte r, byte g, byte b) => new(Color.FromArgb(a, r, g, b));
 
     // ── Sizing / DPI ──────────────────────────────────────────────────────────
 
@@ -238,18 +401,28 @@ public sealed partial class CubeViewerPage : UserControl
 
     // ── Teardown ───────────────────────────────────────────────────────────────
 
-    private void OnUnloaded(object sender, RoutedEventArgs e) => CleanupForClose();
+    // The page is created once and cached by MainWindow (navigation only toggles the host
+    // container's Visibility), so Unloaded is not expected during normal use. If it does fire
+    // (reparenting), we only PAUSE the render loop — keeping the GPU device alive so OnLoaded
+    // can resume — rather than permanently disposing, which would leave the reused page blank.
+    private void OnUnloaded(object sender, RoutedEventArgs e) => PauseRendering();
 
-    /// <summary>Stop the render loop and release all GPU resources. Idempotent.</summary>
-    public void CleanupForClose()
+    /// <summary>Unhook the per-frame render loop without releasing GPU resources (resumable).</summary>
+    private void PauseRendering()
     {
-        if (_closed) return;
-        _closed = true;
         if (_renderingHooked)
         {
             Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= OnRendering;
             _renderingHooked = false;
         }
+    }
+
+    /// <summary>Stop the render loop and release all GPU resources. Idempotent. For genuine teardown.</summary>
+    public void CleanupForClose()
+    {
+        if (_closed) return;
+        _closed = true;
+        PauseRendering();
         RenderPanel.CompositionScaleChanged -= OnCompositionScaleChanged;
         _renderer.Dispose();
     }

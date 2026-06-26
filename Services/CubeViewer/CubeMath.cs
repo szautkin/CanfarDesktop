@@ -124,6 +124,19 @@ internal static class CubeMath
         Matrix4x4.Invert(m, out var inv) ? inv : Matrix4x4.Identity;
 
     /// <summary>
+    /// Transform a homogeneous point by a true-math matrix: <c>result = m · v</c>
+    /// (column-vector convention), matching the shader's <c>mul(matrix, vector)</c>.
+    /// Used by the axis-caption overlay to project box corners to clip space with
+    /// the exact same matrices the GPU uses. (System.Numerics' <c>Vector4.Transform</c>
+    /// uses the opposite row-vector convention, so it must not be used here.)
+    /// </summary>
+    public static Vector4 TransformPoint(Matrix4x4 m, Vector4 v) => new(
+        m.M11 * v.X + m.M12 * v.Y + m.M13 * v.Z + m.M14 * v.W,
+        m.M21 * v.X + m.M22 * v.Y + m.M23 * v.Z + m.M24 * v.W,
+        m.M31 * v.X + m.M32 * v.Y + m.M33 * v.Z + m.M34 * v.W,
+        m.M41 * v.X + m.M42 * v.Y + m.M43 * v.Z + m.M44 * v.W);
+
+    /// <summary>
     /// Camera eye position for an orbit camera. Port of the Swift
     /// <c>cameraPosition()</c>: eye = d·(cosEl·sinAz, sinEl, cosEl·cosAz).
     /// </summary>

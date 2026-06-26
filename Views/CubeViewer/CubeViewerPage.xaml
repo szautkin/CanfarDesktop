@@ -13,6 +13,10 @@
                         PointerWheelChanged="OnPointerWheelChanged"
                         SizeChanged="OnPanelSizeChanged" />
 
+        <!-- Wireframe box + WCS axis captions, projected to match the GPU render.
+             Hit-test transparent so it never steals orbit/zoom input. -->
+        <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
+
         <!-- Fallback message shown if the GPU device can't be created -->
         <TextBlock x:Name="FallbackText"
                    Visibility="Collapsed"
@@ -35,6 +39,58 @@
                        Style="{StaticResource CaptionTextBlockStyle}" />
         </StackPanel>
 
+        <!-- Cube info / metadata panel (bottom-left) -->
+        <Border x:Name="InfoPanel" Visibility="Collapsed"
+                HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                Margin="20" Padding="14,10" CornerRadius="8" MaxWidth="320"
+                Background="#C0101622" BorderBrush="#40FFFFFF" BorderThickness="1"
+                IsHitTestVisible="False">
+            <StackPanel Spacing="3">
+                <TextBlock x:Name="InfoObject" FontWeight="SemiBold"
+                           Foreground="#FFF0F0F0" TextTrimming="CharacterEllipsis"
+                           Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <TextBlock x:Name="InfoInstrument" Foreground="#90BFD8FF"
+                           Visibility="Collapsed" TextTrimming="CharacterEllipsis"
+                           Style="{StaticResource CaptionTextBlockStyle}" />
+                <Grid Margin="0,4,0,0" ColumnSpacing="10" RowSpacing="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="DIMENSIONS"
+                               Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
+                    <TextBlock x:Name="InfoDims" Grid.Row="0" Grid.Column="1"
+                               Foreground="#FFE0E0E0" FontFamily="Consolas"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+
+                    <TextBlock x:Name="InfoUnitLabel" Grid.Row="1" Grid.Column="0" Text="UNIT"
+                               Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
+                    <TextBlock x:Name="InfoUnit" Grid.Row="1" Grid.Column="1"
+                               Foreground="#FFE0E0E0" FontFamily="Consolas"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="RANGE"
+                               Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
+                    <TextBlock x:Name="InfoRange" Grid.Row="2" Grid.Column="1"
+                               Foreground="#FFE0E0E0" FontFamily="Consolas" TextTrimming="CharacterEllipsis"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="NaN"
+                               Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
+                    <TextBlock x:Name="InfoNan" Grid.Row="3" Grid.Column="1"
+                               Foreground="#FFE0E0E0" FontFamily="Consolas"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
         <!-- Control panel -->
         <Border HorizontalAlignment="Right" VerticalAlignment="Top"
                 Margin="20" Padding="16,14" CornerRadius="8"
@@ -48,7 +104,7 @@
                 <StackPanel Spacing="2">
                     <TextBlock Text="Density" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
-                    <Slider x:Name="DensitySlider" Minimum="0.1" Maximum="4.0"
+                    <Slider x:Name="DensitySlider" Minimum="0.1" Maximum="3.0"
                             StepFrequency="0.05" Value="1.0"
                             ValueChanged="OnDensityChanged" />
                 </StackPanel>
@@ -56,7 +112,7 @@
                 <StackPanel Spacing="2">
                     <TextBlock Text="Spectral scale" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
-                    <Slider x:Name="SpectralSlider" Minimum="0.5" Maximum="3.0"
+                    <Slider x:Name="SpectralSlider" Minimum="0.5" Maximum="4.0"
                             StepFrequency="0.05" Value="1.5"
                             ValueChanged="OnSpectralChanged" />
                 </StackPanel>
@@ -64,7 +120,7 @@
                 <StackPanel Spacing="2">
                     <TextBlock Text="Quality (steps)" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
-                    <Slider x:Name="StepsSlider" Minimum="96" Maximum="640"
+                    <Slider x:Name="StepsSlider" Minimum="96" Maximum="768"
                             StepFrequency="16" Value="384"
                             ValueChanged="OnStepsChanged" />
                 </StackPanel>
@@ -91,6 +147,11 @@
                               OffContent="Off" OnContent="On"
                               Foreground="#FFE0E0E0"
                               Toggled="OnAutoOrbitToggled" />
+
+                <ToggleSwitch x:Name="CaptionsToggle" Header="Axis captions"
+                              OffContent="Off" OnContent="On" IsOn="True"
+                              Foreground="#FFE0E0E0"
+                              Toggled="OnCaptionsToggled" />
 
                 <Button Content="Reset view" HorizontalAlignment="Stretch"
                         Click="OnResetView" />

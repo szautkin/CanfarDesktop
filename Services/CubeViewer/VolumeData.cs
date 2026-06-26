@@ -24,13 +24,20 @@ public sealed class VolumeData
     /// <summary>A short human-readable label for the cube (file name or "Synthetic …").</summary>
     public string Name { get; }
 
-    public VolumeData(int nx, int ny, int nz, Half[] data, string name)
+    /// <summary>
+    /// WCS + value statistics for a real FITS cube (null for the synthetic volume),
+    /// driving the axis captions, info panel, and export plate.
+    /// </summary>
+    public CubeMetadata? Meta { get; }
+
+    public VolumeData(int nx, int ny, int nz, Half[] data, string name, CubeMetadata? meta = null)
     {
         Nx = nx;
         Ny = ny;
         Nz = nz;
         Data = data;
         Name = name;
+        Meta = meta;
     }
 
     /// <summary>
