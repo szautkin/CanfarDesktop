@@ -153,6 +153,12 @@ public static class McpToolCatalog
             new ProbeCubeSpectrumTool((x, y) => viewState.ProbeCubeAsync(x, y)),
             new ExportCubeFigureTool((path, format, scale, dark) => viewState.ExportCubeAsync(path, format, scale, dark)),
 
+            // 2D FITS Viewer: steer + read + probe pixel + go-to coordinate (active tab)
+            new SetFitsViewTool(args => viewState.SetFitsAsync(args)),
+            new GetFitsViewTool(() => viewState.GetFitsAsync()),
+            new ProbeFitsPixelTool((x, y) => viewState.ProbeFitsAsync(x, y)),
+            new FitsGotoCoordinateTool((ra, dec) => viewState.GotoFitsAsync(ra, dec)),
+
             // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
             new SaveQueryTool(),
             new DeleteSavedQueryTool(),

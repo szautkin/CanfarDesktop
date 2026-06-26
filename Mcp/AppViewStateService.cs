@@ -1,5 +1,6 @@
 using CanfarDesktop.Mcp.Tools.Write;
 using CanfarDesktop.Services.CubeViewer;
+using CanfarDesktop.Services.Fits;
 
 namespace CanfarDesktop.Mcp;
 
@@ -124,4 +125,36 @@ public sealed class AppViewStateService
 
     public Task<CubeSpectrumResult?> ProbeCubeAsync(int x, int y)
         => _probeCube?.Invoke(x, y) ?? Task.FromResult<CubeSpectrumResult?>(null);
+
+    // ── 2D FITS Viewer actions (registered by the UI; invoked by the FITS MCP tools) ─────────────
+
+    private volatile Func<Task<FitsViewState?>>? _getFits;
+    private volatile Func<FitsViewArgs, Task<FitsViewState?>>? _setFits;
+    private volatile Func<int, int, Task<FitsPixelResult?>>? _probeFits;
+    private volatile Func<double, double, Task<FitsGotoOutcome>>? _gotoFits;
+
+    /// <summary>The UI registers the FITS viewer actions (each marshals to the UI thread).</summary>
+    public void SetFitsActions(
+        Func<Task<FitsViewState?>> getFits,
+        Func<FitsViewArgs, Task<FitsViewState?>> setFits,
+        Func<int, int, Task<FitsPixelResult?>> probeFits,
+        Func<double, double, Task<FitsGotoOutcome>> gotoFits)
+    {
+        _getFits = getFits;
+        _setFits = setFits;
+        _probeFits = probeFits;
+        _gotoFits = gotoFits;
+    }
+
+    public Task<FitsViewState?> GetFitsAsync()
+        => _getFits?.Invoke() ?? Task.FromResult<FitsViewState?>(null);
+
+    public Task<FitsViewState?> SetFitsAsync(FitsViewArgs args)
+        => _setFits?.Invoke(args) ?? Task.FromResult<FitsViewState?>(null);
+
+    public Task<FitsPixelResult?> ProbeFitsAsync(int x, int y)
+        => _probeFits?.Invoke(x, y) ?? Task.FromResult<FitsPixelResult?>(null);
+
+    public Task<FitsGotoOutcome> GotoFitsAsync(double ra, double dec)
+        => _gotoFits?.Invoke(ra, dec) ?? Task.FromResult(new FitsGotoOutcome(false, ra, dec, "FITS viewer unavailable"));
 }

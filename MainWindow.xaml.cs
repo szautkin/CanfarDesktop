@@ -81,6 +81,7 @@ public sealed partial class MainWindow : Window
         _viewState.SetActions(NavigateByKeyAsync, SetSearchFocusActionAsync, OpenFitsActionAsync);
         _viewState.SetCubeActions(OpenCubeActionAsync, GetCubeActionAsync, SetCubeActionAsync,
                                   ExportCubeActionAsync, ProbeCubeActionAsync);
+        _viewState.SetFitsActions(GetFitsActionAsync, SetFitsActionAsync, ProbeFitsActionAsync, GotoFitsActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
     }
@@ -210,6 +211,68 @@ public sealed partial class MainWindow : Window
             catch (Exception ex) { tcs.SetException(ex); }
         }))
             tcs.SetResult(null);
+        return tcs.Task;
+    }
+
+    // ── 2D FITS viewer MCP actions (active tab) ──
+
+    private Task<CanfarDesktop.Services.Fits.FitsViewState?> GetFitsActionAsync()
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Services.Fits.FitsViewState?>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try { tcs.SetResult(_fitsTabHost?.GetFitsViewState()); }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(null);
+        return tcs.Task;
+    }
+
+    private Task<CanfarDesktop.Services.Fits.FitsViewState?> SetFitsActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.FitsViewArgs args)
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Services.Fits.FitsViewState?>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                if (_fitsTabHost is null) { tcs.SetResult(null); return; }
+                tcs.SetResult(_fitsTabHost.ApplyFitsView(
+                    stretch: args.Stretch, colormap: args.Colormap, minCut: args.MinCut, maxCut: args.MaxCut,
+                    zoomPercent: args.ZoomPercent, northUp: args.NorthUp, reset: args.Reset, clearCrosshair: args.ClearCrosshair));
+            }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(null);
+        return tcs.Task;
+    }
+
+    private Task<CanfarDesktop.Services.Fits.FitsPixelResult?> ProbeFitsActionAsync(int x, int y)
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Services.Fits.FitsPixelResult?>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try { tcs.SetResult(_fitsTabHost?.ProbeFitsPixel(x, y)); }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(null);
+        return tcs.Task;
+    }
+
+    private Task<CanfarDesktop.Services.Fits.FitsGotoOutcome> GotoFitsActionAsync(double ra, double dec)
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Services.Fits.FitsGotoOutcome>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                tcs.SetResult(_fitsTabHost is null
+                    ? new CanfarDesktop.Services.Fits.FitsGotoOutcome(false, ra, dec, "the FITS viewer is not open")
+                    : _fitsTabHost.GotoFitsCoordinate(ra, dec));
+            }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(new CanfarDesktop.Services.Fits.FitsGotoOutcome(false, ra, dec, "could not dispatch to the UI thread"));
         return tcs.Task;
     }
 

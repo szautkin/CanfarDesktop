@@ -694,4 +694,89 @@ public sealed partial class FitsTabHost : UserControl
         if (sender is Button { Tag: SavedCoordinate coord })
             ViewModel.DeleteCoordinate(coord);
     }
+
+    // ── MCP surface (steer + read + probe + goto the active FITS tab) ─────────────
+    // Mirrors the cube viewer's MCP surface. The host is the single entry point: it owns the active
+    // page + active view model + the toolbar sync, so an agent drives the exact same path the user does.
+
+    /// <summary>A snapshot of the active FITS tab's file + display state for get_fits_view.</summary>
+    public FitsViewState GetFitsViewState()
+    {
+        var vm = ViewModel.ActiveViewModel;
+        var img = vm?.ImageData;
+        var cross = vm?.CrosshairPosition;
+        double zoomPct = _activePage is not null ? _activePage.GetZoomMagnitude() * 100.0 : 100.0;
+        return new FitsViewState(
+            Loaded: vm is not null && img is not null,
+            FileName: vm?.FilePath is { } fp ? System.IO.Path.GetFileName(fp) : (vm?.Title ?? ""),
+            Width: img?.Width ?? 0,
+            Height: img?.Height ?? 0,
+            Stretch: (vm?.Stretch ?? ImageStretcher.StretchMode.Linear).ToString(),
+            Colormap: (vm?.Colormap ?? ColormapProvider.ColormapName.Grayscale).ToString(),
+            MinCut: vm?.MinCut ?? 0,
+            MaxCut: vm?.MaxCut ?? 0,
+            ZoomPercent: Math.Round(zoomPct, 1),
+            NorthUp: vm?.IsNorthUp ?? false,
+            HasWcs: img?.Wcs is { IsValid: true },
+            CrosshairPlaced: cross is not null,
+            CrosshairRa: cross?.Ra ?? 0,
+            CrosshairDec: cross?.Dec ?? 0);
+    }
+
+    /// <summary>Apply display settings from MCP to the active tab; each null is left unchanged.</summary>
+    public FitsViewState ApplyFitsView(
+        string? stretch = null, string? colormap = null, double? minCut = null, double? maxCut = null,
+        double? zoomPercent = null, bool? northUp = null, bool? reset = null, bool? clearCrosshair = null)
+    {
+        var vm = ViewModel.ActiveViewModel;
+        if (vm is not null)
+        {
+            // Setting these view-model properties re-renders automatically (OnXChanged → RenderAsync).
+            if (!string.IsNullOrEmpty(stretch) && Enum.TryParse<ImageStretcher.StretchMode>(stretch, true, out var sm))
+                vm.Stretch = sm;
+            if (!string.IsNullOrEmpty(colormap) && Enum.TryParse<ColormapProvider.ColormapName>(colormap, true, out var cm))
+                vm.Colormap = cm;
+            if (minCut is not null) vm.MinCut = (float)minCut.Value;
+            if (maxCut is not null) vm.MaxCut = (float)maxCut.Value;
+        }
+        if (_activePage is not null)
+        {
+            if (reset == true) _activePage.ResetView();                          // before zoom, so explicit zoom wins
+            if (zoomPercent is not null) _activePage.SetZoomLevel(zoomPercent.Value / 100.0);
+            if (northUp is not null) _activePage.SetNorthUp(northUp.Value);
+            if (clearCrosshair == true) _activePage.ClearCrosshair();
+        }
+        SyncToolbarToActiveTab(); // keep the toolbar in sync with the programmatic change
+        return GetFitsViewState();
+    }
+
+    /// <summary>Pixel value + sky coordinate at a 0-based display pixel, or null if out of range.</summary>
+    public FitsPixelResult? ProbeFitsPixel(int x, int y)
+    {
+        var img = ViewModel.ActiveViewModel?.ImageData;
+        if (img is null || x < 0 || y < 0 || x >= img.Width || y >= img.Height) return null;
+
+        int fitsY = img.Height - 1 - y; // display row 0 = FITS row (height-1)
+        double value = img.Pixels[fitsY * img.Width + x];
+        if (img.Wcs is { IsValid: true } wcs)
+        {
+            var (ra, dec) = wcs.PixelToWorld(x + 1, fitsY + 1); // FITS pixels are 1-based
+            return new FitsPixelResult(x, y, value, true, ra, dec);
+        }
+        return new FitsPixelResult(x, y, value, false, 0, 0);
+    }
+
+    /// <summary>Center the active viewport on an RA/Dec (degrees) and place the crosshair there.</summary>
+    public FitsGotoOutcome GotoFitsCoordinate(double ra, double dec)
+    {
+        var vm = ViewModel.ActiveViewModel;
+        if (vm?.ImageData is null) return new FitsGotoOutcome(false, ra, dec, "no FITS image is loaded");
+        if (vm.ImageData.Wcs is not { IsValid: true }) return new FitsGotoOutcome(false, ra, dec, "the loaded FITS has no valid WCS");
+        if (_activePage is null) return new FitsGotoOutcome(false, ra, dec, "no active FITS tab");
+        if (vm.GoToCoordinate(ra, dec) is null)
+            return new FitsGotoOutcome(false, ra, dec, "coordinate is outside the image / WCS domain");
+
+        _activePage.GoToWorldCoordinate(ra, dec); // centers viewport + places the crosshair
+        return new FitsGotoOutcome(true, ra, dec, null);
+    }
 }
