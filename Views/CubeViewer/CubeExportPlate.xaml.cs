@@ -86,7 +86,7 @@ public sealed partial class CubeExportPlate : UserControl
         SetText(HdrTitle, d.Title, fam, titleF, main, Microsoft.UI.Text.FontWeights.SemiBold);
         SetText(HdrInstrument, d.Subtitle, fam, smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
         SetText(HdrChannel, d.ChannelText, new FontFamily("Consolas"), smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
-        SetText(HdrBrand, "◈ CANFAR CUBE", fam, smallF, dim, Microsoft.UI.Text.FontWeights.Medium);
+        SetText(HdrBrand, "◈ VERBINAL", fam, smallF, dim, Microsoft.UI.Text.FontWeights.Medium);
         SetText(HdrFile, d.FileName, new FontFamily("Consolas"), smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
         SetText(HdrDate, d.DateText, new FontFamily("Consolas"), smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
         HdrInstrument.Visibility = string.IsNullOrEmpty(d.Subtitle) ? Visibility.Collapsed : Visibility.Visible;
