@@ -28,3 +28,6 @@ public sealed record FitsPixelResult(
 
 /// <summary>Result of fits_goto_coordinate: whether the viewport was moved to the RA/Dec.</summary>
 public sealed record FitsGotoOutcome(bool Moved, double Ra, double Dec, string? Message);
+
+/// <summary>A saved FITS sky-coordinate bookmark, for the bookmark MCP tools.</summary>
+public sealed record FitsBookmark(string Id, string Label, double Ra, double Dec, string? SourceFile, DateTime SavedAt);

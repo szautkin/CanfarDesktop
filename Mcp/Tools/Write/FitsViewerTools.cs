@@ -114,3 +114,80 @@ public sealed class FitsGotoCoordinateTool : JsonReadTool<FitsGotoCoordinateTool
 
     public sealed record Args { public double? Ra { get; init; } public double? Dec { get; init; } }
 }
+
+/// <summary><c>list_fits_bookmarks</c> — the user's saved FITS sky-coordinate bookmarks.</summary>
+public sealed class ListFitsBookmarksTool : JsonReadTool<ListFitsBookmarksTool.Args, ListFitsBookmarksTool.Output>
+{
+    private readonly Func<Task<IReadOnlyList<FitsBookmark>>> _list;
+    public ListFitsBookmarksTool(Func<Task<IReadOnlyList<FitsBookmark>>> list) => _list = list;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "list_fits_bookmarks",
+        "List the user's saved FITS sky-coordinate bookmarks (id, label, RA/Dec in degrees, source file). " +
+        "Use fits_goto_coordinate with a bookmark's ra/dec to jump the FITS viewport there.",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var items = await _list();
+        return new Output(items.Count, items);
+    }
+
+    public sealed record Args { }
+    public sealed record Output(int Count, IReadOnlyList<FitsBookmark> Bookmarks);
+}
+
+/// <summary><c>save_fits_bookmark</c> — save a FITS sky-coordinate bookmark. ViewState (live).</summary>
+public sealed class SaveFitsBookmarkTool : JsonReadTool<SaveFitsBookmarkTool.Args, FitsBookmark?>
+{
+    private readonly Func<double, double, string?, string?, Task<FitsBookmark?>> _save;
+    public SaveFitsBookmarkTool(Func<double, double, string?, string?, Task<FitsBookmark?>> save) => _save = save;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "save_fits_bookmark",
+        "Save a FITS sky-coordinate bookmark (RA/Dec in degrees, optional label + source file). Returns the " +
+        "saved bookmark. Live-applied.",
+        """{"type":"object","properties":{"ra":{"type":"number"},"dec":{"type":"number"},"label":{"type":"string"},"sourceFile":{"type":"string"}},"required":["ra","dec"],"additionalProperties":false}""");
+
+    protected override Task<FitsBookmark?> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        if (args.Ra is null || args.Dec is null)
+            throw new McpToolException(new InvalidArgument("ra and dec are required"));
+        return _save(args.Ra.Value, args.Dec.Value, args.Label, args.SourceFile);
+    }
+
+    public sealed record Args
+    {
+        public double? Ra { get; init; }
+        public double? Dec { get; init; }
+        public string? Label { get; init; }
+        public string? SourceFile { get; init; }
+    }
+}
+
+/// <summary><c>delete_fits_bookmark</c> — delete a saved FITS bookmark by id. ViewState (live).</summary>
+public sealed class DeleteFitsBookmarkTool : JsonReadTool<DeleteFitsBookmarkTool.Args, DeleteFitsBookmarkTool.Output>
+{
+    private readonly Func<string, Task<bool>> _delete;
+    public DeleteFitsBookmarkTool(Func<string, Task<bool>> delete) => _delete = delete;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "delete_fits_bookmark",
+        "Delete a saved FITS sky-coordinate bookmark by its id (from list_fits_bookmarks). Returns whether a " +
+        "bookmark was found and removed. Live-applied.",
+        """{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}""");
+
+    protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var id = (args.Id ?? string.Empty).Trim();
+        if (id.Length == 0) throw new McpToolException(new InvalidArgument("id is required"));
+        return new Output(await _delete(id));
+    }
+
+    public sealed record Args { public string? Id { get; init; } }
+    public sealed record Output(bool Deleted);
+}

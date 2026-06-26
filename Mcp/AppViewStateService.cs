@@ -157,4 +157,29 @@ public sealed class AppViewStateService
 
     public Task<FitsGotoOutcome> GotoFitsAsync(double ra, double dec)
         => _gotoFits?.Invoke(ra, dec) ?? Task.FromResult(new FitsGotoOutcome(false, ra, dec, "FITS viewer unavailable"));
+
+    // ── FITS coordinate bookmarks (persisted; routed through the host VM to keep the panel in sync) ──
+
+    private volatile Func<Task<IReadOnlyList<FitsBookmark>>>? _listFitsBookmarks;
+    private volatile Func<double, double, string?, string?, Task<FitsBookmark?>>? _saveFitsBookmark;
+    private volatile Func<string, Task<bool>>? _deleteFitsBookmark;
+
+    public void SetFitsBookmarkActions(
+        Func<Task<IReadOnlyList<FitsBookmark>>> list,
+        Func<double, double, string?, string?, Task<FitsBookmark?>> save,
+        Func<string, Task<bool>> delete)
+    {
+        _listFitsBookmarks = list;
+        _saveFitsBookmark = save;
+        _deleteFitsBookmark = delete;
+    }
+
+    public Task<IReadOnlyList<FitsBookmark>> ListFitsBookmarksAsync()
+        => _listFitsBookmarks?.Invoke() ?? Task.FromResult<IReadOnlyList<FitsBookmark>>(Array.Empty<FitsBookmark>());
+
+    public Task<FitsBookmark?> SaveFitsBookmarkAsync(double ra, double dec, string? label, string? sourceFile)
+        => _saveFitsBookmark?.Invoke(ra, dec, label, sourceFile) ?? Task.FromResult<FitsBookmark?>(null);
+
+    public Task<bool> DeleteFitsBookmarkAsync(string id)
+        => _deleteFitsBookmark?.Invoke(id) ?? Task.FromResult(false);
 }

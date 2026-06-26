@@ -112,4 +112,55 @@ public class FitsViewerToolsTests
     public void FitsGoto_IsViewStateVerb()
         => Assert.Equal(McpVerbClass.ViewState,
             new FitsGotoCoordinateTool((_, _) => Task.FromResult(new FitsGotoOutcome(false, 0, 0, null))).VerbClass);
+
+    // ── fits bookmarks ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ListFitsBookmarks_ReturnsItems()
+    {
+        var tool = new ListFitsBookmarksTool(() => Task.FromResult<IReadOnlyList<FitsBookmark>>(
+            new[] { new FitsBookmark("id-1", "M51 core", 202.47, 47.2, "m51.fits", DateTime.UnixEpoch) }));
+        var doc = Json(await tool.InvokeAsync(Args("""{}"""), Ctx, default));
+        Assert.Equal(1, doc.GetProperty("count").GetInt32());
+        Assert.Equal("M51 core", doc.GetProperty("bookmarks")[0].GetProperty("label").GetString());
+    }
+
+    [Fact]
+    public async Task SaveFitsBookmark_InvokesClosure_ReturnsBookmark()
+    {
+        (double ra, double dec, string? label)? seen = null;
+        var tool = new SaveFitsBookmarkTool((ra, dec, label, src) =>
+        {
+            seen = (ra, dec, label);
+            return Task.FromResult<FitsBookmark?>(new("id-9", label ?? "", ra, dec, src, DateTime.UnixEpoch));
+        });
+        var doc = Json(await tool.InvokeAsync(Args("""{"ra":10.5,"dec":-20.1,"label":"target"}"""), Ctx, default));
+        Assert.Equal((10.5, -20.1, "target"), seen);
+        Assert.Equal("id-9", doc.GetProperty("id").GetString());
+    }
+
+    [Fact]
+    public async Task SaveFitsBookmark_MissingCoords_InvalidArgument()
+    {
+        var tool = new SaveFitsBookmarkTool((_, _, _, _) => Task.FromResult<FitsBookmark?>(null));
+        var r = await tool.InvokeAsync(Args("""{"ra":10.5}"""), Ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(r).Reason);
+    }
+
+    [Fact]
+    public async Task DeleteFitsBookmark_InvokesClosure()
+    {
+        string? seen = null;
+        var tool = new DeleteFitsBookmarkTool(id => { seen = id; return Task.FromResult(true); });
+        var doc = Json(await tool.InvokeAsync(Args("""{"id":"id-1"}"""), Ctx, default));
+        Assert.Equal("id-1", seen);
+        Assert.True(doc.GetProperty("deleted").GetBoolean());
+    }
+
+    [Fact]
+    public void BookmarkWrites_AreViewStateVerbs()
+    {
+        Assert.Equal(McpVerbClass.ViewState, new SaveFitsBookmarkTool((_, _, _, _) => Task.FromResult<FitsBookmark?>(null)).VerbClass);
+        Assert.Equal(McpVerbClass.ViewState, new DeleteFitsBookmarkTool(_ => Task.FromResult(false)).VerbClass);
+    }
 }

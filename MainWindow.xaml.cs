@@ -76,12 +76,13 @@ public sealed partial class MainWindow : Window
     private void InitViewStateTracking()
     {
         _viewState = App.Services.GetRequiredService<CanfarDesktop.Mcp.AppViewStateService>();
-        var fitsHost = App.Services.GetRequiredService<FitsTabHostViewModel>();
-        fitsHost.Tabs.CollectionChanged += (_, _) => PublishOpenFits(fitsHost);
+        _fitsHostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
+        _fitsHostVm.Tabs.CollectionChanged += (_, _) => PublishOpenFits(_fitsHostVm);
         _viewState.SetActions(NavigateByKeyAsync, SetSearchFocusActionAsync, OpenFitsActionAsync);
         _viewState.SetCubeActions(OpenCubeActionAsync, GetCubeActionAsync, SetCubeActionAsync,
                                   ExportCubeActionAsync, ProbeCubeActionAsync);
         _viewState.SetFitsActions(GetFitsActionAsync, SetFitsActionAsync, ProbeFitsActionAsync, GotoFitsActionAsync);
+        _viewState.SetFitsBookmarkActions(ListFitsBookmarksActionAsync, SaveFitsBookmarkActionAsync, DeleteFitsBookmarkActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
     }
@@ -275,6 +276,60 @@ public sealed partial class MainWindow : Window
             tcs.SetResult(new CanfarDesktop.Services.Fits.FitsGotoOutcome(false, ra, dec, "could not dispatch to the UI thread"));
         return tcs.Task;
     }
+
+    // ── FITS coordinate bookmarks (routed through the host VM so the store + UI panel stay in sync) ──
+
+    private Task<IReadOnlyList<CanfarDesktop.Services.Fits.FitsBookmark>> ListFitsBookmarksActionAsync()
+    {
+        var tcs = new TaskCompletionSource<IReadOnlyList<CanfarDesktop.Services.Fits.FitsBookmark>>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try { tcs.SetResult(_fitsHostVm.SavedCoordinates.Select(ToBookmark).ToList()); }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(Array.Empty<CanfarDesktop.Services.Fits.FitsBookmark>());
+        return tcs.Task;
+    }
+
+    private Task<CanfarDesktop.Services.Fits.FitsBookmark?> SaveFitsBookmarkActionAsync(double ra, double dec, string? label, string? sourceFile)
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Services.Fits.FitsBookmark?>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                _fitsHostVm.SaveCoordinate(label ?? string.Empty, ra, dec, sourceFile);
+                var saved = _fitsHostVm.SavedCoordinates.FirstOrDefault(); // SaveCoordinate inserts at index 0
+                tcs.SetResult(saved is null ? null : ToBookmark(saved));
+            }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(null);
+        return tcs.Task;
+    }
+
+    private Task<bool> DeleteFitsBookmarkActionAsync(string id)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                var match = Guid.TryParse(id, out var gid)
+                    ? _fitsHostVm.SavedCoordinates.FirstOrDefault(c => c.Id == gid)
+                    : null;
+                if (match is null) { tcs.SetResult(false); return; }
+                _fitsHostVm.DeleteCoordinate(match);
+                tcs.SetResult(true);
+            }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(false);
+        return tcs.Task;
+    }
+
+    private static CanfarDesktop.Services.Fits.FitsBookmark ToBookmark(CanfarDesktop.Models.Fits.SavedCoordinate c)
+        => new(c.Id.ToString(), c.Label, c.Ra, c.Dec, c.SourceFile, c.SavedAt);
 
     private Task<CanfarDesktop.Services.CubeViewer.CubeViewState?> SetCubeActionAsync(
         CanfarDesktop.Mcp.Tools.Write.CubeViewArgs args)
@@ -659,6 +714,7 @@ public sealed partial class MainWindow : Window
     }
 
     private Views.FitsViewer.FitsTabHost? _fitsTabHost;
+    private FitsTabHostViewModel _fitsHostVm = null!; // singleton; owns the saved-coordinate bookmarks (set during MCP init)
     private NotebookTabHost? _notebookTabHost;
 
     public async void OpenNotebook(string? filePath = null)

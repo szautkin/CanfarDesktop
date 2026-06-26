@@ -159,6 +159,10 @@ public static class McpToolCatalog
             new GetFitsViewTool(() => viewState.GetFitsAsync()),
             new ProbeFitsPixelTool((x, y) => viewState.ProbeFitsAsync(x, y)),
             new FitsGotoCoordinateTool((ra, dec) => viewState.GotoFitsAsync(ra, dec)),
+            // FITS coordinate bookmarks (persisted saved coordinates)
+            new ListFitsBookmarksTool(() => viewState.ListFitsBookmarksAsync()),
+            new SaveFitsBookmarkTool((ra, dec, label, src) => viewState.SaveFitsBookmarkAsync(ra, dec, label, src)),
+            new DeleteFitsBookmarkTool(id => viewState.DeleteFitsBookmarkAsync(id)),
 
             // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
             new SaveQueryTool(),
