@@ -92,8 +92,9 @@ public sealed class CubeVolumeRenderer : IDisposable
     public float SpectralScale { get; set; } = 1.5f;
     public bool Interacting { get; set; }
 
-    /// <summary>Dark background clear color (0.02, 0.03, 0.06) from the macOS app.</summary>
-    private static readonly Color4 ClearColor = new(0.02f, 0.03f, 0.06f, 1f);
+    /// <summary>Background clear color. Defaults to the macOS dark (0.02, 0.03, 0.06); the host
+    /// swaps it for the Dark/Black/Light background options.</summary>
+    public Color4 Background { get; set; } = new(0.02f, 0.03f, 0.06f, 1f);
 
     /// <summary>
     /// Initialize the device, swap chain (bound to the panel), pipeline, and
@@ -266,6 +267,9 @@ public sealed class CubeVolumeRenderer : IDisposable
         SetTransferFunction(CubeColormaps.DefaultTransferFunction);
     }
 
+    /// <summary>Set the background clear color (linear RGB, 0..1).</summary>
+    public void SetBackground(float r, float g, float b) => Background = new Color4(r, g, b, 1f);
+
     /// <summary>Swap the active colormap LUT (256×1 RGBA8). Safe to call between frames.</summary>
     public void SetColormap(byte[] rgba)
     {
@@ -421,7 +425,7 @@ public sealed class CubeVolumeRenderer : IDisposable
         Marshal.StructureToPtr(uniforms, mapped.DataPointer, false);
         _context.Unmap(_cbuffer, 0);
 
-        _context.ClearRenderTargetView(_rtv, ClearColor);
+        _context.ClearRenderTargetView(_rtv, Background);
         _context.OMSetRenderTargets(_rtv);
         _context.RSSetViewport(new Viewport(0, 0, _width, _height, 0f, 1f));
         _context.RSSetState(_raster);

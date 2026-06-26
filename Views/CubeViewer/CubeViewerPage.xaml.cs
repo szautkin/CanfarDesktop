@@ -326,6 +326,8 @@ public sealed partial class CubeViewerPage : UserControl
 
     private void OnPanelSizeChanged(object sender, SizeChangedEventArgs e)
     {
+        // Keep the control panel scrollable within the viewport (independent of GPU init).
+        ControlScroll.MaxHeight = Math.Max(200, e.NewSize.Height - 56);
         if (!_initialized || _closed) return;
         var (w, h) = PhysicalSize();
         _renderer.Resize(w, h);
@@ -415,6 +417,9 @@ public sealed partial class CubeViewerPage : UserControl
     /// <summary>Rebuild the colorbar gradient from the active colormap + refresh the value labels.</summary>
     private void UpdateColorbar(byte[]? lut = null)
     {
+        // The window sliders' ValueChanged can fire during XAML parse, before the
+        // colorbar elements (declared later) are created — no-op until they exist.
+        if (ColorbarRect is null) return;
         lut ??= CubeColormaps.Build(_currentColormap);
 
         var brush = new LinearGradientBrush { StartPoint = new Point(0, 0.5), EndPoint = new Point(1, 0.5) };
@@ -446,8 +451,54 @@ public sealed partial class CubeViewerPage : UserControl
     private static string FormatColorbarValue(double v)
         => v.ToString("G3", System.Globalization.CultureInfo.InvariantCulture);
 
-    private void OnMipToggled(object sender, RoutedEventArgs e)
-        => ViewModel.Mip = MipToggle.IsOn;
+    // ── Window / levels ────────────────────────────────────────────────────────
+
+    private bool _suppressWindow; // guard reentrancy when we set the sliders programmatically
+
+    private void OnWindowLoChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_suppressWindow) return;
+        float lo = Math.Min((float)e.NewValue, ViewModel.WindowHi - 0.01f);
+        if (lo != (float)e.NewValue) { _suppressWindow = true; WindowLoSlider.Value = lo; _suppressWindow = false; }
+        ViewModel.WindowLo = Math.Max(0f, lo);
+        UpdateColorbar();
+    }
+
+    private void OnWindowHiChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_suppressWindow) return;
+        float hi = Math.Max((float)e.NewValue, ViewModel.WindowLo + 0.01f);
+        if (hi != (float)e.NewValue) { _suppressWindow = true; WindowHiSlider.Value = hi; _suppressWindow = false; }
+        ViewModel.WindowHi = Math.Min(1f, hi);
+        UpdateColorbar();
+    }
+
+    private void OnWindowMinMax(object sender, RoutedEventArgs e) => SetWindow(0f, 1f);
+    private void OnWindowP99(object sender, RoutedEventArgs e) => SetWindow(0f, 0.99f);
+
+    private void SetWindow(float lo, float hi)
+    {
+        _suppressWindow = true;
+        WindowLoSlider.Value = lo;
+        WindowHiSlider.Value = hi;
+        _suppressWindow = false;
+        ViewModel.WindowLo = lo;
+        ViewModel.WindowHi = hi;
+        UpdateColorbar();
+    }
+
+    private void OnRenderModeChanged(object sender, SelectionChangedEventArgs e)
+        => ViewModel.Mip = RenderModeCombo.SelectedIndex == 1; // 0 Emission, 1 Max-Intensity
+
+    private void OnBackgroundChanged(object sender, SelectionChangedEventArgs e)
+    {
+        switch (BackgroundCombo.SelectedIndex)
+        {
+            case 1: _renderer.SetBackground(0f, 0f, 0f); break;            // Black
+            case 2: _renderer.SetBackground(0.96f, 0.96f, 0.96f); break;   // Light
+            default: _renderer.SetBackground(0.02f, 0.03f, 0.06f); break;  // Dark
+        }
+    }
 
     private void OnAutoOrbitToggled(object sender, RoutedEventArgs e)
         => ViewModel.AutoOrbit = AutoOrbitToggle.IsOn;
