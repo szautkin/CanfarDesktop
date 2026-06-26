@@ -97,7 +97,7 @@ public sealed class CubeVolumeRenderer : IDisposable
     public bool DebugMode { get; set; } = true;
 
     /// <summary>Dark background clear color (0.02, 0.03, 0.06) from the macOS app.</summary>
-    private static readonly Color4 ClearColor = new(0.02f, 0.03f, 0.06f, 1f);
+    private static readonly Color4 ClearColor = new(1f, 0f, 1f, 1f); // TEMP diagnostic: bright magenta
 
     /// <summary>
     /// Initialize the device, swap chain (bound to the panel), pipeline, and
