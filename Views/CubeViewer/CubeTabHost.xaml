@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="CanfarDesktop.Views.CubeViewer.CubeTabHost"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid>
+        <TabView x:Name="TabViewControl"
+                 IsAddTabButtonVisible="True"
+                 AddTabButtonClick="OnAddTab"
+                 TabCloseRequested="OnTabCloseRequested"
+                 SelectionChanged="OnTabSelectionChanged" />
+
+        <!-- Empty state shown when no cube is open -->
+        <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Spacing="14" MaxWidth="400">
+            <FontIcon Glyph="&#xE809;" FontSize="56" HorizontalAlignment="Center"
+                      Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+            <TextBlock Text="No cube open" HorizontalAlignment="Center"
+                       Style="{StaticResource SubtitleTextBlockStyle}" />
+            <TextBlock TextWrapping="Wrap" TextAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Style="{StaticResource BodyTextBlockStyle}"
+                       Text="Open a FITS spectral cube (NAXIS=3) to explore it in 3D — orbit the volume, scrub channels, probe spectra, and export figures." />
+            <Button Click="OnOpenFileEmpty" HorizontalAlignment="Center"
+                    Style="{StaticResource AccentButtonStyle}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon Glyph="&#xE8E5;" FontSize="16" />
+                    <TextBlock Text="Open cube…" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

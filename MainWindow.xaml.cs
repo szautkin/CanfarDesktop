@@ -179,12 +179,11 @@ public sealed partial class MainWindow : Window
                         "file not found, or observation not downloaded (use download_observation first)"));
                     return;
                 }
-                _cubeViewerPage ??= new Views.CubeViewer.CubeViewerPage();
-                CubeViewerContainer.Child = _cubeViewerPage;
+                var host = EnsureCubeHost();
                 NavigateTo(AppMode.CubeViewer);
-                bool ok = await _cubeViewerPage.LoadCubeAsync(path);
-                var st = _cubeViewerPage.GetCubeState();
-                tcs.SetResult(ok
+                var page = await host.AddTabForFileAsync(path);
+                var st = page.GetCubeState();
+                tcs.SetResult(st.Loaded
                     ? new(true, path, st.Nx, st.Ny, st.Nz, null)
                     : new(false, path, st.Nx, st.Ny, st.Nz, "not a 3D cube (NAXIS=3) or could not be read"));
             }
@@ -207,7 +206,7 @@ public sealed partial class MainWindow : Window
         var tcs = new TaskCompletionSource<CanfarDesktop.Services.CubeViewer.CubeViewState?>();
         if (!DispatcherQueue.TryEnqueue(() =>
         {
-            try { tcs.SetResult(_cubeViewerPage?.GetCubeState()); }
+            try { tcs.SetResult(_cubeTabHost?.ActivePage?.GetCubeState()); }
             catch (Exception ex) { tcs.SetException(ex); }
         }))
             tcs.SetResult(null);
@@ -222,10 +221,11 @@ public sealed partial class MainWindow : Window
         {
             try
             {
-                if (_cubeViewerPage is null) { tcs.SetResult(null); return; }
-                _cubeViewerPage.ApplyCubeView(args.Mode, args.Channel, args.Colormap, args.Stretch,
+                var cube = _cubeTabHost?.ActivePage;
+                if (cube is null) { tcs.SetResult(null); return; }
+                cube.ApplyCubeView(args.Mode, args.Channel, args.Colormap, args.Stretch,
                     args.RenderMode, args.WindowLo, args.WindowHi);
-                tcs.SetResult(_cubeViewerPage.GetCubeState());
+                tcs.SetResult(cube.GetCubeState());
             }
             catch (Exception ex) { tcs.SetException(ex); }
         }))
@@ -241,12 +241,13 @@ public sealed partial class MainWindow : Window
         {
             try
             {
-                if (_cubeViewerPage is null)
+                var cube = _cubeTabHost?.ActivePage;
+                if (cube is null)
                 {
                     tcs.SetResult(new(false, path, "the cube viewer is not open (use open_cube first)"));
                     return;
                 }
-                var err = await _cubeViewerPage.ExportCubeToPathAsync(path, format, scale, dark);
+                var err = await cube.ExportCubeToPathAsync(path, format, scale, dark);
                 tcs.SetResult(err is null ? new(true, path, null) : new(false, path, err));
             }
             catch (Exception ex) { tcs.SetException(ex); }
@@ -260,7 +261,7 @@ public sealed partial class MainWindow : Window
         var tcs = new TaskCompletionSource<CanfarDesktop.Services.CubeViewer.CubeSpectrumResult?>();
         if (!DispatcherQueue.TryEnqueue(() =>
         {
-            try { tcs.SetResult(_cubeViewerPage?.ProbeCubeSpectrum(x, y)); }
+            try { tcs.SetResult(_cubeTabHost?.ActivePage?.ProbeCubeSpectrum(x, y)); }
             catch (Exception ex) { tcs.SetException(ex); }
         }))
             tcs.SetResult(null);
@@ -616,22 +617,31 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private Views.CubeViewer.CubeViewerPage? _cubeViewerPage;
+    private Views.CubeViewer.CubeTabHost? _cubeTabHost;
+
+    private Views.CubeViewer.CubeTabHost EnsureCubeHost()
+    {
+        if (_cubeTabHost is null)
+        {
+            _cubeTabHost = new Views.CubeViewer.CubeTabHost();
+            CubeViewerContainer.Child = _cubeTabHost;
+        }
+        return _cubeTabHost;
+    }
 
     /// <summary>
-    /// Open the 3D Cube Viewer (GPU volume render). Builds the page once and reuses it. When
-    /// <paramref name="filePath"/> is given, that FITS spectral cube is loaded (from Open, Search,
-    /// Research, or an MCP tool); otherwise the viewer keeps its current/default cube.
+    /// Open the tabbed 3D Cube Viewer. When <paramref name="filePath"/> is given, that FITS spectral
+    /// cube opens in a new tab (from Open, Search, Research, Storage, or an MCP tool); otherwise the
+    /// viewer is shown as-is (its empty-state prompt if no cubes are open).
     /// </summary>
     public void OpenCubeViewer(string? filePath = null)
     {
         try
         {
-            _cubeViewerPage ??= new Views.CubeViewer.CubeViewerPage();
-            CubeViewerContainer.Child = _cubeViewerPage;
+            var host = EnsureCubeHost();
             NavigateTo(AppMode.CubeViewer);
             if (!string.IsNullOrEmpty(filePath))
-                _ = _cubeViewerPage.LoadCubeAsync(filePath);
+                _ = host.AddTabForFileAsync(filePath);
         }
         catch (Exception ex)
         {

@@ -95,7 +95,8 @@ public sealed partial class CubeViewerPage : UserControl
         PopulateColormapPicker();
         StatusText.Text = "Loading cube…";
 
-        // Load the cube requested before init (Open / Search / MCP), else the default.
+        // Load the cube requested before init (Open / Search / MCP). The page is created per tab
+        // with a specific cube, so there's normally always a pending path; if not, stay empty.
         if (_pendingCubePath is { } pending)
         {
             _pendingCubePath = null;
@@ -103,7 +104,7 @@ public sealed partial class CubeViewerPage : UserControl
         }
         else
         {
-            _ = LoadDefaultAsync();
+            StatusText.Text = "Open a FITS cube to begin.";
         }
     }
 
@@ -163,19 +164,6 @@ public sealed partial class CubeViewerPage : UserControl
         }
     }
 
-    /// <summary>Initial load: a cube in Downloads if present, else a synthetic volume.</summary>
-    private async Task LoadDefaultAsync()
-    {
-        var downloads = System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads",
-            "dragons_FDF_clean_tot_Kgal.car.32bit.fits");
-        if (System.IO.File.Exists(downloads)) { await LoadCubeAsync(downloads); return; }
-
-        var volume = await Task.Run(() => VolumeData.GenerateSyntheticNebula(128));
-        if (_closed) return;
-        ApplyVolume(volume, volume.Name + " — open a cube with Open…");
-    }
-
     /// <summary>Upload a decoded volume to the renderer + slice view and refresh the UI.</summary>
     private void ApplyVolume(VolumeData volume, string note)
     {
@@ -193,20 +181,6 @@ public sealed partial class CubeViewerPage : UserControl
         HookRendering();
     }
 
-    private async void OnOpenCubeClick(object sender, RoutedEventArgs e)
-    {
-        var wins = WindowHelper.ActiveWindows;
-        var hwnd = wins.Count > 0 ? WinRT.Interop.WindowNative.GetWindowHandle(wins[0]) : nint.Zero;
-        if (hwnd == nint.Zero) return;
-
-        var picker = new Windows.Storage.Pickers.FileOpenPicker();
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
-        picker.FileTypeFilter.Add(".fits");
-        picker.FileTypeFilter.Add(".fit");
-        picker.FileTypeFilter.Add(".fts");
-        var file = await picker.PickSingleFileAsync();
-        if (file is not null) await LoadCubeAsync(file.Path);
-    }
 
     /// <summary>Fill the bottom-left info panel from the cube metadata (hidden for the synthetic volume).</summary>
     private void PopulateInfoPanel(CubeMetadata? meta)
