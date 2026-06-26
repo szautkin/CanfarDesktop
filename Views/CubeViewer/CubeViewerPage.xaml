@@ -63,8 +63,6 @@
             <TextBlock Text="Cube Viewer" FontWeight="Bold"
                        Foreground="#FFF0F0F0"
                        Style="{StaticResource SubtitleTextBlockStyle}" />
-            <TextBlock x:Name="StatusText" Foreground="#B0BFD8FF"
-                       Style="{StaticResource CaptionTextBlockStyle}" />
             <TextBlock Text="Drag to orbit · Scroll to zoom"
                        Foreground="#80FFFFFF"
                        Style="{StaticResource CaptionTextBlockStyle}" />

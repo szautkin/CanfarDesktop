@@ -99,13 +99,11 @@ public sealed partial class CubeViewerPage
     private DispatcherTimer? _statusTimer;
 
     /// <summary>
-    /// Surface a transient message to the user: a clear bottom-center snackbar (errors in red, info in
-    /// cyan, auto-dismissing) PLUS the compact panel readout. The single entry point for load failures,
-    /// export results, and the like.
+    /// Surface a transient message to the user as a clear bottom-center snackbar (errors in red, info
+    /// in cyan, auto-dismissing). The single entry point for load failures, export results, and the like.
     /// </summary>
     private void ShowStatus(string message, bool isError = false)
     {
-        StatusText.Text = message; // keep the compact panel readout in sync
         if (_closed || StatusSnack is null) return;
 
         StatusSnackText.Text = message;

@@ -104,7 +104,6 @@ public sealed partial class CubeViewerPage : UserControl
         RenderPanel.CompositionScaleChanged += OnCompositionScaleChanged;
         BuildOverlayVisuals();
         PopulateColormapPicker();
-        StatusText.Text = "Loading cube…";
 
         // Load the cube requested before init (Open / Search / MCP). The page is created per tab
         // with a specific cube, so there's normally always a pending path; if not, stay empty.
@@ -112,10 +111,6 @@ public sealed partial class CubeViewerPage : UserControl
         {
             _pendingCubePath = null;
             _ = LoadPendingAsync(pending);
-        }
-        else
-        {
-            StatusText.Text = "Open a FITS cube to begin.";
         }
     }
 
@@ -161,8 +156,7 @@ public sealed partial class CubeViewerPage : UserControl
         StopPlayback();
         _cubePath = path; // source file, for native-resolution slice export
         var fname = System.IO.Path.GetFileName(path);
-        StatusText.Text = "Loading " + fname + "…";
-        ShowLoading(fname);
+        ShowLoading(fname); // the bottom-center loading panel shows the filename + progress
         try
         {
             // Progress<T> is created on the UI thread → UpdateLoadingUI is marshalled back to it.
@@ -204,7 +198,6 @@ public sealed partial class CubeViewerPage : UserControl
         _nativeSource = nativeSource;
         InitSliceForVolume();
         ViewModel.VolumeName = note;
-        StatusText.Text = string.IsNullOrEmpty(_meta?.Object) ? volume.Name : _meta!.Object;
         PopulateInfoPanel(_meta);
         UpdateColorbar();
         HookRendering();
@@ -674,6 +667,5 @@ public sealed partial class CubeViewerPage : UserControl
         FallbackText.Text =
             "The 3D cube viewer needs a Direct3D 11 capable GPU.\n\n" + message;
         FallbackText.Visibility = Visibility.Visible;
-        StatusText.Text = "GPU unavailable";
     }
 }
