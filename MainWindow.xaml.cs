@@ -15,7 +15,7 @@ namespace CanfarDesktop;
 
 public sealed partial class MainWindow : Window
 {
-    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer, ObservationDetail }
+    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer, ObservationDetail, CubeViewer }
 
     private readonly MainViewModel _viewModel;
     private readonly ILegalAgreementService _legal;
@@ -60,6 +60,7 @@ public sealed partial class MainWindow : Window
         _landingView.StorageRequested += (_, _) => OpenStorageBrowser();
         _landingView.NotebookRequested += (_, _) => OpenNotebook();
         _landingView.FitsViewerRequested += (_, _) => OpenFitsViewer();
+        _landingView.CubeViewerRequested += (_, _) => OpenCubeViewer();
         LandingContainer.Child = _landingView;
 
         Activated += OnWindowActivated;
@@ -338,6 +339,7 @@ public sealed partial class MainWindow : Window
         NotebookContainer.Visibility = mode == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
         FitsViewerContainer.Visibility = mode == AppMode.FitsViewer ? Visibility.Visible : Visibility.Collapsed;
         ObsDetailContainer.Visibility = mode == AppMode.ObservationDetail ? Visibility.Visible : Visibility.Collapsed;
+        CubeViewerContainer.Visibility = mode == AppMode.CubeViewer ? Visibility.Visible : Visibility.Collapsed;
 
         BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         PublishViewMode();
@@ -359,6 +361,7 @@ public sealed partial class MainWindow : Window
             NotebookContainer.Visibility = previous == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
             FitsViewerContainer.Visibility = previous == AppMode.FitsViewer ? Visibility.Visible : Visibility.Collapsed;
             ObsDetailContainer.Visibility = previous == AppMode.ObservationDetail ? Visibility.Visible : Visibility.Collapsed;
+            CubeViewerContainer.Visibility = previous == AppMode.CubeViewer ? Visibility.Visible : Visibility.Collapsed;
 
             BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             PublishViewMode();
@@ -379,6 +382,7 @@ public sealed partial class MainWindow : Window
         NotebookContainer.Visibility = Visibility.Collapsed;
         FitsViewerContainer.Visibility = Visibility.Collapsed;
         ObsDetailContainer.Visibility = Visibility.Collapsed;
+        CubeViewerContainer.Visibility = Visibility.Collapsed;
         BackButton.Visibility = Visibility.Collapsed;
         PublishViewMode();
     }
@@ -501,6 +505,24 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             StatusText.Text = $"Notebook error: {ex.Message}";
+        }
+    }
+
+    private Views.CubeViewer.CubeViewerPage? _cubeViewerPage;
+
+    /// <summary>Open the 3D Cube Viewer (GPU volume render). Builds the page once and reuses it.
+    /// Increment 1 renders a synthetic procedural volume; real FITS NAXIS3 ingest is a follow-up.</summary>
+    public void OpenCubeViewer()
+    {
+        try
+        {
+            _cubeViewerPage ??= new Views.CubeViewer.CubeViewerPage();
+            CubeViewerContainer.Child = _cubeViewerPage;
+            NavigateTo(AppMode.CubeViewer);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Cube viewer error: {ex.Message}";
         }
     }
 

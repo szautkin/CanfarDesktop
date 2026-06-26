@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="CanfarDesktop.Views.CubeViewer.CubeViewerPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Background="#FF050810">
+        <!-- GPU volume render surface -->
+        <SwapChainPanel x:Name="RenderPanel"
+                        PointerPressed="OnPointerPressed"
+                        PointerMoved="OnPointerMoved"
+                        PointerReleased="OnPointerReleased"
+                        PointerWheelChanged="OnPointerWheelChanged"
+                        SizeChanged="OnPanelSizeChanged" />
+
+        <!-- Fallback message shown if the GPU device can't be created -->
+        <TextBlock x:Name="FallbackText"
+                   Visibility="Collapsed"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   TextAlignment="Center" MaxWidth="420"
+                   Foreground="#FFE0E0E0"
+                   TextWrapping="Wrap"
+                   Style="{StaticResource BodyTextBlockStyle}" />
+
+        <!-- Title / status -->
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="20" Spacing="2" IsHitTestVisible="False">
+            <TextBlock Text="Cube Viewer" FontWeight="Bold"
+                       Foreground="#FFF0F0F0"
+                       Style="{StaticResource SubtitleTextBlockStyle}" />
+            <TextBlock x:Name="StatusText" Foreground="#B0BFD8FF"
+                       Style="{StaticResource CaptionTextBlockStyle}" />
+            <TextBlock Text="Drag to orbit · Scroll to zoom"
+                       Foreground="#80FFFFFF"
+                       Style="{StaticResource CaptionTextBlockStyle}" />
+        </StackPanel>
+
+        <!-- Control panel -->
+        <Border HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="20" Padding="16,14" CornerRadius="8"
+                Background="#C0101622" BorderBrush="#40FFFFFF" BorderThickness="1">
+            <StackPanel Spacing="12" Width="220">
+
+                <TextBlock Text="VOLUME" FontWeight="SemiBold"
+                           Foreground="#90BFD8FF"
+                           Style="{StaticResource CaptionTextBlockStyle}" />
+
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Density" Foreground="#FFE0E0E0"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+                    <Slider x:Name="DensitySlider" Minimum="0.1" Maximum="4.0"
+                            StepFrequency="0.05" Value="1.0"
+                            ValueChanged="OnDensityChanged" />
+                </StackPanel>
+
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Spectral scale" Foreground="#FFE0E0E0"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+                    <Slider x:Name="SpectralSlider" Minimum="0.5" Maximum="3.0"
+                            StepFrequency="0.05" Value="1.5"
+                            ValueChanged="OnSpectralChanged" />
+                </StackPanel>
+
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Quality (steps)" Foreground="#FFE0E0E0"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+                    <Slider x:Name="StepsSlider" Minimum="96" Maximum="640"
+                            StepFrequency="16" Value="384"
+                            ValueChanged="OnStepsChanged" />
+                </StackPanel>
+
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Stretch" Foreground="#FFE0E0E0"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+                    <ComboBox x:Name="StretchCombo" HorizontalAlignment="Stretch"
+                              SelectionChanged="OnStretchChanged">
+                        <ComboBoxItem Content="Linear" Tag="Linear" IsSelected="True" />
+                        <ComboBoxItem Content="Log" Tag="Log" />
+                        <ComboBoxItem Content="Sqrt" Tag="Sqrt" />
+                        <ComboBoxItem Content="Squared" Tag="Squared" />
+                        <ComboBoxItem Content="Asinh" Tag="Asinh" />
+                    </ComboBox>
+                </StackPanel>
+
+                <ToggleSwitch x:Name="MipToggle" Header="Max-intensity (MIP)"
+                              OffContent="Off" OnContent="On"
+                              Foreground="#FFE0E0E0"
+                              Toggled="OnMipToggled" />
+
+                <ToggleSwitch x:Name="AutoOrbitToggle" Header="Auto-orbit"
+                              OffContent="Off" OnContent="On"
+                              Foreground="#FFE0E0E0"
+                              Toggled="OnAutoOrbitToggled" />
+
+                <Button Content="Reset view" HorizontalAlignment="Stretch"
+                        Click="OnResetView" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
