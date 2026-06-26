@@ -114,8 +114,10 @@ public sealed partial class CubeViewerPage
         using (var s = wb.PixelBuffer.AsStream()) s.Write(buf, 0, buf.Length);
         wb.Invalidate();
 
-        // Frame the slice so its longest spatial axis is ~1300 px (a figure-sized footprint).
-        double k = 1300.0 / Math.Max(nx, ny);
+        // Frame the slice near its native size (clamped) so the data is shown crisp — a big figure
+        // over a small native plane would just bilinear-upscale and soften it.
+        double target = Math.Clamp(Math.Max(nx, ny), 900, 1600);
+        double k = target / Math.Max(nx, ny);
         int dw = Math.Max(1, (int)Math.Round(nx * k)), dh = Math.Max(1, (int)Math.Round(ny * k));
         return (wb, dw, dh);
     }
@@ -123,17 +125,23 @@ public sealed partial class CubeViewerPage
     /// <summary>Read the native-resolution plane matching the current (down-sampled) channel, or null.</summary>
     private (float[] Norm, int Nx, int Ny)? TryReadNativeChannel()
     {
-        if (_meta is null || string.IsNullOrEmpty(_cubePath) || !File.Exists(_cubePath)) return null;
-        int downNz = _volume?.Nz ?? 0, origNz = _meta.Nz;
+        if (_meta is null || _volume is null) return null;
+        int downNz = _volume.Nz, origNz = _meta.Nz;
         if (downNz < 1 || origNz < 1) return null;
+        int nativeCh = MapNativeChannel(ViewModel.Channel, downNz, origNz);
 
-        int nativeCh = (downNz > 1 && origNz > 1)
-            ? (int)Math.Round((double)ViewModel.Channel / (downNz - 1) * (origNz - 1))
-            : ViewModel.Channel;
-        nativeCh = Math.Clamp(nativeCh, 0, origNz - 1);
-
-        try { return FitsCubeReader.ReadChannelNormalized(_cubePath!, nativeCh, _meta.NormLo, _meta.NormHi); }
-        catch { return null; }
+        // Persistent source (plain FITS): a fast seek; the caller consumes the buffer immediately.
+        if (_nativeSource is { } src)
+        {
+            try { if (src.ReadChannel(nativeCh, _meta.NormLo, _meta.NormHi) is { } r) return r; } catch { }
+        }
+        // Compressed/tar cube (no persistent source): one-off read straight from the file.
+        if (!string.IsNullOrEmpty(_cubePath) && File.Exists(_cubePath))
+        {
+            try { return FitsCubeReader.ReadChannelNormalized(_cubePath!, nativeCh, _meta.NormLo, _meta.NormHi); }
+            catch { }
+        }
+        return null;
     }
 
     /// <summary>MCP entry: export the current view to a PNG/PDF path (no modal), default style.</summary>

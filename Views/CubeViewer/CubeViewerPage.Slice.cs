@@ -28,6 +28,20 @@ public sealed partial class CubeViewerPage
     private int _probeX = -1, _probeY = -1;
     private float[]? _probeSpectrum;
 
+    // Pixel dims of the slice bitmap. When a native-plane source is available the on-screen slice is
+    // drawn at NATIVE FITS resolution (full detail); otherwise at the GPU-down-sampled volume's dims.
+    private int _sliceDispNx, _sliceDispNy;
+    private bool _useNativeSlice;
+    private const int SliceDisplayCap = 2048; // cap the on-screen slice bitmap's longest axis
+
+    // Coalesce-to-latest scrubbing: a burst of slider ValueChanged events collapses to a single render
+    // of the most recent channel, so dragging a large native cube can't pile up synchronous renders.
+    private bool _slicePending, _sliceRendering;
+
+    // The colormap LUT is stable across frames — cache it so playback/scrubbing don't rebuild it per frame.
+    private byte[]? _sliceLut;
+    private CubeColormap _sliceLutKey;
+
     private static readonly Color SpectrumLineColor = Color.FromArgb(0xFF, 0x73, 0xD9, 0xFF);
     private static readonly Color SpectrumMarkColor = Color.FromArgb(0xFF, 0xFF, 0xA5, 0x3C);
 
@@ -75,6 +89,22 @@ public sealed partial class CubeViewerPage
     {
         if (_volume is null) return;
         int nz = _volume.Nz;
+
+        // Draw the on-screen slice at native resolution when the source is available and not enormous;
+        // otherwise fall back to the down-sampled volume plane.
+        if (_nativeSource is { } src && Math.Max(src.Nx, src.Ny) <= SliceDisplayCap)
+        {
+            _useNativeSlice = true;
+            _sliceDispNx = src.Nx;
+            _sliceDispNy = src.Ny;
+        }
+        else
+        {
+            _useNativeSlice = false;
+            _sliceDispNx = _volume.Nx;
+            _sliceDispNy = _volume.Ny;
+        }
+
         _suppressChannel = true;
         ChannelSlider.Maximum = Math.Max(0, nz - 1);
         int mid = nz / 2;
@@ -96,7 +126,8 @@ public sealed partial class CubeViewerPage
     private void EnsureSliceBitmap()
     {
         if (_volume is null) return;
-        int nx = _volume.Nx, ny = _volume.Ny;
+        int nx = _sliceDispNx > 0 ? _sliceDispNx : _volume.Nx;
+        int ny = _sliceDispNy > 0 ? _sliceDispNy : _volume.Ny;
         if (_sliceBitmap is null || _sliceBitmap.PixelWidth != nx || _sliceBitmap.PixelHeight != ny)
         {
             _sliceBitmap = new WriteableBitmap(nx, ny);
@@ -108,14 +139,60 @@ public sealed partial class CubeViewerPage
     private void RenderSlice()
     {
         if (_volume is null || _sliceBitmap is null || _sliceBuf is null) return;
-        var lut = CubeColormaps.Build(_currentColormap);
-        CubeSliceRenderer.RenderPlane(
-            _volume, ViewModel.Channel, ViewModel.WindowLo, ViewModel.WindowHi,
-            ViewModel.Stretch, lut, _sliceBuf);
+        if (_sliceLut is null || _sliceLutKey != _currentColormap)
+        {
+            _sliceLut = CubeColormaps.Build(_currentColormap);
+            _sliceLutKey = _currentColormap;
+        }
+        var lut = _sliceLut;
+
+        // Native-resolution plane when available, else the down-sampled volume plane.
+        bool rendered = false;
+        if (_useNativeSlice && _nativeSource is { } src)
+        {
+            int nativeCh = MapNativeChannel(ViewModel.Channel, _volume.Nz, src.Nz);
+            var n = src.ReadChannel(nativeCh, _meta?.NormLo ?? 0, _meta?.NormHi ?? 1);
+            if (n is { } v && v.Nx == _sliceDispNx && v.Ny == _sliceDispNy)
+            {
+                CubeSliceRenderer.RenderPlaneNorm(
+                    v.Norm, v.Nx, v.Ny, ViewModel.WindowLo, ViewModel.WindowHi, ViewModel.Stretch, lut, _sliceBuf);
+                rendered = true;
+            }
+            else
+            {
+                DisableNativeSlice(); // an I/O error mid-session → drop to down-sampled (re-renders)
+                return;
+            }
+        }
+        if (!rendered)
+        {
+            CubeSliceRenderer.RenderPlane(
+                _volume, ViewModel.Channel, ViewModel.WindowLo, ViewModel.WindowHi,
+                ViewModel.Stretch, lut, _sliceBuf);
+        }
+
         using (var s = _sliceBitmap.PixelBuffer.AsStream()) s.Write(_sliceBuf, 0, _sliceBuf.Length);
         _sliceBitmap.Invalidate();
 
         if (SpectrumPanel.Visibility == Visibility.Visible) DrawSpectrum();
+    }
+
+    /// <summary>Map a down-sampled channel index to the matching native channel (endpoints exact).</summary>
+    private static int MapNativeChannel(int ch, int downNz, int origNz)
+        => (downNz > 1 && origNz > 1)
+            ? Math.Clamp((int)Math.Round((double)ch / (downNz - 1) * (origNz - 1)), 0, origNz - 1)
+            : Math.Clamp(ch, 0, Math.Max(0, origNz - 1));
+
+    /// <summary>Native slice read failed → release the source and switch to the down-sampled plane.</summary>
+    private void DisableNativeSlice()
+    {
+        _useNativeSlice = false;
+        _nativeSource?.Dispose();
+        _nativeSource = null;
+        _sliceDispNx = _volume?.Nx ?? _sliceDispNx;
+        _sliceDispNy = _volume?.Ny ?? _sliceDispNy;
+        EnsureSliceBitmap();
+        RenderSlice();
     }
 
     /// <summary>Re-render the slice when a shared display control (window/stretch/colormap) changes.</summary>
@@ -145,7 +222,27 @@ public sealed partial class CubeViewerPage
         ViewModel.Channel = (int)e.NewValue;
         UpdateChannelLabel();
         // Slice mode re-renders the 2D plane; volume mode's slice-plane marker updates in the render loop.
-        if (ViewModel.ViewMode == CubeViewMode.Slice) RenderSlice();
+        if (ViewModel.ViewMode == CubeViewMode.Slice) RequestSliceRender();
+    }
+
+    /// <summary>
+    /// Coalesce a burst of scrub events into a single render of the LATEST channel. RenderSlice always
+    /// reads the current ViewModel.Channel, so intermediate channels crossed during a fast drag are
+    /// absorbed for free; running at Low priority keeps the thumb tracking the pointer.
+    /// </summary>
+    private void RequestSliceRender()
+    {
+        if (_sliceRendering) { _slicePending = true; return; } // mid-render → remember to redraw the latest
+        if (_slicePending) return;                             // a render is already queued
+        _slicePending = true;
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            _slicePending = false;
+            _sliceRendering = true;
+            try { RenderSlice(); }
+            finally { _sliceRendering = false; }
+            if (_slicePending) RequestSliceRender(); // a newer channel arrived mid-render → draw once more
+        });
     }
 
     private void OnPlayPause(object sender, RoutedEventArgs e)
@@ -203,19 +300,23 @@ public sealed partial class CubeViewerPage
         if (px is null) return;
         _probeX = px.Value.x;
         _probeY = px.Value.y;
+        // The spectrum is sampled from the (down-sampled) volume, so map the displayed pixel to its voxel.
+        int sx = MapDispToVolume(_probeX, _sliceDispNx, _volume.Nx);
+        int sy = MapDispToVolume(_probeY, _sliceDispNy, _volume.Ny);
         _probeSpectrum = CubeSliceRenderer.Spectrum(
-            _volume, _probeX, _probeY, _meta?.NormLo ?? 0, _meta?.NormHi ?? 1);
+            _volume, sx, sy, _meta?.NormLo ?? 0, _meta?.NormHi ?? 1);
         SpectrumTitle.Text = $"Spectrum @ ({_probeX}, {_probeY})";
         SpectrumPanel.Visibility = Visibility.Visible;
         DrawSpectrum();
     }
 
-    /// <summary>Map a pointer position on the (Uniform-fit) slice image to a 0-based voxel (x,y).</summary>
+    /// <summary>Map a pointer position on the (Uniform-fit) slice image to a 0-based display pixel (x,y).</summary>
     private (int x, int y)? MapToPixel(Point p)
     {
         if (_volume is null) return null;
         double aw = SliceImage.ActualWidth, ah = SliceImage.ActualHeight;
-        int nx = _volume.Nx, ny = _volume.Ny;
+        int nx = _sliceDispNx > 0 ? _sliceDispNx : _volume.Nx;
+        int ny = _sliceDispNy > 0 ? _sliceDispNy : _volume.Ny;
         if (aw <= 0 || ah <= 0) return null;
         double scale = Math.Min(aw / nx, ah / ny);
         double ox = (aw - nx * scale) / 2, oy = (ah - ny * scale) / 2;
@@ -224,6 +325,10 @@ public sealed partial class CubeViewerPage
         if (x < 0 || y < 0 || x >= nx || y >= ny) return null;
         return (x, y);
     }
+
+    /// <summary>Map a displayed slice pixel to the matching voxel index in the down-sampled volume.</summary>
+    private static int MapDispToVolume(int p, int dispN, int volN)
+        => dispN > 0 ? Math.Clamp((int)((long)p * volN / dispN), 0, Math.Max(0, volN - 1)) : Math.Clamp(p, 0, Math.Max(0, volN - 1));
 
     private void OnSpectrumClose(object sender, RoutedEventArgs e)
     {

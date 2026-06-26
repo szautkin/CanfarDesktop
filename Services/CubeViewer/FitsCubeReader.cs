@@ -210,7 +210,7 @@ internal static class FitsCubeReader
         }
     }
 
-    private static float Decode(byte[] buf, int off, int bitpix, double bscale, double bzero)
+    internal static float Decode(byte[] buf, int off, int bitpix, double bscale, double bzero)
     {
         double raw = bitpix switch
         {

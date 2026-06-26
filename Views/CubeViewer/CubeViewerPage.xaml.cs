@@ -58,6 +58,7 @@ public sealed partial class CubeViewerPage : UserControl
     private CubeColormap _currentColormap = CubeColormap.Inferno;
     private string _cubeName = "";
     private string? _cubePath; // source file, for native-resolution slice export
+    private NativeSliceSource? _nativeSource; // persistent native-plane reader (plain FITS); null otherwise
     private VolumeData? _volume; // kept for the 2D slice view + spectrum probe
 
     public CubeViewerPage()
@@ -166,12 +167,18 @@ public sealed partial class CubeViewerPage : UserControl
         {
             // Progress<T> is created on the UI thread → UpdateLoadingUI is marshalled back to it.
             var progress = new Progress<CubeLoadProgress>(UpdateLoadingUI);
-            var volume = await Task.Run(() => FitsCubeReader.Read(path, progress));
-            if (_closed) { HideLoading(); return false; }
+            // Decode the volume AND open a persistent native-plane source (for full-res slices) off-thread.
+            var loaded = await Task.Run(() =>
+            {
+                var v = FitsCubeReader.Read(path, progress);
+                var src = NativeSliceSource.TryOpen(path); // null for compressed/tar/oversize → down-sampled
+                return (Volume: v, Source: src);
+            });
+            if (_closed) { loaded.Source?.Dispose(); HideLoading(); return false; }
 
             UpdateLoadingUI(new CubeLoadProgress(3, 0.95, "")); // uploading to GPU
             SetViewMode(CubeViewMode.Volume);
-            ApplyVolume(volume, $"{volume.Name} · {volume.Nx}×{volume.Ny}×{volume.Nz}");
+            ApplyVolume(loaded.Volume, $"{loaded.Volume.Name} · {loaded.Volume.Nx}×{loaded.Volume.Ny}×{loaded.Volume.Nz}", loaded.Source);
             UpdateLoadingUI(new CubeLoadProgress(4, 1.0, ""));  // all steps done
             HideLoading();
             return true;
@@ -185,7 +192,7 @@ public sealed partial class CubeViewerPage : UserControl
     }
 
     /// <summary>Upload a decoded volume to the renderer + slice view and refresh the UI.</summary>
-    private void ApplyVolume(VolumeData volume, string note)
+    private void ApplyVolume(VolumeData volume, string note, NativeSliceSource? nativeSource = null)
     {
         _renderer.SetVolume(volume);
         _meta = volume.Meta;
@@ -193,6 +200,8 @@ public sealed partial class CubeViewerPage : UserControl
         _cubeName = volume.Name;
         _volNx = volume.Nx;
         _volNy = volume.Ny;
+        _nativeSource?.Dispose(); // release any prior cube's file handle before adopting this one's
+        _nativeSource = nativeSource;
         InitSliceForVolume();
         ViewModel.VolumeName = note;
         StatusText.Text = string.IsNullOrEmpty(_meta?.Object) ? volume.Name : _meta!.Object;
@@ -654,6 +663,8 @@ public sealed partial class CubeViewerPage : UserControl
         _playTimer?.Stop();
         PauseRendering();
         RenderPanel.CompositionScaleChanged -= OnCompositionScaleChanged;
+        _nativeSource?.Dispose();
+        _nativeSource = null;
         _renderer.Dispose();
     }
 
