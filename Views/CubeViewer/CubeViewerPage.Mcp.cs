@@ -65,8 +65,8 @@ public sealed partial class CubeViewerPage
             ChannelSlider.Value = c;
             _suppressChannel = false;
             ViewModel.Channel = c;
-            RenderSlice();
             UpdateChannelLabel();
+            if (ViewModel.ViewMode == CubeViewMode.Slice) RenderSlice(); // no-op render in volume mode
         }
     }
 

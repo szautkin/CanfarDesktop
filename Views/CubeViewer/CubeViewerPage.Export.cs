@@ -202,6 +202,19 @@ public sealed partial class CubeViewerPage
     {
         if (_exporting) return "an export is already in progress";
         if (!_renderer.IsReady) return "the cube viewer is not ready";
+
+        // Validate the agent-supplied path: must be a full (rooted) path, normalized to defeat
+        // "..\\" traversal/relative-CWD surprises, with an extension matching the format.
+        bool pdf = (format ?? "").Trim().Equals("pdf", StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(path) || !System.IO.Path.IsPathRooted(path))
+            return "path must be a full (rooted) file path";
+        string full;
+        try { full = System.IO.Path.GetFullPath(path); }
+        catch { return "invalid path"; }
+        var ext = System.IO.Path.GetExtension(full).ToLowerInvariant();
+        if (pdf && ext != ".pdf") return "path must end in .pdf for a PDF export";
+        if (!pdf && ext != ".png") return "path must end in .png for a PNG export";
+
         _exporting = true;
         try
         {
@@ -209,8 +222,7 @@ public sealed partial class CubeViewerPage
             if (raster is null) return StatusText.Text;
             var (buf, pw, ph) = raster.Value;
 
-            bool pdf = format.Trim().Equals("pdf", StringComparison.OrdinalIgnoreCase);
-            using (var fs = new System.IO.FileStream(path, System.IO.FileMode.Create))
+            using (var fs = new System.IO.FileStream(full, System.IO.FileMode.Create))
             {
                 if (pdf)
                 {

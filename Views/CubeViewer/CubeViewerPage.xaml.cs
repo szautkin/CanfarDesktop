@@ -80,6 +80,10 @@ public sealed partial class CubeViewerPage : UserControl
         if (!_renderer.Initialize(RenderPanel, pw, ph))
         {
             ShowFallback(_renderer.InitError ?? "No compatible Direct3D 11 device was found.");
+            // Don't leave an MCP open_cube awaiting a load that can never happen.
+            _pendingCubePath = null;
+            _pendingLoadTcs?.TrySetResult(false);
+            _pendingLoadTcs = null;
             return;
         }
 
@@ -130,8 +134,11 @@ public sealed partial class CubeViewerPage : UserControl
         if (_closed) return Task.FromResult(false);
         if (!_initialized)
         {
+            // Supersede any earlier pre-init request so its caller gets a result for the cube it
+            // actually asked for (false), not this one's.
+            _pendingLoadTcs?.TrySetResult(false);
             _pendingCubePath = path;
-            _pendingLoadTcs ??= new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingLoadTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             return _pendingLoadTcs.Task;
         }
         return LoadCubeCoreAsync(path);
@@ -609,6 +616,10 @@ public sealed partial class CubeViewerPage : UserControl
     {
         if (_closed) return;
         _closed = true;
+        // Complete any pending pre-init load so a queued MCP open_cube can't hang.
+        _pendingCubePath = null;
+        _pendingLoadTcs?.TrySetResult(false);
+        _pendingLoadTcs = null;
         _playTimer?.Stop();
         PauseRendering();
         RenderPanel.CompositionScaleChanged -= OnCompositionScaleChanged;
