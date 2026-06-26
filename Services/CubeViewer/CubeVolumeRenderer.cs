@@ -75,6 +75,9 @@ public sealed class CubeVolumeRenderer : IDisposable
     /// <summary>Set when initialization fails so the host can show a fallback.</summary>
     public string? InitError { get; private set; }
 
+    /// <summary>TEMP diagnostic: last per-frame status (present HRESULT / not-ready reason / exception).</summary>
+    public string? LastError { get; private set; }
+
     // ── Live parameters (pushed from the view model each frame) ──
     public float CameraAzimuth { get; set; } = 0.7f;
     public float CameraElevation { get; set; } = 0.5f;
@@ -367,9 +370,15 @@ public sealed class CubeVolumeRenderer : IDisposable
     /// </summary>
     public void Render()
     {
-        if (!IsReady || _disposed || _rtv is null || _dataSrv is null || _cmapSrv is null || _tfSrv is null)
+        if (!IsReady || _disposed) return;
+        if (_rtv is null || _dataSrv is null || _cmapSrv is null || _tfSrv is null)
+        {
+            LastError = $"not-ready rtv={_rtv != null} data={_dataSrv != null} cmap={_cmapSrv != null} tf={_tfSrv != null}";
             return;
+        }
 
+        try
+        {
         float aspect = _height > 0 ? (float)_width / _height : 1f;
         Matrix4x4 model = BuildModelMatrix();
         Vector3 eye = CubeMath.OrbitEye(CameraAzimuth, CameraElevation, CameraDistance);
@@ -419,7 +428,13 @@ public sealed class CubeVolumeRenderer : IDisposable
 
         _context.Draw(3, 0);
 
-        _swapChain.Present(1, PresentFlags.None);
+        var pr = _swapChain.Present(1, PresentFlags.None);
+        LastError = pr.Failure ? $"present 0x{pr.Code:X8}" : $"ok {_width}x{_height}";
+        }
+        catch (Exception ex)
+        {
+            LastError = "render: " + ex.Message;
+        }
     }
 
     public void Dispose()

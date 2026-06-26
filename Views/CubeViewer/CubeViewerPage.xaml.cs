@@ -38,6 +38,8 @@ public sealed partial class CubeViewerPage : UserControl
     private bool _isDragging;
     private Point _lastPointer;
 
+    private int _frameCount; // TEMP diagnostic
+
     public CubeViewerPage()
     {
         ViewModel = new CubeViewerViewModel();
@@ -116,6 +118,11 @@ public sealed partial class CubeViewerPage : UserControl
         _renderer.Interacting = _isDragging;
 
         _renderer.Render();
+
+        // TEMP diagnostic: surface the live render state in the readable status line.
+        if (++_frameCount % 15 == 0)
+            StatusText.Text = $"f{_frameCount} · {RenderPanel.ActualWidth:0}x{RenderPanel.ActualHeight:0} dip · " +
+                              $"s{RenderPanel.CompositionScaleX:0.##} · {_renderer.LastError ?? "(null)"}";
     }
 
     // ── Sizing / DPI ──────────────────────────────────────────────────────────
