@@ -22,6 +22,24 @@
              far off-screen so they never appear in the live UI. -->
         <Canvas x:Name="ExportHost" IsHitTestVisible="False" />
 
+        <!-- 2D slice (single channel at native resolution), shown in Slice mode.
+             Click to probe the spectrum at a spaxel. -->
+        <Image x:Name="SliceImage" Stretch="Uniform" Visibility="Collapsed"
+               Margin="60,72,264,96"
+               PointerPressed="OnSlicePointerPressed" />
+
+        <!-- View-mode toggle (top center) -->
+        <Border x:Name="ViewModeBar" HorizontalAlignment="Center" VerticalAlignment="Top"
+                Margin="0,16,0,0" CornerRadius="6" Padding="3"
+                Background="#C0101622" BorderBrush="#40FFFFFF" BorderThickness="1">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+                <ToggleButton x:Name="VolumeModeButton" Content="Volume" IsChecked="True"
+                              MinWidth="84" Click="OnVolumeModeClick" />
+                <ToggleButton x:Name="SliceModeButton" Content="Slice"
+                              MinWidth="84" Click="OnSliceModeClick" />
+            </StackPanel>
+        </Border>
+
         <!-- Fallback message shown if the GPU device can't be created -->
         <TextBlock x:Name="FallbackText"
                    Visibility="Collapsed"
@@ -169,62 +187,99 @@
                     </ComboBox>
                 </StackPanel>
 
-                <!-- ── VOLUME ── -->
-                <TextBlock Text="VOLUME" FontWeight="SemiBold" Margin="0,4,0,0"
-                           Foreground="#90BFD8FF"
-                           Style="{StaticResource CaptionTextBlockStyle}" />
-
-                <StackPanel Spacing="2">
-                    <TextBlock Text="Render mode" Foreground="#FFE0E0E0"
+                <!-- ── VOLUME ── (hidden in Slice mode) -->
+                <StackPanel x:Name="VolumeSection" Spacing="12">
+                    <TextBlock Text="VOLUME" FontWeight="SemiBold" Margin="0,4,0,0"
+                               Foreground="#90BFD8FF"
                                Style="{StaticResource CaptionTextBlockStyle}" />
-                    <ComboBox x:Name="RenderModeCombo" HorizontalAlignment="Stretch"
-                              SelectionChanged="OnRenderModeChanged">
-                        <ComboBoxItem Content="Emission" IsSelected="True" />
-                        <ComboBoxItem Content="Max-Intensity" />
-                    </ComboBox>
+
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Render mode" Foreground="#FFE0E0E0"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                        <ComboBox x:Name="RenderModeCombo" HorizontalAlignment="Stretch"
+                                  SelectionChanged="OnRenderModeChanged">
+                            <ComboBoxItem Content="Emission" IsSelected="True" />
+                            <ComboBoxItem Content="Max-Intensity" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Density" Foreground="#FFE0E0E0"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                        <Slider x:Name="DensitySlider" Minimum="0.1" Maximum="3.0"
+                                StepFrequency="0.05" Value="1.0"
+                                ValueChanged="OnDensityChanged" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Spectral scale" Foreground="#FFE0E0E0"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                        <Slider x:Name="SpectralSlider" Minimum="0.5" Maximum="4.0"
+                                StepFrequency="0.05" Value="1.5"
+                                ValueChanged="OnSpectralChanged" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Quality (steps)" Foreground="#FFE0E0E0"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                        <Slider x:Name="StepsSlider" Minimum="96" Maximum="768"
+                                StepFrequency="16" Value="384"
+                                ValueChanged="OnStepsChanged" />
+                    </StackPanel>
+
+                    <ToggleSwitch x:Name="AutoOrbitToggle" Header="Idle auto-orbit"
+                                  OffContent="Off" OnContent="On"
+                                  Foreground="#FFE0E0E0"
+                                  Toggled="OnAutoOrbitToggled" />
+
+                    <ToggleSwitch x:Name="CaptionsToggle" Header="Axis captions"
+                                  OffContent="Off" OnContent="On" IsOn="True"
+                                  Foreground="#FFE0E0E0"
+                                  Toggled="OnCaptionsToggled" />
+
+                    <Button Content="Reset view" HorizontalAlignment="Stretch"
+                            Click="OnResetView" />
                 </StackPanel>
-
-                <StackPanel Spacing="2">
-                    <TextBlock Text="Density" Foreground="#FFE0E0E0"
-                               Style="{StaticResource CaptionTextBlockStyle}" />
-                    <Slider x:Name="DensitySlider" Minimum="0.1" Maximum="3.0"
-                            StepFrequency="0.05" Value="1.0"
-                            ValueChanged="OnDensityChanged" />
-                </StackPanel>
-
-                <StackPanel Spacing="2">
-                    <TextBlock Text="Spectral scale" Foreground="#FFE0E0E0"
-                               Style="{StaticResource CaptionTextBlockStyle}" />
-                    <Slider x:Name="SpectralSlider" Minimum="0.5" Maximum="4.0"
-                            StepFrequency="0.05" Value="1.5"
-                            ValueChanged="OnSpectralChanged" />
-                </StackPanel>
-
-                <StackPanel Spacing="2">
-                    <TextBlock Text="Quality (steps)" Foreground="#FFE0E0E0"
-                               Style="{StaticResource CaptionTextBlockStyle}" />
-                    <Slider x:Name="StepsSlider" Minimum="96" Maximum="768"
-                            StepFrequency="16" Value="384"
-                            ValueChanged="OnStepsChanged" />
-                </StackPanel>
-
-                <ToggleSwitch x:Name="AutoOrbitToggle" Header="Idle auto-orbit"
-                              OffContent="Off" OnContent="On"
-                              Foreground="#FFE0E0E0"
-                              Toggled="OnAutoOrbitToggled" />
-
-                <ToggleSwitch x:Name="CaptionsToggle" Header="Axis captions"
-                              OffContent="Off" OnContent="On" IsOn="True"
-                              Foreground="#FFE0E0E0"
-                              Toggled="OnCaptionsToggled" />
-
-                <Button Content="Reset view" HorizontalAlignment="Stretch"
-                        Click="OnResetView" />
 
                 <Button x:Name="ExportButton" Content="Export figure…" HorizontalAlignment="Stretch"
                         Click="OnExportClick" />
             </StackPanel>
             </ScrollViewer>
+        </Border>
+
+        <!-- Spectrum probe (slice mode): flux vs channel at the clicked spaxel -->
+        <Border x:Name="SpectrumPanel" Visibility="Collapsed"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Margin="0,0,0,94" Padding="14,10" CornerRadius="8" Width="448"
+                Background="#D8101622" BorderBrush="#50BFD8FF" BorderThickness="1">
+            <StackPanel Spacing="6">
+                <Grid>
+                    <TextBlock x:Name="SpectrumTitle" Foreground="#FFE0E0E0" VerticalAlignment="Center"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+                    <Button Content="✕" HorizontalAlignment="Right" Padding="6,0" FontSize="12"
+                            Background="Transparent" BorderThickness="0" Click="OnSpectrumClose" />
+                </Grid>
+                <Canvas x:Name="SpectrumCanvas" Width="420" Height="92" Background="#30000000"
+                        PointerPressed="OnSpectrumCanvasPressed" />
+            </StackPanel>
+        </Border>
+
+        <!-- Channel scrubber + playback (slice mode) -->
+        <Border x:Name="SliceBar" Visibility="Collapsed"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Margin="0,0,0,20" Padding="14,8" CornerRadius="8"
+                Background="#C0101622" BorderBrush="#40FFFFFF" BorderThickness="1">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <Button x:Name="PlayButton" Click="OnPlayPause" Width="42" Padding="0"
+                        ToolTipService.ToolTip="Play / Pause (Space)">
+                    <FontIcon x:Name="PlayIcon" Glyph="&#xE768;" FontSize="16" />
+                </Button>
+                <Slider x:Name="ChannelSlider" Width="340" Minimum="0" Maximum="0"
+                        StepFrequency="1" ValueChanged="OnChannelChanged" VerticalAlignment="Center" />
+                <TextBlock x:Name="ChannelLabel" VerticalAlignment="Center" MinWidth="180"
+                           Foreground="#FFE0E0E0" FontFamily="Consolas"
+                           Style="{StaticResource CaptionTextBlockStyle}" />
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

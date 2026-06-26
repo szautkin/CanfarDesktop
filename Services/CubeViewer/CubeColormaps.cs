@@ -138,8 +138,8 @@ internal static class CubeColormaps
     public static readonly Vector2[] DefaultTransferFunction =
     [
         new(0.0f, 0.0f),
-        new(0.45f, 0.05f),
-        new(0.75f, 0.45f),
+        new(0.15f, 0.09f),  // give faint signal more opacity so 3D structure reads
+        new(0.5f, 0.42f),
         new(1.0f, 1.0f),
     ];
 

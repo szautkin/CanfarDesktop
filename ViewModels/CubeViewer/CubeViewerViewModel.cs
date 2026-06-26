@@ -4,6 +4,9 @@ using CanfarDesktop.Services.Fits;
 
 namespace CanfarDesktop.ViewModels.CubeViewer;
 
+/// <summary>The cube viewer's two linked viewing modes (matches the macOS CubeViewMode).</summary>
+public enum CubeViewMode { Volume, Slice }
+
 /// <summary>
 /// View model for the 3D Cube Viewer. Owns the orbit-camera state and the volume
 /// render parameters (window, stretch, density, MIP, spectral scale) that the
@@ -54,6 +57,23 @@ public sealed partial class CubeViewerViewModel : ObservableObject
     /// <summary>Active colormap (default Inferno, matching macOS).</summary>
     [ObservableProperty]
     private CubeColormap _colormap = CubeColormap.Inferno;
+
+    // ── Slice mode (2D channel view) ──
+
+    /// <summary>Volume (3D) vs Slice (2D channel) view.</summary>
+    [ObservableProperty]
+    private CubeViewMode _viewMode = CubeViewMode.Volume;
+
+    /// <summary>Current 0-based spectral channel for the slice view.</summary>
+    [ObservableProperty]
+    private int _channel;
+
+    /// <summary>Whether the channel playback animation is running.</summary>
+    [ObservableProperty]
+    private bool _isPlaying;
+
+    /// <summary>Channel playback frame rate (matches the macOS default).</summary>
+    public int PlaybackFps => 12;
 
     /// <summary>Ray-march step count (volume quality). Higher = sharper but slower.</summary>
     [ObservableProperty]

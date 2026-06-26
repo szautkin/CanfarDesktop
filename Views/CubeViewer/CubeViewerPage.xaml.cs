@@ -55,6 +55,7 @@ public sealed partial class CubeViewerPage : UserControl
     private readonly CubeAxesOverlay.Frame _overlayFrame = new();
     private CubeColormap _currentColormap = CubeColormap.Inferno;
     private string _cubeName = "";
+    private VolumeData? _volume; // kept for the 2D slice view + spectrum probe
 
     public CubeViewerPage()
     {
@@ -130,9 +131,11 @@ public sealed partial class CubeViewerPage : UserControl
 
         _renderer.SetVolume(volume);
         _meta = volume.Meta;
+        _volume = volume;
         _cubeName = volume.Name;
         _volNx = volume.Nx;
         _volNy = volume.Ny;
+        InitSliceForVolume();
         ViewModel.VolumeName = note;
         StatusText.Text = string.IsNullOrEmpty(_meta?.Object) ? volume.Name : _meta!.Object;
         PopulateInfoPanel(_meta);
@@ -402,6 +405,7 @@ public sealed partial class CubeViewerPage : UserControl
             && Enum.TryParse<ImageStretcher.StretchMode>(tag, out var mode))
         {
             ViewModel.Stretch = mode;
+            RefreshSliceIfActive();
         }
     }
 
@@ -422,6 +426,7 @@ public sealed partial class CubeViewerPage : UserControl
         var lut = CubeColormaps.Build(_currentColormap);
         _renderer.SetColormap(lut);
         UpdateColorbar(lut);
+        RefreshSliceIfActive();
     }
 
     /// <summary>Rebuild the colorbar gradient from the active colormap + refresh the value labels.</summary>
@@ -501,6 +506,7 @@ public sealed partial class CubeViewerPage : UserControl
         ViewModel.WindowLo = lo;
         ViewModel.WindowHi = hi;
         UpdateColorbar();
+        RefreshSliceIfActive();
     }
 
     private void OnRenderModeChanged(object sender, SelectionChangedEventArgs e)
@@ -545,6 +551,7 @@ public sealed partial class CubeViewerPage : UserControl
     {
         if (_closed) return;
         _closed = true;
+        _playTimer?.Stop();
         PauseRendering();
         RenderPanel.CompositionScaleChanged -= OnCompositionScaleChanged;
         _renderer.Dispose();
