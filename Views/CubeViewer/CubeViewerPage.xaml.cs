@@ -51,8 +51,7 @@ public sealed partial class CubeViewerPage : UserControl
         if (_initialized || _closed) return;
 
         var (pw, ph) = PhysicalSize();
-        IntPtr nativePtr = GetSwapChainPanelNativePtr();
-        if (nativePtr == IntPtr.Zero || !_renderer.Initialize(nativePtr, pw, ph))
+        if (!_renderer.Initialize(RenderPanel, pw, ph))
         {
             ShowFallback(_renderer.InitError ?? "No compatible Direct3D 11 device was found.");
             return;
@@ -126,22 +125,6 @@ public sealed partial class CubeViewerPage : UserControl
         _renderer.Resize(w, h);
     }
 
-    /// <summary>
-    /// Obtain the IUnknown COM pointer for the SwapChainPanel. The renderer will
-    /// QueryInterface this for <c>ISwapChainPanelNative</c> and bind the swap
-    /// chain. Caller (the renderer) releases the reference when done.
-    /// </summary>
-    private IntPtr GetSwapChainPanelNativePtr()
-    {
-        try
-        {
-            return System.Runtime.InteropServices.Marshal.GetIUnknownForObject(RenderPanel);
-        }
-        catch
-        {
-            return IntPtr.Zero;
-        }
-    }
 
     // ── Pointer input: orbit + zoom ────────────────────────────────────────────
 

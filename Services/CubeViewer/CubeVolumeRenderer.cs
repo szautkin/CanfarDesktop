@@ -1,5 +1,7 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Microsoft.UI.Xaml.Controls;
+using WinRT;
 using SharpGen.Runtime;
 using Vortice.D3DCompiler;
 using Vortice.Direct3D;
@@ -94,14 +96,10 @@ public sealed class CubeVolumeRenderer : IDisposable
     /// sets <see cref="InitError"/> on failure rather than throwing, so the host
     /// can degrade gracefully if no D3D11 device is available.
     /// </summary>
-    /// <param name="panelNativePtr">
-    /// IUnknown COM pointer to the WinUI SwapChainPanel. The renderer
-    /// QueryInterfaces it for <c>ISwapChainPanelNative</c> and releases the
-    /// reference once the swap chain is bound.
-    /// </param>
+    /// <param name="panel">The WinUI <c>SwapChainPanel</c> the composition swap chain binds to.</param>
     /// <param name="width">Initial back-buffer width in physical pixels.</param>
     /// <param name="height">Initial back-buffer height in physical pixels.</param>
-    public bool Initialize(IntPtr panelNativePtr, int width, int height)
+    public bool Initialize(SwapChainPanel panel, int width, int height)
     {
         try
         {
@@ -127,7 +125,7 @@ public sealed class CubeVolumeRenderer : IDisposable
                 return false;
             }
 
-            CreateSwapChain(panelNativePtr);
+            CreateSwapChain(panel);
             CreatePipeline();
             CreateStaticResources();
             CreateRenderTarget();
@@ -142,7 +140,7 @@ public sealed class CubeVolumeRenderer : IDisposable
         }
     }
 
-    private void CreateSwapChain(IntPtr panelNativePtr)
+    private void CreateSwapChain(SwapChainPanel panel)
     {
         using var dxgiDevice = _device.QueryInterface<IDXGIDevice>();
         dxgiDevice.GetAdapter(out var adapter).CheckError();
@@ -167,19 +165,12 @@ public sealed class CubeVolumeRenderer : IDisposable
         }
 
         // Bind the swap chain to the SwapChainPanel via ISwapChainPanelNative.
-        // GetObjectForIUnknown returns an RCW; casting to the COM interface does
-        // the QueryInterface for the ISwapChainPanelNative IID.
-        object rcw = Marshal.GetObjectForIUnknown(panelNativePtr);
-        try
-        {
-            var native = (ISwapChainPanelNative)rcw;
-            Marshal.ThrowExceptionForHR(native.SetSwapChain(_swapChain.NativePointer));
-        }
-        finally
-        {
-            Marshal.ReleaseComObject(rcw);
-            Marshal.Release(panelNativePtr); // balance GetIUnknownForObject in the host
-        }
+        // A WinUI SwapChainPanel is a CsWinRT-projected object, NOT a classic RCW,
+        // so QueryInterface for the native interface with WinRT's .As<>() — the old
+        // Marshal.GetObjectForIUnknown / ReleaseComObject path throws
+        // "The object's type must be __ComObject…" on projected objects.
+        var native = panel.As<ISwapChainPanelNative>();
+        Marshal.ThrowExceptionForHR(native.SetSwapChain(_swapChain.NativePointer));
     }
 
     private void CreatePipeline()
