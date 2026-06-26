@@ -214,6 +214,7 @@ public sealed partial class ResearchPage : UserControl
         if (obs.FileExists)
         {
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8E5", "Open File", (_, _) => ViewModel.OpenFileCommand.Execute(null)));
+            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE809", "Cube Viewer", (_, _) => ViewModel.OpenInCubeViewerCommand.Execute(null)));
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE838", "Show in Explorer", (_, _) => ViewModel.ShowInExplorerCommand.Execute(null)));
         }
         else

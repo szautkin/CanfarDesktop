@@ -11,6 +11,7 @@ public sealed partial class StorageBrowserPage : UserControl
 {
     public StorageBrowserViewModel ViewModel { get; }
     public event Action<string>? OpenInFitsViewerRequested;
+    public event Action<string>? OpenInCubeViewerRequested;
     private string _sortColumn = "name";
     private bool _sortAscending = true;
 
@@ -172,14 +173,27 @@ public sealed partial class StorageBrowserPage : UserControl
 
     private async void OnOpenInFitsViewer(object sender, RoutedEventArgs e)
     {
-        if (ViewModel.SelectedNode is null || ViewModel.SelectedNode.IsContainer) return;
+        var path = await DownloadSelectedFitsToTempAsync();
+        if (path is not null) OpenInFitsViewerRequested?.Invoke(path);
+    }
+
+    private async void OnOpenInCubeViewer(object sender, RoutedEventArgs e)
+    {
+        var path = await DownloadSelectedFitsToTempAsync();
+        if (path is not null) OpenInCubeViewerRequested?.Invoke(path);
+    }
+
+    /// <summary>Download the selected FITS file to the temp dir; returns its local path or null.</summary>
+    private async Task<string?> DownloadSelectedFitsToTempAsync()
+    {
+        if (ViewModel.SelectedNode is null || ViewModel.SelectedNode.IsContainer) return null;
         var name = ViewModel.SelectedNode.Name;
         var ext = Path.GetExtension(name).ToLowerInvariant();
         if (ext is not (".fits" or ".fit" or ".fts"))
         {
             ViewModel.ErrorMessage = "Only FITS files can be opened in the viewer";
             ViewModel.HasError = true;
-            return;
+            return null;
         }
 
         try
@@ -193,13 +207,13 @@ public sealed partial class StorageBrowserPage : UserControl
             Directory.CreateDirectory(tempDir);
             var tempPath = Path.Combine(tempDir, name);
 
-            using var stream = await ViewModel.DownloadStreamAsync(remotePath);
-            using var fileStream = new FileStream(tempPath, FileMode.Create);
-            await stream.CopyToAsync(fileStream);
+            using (var stream = await ViewModel.DownloadStreamAsync(remotePath))
+            using (var fileStream = new FileStream(tempPath, FileMode.Create))
+                await stream.CopyToAsync(fileStream);
 
             TransferRing.IsActive = false;
             TransferText.Text = "";
-            OpenInFitsViewerRequested?.Invoke(tempPath);
+            return tempPath;
         }
         catch (Exception ex)
         {
@@ -207,6 +221,7 @@ public sealed partial class StorageBrowserPage : UserControl
             TransferText.Text = "";
             ViewModel.ErrorMessage = $"Failed to open: {ex.Message}";
             ViewModel.HasError = true;
+            return null;
         }
     }
 

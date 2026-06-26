@@ -444,6 +444,7 @@ public sealed partial class MainWindow : Window
             _obsDetailPage = App.Services.GetRequiredService<ObservationDetailPage>();
             _obsDetailPage.SignInRequested += OnObsDetailSignIn;
             _obsDetailPage.CloseRequested += () => OnBackClick(this, new RoutedEventArgs());
+            _obsDetailPage.OpenInCubeRequested += path => OpenCubeViewer(path);
             ObsDetailContainer.Child = _obsDetailPage;
         }
         NavigateTo(AppMode.ObservationDetail);
@@ -474,6 +475,7 @@ public sealed partial class MainWindow : Window
         {
             _storagePage = App.Services.GetRequiredService<StorageBrowserPage>();
             _storagePage.OpenInFitsViewerRequested += path => OpenFitsViewer(path);
+            _storagePage.OpenInCubeViewerRequested += path => OpenCubeViewer(path);
             StorageContainer.Child = _storagePage;
             await _storagePage.LoadAsync(_viewModel.Username);
         }
@@ -591,6 +593,7 @@ public sealed partial class MainWindow : Window
         {
             _researchPage = App.Services.GetRequiredService<ResearchPage>();
             _researchPage.ViewModel.ViewInFitsRequested += path => OpenFitsViewer(path);
+            _researchPage.ViewModel.ViewInCubeRequested += path => OpenCubeViewer(path);
             ResearchContainer.Child = _researchPage;
         }
         else

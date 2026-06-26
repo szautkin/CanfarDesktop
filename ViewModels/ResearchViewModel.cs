@@ -78,6 +78,9 @@ public partial class ResearchViewModel : ObservableObject
     /// <summary>Raised when user wants to view a FITS file in the built-in viewer.</summary>
     public event Action<string>? ViewInFitsRequested;
 
+    /// <summary>Raised when user wants to view a FITS spectral cube in the 3D Cube Viewer.</summary>
+    public event Action<string>? ViewInCubeRequested;
+
     /// <summary>
     /// Download the FITS file for an observation that was saved without a file.
     /// The save path is provided by the caller (View handles file picker).
@@ -149,6 +152,13 @@ public partial class ResearchViewModel : ObservableObject
     {
         if (SelectedObservation is null || !SelectedObservation.FileExists) return;
         ViewInFitsRequested?.Invoke(SelectedObservation.LocalPath);
+    }
+
+    [RelayCommand]
+    public void OpenInCubeViewer()
+    {
+        if (SelectedObservation is null || !SelectedObservation.FileExists) return;
+        ViewInCubeRequested?.Invoke(SelectedObservation.LocalPath);
     }
 
     [RelayCommand]

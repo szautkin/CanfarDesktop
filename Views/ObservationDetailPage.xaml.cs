@@ -530,6 +530,7 @@ public sealed partial class ObservationDetailPage : UserControl
         try
         {
             DownloadBar.IsOpen = true;
+            DownloadBar.ActionButton = null;
             DownloadBar.Severity = InfoBarSeverity.Informational;
             DownloadBar.Title = $"Resolving {Caom2Format.ArtifactFileName(art.Uri)}…";
             DownloadProgress.Visibility = Visibility.Visible;
@@ -607,6 +608,12 @@ public sealed partial class ObservationDetailPage : UserControl
         DownloadBar.Severity = InfoBarSeverity.Success;
         DownloadBar.Title = $"Downloaded {file.Name}";
         DownloadProgress.Visibility = Visibility.Collapsed;
+
+        // Offer to open it in the 3D Cube Viewer (it reports gracefully if not a NAXIS3 cube).
+        var openCube = new Button { Content = "Open in Cube Viewer" };
+        var savedPath = file.Path;
+        openCube.Click += (_, _) => OpenInCubeRequested?.Invoke(savedPath);
+        DownloadBar.ActionButton = openCube;
     }
 
     private async void OnViewOnCadc(object sender, RoutedEventArgs e)
@@ -631,6 +638,9 @@ public sealed partial class ObservationDetailPage : UserControl
 
     /// <summary>Raised to the host to navigate back (Close button mirrors the title-bar Back).</summary>
     public event Action? CloseRequested;
+
+    /// <summary>Raised to open a just-downloaded FITS spectral cube in the 3D Cube Viewer.</summary>
+    public event Action<string>? OpenInCubeRequested;
 
     private void OnClose(object sender, RoutedEventArgs e) => CloseRequested?.Invoke();
 
