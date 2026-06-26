@@ -50,7 +50,11 @@ internal sealed class NativeSliceSource : IDisposable
         FileStream? fs = null;
         try
         {
-            fs = File.OpenRead(path); // FileShare.Read by default — doesn't block other readers
+            // Hold the handle for the tab's lifetime, but share generously: ReadWrite | Delete means
+            // this open NEVER blocks a concurrent download from overwriting, renaming, or deleting the
+            // file (a default FileShare.Read would lock it and make the writer throw IOException).
+            fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete, 4096, FileOptions.RandomAccess);
             // Plain FITS only: the primary header begins "SIMPLE". A gzip/tar wrapper would force the
             // whole cube into RAM, so skip it (the down-sampled slice is used in-app instead).
             Span<byte> magic = stackalloc byte[6];

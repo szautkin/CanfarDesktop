@@ -237,9 +237,13 @@ public sealed partial class CubeViewerPage
         _slicePending = true;
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
+            if (_closed) return;
             _slicePending = false;
             _sliceRendering = true;
+            // Swallow a transient render/I-O error (e.g. the file was replaced mid-read) — never let it
+            // escape the dispatcher callback and crash the app; the next request will redraw.
             try { RenderSlice(); }
+            catch { }
             finally { _sliceRendering = false; }
             if (_slicePending) RequestSliceRender(); // a newer channel arrived mid-render → draw once more
         });
