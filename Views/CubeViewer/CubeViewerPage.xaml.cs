@@ -46,6 +46,7 @@ public sealed partial class CubeViewerPage : UserControl
     private int _volNx = 1, _volNy = 1;
     private bool _overlayBuilt;
     private bool _captionsOn = true;
+    private bool _freezeRenderLoop; // paused during export capture so volume + overlay share one camera
     private readonly Line[] _edgeLines = new Line[12];
     private readonly (TextBlock Shadow, TextBlock Main)[] _captions = new (TextBlock, TextBlock)[9];
     private readonly string?[] _captionText = new string?[9];
@@ -177,14 +178,24 @@ public sealed partial class CubeViewerPage : UserControl
     {
         if (_closed || !_renderer.IsReady) return;
 
+        // Frozen during an export capture so the offscreen volume and the overlay are
+        // projected for the exact same camera (auto-orbit must not advance between them).
+        if (_freezeRenderLoop) return;
+
         // Pause when the page is collapsed / off-screen. Navigation toggles the host
         // container's Visibility (it does NOT raise Unloaded), so without this guard the
         // render loop would keep presenting at 60fps while the user is in another module.
         if (RenderPanel.ActualWidth < 1 || RenderPanel.ActualHeight < 1) return;
 
         ViewModel.AdvanceAutoOrbit();
+        PushRenderState();
+        _renderer.Render();
+        UpdateOverlay();
+    }
 
-        // Push the current view-model state into the renderer, then draw.
+    /// <summary>Push the current view-model state into the renderer (camera + render params).</summary>
+    private void PushRenderState()
+    {
         _renderer.CameraAzimuth = ViewModel.CameraAzimuth;
         _renderer.CameraElevation = ViewModel.CameraElevation;
         _renderer.CameraDistance = ViewModel.CameraDistance;
@@ -196,9 +207,6 @@ public sealed partial class CubeViewerPage : UserControl
         _renderer.Stretch = ViewModel.StretchIndex;
         _renderer.Mip = ViewModel.Mip;
         _renderer.Interacting = _isDragging;
-
-        _renderer.Render();
-        UpdateOverlay();
     }
 
     // ── Wireframe box + WCS caption overlay ────────────────────────────────────

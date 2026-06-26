@@ -34,21 +34,35 @@ public sealed partial class CubeViewerPage
             int h = Math.Max(1, (int)(RenderPanel.ActualHeight * scale));
             StatusText.Text = $"Exporting {w}×{h}…";
 
+            // Freeze the render loop for the capture so the volume and the overlay are
+            // projected for ONE camera (auto-orbit must not drift between them), and make
+            // the overlay reflect that frozen camera.
+            _freezeRenderLoop = true;
+            PushRenderState();
+            UpdateOverlay();
+
             // 1) Volume render (GPU) at export resolution, high-quality step count.
             float steps = Math.Max(ViewModel.VolumeSteps, 384f);
             byte[]? volume = _renderer.RenderToBgra(w, h, steps);
+
+            // 2) Overlay (box + captions) rasterized at export resolution.
+            byte[]? overlay = volume is null ? null : await RenderOverlayBgraAsync(w, h);
+
+            // Capture done — let the live view resume while the save dialog is open.
+            _freezeRenderLoop = false;
+
             if (volume is null)
             {
-                StatusText.Text = "Export failed: " + (_renderer.LastError ?? "render");
+                StatusText.Text = "Export failed" + (scale >= 4 ? " (try 2×)" : "")
+                    + ": " + (_renderer.LastError ?? "render");
                 return;
             }
 
-            // 2) Overlay (box + captions) rasterized at export resolution, composited over.
-            byte[]? overlay = await RenderOverlayBgraAsync(w, h);
+            // 3) Composite the overlay over the volume (opaque output).
             if (overlay is not null && overlay.Length == volume.Length)
                 CompositeOver(volume, overlay);
 
-            // 3) Save via picker + PNG encoder.
+            // 4) Save via picker + PNG encoder.
             var hwnd = WindowHelper.ActiveWindows.Count > 0
                 ? WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0]) : nint.Zero;
             if (hwnd == nint.Zero) { StatusText.Text = "Export failed: no window handle"; return; }
@@ -76,6 +90,7 @@ public sealed partial class CubeViewerPage
         }
         finally
         {
+            _freezeRenderLoop = false;
             _exporting = false;
         }
     }
@@ -107,10 +122,10 @@ public sealed partial class CubeViewerPage
             byte oa = overlayBgra[i + 3];
             if (oa == 0) { baseBgra[i + 3] = 255; continue; }
             int ia = 255 - oa;
-            // overlay is premultiplied: out = overlay + base·(1−a).
-            baseBgra[i + 0] = (byte)Math.Min(255, overlayBgra[i + 0] + baseBgra[i + 0] * ia / 255);
-            baseBgra[i + 1] = (byte)Math.Min(255, overlayBgra[i + 1] + baseBgra[i + 1] * ia / 255);
-            baseBgra[i + 2] = (byte)Math.Min(255, overlayBgra[i + 2] + baseBgra[i + 2] * ia / 255);
+            // overlay is premultiplied: out = overlay + base·(1−a), with rounded /255.
+            baseBgra[i + 0] = (byte)Math.Min(255, overlayBgra[i + 0] + (baseBgra[i + 0] * ia + 127) / 255);
+            baseBgra[i + 1] = (byte)Math.Min(255, overlayBgra[i + 1] + (baseBgra[i + 1] * ia + 127) / 255);
+            baseBgra[i + 2] = (byte)Math.Min(255, overlayBgra[i + 2] + (baseBgra[i + 2] * ia + 127) / 255);
             baseBgra[i + 3] = 255;
         }
     }
