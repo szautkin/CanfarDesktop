@@ -95,12 +95,19 @@ public sealed partial class CubeViewerPage : UserControl
         if (_pendingCubePath is { } pending)
         {
             _pendingCubePath = null;
-            _ = LoadCubeAsync(pending);
+            _ = LoadPendingAsync(pending);
         }
         else
         {
             _ = LoadDefaultAsync();
         }
+    }
+
+    private async Task LoadPendingAsync(string path)
+    {
+        bool ok = false;
+        try { ok = await LoadCubeCoreAsync(path); }
+        finally { _pendingLoadTcs?.TrySetResult(ok); _pendingLoadTcs = null; }
     }
 
     private void OnCompositionScaleChanged(SwapChainPanel sender, object args)
@@ -111,28 +118,41 @@ public sealed partial class CubeViewerPage : UserControl
     }
 
     private string? _pendingCubePath; // a cube requested before the renderer finished initializing
+    private TaskCompletionSource<bool>? _pendingLoadTcs;
 
     /// <summary>
-    /// Load a specific FITS spectral cube. Safe to call before the page is initialized (it is
-    /// queued and loaded once the GPU device is ready). Resets to volume mode on success.
+    /// Load a specific FITS spectral cube. Safe to call before the page is initialized (it is queued
+    /// and loaded once the GPU device is ready). The returned task completes when the load finishes
+    /// (true on a successful 3D-cube load, false on failure). Resets to volume mode on success.
     /// </summary>
-    public async Task LoadCubeAsync(string path)
+    public Task<bool> LoadCubeAsync(string path)
     {
-        if (_closed) return;
-        if (!_initialized) { _pendingCubePath = path; return; }
+        if (_closed) return Task.FromResult(false);
+        if (!_initialized)
+        {
+            _pendingCubePath = path;
+            _pendingLoadTcs ??= new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            return _pendingLoadTcs.Task;
+        }
+        return LoadCubeCoreAsync(path);
+    }
 
+    private async Task<bool> LoadCubeCoreAsync(string path)
+    {
         StopPlayback();
         StatusText.Text = "Loading " + System.IO.Path.GetFileName(path) + "…";
         try
         {
             var volume = await Task.Run(() => FitsCubeReader.Read(path));
-            if (_closed) return;
+            if (_closed) return false;
             SetViewMode(CubeViewMode.Volume);
             ApplyVolume(volume, $"{volume.Name} · {volume.Nx}×{volume.Ny}×{volume.Nz}");
+            return true;
         }
         catch (Exception ex)
         {
             StatusText.Text = "Cube read failed: " + ex.Message;
+            return false;
         }
     }
 

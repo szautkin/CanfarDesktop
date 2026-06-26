@@ -140,6 +140,9 @@
     <Compile Include="..\Mcp\Tools\Write\ObservationWriteTools.cs" Link="Linked\Mcp\ObservationWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\VoSpaceWriteTools.cs" Link="Linked\Mcp\VoSpaceWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ImageDiscoveryWriteTools.cs" Link="Linked\Mcp\ImageDiscoveryWriteTools.cs" />
+    <!-- Cube Viewer MCP DTOs + tools (pure; no WinUI) -->
+    <Compile Include="..\Services\CubeViewer\CubeViewState.cs" Link="Linked\CubeViewer\CubeViewState.cs" />
+    <Compile Include="..\Mcp\Tools\Write\CubeViewerTools.cs" Link="Linked\Mcp\CubeViewerTools.cs" />
     <Compile Include="..\Mcp\Audit\Audit.cs" Link="Linked\Mcp\Audit.cs" />
     <Compile Include="..\Mcp\McpToolRouter.cs" Link="Linked\Mcp\McpToolRouter.cs" />
     <Compile Include="..\Mcp\Transport\IMcpTransport.cs" Link="Linked\Mcp\IMcpTransport.cs" />

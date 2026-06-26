@@ -78,59 +78,12 @@ public sealed partial class CubeViewerPage
         if (_exporting || !_renderer.IsReady) return;
         _exporting = true;
         var prevStatus = StatusText.Text;
-        CubeExportPlate? plate = null;
         try
         {
-            int w = Math.Max(1, (int)(RenderPanel.ActualWidth * opt.Scale));
-            int h = Math.Max(1, (int)(RenderPanel.ActualHeight * opt.Scale));
-            StatusText.Text = $"Exporting {w}×{h}…";
+            var raster = await BuildPlateRasterAsync(opt.Scale, opt.Dark);
+            if (raster is null) return; // BuildPlateRasterAsync set the status
+            var (plateBuf, pw, ph) = raster.Value;
 
-            // Freeze the loop so the volume + overlay share one camera (no auto-orbit drift).
-            _freezeRenderLoop = true;
-            PushRenderState();
-            UpdateOverlay();
-            float steps = Math.Max(ViewModel.VolumeSteps, 384f);
-            byte[]? volume = _renderer.RenderToBgra(w, h, steps);
-            var overlay = volume is null ? null : await RenderOverlayAsync(w, h);
-            _freezeRenderLoop = false;
-
-            if (volume is null)
-            {
-                StatusText.Text = "Export failed" + (opt.Scale >= 4 ? " (try 2×)" : "")
-                    + ": " + (_renderer.LastError ?? "render");
-                return;
-            }
-            // Composite the box + captions over the volume, scaling the overlay if
-            // RenderTargetBitmap didn't produce exactly w×h (it caps large requests).
-            if (overlay is not null)
-                CompositeOverScaled(volume, w, h, overlay.Value.Pixels, overlay.Value.W, overlay.Value.H);
-
-            // Frame bitmap (the composited render).
-            var frame = new WriteableBitmap(w, h);
-            using (var s = frame.PixelBuffer.AsStream()) await s.WriteAsync(volume, 0, volume.Length);
-            frame.Invalidate();
-
-            // Compose + rasterize the figure plate off-screen.
-            plate = new CubeExportPlate();
-            plate.Populate(frame, w, h, BuildPlateData(), opt.Dark);
-            ExportHost.Children.Add(plate);
-            Canvas.SetLeft(plate, -100000); // off-screen so it never shows in the live UI
-            plate.UpdateLayout();
-
-            var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(plate, (int)Math.Ceiling(plate.ActualWidth), (int)Math.Ceiling(plate.ActualHeight));
-            int pw = rtb.PixelWidth, ph = rtb.PixelHeight;
-            byte[] plateBuf = (await rtb.GetPixelsAsync()).ToArray();
-            ExportHost.Children.Remove(plate);
-            plate = null;
-
-            if (pw <= 0 || ph <= 0 || plateBuf.Length < (long)pw * ph * 4)
-            {
-                StatusText.Text = "Export failed: plate rasterization";
-                return;
-            }
-
-            // Save.
             var hwnd = WindowHelper.ActiveWindows.Count > 0
                 ? WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0]) : nint.Zero;
             if (hwnd == nint.Zero) { StatusText.Text = "Export failed: no window handle"; return; }
@@ -171,7 +124,118 @@ public sealed partial class CubeViewerPage
         {
             _freezeRenderLoop = false;
             _exporting = false;
+        }
+    }
+
+    /// <summary>
+    /// Render the figure plate (volume + box + captions + legend) to BGRA pixels at the given scale,
+    /// freezing the render loop for a still capture. Shared by the interactive export + the MCP export.
+    /// Returns null (and sets a status message) on failure.
+    /// </summary>
+    private async Task<(byte[] Bytes, int W, int H)?> BuildPlateRasterAsync(int scale, bool dark)
+    {
+        CubeExportPlate? plate = null;
+        try
+        {
+            if (RenderPanel.ActualWidth < 1 || RenderPanel.ActualHeight < 1)
+            {
+                StatusText.Text = "Export failed: the cube viewer must be visible";
+                return null;
+            }
+            int w = Math.Max(1, (int)(RenderPanel.ActualWidth * scale));
+            int h = Math.Max(1, (int)(RenderPanel.ActualHeight * scale));
+            StatusText.Text = $"Exporting {w}×{h}…";
+
+            // Freeze the loop so the volume + overlay share one camera (no auto-orbit drift).
+            _freezeRenderLoop = true;
+            PushRenderState();
+            UpdateOverlay();
+            float steps = Math.Max(ViewModel.VolumeSteps, 384f);
+            byte[]? volume = _renderer.RenderToBgra(w, h, steps);
+            var overlay = volume is null ? null : await RenderOverlayAsync(w, h);
+            _freezeRenderLoop = false;
+
+            if (volume is null)
+            {
+                StatusText.Text = "Export failed" + (scale >= 4 ? " (try 2×)" : "")
+                    + ": " + (_renderer.LastError ?? "render");
+                return null;
+            }
+            // Composite the box + captions over the volume (scaled if RTB capped the request).
+            if (overlay is not null)
+                CompositeOverScaled(volume, w, h, overlay.Value.Pixels, overlay.Value.W, overlay.Value.H);
+
+            var frame = new WriteableBitmap(w, h);
+            using (var s = frame.PixelBuffer.AsStream()) await s.WriteAsync(volume, 0, volume.Length);
+            frame.Invalidate();
+
+            plate = new CubeExportPlate();
+            plate.Populate(frame, w, h, BuildPlateData(), dark);
+            ExportHost.Children.Add(plate);
+            Canvas.SetLeft(plate, -100000); // off-screen so it never shows in the live UI
+            plate.UpdateLayout();
+
+            var rtb = new RenderTargetBitmap();
+            await rtb.RenderAsync(plate, (int)Math.Ceiling(plate.ActualWidth), (int)Math.Ceiling(plate.ActualHeight));
+            int pw = rtb.PixelWidth, ph = rtb.PixelHeight;
+            byte[] plateBuf = (await rtb.GetPixelsAsync()).ToArray();
+
+            if (pw <= 0 || ph <= 0 || plateBuf.Length < (long)pw * ph * 4)
+            {
+                StatusText.Text = "Export failed: plate rasterization";
+                return null;
+            }
+            return (plateBuf, pw, ph);
+        }
+        finally
+        {
+            _freezeRenderLoop = false;
             if (plate is not null) ExportHost.Children.Remove(plate);
+        }
+    }
+
+    /// <summary>
+    /// MCP entry: export the figure to an explicit file path (no picker). <paramref name="format"/> is
+    /// "pdf" or "png". Returns null on success, or an error message.
+    /// </summary>
+    public async Task<string?> ExportCubeToPathAsync(string path, string format, int scale, bool dark)
+    {
+        if (_exporting) return "an export is already in progress";
+        if (!_renderer.IsReady) return "the cube viewer is not ready";
+        _exporting = true;
+        try
+        {
+            var raster = await BuildPlateRasterAsync(Math.Clamp(scale, 1, 4), dark);
+            if (raster is null) return StatusText.Text;
+            var (buf, pw, ph) = raster.Value;
+
+            bool pdf = format.Trim().Equals("pdf", StringComparison.OrdinalIgnoreCase);
+            using (var fs = new System.IO.FileStream(path, System.IO.FileMode.Create))
+            {
+                if (pdf)
+                {
+                    PdfImageWriter.Write(fs, PdfImageWriter.BgraToRgb(buf, pw, ph), pw, ph);
+                }
+                else
+                {
+                    using var ras = fs.AsRandomAccessStream();
+                    var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, ras);
+                    encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied,
+                        (uint)pw, (uint)ph, 96, 96, buf);
+                    await encoder.FlushAsync();
+                }
+            }
+            StatusText.Text = "Saved " + System.IO.Path.GetFileName(path);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+        finally
+        {
+            _freezeRenderLoop = false;
+            _exporting = false;
         }
     }
 

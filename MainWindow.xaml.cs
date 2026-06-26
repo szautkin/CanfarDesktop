@@ -79,6 +79,8 @@ public sealed partial class MainWindow : Window
         var fitsHost = App.Services.GetRequiredService<FitsTabHostViewModel>();
         fitsHost.Tabs.CollectionChanged += (_, _) => PublishOpenFits(fitsHost);
         _viewState.SetActions(NavigateByKeyAsync, SetSearchFocusActionAsync, OpenFitsActionAsync);
+        _viewState.SetCubeActions(OpenCubeActionAsync, GetCubeActionAsync, SetCubeActionAsync,
+                                  ExportCubeActionAsync, ProbeCubeActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
     }
@@ -158,6 +160,110 @@ public sealed partial class MainWindow : Window
             catch (Exception ex) { tcs.SetException(ex); }
         }))
             tcs.SetResult(new(false, id, null, "could not dispatch to UI"));
+        return tcs.Task;
+    }
+
+    // ── Cube Viewer MCP actions (each marshals to the UI thread) ─────────────────────────────────
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.CubeOpenOutcome> OpenCubeActionAsync(string target)
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Mcp.Tools.Write.CubeOpenOutcome>();
+        if (!DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var path = ResolveCubeTarget(target);
+                if (path is null)
+                {
+                    tcs.SetResult(new(false, target, 0, 0, 0,
+                        "file not found, or observation not downloaded (use download_observation first)"));
+                    return;
+                }
+                _cubeViewerPage ??= new Views.CubeViewer.CubeViewerPage();
+                CubeViewerContainer.Child = _cubeViewerPage;
+                NavigateTo(AppMode.CubeViewer);
+                bool ok = await _cubeViewerPage.LoadCubeAsync(path);
+                var st = _cubeViewerPage.GetCubeState();
+                tcs.SetResult(ok
+                    ? new(true, path, st.Nx, st.Ny, st.Nz, null)
+                    : new(false, path, st.Nx, st.Ny, st.Nz, "not a 3D cube (NAXIS=3) or could not be read"));
+            }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(new(false, target, 0, 0, 0, "could not dispatch to UI"));
+        return tcs.Task;
+    }
+
+    private string? ResolveCubeTarget(string target)
+    {
+        if (System.IO.File.Exists(target)) return target;
+        var store = App.Services.GetRequiredService<ObservationStore>();
+        var obs = store.Observations.FirstOrDefault(o => o.Id == target || o.PublisherID == target);
+        return obs is not null && obs.FileExists ? obs.LocalPath : null;
+    }
+
+    private Task<CanfarDesktop.Services.CubeViewer.CubeViewState?> GetCubeActionAsync()
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Services.CubeViewer.CubeViewState?>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try { tcs.SetResult(_cubeViewerPage?.GetCubeState()); }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(null);
+        return tcs.Task;
+    }
+
+    private Task<CanfarDesktop.Services.CubeViewer.CubeViewState?> SetCubeActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.CubeViewArgs args)
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Services.CubeViewer.CubeViewState?>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                if (_cubeViewerPage is null) { tcs.SetResult(null); return; }
+                _cubeViewerPage.ApplyCubeView(args.Mode, args.Channel, args.Colormap, args.Stretch,
+                    args.RenderMode, args.WindowLo, args.WindowHi);
+                tcs.SetResult(_cubeViewerPage.GetCubeState());
+            }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(null);
+        return tcs.Task;
+    }
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome> ExportCubeActionAsync(
+        string path, string format, int scale, bool dark)
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome>();
+        if (!DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                if (_cubeViewerPage is null)
+                {
+                    tcs.SetResult(new(false, path, "the cube viewer is not open (use open_cube first)"));
+                    return;
+                }
+                var err = await _cubeViewerPage.ExportCubeToPathAsync(path, format, scale, dark);
+                tcs.SetResult(err is null ? new(true, path, null) : new(false, path, err));
+            }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(new(false, path, "could not dispatch to UI"));
+        return tcs.Task;
+    }
+
+    private Task<CanfarDesktop.Services.CubeViewer.CubeSpectrumResult?> ProbeCubeActionAsync(int x, int y)
+    {
+        var tcs = new TaskCompletionSource<CanfarDesktop.Services.CubeViewer.CubeSpectrumResult?>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try { tcs.SetResult(_cubeViewerPage?.ProbeCubeSpectrum(x, y)); }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(null);
         return tcs.Task;
     }
 

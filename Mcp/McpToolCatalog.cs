@@ -146,6 +146,13 @@ public static class McpToolCatalog
             new SetSearchFocusTool((ra, dec) => viewState.SetSearchFocusActionAsync(ra, dec)),
             new OpenFitsFileTool(id => viewState.OpenFitsAsync(id)),
 
+            // 3D Cube Viewer: open + steer + read + probe + export figure
+            new OpenCubeTool(target => viewState.OpenCubeAsync(target)),
+            new SetCubeViewTool(args => viewState.SetCubeAsync(args)),
+            new GetCubeViewTool(() => viewState.GetCubeAsync()),
+            new ProbeCubeSpectrumTool((x, y) => viewState.ProbeCubeAsync(x, y)),
+            new ExportCubeFigureTool((path, format, scale, dark) => viewState.ExportCubeAsync(path, format, scale, dark)),
+
             // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
             new SaveQueryTool(),
             new DeleteSavedQueryTool(),

@@ -1,4 +1,5 @@
 using CanfarDesktop.Mcp.Tools.Write;
+using CanfarDesktop.Services.CubeViewer;
 
 namespace CanfarDesktop.Mcp;
 
@@ -85,4 +86,42 @@ public sealed class AppViewStateService
 
     public Task<OpenFitsOutcome> OpenFitsAsync(string id)
         => _openFits?.Invoke(id) ?? Task.FromResult(new OpenFitsOutcome(false, id, null, "FITS viewer unavailable"));
+
+    // ── Cube Viewer actions (registered by the UI; invoked by the cube MCP tools) ────────────────
+
+    private volatile Func<string, Task<CubeOpenOutcome>>? _openCube;
+    private volatile Func<Task<CubeViewState?>>? _getCube;
+    private volatile Func<CubeViewArgs, Task<CubeViewState?>>? _setCube;
+    private volatile Func<string, string, int, bool, Task<CubeExportOutcome>>? _exportCube;
+    private volatile Func<int, int, Task<CubeSpectrumResult?>>? _probeCube;
+
+    /// <summary>The UI registers the cube viewer actions (each marshals to the UI thread).</summary>
+    public void SetCubeActions(
+        Func<string, Task<CubeOpenOutcome>> openCube,
+        Func<Task<CubeViewState?>> getCube,
+        Func<CubeViewArgs, Task<CubeViewState?>> setCube,
+        Func<string, string, int, bool, Task<CubeExportOutcome>> exportCube,
+        Func<int, int, Task<CubeSpectrumResult?>> probeCube)
+    {
+        _openCube = openCube;
+        _getCube = getCube;
+        _setCube = setCube;
+        _exportCube = exportCube;
+        _probeCube = probeCube;
+    }
+
+    public Task<CubeOpenOutcome> OpenCubeAsync(string target)
+        => _openCube?.Invoke(target) ?? Task.FromResult(new CubeOpenOutcome(false, target, 0, 0, 0, "cube viewer unavailable"));
+
+    public Task<CubeViewState?> GetCubeAsync()
+        => _getCube?.Invoke() ?? Task.FromResult<CubeViewState?>(null);
+
+    public Task<CubeViewState?> SetCubeAsync(CubeViewArgs args)
+        => _setCube?.Invoke(args) ?? Task.FromResult<CubeViewState?>(null);
+
+    public Task<CubeExportOutcome> ExportCubeAsync(string path, string format, int scale, bool dark)
+        => _exportCube?.Invoke(path, format, scale, dark) ?? Task.FromResult(new CubeExportOutcome(false, path, "cube viewer unavailable"));
+
+    public Task<CubeSpectrumResult?> ProbeCubeAsync(int x, int y)
+        => _probeCube?.Invoke(x, y) ?? Task.FromResult<CubeSpectrumResult?>(null);
 }
