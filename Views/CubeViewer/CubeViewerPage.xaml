@@ -245,6 +245,11 @@
                                   Foreground="#FFE0E0E0"
                                   Toggled="OnCaptionsToggled" />
 
+                    <ToggleSwitch x:Name="SlicePlaneToggle" Header="Slice-plane marker"
+                                  OffContent="Off" OnContent="On" IsOn="True"
+                                  Foreground="#FFE0E0E0"
+                                  Toggled="OnSlicePlaneToggled" />
+
                     <Button Content="Reset view" HorizontalAlignment="Stretch"
                             Click="OnResetView" />
                 </StackPanel>

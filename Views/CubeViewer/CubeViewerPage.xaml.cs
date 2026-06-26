@@ -49,6 +49,7 @@ public sealed partial class CubeViewerPage : UserControl
     private bool _captionsOn = true;
     private bool _freezeRenderLoop; // paused during export capture so volume + overlay share one camera
     private readonly Line[] _edgeLines = new Line[12];
+    private Polygon? _slicePlane; // translucent current-channel marker in volume mode
     private readonly (TextBlock Shadow, TextBlock Main)[] _captions = new (TextBlock, TextBlock)[9];
     private readonly string?[] _captionText = new string?[9];
     private readonly double[] _captionW = new double[9];
@@ -271,6 +272,18 @@ public sealed partial class CubeViewerPage : UserControl
         if (_overlayBuilt) return;
         _overlayBuilt = true;
 
+        // Slice-plane marker (added first → behind the box edges + captions). Cyan, like macOS:
+        // translucent fill (0.34,0.78,1.0,0.16) + brighter edge (.,.,.,0.7).
+        _slicePlane = new Polygon
+        {
+            Fill = ArgbBrush(0x29, 0x57, 0xC7, 0xFF),
+            Stroke = ArgbBrush(0xB3, 0x57, 0xC7, 0xFF),
+            StrokeThickness = 1.5,
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
+        };
+        OverlayCanvas.Children.Add(_slicePlane);
+
         var edgeBrush = ArgbBrush(0x66, 0x9F, 0xC4, 0xE8); // faint cool blue
         for (int i = 0; i < _edgeLines.Length; i++)
         {
@@ -301,17 +314,38 @@ public sealed partial class CubeViewerPage : UserControl
     private void OnCaptionsToggled(object sender, RoutedEventArgs e)
         => _captionsOn = CaptionsToggle.IsOn;
 
+    private void OnSlicePlaneToggled(object sender, RoutedEventArgs e)
+        => ViewModel.ShowSlicePlane = SlicePlaneToggle.IsOn;
+
     /// <summary>Recompute the projected box + captions for the current camera and lay them out.</summary>
     private void UpdateOverlay()
     {
         if (!_overlayBuilt) return;
         double w = RenderPanel.ActualWidth, h = RenderPanel.ActualHeight;
 
+        // Slice-plane marker fraction (0..1 along the spectral axis) when enabled + the cube has channels.
+        float? sliceFraction = ViewModel.ShowSlicePlane && _volume is { Nz: > 1 }
+            ? Math.Clamp(ViewModel.Channel / (float)(_volume.Nz - 1), 0f, 1f)
+            : null;
+
         var frame = _overlayFrame;
         CubeAxesOverlay.Build(
             frame,
             ViewModel.CameraAzimuth, ViewModel.CameraElevation, ViewModel.CameraDistance,
-            ViewModel.SpectralScale, _volNx, _volNy, _meta, w, h);
+            ViewModel.SpectralScale, _volNx, _volNy, _meta, w, h, sliceFraction);
+
+        // Slice-plane quad.
+        if (_slicePlane is not null)
+        {
+            if (frame.HasSlicePlane)
+            {
+                var pts = new PointCollection();
+                for (int i = 0; i < 4; i++) pts.Add(new Point(frame.SlicePlane[i].X, frame.SlicePlane[i].Y));
+                _slicePlane.Points = pts;
+                _slicePlane.Visibility = Visibility.Visible;
+            }
+            else _slicePlane.Visibility = Visibility.Collapsed;
+        }
 
         // Box edges.
         for (int i = 0; i < _edgeLines.Length; i++)

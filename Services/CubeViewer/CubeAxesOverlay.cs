@@ -23,6 +23,12 @@ internal static class CubeAxesOverlay
 
         /// <summary>Axis-name + endpoint-value captions (empty when no metadata).</summary>
         public List<Caption> Captions { get; } = new(9);
+
+        /// <summary>The 4 projected corners of the current-channel slice plane (when <see cref="HasSlicePlane"/>).</summary>
+        public ScreenPoint[] SlicePlane { get; } = new ScreenPoint[4];
+
+        /// <summary>True when a slice-plane marker should be drawn (all 4 corners are in front of the camera).</summary>
+        public bool HasSlicePlane { get; set; }
     }
 
     /// <summary>The 8 unit-box corners (model space, ±0.5).</summary>
@@ -55,12 +61,16 @@ internal static class CubeAxesOverlay
     /// <param name="meta">Cube metadata for the WCS captions (null → wireframe only).</param>
     /// <param name="widthDip">Panel width in DIPs.</param>
     /// <param name="heightDip">Panel height in DIPs.</param>
+    /// <param name="sliceFraction">Current channel position (0..1 along the spectral axis) for the
+    /// slice-plane marker, or null to omit it.</param>
     public static void Build(
         Frame frame,
         float az, float el, float dist, float spectralScale,
         int volNx, int volNy, CubeMetadata? meta,
-        double widthDip, double heightDip)
+        double widthDip, double heightDip,
+        float? sliceFraction = null)
     {
+        frame.HasSlicePlane = false;
         frame.Edges.Clear();
         frame.Captions.Clear();
         if (widthDip < 1 || heightDip < 1) return;
@@ -92,6 +102,19 @@ internal static class CubeAxesOverlay
             pc[i] = Project(Corners[i].X, Corners[i].Y, Corners[i].Z);
         foreach (var (a, b) in EdgeIndices)
             frame.Edges.Add((pc[a], pc[b]));
+
+        // Slice-plane marker: a quad across the box at the current channel's spectral depth
+        // (model Z = -0.5 + fraction). Lets the user see channel navigation inside the volume.
+        if (sliceFraction is { } frac)
+        {
+            float z = -0.5f + Math.Clamp(frac, 0f, 1f);
+            frame.SlicePlane[0] = Project(-0.5f, -0.5f, z);
+            frame.SlicePlane[1] = Project(0.5f, -0.5f, z);
+            frame.SlicePlane[2] = Project(0.5f, 0.5f, z);
+            frame.SlicePlane[3] = Project(-0.5f, 0.5f, z);
+            frame.HasSlicePlane = frame.SlicePlane[0].Visible && frame.SlicePlane[1].Visible
+                && frame.SlicePlane[2].Visible && frame.SlicePlane[3].Visible;
+        }
 
         // WCS axis captions — positions in box space exactly as the macOS CubeAxisCaptions.
         if (meta is not null)

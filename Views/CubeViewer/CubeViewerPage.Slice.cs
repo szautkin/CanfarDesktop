@@ -52,7 +52,9 @@ public sealed partial class CubeViewerPage
         OverlayCanvas.Visibility = showVol;
         VolumeSection.Visibility = showVol;
         SliceImage.Visibility = showSlice;
-        SliceBar.Visibility = showSlice;
+        // The channel scrubber + playback live in BOTH modes when the cube has channels: in slice
+        // mode it shows the 2D plane, in volume mode it drives the slice-plane marker.
+        SliceBar.Visibility = (_volume?.Nz ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed;
 
         if (slice)
         {
@@ -62,7 +64,7 @@ public sealed partial class CubeViewerPage
         }
         else
         {
-            StopPlayback();
+            // Probe panel is slice-only (it needs the 2D image to click).
             SpectrumPanel.Visibility = Visibility.Collapsed;
         }
     }
@@ -84,6 +86,7 @@ public sealed partial class CubeViewerPage
         _probeSpectrum = null;
         _probeX = _probeY = -1;
         SpectrumPanel.Visibility = Visibility.Collapsed;
+        SliceBar.Visibility = nz > 1 ? Visibility.Visible : Visibility.Collapsed;
 
         EnsureSliceBitmap();
         UpdateChannelLabel();
@@ -140,8 +143,9 @@ public sealed partial class CubeViewerPage
     {
         if (_suppressChannel) return;
         ViewModel.Channel = (int)e.NewValue;
-        RenderSlice();
         UpdateChannelLabel();
+        // Slice mode re-renders the 2D plane; volume mode's slice-plane marker updates in the render loop.
+        if (ViewModel.ViewMode == CubeViewMode.Slice) RenderSlice();
     }
 
     private void OnPlayPause(object sender, RoutedEventArgs e)
@@ -172,9 +176,9 @@ public sealed partial class CubeViewerPage
     private void AdvanceChannelPlayback()
     {
         if (_volume is null) return;
-        // Stop if the page was hidden (navigation toggles Visibility without raising Unloaded,
-        // so the timer would otherwise keep rendering slices off-screen) or torn down.
-        if (_closed || ViewModel.ViewMode != CubeViewMode.Slice || SliceImage.ActualWidth < 1)
+        // Stop if this tab is no longer the active/shown one (TabView unload or cross-module nav),
+        // so playback never runs off-screen. Works in both volume and slice modes.
+        if (_closed || !_active)
         {
             StopPlayback();
             return;
@@ -185,8 +189,9 @@ public sealed partial class CubeViewerPage
         ChannelSlider.Value = next;
         _suppressChannel = false;
         ViewModel.Channel = next;
-        RenderSlice();
         UpdateChannelLabel();
+        // Slice mode renders each frame; volume mode animates the slice-plane via the render loop.
+        if (ViewModel.ViewMode == CubeViewMode.Slice) RenderSlice();
     }
 
     // ── Spectrum probe ─────────────────────────────────────────────────────────

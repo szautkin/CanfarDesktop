@@ -72,6 +72,11 @@ public sealed partial class CubeViewerViewModel : ObservableObject
     [ObservableProperty]
     private bool _isPlaying;
 
+    /// <summary>Show the translucent slice-plane marker at the current channel in volume mode
+    /// (so channel navigation is visible in both modes). Matches the macOS showSlicePlane.</summary>
+    [ObservableProperty]
+    private bool _showSlicePlane = true;
+
     /// <summary>Channel playback frame rate (matches the macOS default).</summary>
     public int PlaybackFps => 12;
 
