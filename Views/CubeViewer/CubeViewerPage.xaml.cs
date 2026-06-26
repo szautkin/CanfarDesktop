@@ -185,8 +185,8 @@ public sealed partial class CubeViewerPage : UserControl
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Cube read failed: " + ex.Message;
             HideLoading();
+            ShowStatus("Couldn't load " + fname + " — " + ex.Message, isError: true);
             return false;
         }
     }
@@ -661,6 +661,7 @@ public sealed partial class CubeViewerPage : UserControl
         _pendingLoadTcs?.TrySetResult(false);
         _pendingLoadTcs = null;
         _playTimer?.Stop();
+        _statusTimer?.Stop();
         PauseRendering();
         RenderPanel.CompositionScaleChanged -= OnCompositionScaleChanged;
         _nativeSource?.Dispose();

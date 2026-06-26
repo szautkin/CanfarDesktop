@@ -53,6 +53,8 @@ public sealed partial class CubeViewerPage
     private void ShowLoading(string fileName)
     {
         BuildLoadingSteps();
+        HideStatus(); // clear any prior error/status snack while a fresh load runs
+        _statusTimer?.Stop();
         LoadingTitle.Text = "Loading " + fileName;
         LoadingBar.Value = 0;
         UpdateLoadSteps(0, "");
@@ -91,4 +93,46 @@ public sealed partial class CubeViewerPage
     }
 
     private void HideLoading() => LoadingPanel.Visibility = Visibility.Collapsed;
+
+    // ── Transient status / error snackbar (bottom-center) ───────────────────────
+
+    private DispatcherTimer? _statusTimer;
+
+    /// <summary>
+    /// Surface a transient message to the user: a clear bottom-center snackbar (errors in red, info in
+    /// cyan, auto-dismissing) PLUS the compact panel readout. The single entry point for load failures,
+    /// export results, and the like.
+    /// </summary>
+    private void ShowStatus(string message, bool isError = false)
+    {
+        StatusText.Text = message; // keep the compact panel readout in sync
+        if (_closed || StatusSnack is null) return;
+
+        StatusSnackText.Text = message;
+        var accent = isError ? ArgbColor(0xFF, 0xFF, 0x6B, 0x6B) : ArgbColor(0xFF, 0x56, 0xC8, 0xFF);
+        StatusSnackIcon.Glyph = isError ? "" : ""; // Warning : Info (Segoe MDL2)
+        StatusSnackIcon.Foreground = new SolidColorBrush(accent);
+        StatusSnack.BorderBrush = new SolidColorBrush(ArgbColor(0x66, accent.R, accent.G, accent.B));
+        StatusSnack.Visibility = Visibility.Visible;
+
+        if (_statusTimer is null)
+        {
+            _statusTimer = new DispatcherTimer();
+            _statusTimer.Tick += (_, _) => { _statusTimer!.Stop(); HideStatus(); };
+        }
+        _statusTimer.Stop();
+        _statusTimer.Interval = TimeSpan.FromSeconds(isError ? 7 : 3.5); // errors linger a little longer
+        _statusTimer.Start();
+    }
+
+    private void HideStatus()
+    {
+        if (StatusSnack is not null) StatusSnack.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnStatusSnackClose(object sender, RoutedEventArgs e)
+    {
+        _statusTimer?.Stop();
+        HideStatus();
+    }
 }

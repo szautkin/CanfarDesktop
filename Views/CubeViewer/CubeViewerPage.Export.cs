@@ -23,13 +23,13 @@ public sealed partial class CubeViewerPage
 
     private async void OnExportClick(object sender, RoutedEventArgs e)
     {
-        if (_volume is null) { StatusText.Text = "Open a cube first."; return; }
+        if (_volume is null) { ShowStatus("Open a cube first."); return; }
         if (_exporting) return;
         _exporting = true;
         try
         {
             var cap = await CaptureExportFrameAsync();
-            if (cap is null) { StatusText.Text = "Export capture failed (is the cube viewer visible?)"; return; }
+            if (cap is null) { ShowStatus("Export capture failed (is the cube viewer visible?)", isError: true); return; }
 
             var dialog = new CubeExportDialog { XamlRoot = XamlRoot };
             dialog.Initialize(cap.Value.Frame, cap.Value.W, cap.Value.H, BuildPlateData(), ExportBaseName());
@@ -37,7 +37,7 @@ public sealed partial class CubeViewerPage
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Export failed: " + ex.Message;
+            ShowStatus("Export failed: " + ex.Message, isError: true);
         }
         finally
         {
@@ -195,7 +195,7 @@ public sealed partial class CubeViewerPage
                     await encoder.FlushAsync();
                 }
             }
-            StatusText.Text = "Saved " + Path.GetFileName(full);
+            ShowStatus("Saved " + Path.GetFileName(full));
             return null;
         }
         catch (Exception ex)

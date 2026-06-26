@@ -274,6 +274,28 @@
             </StackPanel>
         </Border>
 
+        <!-- Transient status / error snackbar (bottom-center) — mirrors the loading panel style -->
+        <Border x:Name="StatusSnack" Visibility="Collapsed"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Margin="0,0,0,40" Padding="18,12" CornerRadius="10" MinWidth="320" MaxWidth="600"
+                Background="#EA0C1018" BorderBrush="#55BFD8FF" BorderThickness="1">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <FontIcon x:Name="StatusSnackIcon" Grid.Column="0" FontSize="16" VerticalAlignment="Center"
+                          Glyph="&#xE946;" Foreground="#FF56C8FF" />
+                <TextBlock x:Name="StatusSnackText" Grid.Column="1" VerticalAlignment="Center"
+                           TextWrapping="Wrap" Foreground="#FFF0F0F0"
+                           Style="{StaticResource BodyTextBlockStyle}" />
+                <Button x:Name="StatusSnackClose" Grid.Column="2" Content="✕" Padding="7,1" FontSize="12"
+                        Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                        Click="OnStatusSnackClose" />
+            </Grid>
+        </Border>
+
         <!-- Spectrum probe (slice mode): flux vs channel at the clicked spaxel -->
         <Border x:Name="SpectrumPanel" Visibility="Collapsed"
                 HorizontalAlignment="Center" VerticalAlignment="Bottom"
