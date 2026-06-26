@@ -1,122 +1,210 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
 using Windows.UI;
+using CanfarDesktop.Services.CubeViewer;
 
 namespace CanfarDesktop.Views.CubeViewer;
 
 /// <summary>
-/// A publication figure "plate" for cube export: a header (brand · title | filename · date), the
-/// framed render (volume + box + captions, already composited), and a legend footer (object /
-/// instrument / facts, per-axis WCS ranges, and a labeled colorbar). Rasterized off-screen via
-/// <c>RenderTargetBitmap</c> to PNG/PDF. The Windows analogue of the macOS CubeExportPlate /
-/// v-cube composePlate.
+/// A publication figure "plate" for cube export: header (title / instrument / channel | filename /
+/// date), the framed render (a transparent volume snapshot) with a LIVE box + WCS caption overlay,
+/// and a footer (labeled colorbar + a metadata grid). Fully themed via <see cref="PlateStyle"/> so a
+/// modal can preview it live and rasterize the same control to PNG/PDF. Windows analogue of the
+/// macOS CubeExportPlate.
 /// </summary>
 public sealed partial class CubeExportPlate : UserControl
 {
     public CubeExportPlate() => InitializeComponent();
 
-    /// <summary>All text + colorbar content for the plate.</summary>
+    /// <summary>Content for the plate (text + colorbar + the camera/metadata for the live overlay).</summary>
     public struct PlateData
     {
         public string Title;            // object name (or filename)
         public string Subtitle;         // instrument
+        public string ChannelText;      // "CH n/N · spectral value"
         public string FileName;
         public string DateText;
-        public string Facts;            // "nx×ny×nz · NaN x% · Resident"
+        public string Dims;             // "nx × ny × nz"
+        public string NanText;          // "x.x%"
+        public string ModeText;         // "Resident"
         public List<(string Name, string Range)> AxisRanges; // RA/DEC/SPECTRAL
-        public string CbMin;            // min value label
-        public string CbMax;            // max value + unit label
+        public string CbMin;            // colorbar min label
+        public string CbMax;            // colorbar max label (+ unit)
         public string CbStretch;        // "ASINH · INFERNO"
         public byte[] ColorbarLut;      // 256×4 RGBA
+
+        // Live box + caption overlay (export camera, already pulled back).
+        public float Az, El, Dist, SpectralScale;
+        public int VolNx, VolNy;
+        public CubeMetadata? Meta;
+        public bool CaptionsOn;
     }
 
-    /// <summary>Lay out the plate for a frame of <paramref name="frameW"/>×<paramref name="frameH"/> pixels.</summary>
-    public void Populate(WriteableBitmap frame, int frameW, int frameH, PlateData d, bool dark)
+    /// <summary>User-tunable figure style (theme / font / text color / scale / annotations / transparency).</summary>
+    public struct PlateStyle
     {
-        // Palettes ported from v-cube (cockpit dark / journal light).
-        Color bg = dark ? C(0xFF, 0x04, 0x07, 0x0C) : C(0xFF, 0xFF, 0xFF, 0xFF);
-        Color text = dark ? C(0xFF, 0xD7, 0xF0, 0xFF) : C(0xFF, 0x14, 0x18, 0x1C);
-        Color dim = dark ? C(0xFF, 0x6B, 0x8A, 0x9C) : C(0xFF, 0x5A, 0x64, 0x6C);
-        Color accent = dark ? C(0xFF, 0x56, 0xC8, 0xFF) : C(0xFF, 0x14, 0x18, 0x1C); // light: accent = text
-        Color line = dark ? C(0x47, 0x56, 0xC8, 0xFF) : C(0x73, 0x14, 0x18, 0x1C);   // rgba(.,.,.,.28/.45)
+        public bool Dark;          // cockpit dark vs journal light
+        public string Font;        // "sans" | "mono" | "serif"
+        public string TextColor;   // "auto" | "white" | "black" | "cyan" | "amber"
+        public double TextScale;   // 0.75 .. 1.5
+        public bool Annotate;      // header + footer visible
+        public bool Transparent;   // no background fill
+
+        public static PlateStyle Default => new()
+        {
+            Dark = true, Font = "sans", TextColor = "auto", TextScale = 1.0, Annotate = true, Transparent = false,
+        };
+    }
+
+    /// <summary>Lay out + theme the plate for a frame of <paramref name="frameW"/>×<paramref name="frameH"/> px.</summary>
+    public void Populate(WriteableBitmap frame, int frameW, int frameH, PlateData d, PlateStyle s)
+    {
+        // Theme palette (macOS journal/cockpit).
+        Color bg = s.Dark ? C(0xFF, 0x0D, 0x0D, 0x0D) : C(0xFF, 0xFF, 0xFF, 0xFF);
+        Color themeText = s.Dark ? C(0xFF, 0xFF, 0xFF, 0xFF) : C(0xFF, 0x14, 0x14, 0x14);
+        Color themeDim = s.Dark ? C(0xFF, 0x9E, 0x9E, 0x9E) : C(0xFF, 0x6B, 0x6B, 0x6B);
+        Color line = s.Dark ? C(0xFF, 0x4D, 0x4D, 0x4D) : C(0xFF, 0xC7, 0xC7, 0xC7);
+
+        Color main = ResolveTextColor(s.TextColor, themeText);
+        Color dim = s.TextColor == "auto" ? themeDim : C(0xA6, main.R, main.G, main.B); // 65% of main
+
+        double sc = Math.Clamp(s.TextScale, 0.5, 2.0);
+        double titleF = frameW * 0.020 * sc;
+        double bodyF = frameW * 0.0120 * sc;
+        double smallF = frameW * 0.0095 * sc;
+        var fam = ResolveFont(s.Font);
 
         double pad = Math.Max(18, frameW * 0.018);
-        double titleF = Math.Max(15, frameW * 0.013);
-        double bodyF = Math.Max(11, frameW * 0.0078);
-        double capF = Math.Max(10, frameW * 0.0066);
-        var mono = new FontFamily("Consolas");
-
-        RootBorder.Background = B(bg);
         RootBorder.Padding = new Thickness(pad);
+        RootBorder.Background = s.Transparent ? new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)) : B(bg);
         Width = frameW + 2 * pad;
 
-        // Header brand (the cube object/title lives in the legend footer below).
-        BrandTitle.Inlines.Clear();
-        BrandTitle.Inlines.Add(new Run { Text = "◈ CANFAR CUBE", Foreground = B(accent), FontWeight = Microsoft.UI.Text.FontWeights.Medium });
-        BrandTitle.FontSize = titleF;
+        // ── Header ──
+        SetText(HdrTitle, d.Title, fam, titleF, main, Microsoft.UI.Text.FontWeights.SemiBold);
+        SetText(HdrInstrument, d.Subtitle, fam, smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
+        SetText(HdrChannel, d.ChannelText, new FontFamily("Consolas"), smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
+        SetText(HdrBrand, "◈ CANFAR CUBE", fam, smallF, dim, Microsoft.UI.Text.FontWeights.Medium);
+        SetText(HdrFile, d.FileName, new FontFamily("Consolas"), smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
+        SetText(HdrDate, d.DateText, new FontFamily("Consolas"), smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
+        HdrInstrument.Visibility = string.IsNullOrEmpty(d.Subtitle) ? Visibility.Collapsed : Visibility.Visible;
+        HdrChannel.Visibility = string.IsNullOrEmpty(d.ChannelText) ? Visibility.Collapsed : Visibility.Visible;
 
-        FileDate.Text = string.IsNullOrEmpty(d.FileName) ? d.DateText : $"{d.FileName} · {d.DateText}";
-        FileDate.Foreground = B(dim);
-        FileDate.FontSize = capF;
-        FileDate.FontFamily = mono;
+        DividerTop.Fill = B(line);
+        DividerBot.Fill = B(line);
+        DividerTop.Height = DividerBot.Height = Math.Max(1, frameW * 0.0006);
 
-        Divider.Fill = B(line);
-        Divider.Height = Math.Max(1, frameW * 0.0007);
-
-        // Frame.
+        // ── Frame + live overlay ──
         FrameBorder.BorderBrush = B(line);
         FrameImage.Source = frame;
         FrameImage.Width = frameW;
         FrameImage.Height = frameH;
+        BuildCaptionOverlay(frameW, frameH, d);
 
-        // Legend.
-        LegendTitle.Text = d.Title;
-        LegendTitle.Foreground = B(text);
-        LegendTitle.FontWeight = Microsoft.UI.Text.FontWeights.Medium;
-        LegendTitle.FontSize = bodyF * 1.15;
-
-        LegendSubtitle.Text = d.Subtitle;
-        LegendSubtitle.Foreground = B(dim);
-        LegendSubtitle.FontSize = capF;
-        LegendSubtitle.Visibility = string.IsNullOrEmpty(d.Subtitle) ? Visibility.Collapsed : Visibility.Visible;
-
-        LegendFacts.Text = d.Facts;
-        LegendFacts.Foreground = B(dim);
-        LegendFacts.FontSize = capF;
-        LegendFacts.FontFamily = mono;
-
-        // Axis ranges (name accent, value dim).
-        AxisRangesPanel.Children.Clear();
-        foreach (var (name, range) in d.AxisRanges ?? new())
-        {
-            var tb = new TextBlock { FontSize = capF, FontFamily = mono };
-            tb.Inlines.Add(new Run { Text = name + "  ", Foreground = B(accent) });
-            tb.Inlines.Add(new Run { Text = range, Foreground = B(dim) });
-            AxisRangesPanel.Children.Add(tb);
-        }
-
-        // Colorbar.
-        ColorbarPanel.Width = Math.Max(160, frameW * 0.18);
-        CbStretch.Text = d.CbStretch;
-        CbStretch.Foreground = B(dim);
-        CbStretch.FontSize = capF * 0.92;
-        CbStretch.FontFamily = mono;
-
-        ColorbarRect.Height = Math.Max(8, frameW * 0.004);
+        // ── Footer: colorbar + metadata grid ──
+        ColorbarRect.Width = Math.Max(150, frameW * 0.14);
+        ColorbarRect.Height = Math.Max(10, frameW * 0.0085);
         ColorbarRect.Stroke = B(line);
         ColorbarRect.StrokeThickness = 1;
         ColorbarRect.Fill = GradientFromLut(d.ColorbarLut);
+        SetText(CbMin, d.CbMin, new FontFamily("Consolas"), smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
+        SetText(CbMax, d.CbMax, new FontFamily("Consolas"), smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
+        SetText(CbStretch, d.CbStretch, new FontFamily("Consolas"), smallF, dim, Microsoft.UI.Text.FontWeights.Normal);
 
-        CbMin.Text = d.CbMin;
-        CbMax.Text = d.CbMax;
-        CbMin.Foreground = CbMax.Foreground = B(dim);
-        CbMin.FontSize = CbMax.FontSize = capF;
-        CbMin.FontFamily = CbMax.FontFamily = mono;
+        BuildMetaGrid(d, fam, smallF, main, dim);
+
+        // ── Annotations toggle ──
+        var ann = s.Annotate ? Visibility.Visible : Visibility.Collapsed;
+        HeaderGrid.Visibility = ann;
+        DividerTop.Visibility = ann;
+        DividerBot.Visibility = ann;
+        FooterPanel.Visibility = ann;
+        FrameBorder.Margin = s.Annotate ? new Thickness(0) : new Thickness(0);
+        RootBorder.Padding = s.Annotate ? new Thickness(pad) : new Thickness(Math.Max(2, frameW * 0.004));
     }
+
+    private void BuildCaptionOverlay(int frameW, int frameH, PlateData d)
+    {
+        CaptionOverlay.Children.Clear();
+        CaptionOverlay.Width = frameW;
+        CaptionOverlay.Height = frameH;
+        if (!d.CaptionsOn) return;
+
+        var frame = new CubeAxesOverlay.Frame();
+        CubeAxesOverlay.Build(frame, d.Az, d.El, d.Dist, d.SpectralScale, d.VolNx, d.VolNy, d.Meta, frameW, frameH);
+
+        var edgeBrush = B(C(0x66, 0x9F, 0xC4, 0xE8));
+        double edgeT = Math.Max(1, frameW / 1600.0);
+        foreach (var (a, b) in frame.Edges)
+            if (a.Visible && b.Visible)
+                CaptionOverlay.Children.Add(new Line { Stroke = edgeBrush, StrokeThickness = edgeT, X1 = a.X, Y1 = a.Y, X2 = b.X, Y2 = b.Y });
+
+        double capF = Math.Max(11, frameW * 0.011);
+        var mono = new FontFamily("Consolas");
+        foreach (var cap in frame.Captions)
+        {
+            if (!cap.At.Visible || string.IsNullOrEmpty(cap.Text)) continue;
+            var weight = cap.IsAxisName ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
+            var color = cap.IsAxisName ? C(0xFF, 0x73, 0xD9, 0xFF) : C(0xF5, 0xFF, 0xFF, 0xFF);
+            var mainTb = new TextBlock { Text = cap.Text, FontFamily = mono, FontSize = capF, FontWeight = weight, Foreground = B(color) };
+            var shadow = new TextBlock { Text = cap.Text, FontFamily = mono, FontSize = capF, FontWeight = weight, Foreground = B(Microsoft.UI.Colors.Black) };
+            mainTb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double tw = mainTb.DesiredSize.Width, th = mainTb.DesiredSize.Height;
+            double x = Math.Clamp(cap.At.X - tw / 2, 4, Math.Max(4, frameW - tw - 4));
+            double y = Math.Clamp(cap.At.Y - th / 2, 4, Math.Max(4, frameH - th - 4));
+            Canvas.SetLeft(shadow, x + 1); Canvas.SetTop(shadow, y + 1);
+            Canvas.SetLeft(mainTb, x); Canvas.SetTop(mainTb, y);
+            CaptionOverlay.Children.Add(shadow);
+            CaptionOverlay.Children.Add(mainTb);
+        }
+    }
+
+    private void BuildMetaGrid(PlateData d, FontFamily fam, double smallF, Color main, Color dim)
+    {
+        MetaPanel.Children.Clear();
+        AddMetaColumn("DIMENSIONS", d.Dims, fam, smallF, main, dim);
+        foreach (var (name, range) in d.AxisRanges ?? new())
+            AddMetaColumn(name, range, fam, smallF, main, dim);
+        AddMetaColumn("NaN", d.NanText, fam, smallF, main, dim);
+        AddMetaColumn("MODE", d.ModeText, fam, smallF, main, dim);
+    }
+
+    private void AddMetaColumn(string key, string value, FontFamily fam, double smallF, Color main, Color dim)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        var sp = new StackPanel { Spacing = 1 };
+        sp.Children.Add(new TextBlock { Text = key, FontFamily = fam, FontSize = smallF * 0.86, Foreground = B(dim) });
+        sp.Children.Add(new TextBlock { Text = value, FontFamily = new FontFamily("Consolas"), FontSize = smallF, Foreground = B(main) });
+        MetaPanel.Children.Add(sp);
+    }
+
+    private static void SetText(TextBlock tb, string text, FontFamily fam, double size, Color color, Windows.UI.Text.FontWeight weight)
+    {
+        tb.Text = text;
+        tb.FontFamily = fam;
+        tb.FontSize = size;
+        tb.Foreground = B(color);
+        tb.FontWeight = weight;
+    }
+
+    private static FontFamily ResolveFont(string font) => font switch
+    {
+        "mono" => new FontFamily("Consolas"),
+        "serif" => new FontFamily("Cambria"),
+        _ => new FontFamily("Segoe UI"),
+    };
+
+    private static Color ResolveTextColor(string textColor, Color themeText) => textColor switch
+    {
+        "white" => C(0xFF, 0xFF, 0xFF, 0xFF),
+        "black" => C(0xFF, 0x14, 0x14, 0x14),
+        "cyan" => C(0xFF, 0x40, 0xB3, 0xF2),
+        "amber" => C(0xFF, 0xF2, 0x99, 0x26),
+        _ => themeText,
+    };
 
     private static LinearGradientBrush GradientFromLut(byte[] lut)
     {
@@ -126,11 +214,7 @@ public sealed partial class CubeExportPlate : UserControl
         for (int s = 0; s < stops; s++)
         {
             int idx = s * 255 / (stops - 1), o = idx * 4;
-            brush.GradientStops.Add(new GradientStop
-            {
-                Color = C(255, lut[o], lut[o + 1], lut[o + 2]),
-                Offset = s / (double)(stops - 1),
-            });
+            brush.GradientStops.Add(new GradientStop { Color = C(255, lut[o], lut[o + 1], lut[o + 2]), Offset = s / (double)(stops - 1) });
         }
         return brush;
     }

@@ -78,6 +78,22 @@ internal static class PdfImageWriter
         ms.CopyTo(output);
     }
 
+    /// <summary>Convert premultiplied BGRA8 to tight RGB8, flattening any transparency onto white.</summary>
+    public static byte[] BgraToRgbOverWhite(byte[] bgra, int width, int height)
+    {
+        var rgb = new byte[(long)width * height * 3];
+        long n = (long)width * height;
+        for (long i = 0; i < n; i++)
+        {
+            long s = i * 4, d = i * 3;
+            int inv = 255 - bgra[s + 3];              // premultiplied src over white: out = src + 255·(1−a)
+            rgb[d + 0] = (byte)Math.Min(255, bgra[s + 2] + inv); // R
+            rgb[d + 1] = (byte)Math.Min(255, bgra[s + 1] + inv); // G
+            rgb[d + 2] = (byte)Math.Min(255, bgra[s + 0] + inv); // B
+        }
+        return rgb;
+    }
+
     /// <summary>Convert tight BGRA8 (top-down) to tight RGB8 (top-down), dropping alpha.</summary>
     public static byte[] BgraToRgb(byte[] bgra, int width, int height)
     {

@@ -409,7 +409,7 @@ public sealed class CubeVolumeRenderer : IDisposable
     /// Bind the pipeline and march the volume into <paramref name="rtv"/> at the given size.
     /// Shared by the live present path and the offscreen export path.
     /// </summary>
-    private void DrawVolume(ID3D11RenderTargetView rtv, int w, int h, float steps, bool animateJitter)
+    private void DrawVolume(ID3D11RenderTargetView rtv, int w, int h, float steps, bool animateJitter, Color4? clear = null)
     {
         float aspect = h > 0 ? (float)w / h : 1f;
         Matrix4x4 model = BuildModelMatrix();
@@ -441,7 +441,7 @@ public sealed class CubeVolumeRenderer : IDisposable
         Marshal.StructureToPtr(uniforms, mapped.DataPointer, false);
         _context.Unmap(_cbuffer, 0);
 
-        _context.ClearRenderTargetView(rtv, Background);
+        _context.ClearRenderTargetView(rtv, clear ?? Background);
         _context.OMSetRenderTargets(rtv);
         _context.RSSetViewport(new Viewport(0, 0, w, h, 0f, 1f));
         _context.RSSetState(_raster);
@@ -463,7 +463,7 @@ public sealed class CubeVolumeRenderer : IDisposable
     /// Render the current view to an offscreen target at the given size and read it back as
     /// BGRA8 pixels (tight, top-down). Returns null if not ready or on failure. Used for export.
     /// </summary>
-    public byte[]? RenderToBgra(int width, int height, float steps)
+    public byte[]? RenderToBgra(int width, int height, float steps, bool transparent = false)
     {
         if (!IsReady || _disposed || _dataSrv is null || _cmapSrv is null || _tfSrv is null)
             return null;
@@ -481,7 +481,10 @@ public sealed class CubeVolumeRenderer : IDisposable
             rt = _device.CreateTexture2D(rtDesc);
             rtv = _device.CreateRenderTargetView(rt);
 
-            DrawVolume(rtv, width, height, steps, animateJitter: false);
+            // For figure export, clear to transparent so the plate's theme/transparent background
+            // shows through the empty space around the volume (the volume is premultiplied).
+            Color4? clear = transparent ? new Color4(0f, 0f, 0f, 0f) : null;
+            DrawVolume(rtv, width, height, steps, animateJitter: false, clear);
 
             var stDesc = new Texture2DDescription(
                 Format.B8G8R8A8_UNorm, width, height, 1, 1,

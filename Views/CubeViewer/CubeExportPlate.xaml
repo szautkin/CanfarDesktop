@@ -7,50 +7,45 @@
     <Border x:Name="RootBorder" Padding="26">
         <StackPanel x:Name="Stack" Spacing="0">
 
-            <!-- Header: brand · title (left), filename · date (right), divider -->
+            <!-- Header: title / instrument / channel (left), filename / date (right) -->
             <Grid x:Name="HeaderGrid">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="BrandTitle" Grid.Column="0" VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis" />
-                <TextBlock x:Name="FileDate" Grid.Column="1" VerticalAlignment="Center"
-                           Margin="16,0,0,0" />
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock x:Name="HdrTitle" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="HdrInstrument" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="HdrChannel" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="2" HorizontalAlignment="Right" Margin="16,0,0,0">
+                    <TextBlock x:Name="HdrBrand" HorizontalAlignment="Right" />
+                    <TextBlock x:Name="HdrFile" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="HdrDate" HorizontalAlignment="Right" />
+                </StackPanel>
             </Grid>
-            <Rectangle x:Name="Divider" Height="1" Margin="0,6,0,12" />
+            <Rectangle x:Name="DividerTop" Height="1" Margin="0,10,0,12" />
 
-            <!-- Framed render (volume + box + captions already composited in) -->
+            <!-- Framed render (transparent volume snapshot) + LIVE box/caption overlay -->
             <Border x:Name="FrameBorder" BorderThickness="1" HorizontalAlignment="Center">
-                <Image x:Name="FrameImage" Stretch="None" />
+                <Grid>
+                    <Image x:Name="FrameImage" Stretch="Fill" />
+                    <Canvas x:Name="CaptionOverlay" IsHitTestVisible="False" />
+                </Grid>
             </Border>
 
-            <!-- Footer: legend | axis ranges | colorbar -->
-            <Grid x:Name="FooterGrid" Margin="0,14,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+            <Rectangle x:Name="DividerBot" Height="1" Margin="0,12,0,12" />
 
-                <StackPanel x:Name="LegendPanel" Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                    <TextBlock x:Name="LegendTitle" TextTrimming="CharacterEllipsis" />
-                    <TextBlock x:Name="LegendSubtitle" TextTrimming="CharacterEllipsis" />
-                    <TextBlock x:Name="LegendFacts" TextTrimming="CharacterEllipsis" />
+            <!-- Footer: colorbar row + metadata grid -->
+            <StackPanel x:Name="FooterPanel" Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock x:Name="CbMin" VerticalAlignment="Center" />
+                    <Rectangle x:Name="ColorbarRect" Width="190" Height="12" VerticalAlignment="Center" />
+                    <TextBlock x:Name="CbMax" VerticalAlignment="Center" />
+                    <TextBlock x:Name="CbStretch" VerticalAlignment="Center" Margin="6,0,0,0" />
                 </StackPanel>
-
-                <StackPanel x:Name="AxisRangesPanel" Grid.Column="1" Spacing="2"
-                            Margin="24,0,24,0" VerticalAlignment="Center" />
-
-                <StackPanel x:Name="ColorbarPanel" Grid.Column="2" Spacing="3" VerticalAlignment="Center">
-                    <TextBlock x:Name="CbStretch" HorizontalAlignment="Right" />
-                    <Rectangle x:Name="ColorbarRect" Height="10" />
-                    <Grid>
-                        <TextBlock x:Name="CbMin" HorizontalAlignment="Left" />
-                        <TextBlock x:Name="CbMax" HorizontalAlignment="Right" />
-                    </Grid>
-                </StackPanel>
-            </Grid>
+                <StackPanel x:Name="MetaPanel" Orientation="Horizontal" Spacing="26" />
+            </StackPanel>
         </StackPanel>
     </Border>
 </UserControl>
