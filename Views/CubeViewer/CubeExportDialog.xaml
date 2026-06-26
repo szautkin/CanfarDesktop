@@ -18,6 +18,10 @@
             <ColumnDefinition Width="264" />
         </Grid.ColumnDefinitions>
 
+        <!-- Off-screen host: a fresh plate is rasterized here at full natural size for export
+             (the preview plate is scaled down inside a Viewbox, which would soften the text). -->
+        <Canvas x:Name="RasterHost" Grid.ColumnSpan="2" IsHitTestVisible="False" />
+
         <!-- Live WYSIWYG preview of the figure plate -->
         <Border Grid.Column="0" CornerRadius="6" Padding="14"
                 BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="1"

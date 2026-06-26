@@ -77,17 +77,24 @@ public sealed partial class CubeExportDialog : ContentDialog
 
     private async Task ExportAsync(bool pdf)
     {
-        if (_plate is null) return;
         int scale = ResCombo.SelectedIndex == 1 ? 4 : 2;
+        CubeExportPlate? raster = null;
         try
         {
             StatusLabel.Text = "Rendering…";
-            _plate.UpdateLayout();
-            int reqW = (int)Math.Ceiling(_plate.ActualWidth * scale);
-            int reqH = (int)Math.Ceiling(_plate.ActualHeight * scale);
 
+            // Rasterize a FRESH plate at full natural size — NOT the preview plate, which is scaled
+            // down inside the Viewbox (that would soften the text). This keeps the export font crisp.
+            raster = new CubeExportPlate();
+            raster.Populate(_frame, _frameW, _frameH, _data, CurrentStyle());
+            RasterHost.Children.Add(raster);
+            Canvas.SetLeft(raster, -100000);
+            raster.UpdateLayout();
+
+            int reqW = (int)Math.Ceiling(raster.ActualWidth * scale);
+            int reqH = (int)Math.Ceiling(raster.ActualHeight * scale);
             var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(_plate, reqW, reqH);
+            await rtb.RenderAsync(raster, reqW, reqH);
             int rw = rtb.PixelWidth, rh = rtb.PixelHeight;
             byte[] buf = (await rtb.GetPixelsAsync()).ToArray();
             if (rw <= 0 || rh <= 0 || buf.Length < (long)rw * rh * 4)
@@ -130,6 +137,10 @@ public sealed partial class CubeExportDialog : ContentDialog
         catch (Exception ex)
         {
             StatusLabel.Text = "Failed: " + ex.Message;
+        }
+        finally
+        {
+            if (raster is not null) RasterHost.Children.Remove(raster);
         }
     }
 }

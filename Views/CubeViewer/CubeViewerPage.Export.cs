@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
 using CanfarDesktop.Services.CubeViewer;
+using CanfarDesktop.ViewModels.CubeViewer;
 
 namespace CanfarDesktop.Views.CubeViewer;
 
@@ -50,23 +51,53 @@ public sealed partial class CubeViewerPage
     /// </summary>
     private async Task<(WriteableBitmap Frame, int W, int H)?> CaptureExportFrameAsync()
     {
-        if (_volume is null || !_renderer.IsReady) return null;
-        if (RenderPanel.ActualWidth < 1 || RenderPanel.ActualHeight < 1) return null; // must be the active tab
+        if (_volume is null) return null;
 
+        // Slice mode exports the 2D channel image (no GPU, no box/caption overlay).
+        if (ViewModel.ViewMode == CubeViewMode.Slice)
+            return CaptureSliceFrame();
+
+        // Volume mode: a transparent 4:3 GPU snapshot with the export pull-back.
+        if (!_renderer.IsReady || RenderPanel.ActualWidth < 1 || RenderPanel.ActualHeight < 1) return null;
         const int w = 1400, h = 1050; // 4:3, macOS export base
         float dist = ViewModel.CameraDistance * 1.3f;
-        _freezeRenderLoop = true;
-        PushRenderState();
-        _renderer.CameraDistance = dist;
-        float steps = Math.Max(ViewModel.VolumeSteps, 384f);
-        byte[]? volume = _renderer.RenderToBgra(w, h, steps, transparent: true);
-        _freezeRenderLoop = false;
-        if (volume is null) return null;
+        try
+        {
+            _freezeRenderLoop = true;
+            PushRenderState();
+            _renderer.CameraDistance = dist;
+            float steps = Math.Max(ViewModel.VolumeSteps, 384f);
+            byte[]? volume = _renderer.RenderToBgra(w, h, steps, transparent: true);
+            if (volume is null) return null;
 
-        var wb = new WriteableBitmap(w, h);
-        using (var s = wb.PixelBuffer.AsStream()) await s.WriteAsync(volume, 0, volume.Length);
+            var wb = new WriteableBitmap(w, h);
+            using (var s = wb.PixelBuffer.AsStream()) await s.WriteAsync(volume, 0, volume.Length);
+            wb.Invalidate();
+            return (wb, w, h);
+        }
+        finally
+        {
+            _freezeRenderLoop = false;
+        }
+    }
+
+    /// <summary>Render the current channel as the export frame (2D slice; native res shown scaled).</summary>
+    private (WriteableBitmap Frame, int W, int H)? CaptureSliceFrame()
+    {
+        if (_volume is null) return null;
+        int nx = _volume.Nx, ny = _volume.Ny;
+        var lut = CubeColormaps.Build(_currentColormap);
+        var buf = new byte[(long)nx * ny * 4];
+        CubeSliceRenderer.RenderPlane(_volume, ViewModel.Channel, ViewModel.WindowLo, ViewModel.WindowHi, ViewModel.Stretch, lut, buf);
+
+        var wb = new WriteableBitmap(nx, ny);
+        using (var s = wb.PixelBuffer.AsStream()) s.Write(buf, 0, buf.Length);
         wb.Invalidate();
-        return (wb, w, h);
+
+        // Display the (native) slice scaled so its longest spatial axis is ~1100 px.
+        double k = 1100.0 / Math.Max(nx, ny);
+        int dw = Math.Max(1, (int)Math.Round(nx * k)), dh = Math.Max(1, (int)Math.Round(ny * k));
+        return (wb, dw, dh);
     }
 
     /// <summary>MCP entry: export the current view to a PNG/PDF path (no modal), default style.</summary>
@@ -159,7 +190,8 @@ public sealed partial class CubeViewerPage
             VolNx = _volNx,
             VolNy = _volNy,
             Meta = _meta,
-            CaptionsOn = _captionsOn,
+            // Box + captions only make sense over the 3D volume, not the flat slice.
+            CaptionsOn = ViewModel.ViewMode == CubeViewMode.Volume && _captionsOn,
         };
 
         if (_meta is not null)

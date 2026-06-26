@@ -74,7 +74,6 @@ public sealed partial class CubeExportPlate : UserControl
 
         double sc = Math.Clamp(s.TextScale, 0.5, 2.0);
         double titleF = frameW * 0.020 * sc;
-        double bodyF = frameW * 0.0120 * sc;
         double smallF = frameW * 0.0095 * sc;
         var fam = ResolveFont(s.Font);
 
@@ -102,7 +101,7 @@ public sealed partial class CubeExportPlate : UserControl
         FrameImage.Source = frame;
         FrameImage.Width = frameW;
         FrameImage.Height = frameH;
-        BuildCaptionOverlay(frameW, frameH, d);
+        BuildCaptionOverlay(frameW, frameH, d, s.Dark);
 
         // ── Footer: colorbar + metadata grid ──
         ColorbarRect.Width = Math.Max(150, frameW * 0.14);
@@ -122,11 +121,10 @@ public sealed partial class CubeExportPlate : UserControl
         DividerTop.Visibility = ann;
         DividerBot.Visibility = ann;
         FooterPanel.Visibility = ann;
-        FrameBorder.Margin = s.Annotate ? new Thickness(0) : new Thickness(0);
         RootBorder.Padding = s.Annotate ? new Thickness(pad) : new Thickness(Math.Max(2, frameW * 0.004));
     }
 
-    private void BuildCaptionOverlay(int frameW, int frameH, PlateData d)
+    private void BuildCaptionOverlay(int frameW, int frameH, PlateData d, bool dark)
     {
         CaptionOverlay.Children.Clear();
         CaptionOverlay.Width = frameW;
@@ -136,7 +134,13 @@ public sealed partial class CubeExportPlate : UserControl
         var frame = new CubeAxesOverlay.Frame();
         CubeAxesOverlay.Build(frame, d.Az, d.El, d.Dist, d.SpectralScale, d.VolNx, d.VolNy, d.Meta, frameW, frameH);
 
-        var edgeBrush = B(C(0x66, 0x9F, 0xC4, 0xE8));
+        // Captions/edges re-theme so they stay legible where they fall on the plate margins:
+        // light cyan/white + black halo on dark; darker blue/ink + white halo on light.
+        Color axisColor = dark ? C(0xFF, 0x73, 0xD9, 0xFF) : C(0xFF, 0x12, 0x5C, 0x99);
+        Color valueColor = dark ? C(0xF5, 0xFF, 0xFF, 0xFF) : C(0xFF, 0x1A, 0x1A, 0x1A);
+        Color haloColor = dark ? C(0xFF, 0x00, 0x00, 0x00) : C(0xC0, 0xFF, 0xFF, 0xFF);
+        var edgeBrush = B(dark ? C(0x66, 0x9F, 0xC4, 0xE8) : C(0x80, 0x2E, 0x5E, 0x8C));
+
         double edgeT = Math.Max(1, frameW / 1600.0);
         foreach (var (a, b) in frame.Edges)
             if (a.Visible && b.Visible)
@@ -148,9 +152,9 @@ public sealed partial class CubeExportPlate : UserControl
         {
             if (!cap.At.Visible || string.IsNullOrEmpty(cap.Text)) continue;
             var weight = cap.IsAxisName ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
-            var color = cap.IsAxisName ? C(0xFF, 0x73, 0xD9, 0xFF) : C(0xF5, 0xFF, 0xFF, 0xFF);
+            var color = cap.IsAxisName ? axisColor : valueColor;
             var mainTb = new TextBlock { Text = cap.Text, FontFamily = mono, FontSize = capF, FontWeight = weight, Foreground = B(color) };
-            var shadow = new TextBlock { Text = cap.Text, FontFamily = mono, FontSize = capF, FontWeight = weight, Foreground = B(Microsoft.UI.Colors.Black) };
+            var shadow = new TextBlock { Text = cap.Text, FontFamily = mono, FontSize = capF, FontWeight = weight, Foreground = B(haloColor) };
             mainTb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             double tw = mainTb.DesiredSize.Width, th = mainTb.DesiredSize.Height;
             double x = Math.Clamp(cap.At.X - tw / 2, 4, Math.Max(4, frameW - tw - 4));
