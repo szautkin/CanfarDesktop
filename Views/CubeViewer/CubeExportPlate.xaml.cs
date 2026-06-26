@@ -37,11 +37,12 @@ public sealed partial class CubeExportPlate : UserControl
     /// <summary>Lay out the plate for a frame of <paramref name="frameW"/>×<paramref name="frameH"/> pixels.</summary>
     public void Populate(WriteableBitmap frame, int frameW, int frameH, PlateData d, bool dark)
     {
-        Color bg = dark ? C(0xFF, 0x06, 0x0A, 0x10) : C(0xFF, 0xFF, 0xFF, 0xFF);
+        // Palettes ported from v-cube (cockpit dark / journal light).
+        Color bg = dark ? C(0xFF, 0x04, 0x07, 0x0C) : C(0xFF, 0xFF, 0xFF, 0xFF);
         Color text = dark ? C(0xFF, 0xD7, 0xF0, 0xFF) : C(0xFF, 0x14, 0x18, 0x1C);
-        Color dim = dark ? C(0xCC, 0x9F, 0xC4, 0xE8) : C(0xCC, 0x44, 0x4C, 0x56);
-        Color accent = dark ? C(0xFF, 0x56, 0xC8, 0xFF) : C(0xFF, 0x12, 0x6B, 0xB0);
-        Color line = dark ? C(0x66, 0xFF, 0xFF, 0xFF) : C(0x40, 0x00, 0x00, 0x00);
+        Color dim = dark ? C(0xFF, 0x6B, 0x8A, 0x9C) : C(0xFF, 0x5A, 0x64, 0x6C);
+        Color accent = dark ? C(0xFF, 0x56, 0xC8, 0xFF) : C(0xFF, 0x14, 0x18, 0x1C); // light: accent = text
+        Color line = dark ? C(0x47, 0x56, 0xC8, 0xFF) : C(0x73, 0x14, 0x18, 0x1C);   // rgba(.,.,.,.28/.45)
 
         double pad = Math.Max(18, frameW * 0.018);
         double titleF = Math.Max(15, frameW * 0.013);
@@ -53,10 +54,9 @@ public sealed partial class CubeExportPlate : UserControl
         RootBorder.Padding = new Thickness(pad);
         Width = frameW + 2 * pad;
 
-        // Header.
+        // Header brand (the cube object/title lives in the legend footer below).
         BrandTitle.Inlines.Clear();
-        BrandTitle.Inlines.Add(new Run { Text = "◈ CUBE   ", Foreground = B(accent), FontWeight = Microsoft.UI.Text.FontWeights.Bold });
-        BrandTitle.Inlines.Add(new Run { Text = d.Title, Foreground = B(text), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        BrandTitle.Inlines.Add(new Run { Text = "◈ CANFAR CUBE", Foreground = B(accent), FontWeight = Microsoft.UI.Text.FontWeights.Medium });
         BrandTitle.FontSize = titleF;
 
         FileDate.Text = string.IsNullOrEmpty(d.FileName) ? d.DateText : $"{d.FileName} · {d.DateText}";
@@ -76,7 +76,7 @@ public sealed partial class CubeExportPlate : UserControl
         // Legend.
         LegendTitle.Text = d.Title;
         LegendTitle.Foreground = B(text);
-        LegendTitle.FontWeight = Microsoft.UI.Text.FontWeights.Bold;
+        LegendTitle.FontWeight = Microsoft.UI.Text.FontWeights.Medium;
         LegendTitle.FontSize = bodyF * 1.15;
 
         LegendSubtitle.Text = d.Subtitle;
@@ -113,7 +113,7 @@ public sealed partial class CubeExportPlate : UserControl
 
         CbMin.Text = d.CbMin;
         CbMax.Text = d.CbMax;
-        CbMin.Foreground = CbMax.Foreground = B(text);
+        CbMin.Foreground = CbMax.Foreground = B(dim);
         CbMin.FontSize = CbMax.FontSize = capF;
         CbMin.FontFamily = CbMax.FontFamily = mono;
     }

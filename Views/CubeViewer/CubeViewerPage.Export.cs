@@ -3,7 +3,10 @@ using System.Threading.Tasks;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Shapes;
+using Windows.Foundation;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -142,17 +145,22 @@ public sealed partial class CubeViewerPage
                 StatusText.Text = "Export failed: the cube viewer must be visible";
                 return null;
             }
-            int w = Math.Max(1, (int)(RenderPanel.ActualWidth * scale));
-            int h = Math.Max(1, (int)(RenderPanel.ActualHeight * scale));
+
+            // Render the export at a FIXED 4:3 aspect (macOS 1400×1050 at 2×) with a camera pull-back,
+            // so the cube is framed with margin — NOT stretched to fill the live window's wide aspect.
+            int w = 700 * scale;   // 2× → 1400×1050, 4× → 2800×2100
+            int h = 525 * scale;
+            float az = ViewModel.CameraAzimuth, el = ViewModel.CameraElevation;
+            float dist = ViewModel.CameraDistance * 1.3f; // macOS exportDistanceScale
             StatusText.Text = $"Exporting {w}×{h}…";
 
-            // Freeze the loop so the volume + overlay share one camera (no auto-orbit drift).
+            // Freeze the loop so the volume + overlay share one (pulled-back) camera.
             _freezeRenderLoop = true;
             PushRenderState();
-            UpdateOverlay();
+            _renderer.CameraDistance = dist; // overridden only for this still capture
             float steps = Math.Max(ViewModel.VolumeSteps, 384f);
             byte[]? volume = _renderer.RenderToBgra(w, h, steps);
-            var overlay = volume is null ? null : await RenderOverlayAsync(w, h);
+            var overlay = volume is null ? null : await RenderExportOverlayAsync(w, h, az, el, dist);
             _freezeRenderLoop = false;
 
             if (volume is null)
@@ -161,7 +169,7 @@ public sealed partial class CubeViewerPage
                     + ": " + (_renderer.LastError ?? "render");
                 return null;
             }
-            // Composite the box + captions over the volume (scaled if RTB capped the request).
+            // Composite the box + captions over the volume (both rendered at the same 4:3 aspect).
             if (overlay is not null)
                 CompositeOverScaled(volume, w, h, overlay.Value.Pixels, overlay.Value.W, overlay.Value.H);
 
@@ -295,13 +303,60 @@ public sealed partial class CubeViewerPage
         return d;
     }
 
-    /// <summary>Rasterize the overlay canvas (box + captions) as premultiplied BGRA, returning its actual pixel size.</summary>
-    private async Task<(byte[] Pixels, int W, int H)?> RenderOverlayAsync(int w, int h)
+    /// <summary>
+    /// Build the box + WCS captions for the export camera at the export's (4:3) aspect into a transient
+    /// off-screen canvas, and rasterize it to premultiplied BGRA. Done fresh (not from the live overlay)
+    /// so the wireframe/captions match the fixed-aspect, pulled-back export render exactly.
+    /// </summary>
+    private async Task<(byte[] Pixels, int W, int H)?> RenderExportOverlayAsync(int w, int h, float az, float el, float dist)
     {
+        var canvas = new Canvas { Width = w, Height = h };
+        var frame = new CubeAxesOverlay.Frame();
+        CubeAxesOverlay.Build(frame, az, el, dist, ViewModel.SpectralScale, _volNx, _volNy, _meta, w, h);
+
+        double edgeThickness = Math.Max(1.0, w / 1600.0);
+        var edgeBrush = ArgbBrush(0x66, 0x9F, 0xC4, 0xE8);
+        foreach (var (a, b) in frame.Edges)
+        {
+            if (!a.Visible || !b.Visible) continue;
+            canvas.Children.Add(new Line
+            {
+                Stroke = edgeBrush, StrokeThickness = edgeThickness,
+                X1 = a.X, Y1 = a.Y, X2 = b.X, Y2 = b.Y,
+            });
+        }
+
+        if (_captionsOn)
+        {
+            double fontSize = Math.Max(11.0, w * 0.011);
+            var mono = new FontFamily("Consolas");
+            foreach (var cap in frame.Captions)
+            {
+                if (!cap.At.Visible || string.IsNullOrEmpty(cap.Text)) continue;
+                var weight = cap.IsAxisName
+                    ? Microsoft.UI.Text.FontWeights.SemiBold
+                    : Microsoft.UI.Text.FontWeights.Normal;
+                var color = cap.IsAxisName ? ArgbColor(0xFF, 0x73, 0xD9, 0xFF) : ArgbColor(0xF5, 0xFF, 0xFF, 0xFF);
+                var main = new TextBlock { Text = cap.Text, FontFamily = mono, FontSize = fontSize, FontWeight = weight, Foreground = new SolidColorBrush(color) };
+                var shadow = new TextBlock { Text = cap.Text, FontFamily = mono, FontSize = fontSize, FontWeight = weight, Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black) };
+                main.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                double tw = main.DesiredSize.Width, th = main.DesiredSize.Height;
+                double x = Math.Clamp(cap.At.X - tw / 2, 6, Math.Max(6, w - tw - 6));
+                double y = Math.Clamp(cap.At.Y - th / 2, 6, Math.Max(6, h - th - 6));
+                Canvas.SetLeft(shadow, x + 1); Canvas.SetTop(shadow, y + 1);
+                Canvas.SetLeft(main, x); Canvas.SetTop(main, y);
+                canvas.Children.Add(shadow);
+                canvas.Children.Add(main);
+            }
+        }
+
+        ExportHost.Children.Add(canvas);
+        Canvas.SetLeft(canvas, -100000);
+        canvas.UpdateLayout();
         try
         {
             var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(OverlayCanvas, w, h);
+            await rtb.RenderAsync(canvas, w, h);
             int ow = rtb.PixelWidth, oh = rtb.PixelHeight;
             if (ow <= 0 || oh <= 0) return null;
             var buf = (await rtb.GetPixelsAsync()).ToArray();
@@ -310,6 +365,10 @@ public sealed partial class CubeViewerPage
         catch
         {
             return null;
+        }
+        finally
+        {
+            ExportHost.Children.Remove(canvas);
         }
     }
 
