@@ -43,7 +43,7 @@ public sealed class CubeVolumeRenderer : IDisposable
         public float Jitter;            // 4
         public int Stretch;             // 4
         public int Mip;                 // 4
-        public float Pad0;              // 4  → total 160 (multiple of 16)
+        public int Debug;               // 4  → total 160 (multiple of 16)
     }
 
     private ID3D11Device _device = null!;
@@ -87,6 +87,11 @@ public sealed class CubeVolumeRenderer : IDisposable
     public float BaseSteps { get; set; } = 384f;
     public float SpectralScale { get; set; } = 1.5f;
     public bool Interacting { get; set; }
+
+    /// <summary>TEMP diagnostic: when true the shader bypasses the volume and draws a
+    /// gradient + ray-box entry colours so we can tell "present works / raymarch empty"
+    /// from "nothing presents." Flip to false once the render path is confirmed.</summary>
+    public bool DebugMode { get; set; } = true;
 
     /// <summary>Dark background clear color (0.02, 0.03, 0.06) from the macOS app.</summary>
     private static readonly Color4 ClearColor = new(0.02f, 0.03f, 0.06f, 1f);
@@ -391,7 +396,7 @@ public sealed class CubeVolumeRenderer : IDisposable
             Jitter = _jitter,
             Stretch = Stretch,
             Mip = Mip ? 1 : 0,
-            Pad0 = 0,
+            Debug = DebugMode ? 1 : 0,
         };
 
         var mapped = _context.Map(_cbuffer, MapMode.WriteDiscard, Vortice.Direct3D11.MapFlags.None);
