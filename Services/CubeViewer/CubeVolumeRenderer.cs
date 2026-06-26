@@ -57,6 +57,7 @@ public sealed class CubeVolumeRenderer : IDisposable
     private ID3D11Buffer _cbuffer = null!;
     private ID3D11SamplerState _sampler = null!;
     private ID3D11BlendState _blend = null!;
+    private ID3D11RasterizerState _raster = null!;
 
     private ID3D11Texture3D? _dataTex;
     private ID3D11ShaderResourceView? _dataSrv;
@@ -91,13 +92,11 @@ public sealed class CubeVolumeRenderer : IDisposable
     public float SpectralScale { get; set; } = 1.5f;
     public bool Interacting { get; set; }
 
-    /// <summary>TEMP diagnostic: when true the shader bypasses the volume and draws a
-    /// gradient + ray-box entry colours so we can tell "present works / raymarch empty"
-    /// from "nothing presents." Flip to false once the render path is confirmed.</summary>
-    public bool DebugMode { get; set; } = true;
+    /// <summary>Diagnostic: when true the shader bypasses the volume (gradient + ray-box entry).</summary>
+    public bool DebugMode { get; set; }
 
     /// <summary>Dark background clear color (0.02, 0.03, 0.06) from the macOS app.</summary>
-    private static readonly Color4 ClearColor = new(1f, 0f, 1f, 1f); // TEMP diagnostic: bright magenta
+    private static readonly Color4 ClearColor = new(0.02f, 0.03f, 0.06f, 1f);
 
     /// <summary>
     /// Initialize the device, swap chain (bound to the panel), pipeline, and
@@ -244,6 +243,11 @@ public sealed class CubeVolumeRenderer : IDisposable
             RenderTargetWriteMask = ColorWriteEnable.All,
         };
         _blend = _device.CreateBlendState(blendDesc);
+
+        // No back-face culling. THE BUG: with the default rasterizer state (cull back), the
+        // fullscreen triangle's winding is back-facing → zero fragments → the magenta clear showed
+        // but the draw produced nothing. A fullscreen pass must never cull.
+        _raster = _device.CreateRasterizerState(new RasterizerDescription(CullMode.None, FillMode.Solid));
     }
 
     private static void Compile(string source, string entry, string profile, out Blob blob)
@@ -415,6 +419,7 @@ public sealed class CubeVolumeRenderer : IDisposable
         _context.ClearRenderTargetView(_rtv, ClearColor);
         _context.OMSetRenderTargets(_rtv);
         _context.RSSetViewport(new Viewport(0, 0, _width, _height, 0f, 1f));
+        _context.RSSetState(_raster);
         _context.OMSetBlendState(_blend, (Color4?)null, unchecked((int)0xFFFFFFFF));
 
         _context.VSSetShader(_vs);
@@ -450,6 +455,7 @@ public sealed class CubeVolumeRenderer : IDisposable
         _rtv?.Dispose();
         _sampler?.Dispose();
         _blend?.Dispose();
+        _raster?.Dispose();
         _cbuffer?.Dispose();
         _vs?.Dispose();
         _ps?.Dispose();

@@ -78,15 +78,34 @@ public sealed partial class CubeViewerPage : UserControl
 
     private async Task LoadSyntheticVolumeAsync()
     {
-        // TODO(FITS ingest): swap this for real NAXIS3 cube ingest — decode the
-        // FITS 3D array, normalize against robust cut levels, down-sample to a
-        // GPU-friendly size, convert to Half, and hand a VolumeData here.
-        VolumeData volume = await Task.Run(() => VolumeData.GenerateSyntheticNebula(128));
+        VolumeData volume;
+        string note;
+        try
+        {
+            var downloads = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            var cubePath = System.IO.Path.Combine(downloads, "dragons_FDF_clean_tot_Kgal.car.32bit.fits");
+            if (System.IO.File.Exists(cubePath))
+            {
+                volume = await Task.Run(() => FitsCubeReader.Read(cubePath));
+                note = $"{volume.Name} · {volume.Nx}×{volume.Ny}×{volume.Nz}";
+            }
+            else
+            {
+                volume = await Task.Run(() => VolumeData.GenerateSyntheticNebula(128));
+                note = volume.Name + " (cube file not found in Downloads)";
+            }
+        }
+        catch (Exception ex)
+        {
+            volume = await Task.Run(() => VolumeData.GenerateSyntheticNebula(128));
+            note = "Synthetic — cube read failed: " + ex.Message;
+        }
         if (_closed) return;
 
         _renderer.SetVolume(volume);
-        ViewModel.VolumeName = volume.Name;
-        StatusText.Text = volume.Name;
+        ViewModel.VolumeName = note;
+        StatusText.Text = note;
 
         HookRendering();
     }
