@@ -68,6 +68,16 @@ public sealed partial class NotebookTabHost : UserControl
         return page;
     }
 
+    /// <summary>Discard the active tab without prompting (used to drop an orphan tab from a failed MCP open).</summary>
+    public void DiscardActiveTab()
+    {
+        if (ViewModel.ActiveTab is not { } tabItem) return;
+        var tvi = TabViewControl.TabItems.OfType<TabViewItem>().FirstOrDefault(t => ReferenceEquals(t.Tag, tabItem));
+        ViewModel.CloseTab(tabItem);          // disposes the tab VM (+ its never-started kernel) and re-selects
+        if (tvi is not null) TabViewControl.TabItems.Remove(tvi);
+        UpdateWelcomeVisibility();
+    }
+
     private NotebookPage CreateTabViewItem(NotebookTabItem tabItem)
     {
         var page = new NotebookPage(tabItem.ViewModel);

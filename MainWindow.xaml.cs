@@ -720,6 +720,10 @@ public sealed partial class MainWindow : Window
     private FitsTabHostViewModel _fitsHostVm = null!; // singleton; owns the saved-coordinate bookmarks (set during MCP init)
     private NotebookTabHost? _notebookTabHost;
 
+    // Serialize notebook mutations so concurrently-pipelined MCP calls can't interleave across awaits
+    // (the run/save/kernel ops yield the UI pump) and corrupt the active tab's index/selection state.
+    private readonly System.Threading.SemaphoreSlim _notebookMutateGate = new(1, 1);
+
     public async void OpenNotebook(string? filePath = null)
     {
         try { await OpenNotebookCoreAsync(filePath, createNew: false); }
@@ -740,8 +744,21 @@ public sealed partial class MainWindow : Window
         }
 
         if (filePath is not null)
+        {
             await _notebookTabHost.AddTabForFileAsync(filePath);
-        else if (createNew)
+            NavigateTo(AppMode.Notebook);
+            // A successful load sets FilePath; if it's still null the open failed (bad path / parse error).
+            // Drop the orphan "Untitled" tab so failures don't accumulate empty tabs, and signal failure (null).
+            var loaded = _notebookTabHost.ViewModel.ActiveViewModel;
+            if (loaded?.FilePath is null)
+            {
+                _notebookTabHost.DiscardActiveTab();
+                return null;
+            }
+            return loaded;
+        }
+
+        if (createNew)
             _notebookTabHost.AddNewTab();
 
         NavigateTo(AppMode.Notebook);
@@ -764,56 +781,78 @@ public sealed partial class MainWindow : Window
 
     private async Task<NotebookState?> ApplyNotebookCommandAsync(NotebookCommand cmd)
     {
-        if (cmd.Op == NotebookOp.Open)
-            return await OpenNotebookCoreAsync(cmd.Path, createNew: false) is { } ov ? ToNotebookState(ov) : null;
-        if (cmd.Op == NotebookOp.Create)
-            return await OpenNotebookCoreAsync(null, createNew: true) is { } cv ? ToNotebookState(cv) : null;
-
-        var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
-        if (vm is null) return null;
-
-        switch (cmd.Op)
+        // Serialize: pipelined MCP calls enqueue separate lambdas that would otherwise interleave across
+        // the long awaits below (run/save/kernel) and mutate the active tab's index/selection mid-flight.
+        await _notebookMutateGate.WaitAsync();
+        try
         {
-            case NotebookOp.Save:
-                if (cmd.Path is { Length: > 0 } sp) await vm.SaveAsAsync(sp);
-                else await vm.SaveAsync();
-                break;
-            case NotebookOp.EditCell:
-                if (InRange(vm, cmd.Index) && cmd.Source is not null)
-                    vm.Cells[cmd.Index!.Value].Source = cmd.Source;
-                break;
-            case NotebookOp.AddCell:
-                AddNotebookCell(vm, cmd.Index, cmd.CellType ?? "code", cmd.Source);
-                break;
-            case NotebookOp.DeleteCell:
-                if (InRange(vm, cmd.Index)) { vm.SelectCell(cmd.Index!.Value); vm.DeleteSelectedCell(); }
-                break;
-            case NotebookOp.ChangeCellType:
-                if (InRange(vm, cmd.Index) && cmd.CellType is not null) { vm.SelectCell(cmd.Index!.Value); vm.ChangeCellType(cmd.CellType); }
-                break;
-            case NotebookOp.MoveCell:
-                MoveNotebookCell(vm, cmd.Index ?? -1, cmd.ToIndex ?? -1);
-                break;
-            case NotebookOp.ClearOutputs:
-                vm.ClearAllOutputs();
-                break;
-            case NotebookOp.RunCell:
-                if (InRange(vm, cmd.Index)) { vm.SelectCell(cmd.Index!.Value); await vm.RunSelectedCellAsync(); }
-                break;
-            case NotebookOp.RunAll:
-                await vm.RunAllCellsAsync();
-                break;
-            case NotebookOp.StartKernel:
-                await vm.StartKernelAsync();
-                break;
-            case NotebookOp.InterruptKernel:
-                await vm.InterruptKernelAsync();
-                break;
-            case NotebookOp.RestartKernel:
-                await vm.RestartKernelAsync();
-                break;
+            if (cmd.Op == NotebookOp.Open)
+            {
+                var ov = await OpenNotebookCoreAsync(cmd.Path, createNew: false);
+                if (ov is null) throw new InvalidOperationException($"Could not open notebook: {cmd.Path}");
+                return ToNotebookState(ov);
+            }
+            if (cmd.Op == NotebookOp.Create)
+                return await OpenNotebookCoreAsync(null, createNew: true) is { } cv ? ToNotebookState(cv) : null;
+
+            var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
+            if (vm is null) return null;
+
+            switch (cmd.Op)
+            {
+                case NotebookOp.Save:
+                    if (cmd.Path is { Length: > 0 } sp) await vm.SaveAsAsync(sp);
+                    else if (vm.FilePath is null)
+                        throw new InvalidOperationException(
+                            "Cannot save an unsaved (Untitled) notebook without a path — pass a full .ipynb path to save_notebook.");
+                    else await vm.SaveAsync();
+                    break;
+                case NotebookOp.EditCell:
+                    if (InRange(vm, cmd.Index) && cmd.Source is not null)
+                        vm.Cells[cmd.Index!.Value].Source = cmd.Source;
+                    break;
+                case NotebookOp.AddCell:
+                    AddNotebookCell(vm, cmd.Index, cmd.CellType ?? "code", cmd.Source);
+                    break;
+                case NotebookOp.DeleteCell:
+                    if (InRange(vm, cmd.Index)) { vm.SelectCell(cmd.Index!.Value); vm.DeleteSelectedCell(); }
+                    break;
+                case NotebookOp.ChangeCellType:
+                    if (InRange(vm, cmd.Index) && cmd.CellType is not null) { vm.SelectCell(cmd.Index!.Value); vm.ChangeCellType(cmd.CellType); }
+                    break;
+                case NotebookOp.MoveCell:
+                    if (!MoveNotebookCell(vm, cmd.Index ?? -1, cmd.ToIndex ?? -1))
+                        throw new InvalidOperationException($"move_cell: from/to out of range (notebook has {vm.Cells.Count} cells).");
+                    break;
+                case NotebookOp.ClearOutputs:
+                    vm.ClearAllOutputs();
+                    break;
+                case NotebookOp.RunCell:
+                    if (InRange(vm, cmd.Index)) { vm.SelectCell(cmd.Index!.Value); await vm.RunSelectedCellAsync(); }
+                    break;
+                case NotebookOp.RunAll:
+                    await vm.RunAllCellsAsync();
+                    break;
+                case NotebookOp.StartKernel:
+                    await vm.StartKernelAsync();
+                    break;
+                case NotebookOp.InterruptKernel:
+                    await vm.InterruptKernelAsync();
+                    break;
+                case NotebookOp.RestartKernel:
+                    await vm.RestartKernelAsync();
+                    break;
+            }
+
+            // The tab may have been closed/swapped mid-await (run/save/kernel ops yield the UI pump) —
+            // don't report state from an orphaned VM that is no longer the active tab.
+            var stillActive = _notebookTabHost?.ViewModel.ActiveViewModel;
+            return ReferenceEquals(stillActive, vm) ? ToNotebookState(vm) : null;
         }
-        return ToNotebookState(vm);
+        finally
+        {
+            _notebookMutateGate.Release();
+        }
     }
 
     private static bool InRange(ViewModels.Notebook.NotebookViewModel vm, int? index)
@@ -835,13 +874,15 @@ public sealed partial class MainWindow : Window
             vm.Cells[vm.SelectedCellIndex].Source = source;
     }
 
-    private static void MoveNotebookCell(ViewModels.Notebook.NotebookViewModel vm, int from, int to)
+    private static bool MoveNotebookCell(ViewModels.Notebook.NotebookViewModel vm, int from, int to)
     {
         int n = vm.Cells.Count;
-        if (from < 0 || from >= n || to < 0 || to >= n || from == to) return;
+        if (from < 0 || from >= n || to < 0 || to >= n) return false; // out of range → surface as an error
+        if (from == to) return true;                                  // legitimate no-op
         vm.SelectCell(from);
         if (to < from) { for (int i = from; i > to; i--) vm.MoveCellUp(); }
         else { for (int i = from; i < to; i++) vm.MoveCellDown(); }
+        return true;
     }
 
     private Task<NotebookState?> GetNotebookActionAsync()

@@ -268,6 +268,8 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
     public async Task RestartAsync(string? workingDirectory = null)
     {
+        if (_disposed) return; // the tab was closed/disposed (e.g. mid-await) — _executionGate is gone
+
         _executionCts?.Cancel();
 
         await _executionGate.WaitAsync();
