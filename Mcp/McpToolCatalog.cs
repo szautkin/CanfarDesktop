@@ -8,6 +8,7 @@ using CanfarDesktop.Models;
 using CanfarDesktop.Models.Fits;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.Database;
+using CanfarDesktop.Services.Export;
 using CanfarDesktop.Services.Fits;
 using CanfarDesktop.Services.ImageDiscovery;
 using CanfarDesktop.Mcp.Tools;
@@ -176,9 +177,11 @@ public static class McpToolCatalog
             new DeleteSessionTool(),
             new RenewSessionTool(),
 
-            // Research: download / remove observations
+            // Research: download / remove observations + export a Claude-friendly bundle
             new DownloadObservationTool(),
             new DeleteDownloadedObservationTool(),
+            new ExportResearchBundleTool((dest, notes, hist, files, upload, ct) =>
+                ExportResearchBundleAsync(sp, appVersion, dest, notes, hist, files, upload)),
 
             // VOSpace/ARC storage writes
             new UploadTextToVoSpaceTool(),
@@ -287,6 +290,35 @@ public static class McpToolCatalog
         var info = new FileInfo(localPath);
         if (info.Exists) observation.FileSize = info.Length;
         store.Save(observation);
+    }
+
+    /// <summary>Assemble + zip a research bundle from the registered export modules; optionally upload it to VOSpace.</summary>
+    private static async Task<ExportBundleResult> ExportResearchBundleAsync(
+        IServiceProvider sp, string appVersion, string destFolder,
+        bool includeNotes, bool includeSearchHistory, bool includeFiles, bool uploadToVospace)
+    {
+        var modules = sp.GetServices<IExportableModule>().ToList();
+        var options = new ExportOptions
+        {
+            IncludeNotes = includeNotes,
+            IncludeSearchHistory = includeSearchHistory,
+            IncludeFileCopies = includeFiles,
+        };
+        var svc = new ExportService();
+        var bundleDir = await svc.BuildBundleAsync(destFolder, modules, options, DateTimeOffset.Now, appVersion, Environment.MachineName);
+        var zipPath = svc.ZipBundle(bundleDir);
+
+        string? remote = null;
+        if (uploadToVospace)
+        {
+            var auth = sp.GetRequiredService<IAuthService>();
+            if (auth.CurrentUsername is { Length: > 0 } username)
+            {
+                var storage = sp.GetRequiredService<IStorageService>();
+                remote = await svc.UploadBundleToVoSpaceAsync(zipPath, storage, username);
+            }
+        }
+        return new ExportBundleResult(bundleDir, zipPath, remote);
     }
 
     private static string SafeFileName(string publisherId)

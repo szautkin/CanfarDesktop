@@ -11,6 +11,9 @@ public class ExportException : Exception
     public ExportException(string message, Exception? inner = null) : base(message, inner) { }
 }
 
+/// <summary>The outcome of a research-bundle export: the bundle folder, its zip, and the VOSpace path if uploaded.</summary>
+public sealed record ExportBundleResult(string BundleDir, string ZipPath, string? RemotePath);
+
 /// <summary>
 /// Assembles one or more <see cref="IExportableModule"/>s into a timestamped, Claude-friendly bundle
 /// (manifest.json + README.md at the root, one subdirectory per module), zips it, and optionally
