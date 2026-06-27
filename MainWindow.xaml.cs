@@ -5,6 +5,7 @@ using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.HttpClients;
+using CanfarDesktop.Services.Notebook;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views;
 using CanfarDesktop.Views.Dialogs;
@@ -83,6 +84,8 @@ public sealed partial class MainWindow : Window
                                   ExportCubeActionAsync, ProbeCubeActionAsync);
         _viewState.SetFitsActions(GetFitsActionAsync, SetFitsActionAsync, ProbeFitsActionAsync, GotoFitsActionAsync);
         _viewState.SetFitsBookmarkActions(ListFitsBookmarksActionAsync, SaveFitsBookmarkActionAsync, DeleteFitsBookmarkActionAsync);
+        _viewState.SetNotebookActions(NotebookMutateActionAsync, GetNotebookActionAsync, GetCellOutputActionAsync,
+                                      GetKernelStateActionAsync, ListNotebooksActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
     }
@@ -719,26 +722,221 @@ public sealed partial class MainWindow : Window
 
     public async void OpenNotebook(string? filePath = null)
     {
-        try
+        try { await OpenNotebookCoreAsync(filePath, createNew: false); }
+        catch (Exception ex) { StatusText.Text = $"Notebook error: {ex.Message}"; }
+    }
+
+    /// <summary>Ensure the notebook host exists, open <paramref name="filePath"/> (or a new tab if
+    /// <paramref name="createNew"/>), switch to the notebook module, and return the active notebook view model.</summary>
+    private async Task<ViewModels.Notebook.NotebookViewModel?> OpenNotebookCoreAsync(string? filePath, bool createNew)
+    {
+        if (_notebookTabHost is null)
         {
-            if (_notebookTabHost is null)
+            var hostVm = App.Services.GetRequiredService<ViewModels.Notebook.NotebookTabHostViewModel>();
+            _notebookTabHost = new NotebookTabHost(hostVm);
+            _notebookTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
+            NotebookContainer.Child = _notebookTabHost;
+            await _notebookTabHost.CheckRecoveryAsync();
+        }
+
+        if (filePath is not null)
+            await _notebookTabHost.AddTabForFileAsync(filePath);
+        else if (createNew)
+            _notebookTabHost.AddNewTab();
+
+        NavigateTo(AppMode.Notebook);
+        return _notebookTabHost.ViewModel.ActiveViewModel;
+    }
+
+    // ── Notebook MCP actions (active tab; mutations dispatched through one applier on the UI thread) ──
+
+    private Task<NotebookState?> NotebookMutateActionAsync(NotebookCommand cmd)
+    {
+        var tcs = new TaskCompletionSource<NotebookState?>();
+        if (!DispatcherQueue.TryEnqueue(async () =>
+        {
+            try { tcs.SetResult(await ApplyNotebookCommandAsync(cmd)); }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(null);
+        return tcs.Task;
+    }
+
+    private async Task<NotebookState?> ApplyNotebookCommandAsync(NotebookCommand cmd)
+    {
+        if (cmd.Op == NotebookOp.Open)
+            return await OpenNotebookCoreAsync(cmd.Path, createNew: false) is { } ov ? ToNotebookState(ov) : null;
+        if (cmd.Op == NotebookOp.Create)
+            return await OpenNotebookCoreAsync(null, createNew: true) is { } cv ? ToNotebookState(cv) : null;
+
+        var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
+        if (vm is null) return null;
+
+        switch (cmd.Op)
+        {
+            case NotebookOp.Save:
+                if (cmd.Path is { Length: > 0 } sp) await vm.SaveAsAsync(sp);
+                else await vm.SaveAsync();
+                break;
+            case NotebookOp.EditCell:
+                if (InRange(vm, cmd.Index) && cmd.Source is not null)
+                    vm.Cells[cmd.Index!.Value].Source = cmd.Source;
+                break;
+            case NotebookOp.AddCell:
+                AddNotebookCell(vm, cmd.Index, cmd.CellType ?? "code", cmd.Source);
+                break;
+            case NotebookOp.DeleteCell:
+                if (InRange(vm, cmd.Index)) { vm.SelectCell(cmd.Index!.Value); vm.DeleteSelectedCell(); }
+                break;
+            case NotebookOp.ChangeCellType:
+                if (InRange(vm, cmd.Index) && cmd.CellType is not null) { vm.SelectCell(cmd.Index!.Value); vm.ChangeCellType(cmd.CellType); }
+                break;
+            case NotebookOp.MoveCell:
+                MoveNotebookCell(vm, cmd.Index ?? -1, cmd.ToIndex ?? -1);
+                break;
+            case NotebookOp.ClearOutputs:
+                vm.ClearAllOutputs();
+                break;
+            case NotebookOp.RunCell:
+                if (InRange(vm, cmd.Index)) { vm.SelectCell(cmd.Index!.Value); await vm.RunSelectedCellAsync(); }
+                break;
+            case NotebookOp.RunAll:
+                await vm.RunAllCellsAsync();
+                break;
+            case NotebookOp.StartKernel:
+                await vm.StartKernelAsync();
+                break;
+            case NotebookOp.InterruptKernel:
+                await vm.InterruptKernelAsync();
+                break;
+            case NotebookOp.RestartKernel:
+                await vm.RestartKernelAsync();
+                break;
+        }
+        return ToNotebookState(vm);
+    }
+
+    private static bool InRange(ViewModels.Notebook.NotebookViewModel vm, int? index)
+        => index is { } i && i >= 0 && i < vm.Cells.Count;
+
+    private static void AddNotebookCell(ViewModels.Notebook.NotebookViewModel vm, int? index, string type, string? source)
+    {
+        if (index is { } i && i >= 0 && i < vm.Cells.Count)
+        {
+            vm.SelectCell(i);
+            vm.AddCellAbove(type); // inserts at i, selects the new cell
+        }
+        else
+        {
+            if (vm.Cells.Count > 0) vm.SelectCell(vm.Cells.Count - 1);
+            vm.AddCellBelow(type); // appends after the last cell, selects it
+        }
+        if (source is not null && vm.SelectedCellIndex >= 0 && vm.SelectedCellIndex < vm.Cells.Count)
+            vm.Cells[vm.SelectedCellIndex].Source = source;
+    }
+
+    private static void MoveNotebookCell(ViewModels.Notebook.NotebookViewModel vm, int from, int to)
+    {
+        int n = vm.Cells.Count;
+        if (from < 0 || from >= n || to < 0 || to >= n || from == to) return;
+        vm.SelectCell(from);
+        if (to < from) { for (int i = from; i > to; i--) vm.MoveCellUp(); }
+        else { for (int i = from; i < to; i++) vm.MoveCellDown(); }
+    }
+
+    private Task<NotebookState?> GetNotebookActionAsync()
+    {
+        var tcs = new TaskCompletionSource<NotebookState?>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try
             {
-                var hostVm = App.Services.GetRequiredService<ViewModels.Notebook.NotebookTabHostViewModel>();
-                _notebookTabHost = new NotebookTabHost(hostVm);
-                _notebookTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
-                NotebookContainer.Child = _notebookTabHost;
-                await _notebookTabHost.CheckRecoveryAsync();
+                var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
+                tcs.SetResult(vm is null ? null : ToNotebookState(vm));
             }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(null);
+        return tcs.Task;
+    }
 
-            if (filePath is not null)
-                await _notebookTabHost.AddTabForFileAsync(filePath);
-
-            NavigateTo(AppMode.Notebook);
-        }
-        catch (Exception ex)
+    private Task<NotebookCellOutputs?> GetCellOutputActionAsync(int index)
+    {
+        var tcs = new TaskCompletionSource<NotebookCellOutputs?>();
+        if (!DispatcherQueue.TryEnqueue(() =>
         {
-            StatusText.Text = $"Notebook error: {ex.Message}";
+            try { tcs.SetResult(GetCellOutputsCore(index)); }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(null);
+        return tcs.Task;
+    }
+
+    private Task<NotebookKernelInfo> GetKernelStateActionAsync()
+    {
+        var tcs = new TaskCompletionSource<NotebookKernelInfo>();
+        if (!DispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
+                tcs.SetResult(vm is null
+                    ? new NotebookKernelInfo("Dead", "no notebook open", "")
+                    : new NotebookKernelInfo(vm.KernelState.ToString(), vm.KernelStatusText, vm.KernelDisplayName));
+            }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(new NotebookKernelInfo("Dead", "could not dispatch", ""));
+        return tcs.Task;
+    }
+
+    private Task<IReadOnlyList<NotebookRef>> ListNotebooksActionAsync()
+    {
+        // RecentNotebooksService is a thread-safe singleton — no UI-thread marshaling needed.
+        var recent = App.Services.GetRequiredService<RecentNotebooksService>();
+        IReadOnlyList<NotebookRef> list = recent.Entries
+            .Select(e => new NotebookRef(e.Path, e.Name, e.OpenedAt)).ToList();
+        return Task.FromResult(list);
+    }
+
+    private NotebookCellOutputs? GetCellOutputsCore(int index)
+    {
+        var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
+        if (vm is null || index < 0 || index >= vm.Cells.Count) return null;
+        var cell = vm.Cells[index];
+        if (cell is not ViewModels.Notebook.CodeCellViewModel code)
+            return new NotebookCellOutputs(index, cell.CellType, null, Array.Empty<NotebookOutputInfo>());
+
+        const int cap = 16000;
+        var outs = new List<NotebookOutputInfo>(code.Outputs.Count);
+        foreach (var o in code.Outputs)
+            outs.Add(new NotebookOutputInfo(
+                o.OutputType, Clip(o.TextContent, cap), o.IsError, o.ErrorName, Clip(o.Traceback, cap), o.HasImage, o.HasHtml));
+        return new NotebookCellOutputs(index, "code", code.ExecutionCount, outs);
+    }
+
+    private static NotebookState ToNotebookState(ViewModels.Notebook.NotebookViewModel vm)
+    {
+        const int cap = 16000;
+        var cells = new List<NotebookCellInfo>(vm.Cells.Count);
+        for (int i = 0; i < vm.Cells.Count; i++)
+        {
+            var c = vm.Cells[i];
+            var src = c.Source ?? string.Empty;
+            int? exec = c is ViewModels.Notebook.CodeCellViewModel code ? code.ExecutionCount : null;
+            int outs = c is ViewModels.Notebook.CodeCellViewModel cc ? cc.Outputs.Count : 0;
+            cells.Add(new NotebookCellInfo(i, c.CellType, Clip(src, cap), src.Length > cap, exec, outs));
         }
+        return new NotebookState(
+            Loaded: true, Title: vm.Title, FilePath: vm.FilePath, FileMode: vm.FileMode.ToString(),
+            IsDirty: vm.IsDirty, KernelState: vm.KernelState.ToString(), KernelName: vm.KernelDisplayName,
+            SelectedIndex: vm.SelectedCellIndex, CellCount: vm.Cells.Count, Cells: cells);
+    }
+
+    private static string Clip(string? s, int max)
+    {
+        s ??= string.Empty;
+        return s.Length <= max ? s : s[..max];
     }
 
     private Views.CubeViewer.CubeTabHost? _cubeTabHost;

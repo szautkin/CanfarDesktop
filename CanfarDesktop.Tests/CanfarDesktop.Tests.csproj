@@ -147,6 +147,9 @@
     <Compile Include="..\Services\Fits\FitsViewState.cs" Link="Linked\Fits\FitsViewState.cs" />
     <Compile Include="..\Mcp\Tools\Write\FitsViewerTools.cs" Link="Linked\Mcp\FitsViewerTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ExportBundleTool.cs" Link="Linked\Mcp\ExportBundleTool.cs" />
+    <!-- Notebook MCP DTOs + tools (pure; no WinUI) -->
+    <Compile Include="..\Services\Notebook\NotebookMcpState.cs" Link="Linked\Notebook\NotebookMcpState.cs" />
+    <Compile Include="..\Mcp\Tools\Write\NotebookTools.cs" Link="Linked\Mcp\NotebookTools.cs" />
     <Compile Include="..\Mcp\Audit\Audit.cs" Link="Linked\Mcp\Audit.cs" />
     <Compile Include="..\Mcp\McpToolRouter.cs" Link="Linked\Mcp\McpToolRouter.cs" />
     <Compile Include="..\Mcp\Transport\IMcpTransport.cs" Link="Linked\Mcp\IMcpTransport.cs" />

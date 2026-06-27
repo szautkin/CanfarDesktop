@@ -165,6 +165,26 @@ public static class McpToolCatalog
             new SaveFitsBookmarkTool((ra, dec, label, src) => viewState.SaveFitsBookmarkAsync(ra, dec, label, src)),
             new DeleteFitsBookmarkTool(id => viewState.DeleteFitsBookmarkAsync(id)),
 
+            // Native notebook editor: read + lifecycle + cell CRUD + kernel/execution (active tab)
+            new ListNotebooksTool(() => viewState.ListNotebooksAsync()),
+            new GetNotebookTool(() => viewState.GetNotebookAsync()),
+            new GetCellOutputTool(i => viewState.GetCellOutputAsync(i)),
+            new GetKernelStateTool(() => viewState.GetKernelStateAsync()),
+            new OpenNotebookTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new CreateNotebookTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new SaveNotebookTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new EditCellTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new AddCellTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new DeleteCellTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new ChangeCellTypeTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new MoveCellTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new RunCellTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new RunAllCellsTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new ClearCellOutputsTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new StartKernelTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new InterruptKernelTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            new RestartKernelTool(cmd => viewState.NotebookMutateAsync(cmd)),
+
             // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
             new SaveQueryTool(),
             new DeleteSavedQueryTool(),

@@ -1,6 +1,7 @@
 using CanfarDesktop.Mcp.Tools.Write;
 using CanfarDesktop.Services.CubeViewer;
 using CanfarDesktop.Services.Fits;
+using CanfarDesktop.Services.Notebook;
 
 namespace CanfarDesktop.Mcp;
 
@@ -182,4 +183,41 @@ public sealed class AppViewStateService
 
     public Task<bool> DeleteFitsBookmarkAsync(string id)
         => _deleteFitsBookmark?.Invoke(id) ?? Task.FromResult(false);
+
+    // ── Notebook actions (one applier for all mutations + read accessors; all marshal to the UI thread) ──
+
+    private volatile Func<NotebookCommand, Task<NotebookState?>>? _notebookMutate;
+    private volatile Func<Task<NotebookState?>>? _notebookGet;
+    private volatile Func<int, Task<NotebookCellOutputs?>>? _notebookCellOutput;
+    private volatile Func<Task<NotebookKernelInfo>>? _notebookKernel;
+    private volatile Func<Task<IReadOnlyList<NotebookRef>>>? _notebookList;
+
+    public void SetNotebookActions(
+        Func<NotebookCommand, Task<NotebookState?>> mutate,
+        Func<Task<NotebookState?>> get,
+        Func<int, Task<NotebookCellOutputs?>> cellOutput,
+        Func<Task<NotebookKernelInfo>> kernel,
+        Func<Task<IReadOnlyList<NotebookRef>>> list)
+    {
+        _notebookMutate = mutate;
+        _notebookGet = get;
+        _notebookCellOutput = cellOutput;
+        _notebookKernel = kernel;
+        _notebookList = list;
+    }
+
+    public Task<NotebookState?> NotebookMutateAsync(NotebookCommand cmd)
+        => _notebookMutate?.Invoke(cmd) ?? Task.FromResult<NotebookState?>(null);
+
+    public Task<NotebookState?> GetNotebookAsync()
+        => _notebookGet?.Invoke() ?? Task.FromResult<NotebookState?>(null);
+
+    public Task<NotebookCellOutputs?> GetCellOutputAsync(int index)
+        => _notebookCellOutput?.Invoke(index) ?? Task.FromResult<NotebookCellOutputs?>(null);
+
+    public Task<NotebookKernelInfo> GetKernelStateAsync()
+        => _notebookKernel?.Invoke() ?? Task.FromResult(new NotebookKernelInfo("Dead", "no notebook open", ""));
+
+    public Task<IReadOnlyList<NotebookRef>> ListNotebooksAsync()
+        => _notebookList?.Invoke() ?? Task.FromResult<IReadOnlyList<NotebookRef>>(Array.Empty<NotebookRef>());
 }
