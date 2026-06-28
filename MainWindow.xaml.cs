@@ -92,17 +92,37 @@ public sealed partial class MainWindow : Window
 
     // ── Live ViewState write actions (invoked off-thread by the MCP tools; marshal to the UI thread) ──
 
-    private Task<CanfarDesktop.Mcp.Tools.Write.NavigationOutcome> NavigateByKeyAsync(string mode)
+    // The MCP action methods all share one shape: run `work` on the UI thread, complete a
+    // TaskCompletionSource (faulting it if `work` throws), and return `fallback` if the dispatch itself
+    // can't be queued. These two helpers collapse that boilerplate to a single expression per action.
+    private Task<T> OnUi<T>(Func<T> work, T fallback)
     {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Mcp.Tools.Write.NavigationOutcome>();
+        var tcs = new TaskCompletionSource<T>();
         if (!DispatcherQueue.TryEnqueue(() =>
         {
-            try { tcs.SetResult(NavigateByKey(mode)); }
+            try { tcs.SetResult(work()); }
             catch (Exception ex) { tcs.SetException(ex); }
         }))
-            tcs.SetResult(new CanfarDesktop.Mcp.Tools.Write.NavigationOutcome(false, mode, mode));
+            tcs.SetResult(fallback);
         return tcs.Task;
     }
+
+    private Task<T> OnUiAsync<T>(Func<Task<T>> work, T fallback)
+    {
+        var tcs = new TaskCompletionSource<T>();
+        // try/catch INSIDE the enqueued async lambda (await inside, not around the TCS) so exception +
+        // ordering behaviour matches the hand-written versions.
+        if (!DispatcherQueue.TryEnqueue(async () =>
+        {
+            try { tcs.SetResult(await work()); }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }))
+            tcs.SetResult(fallback);
+        return tcs.Task;
+    }
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.NavigationOutcome> NavigateByKeyAsync(string mode)
+        => OnUi(() => NavigateByKey(mode), new CanfarDesktop.Mcp.Tools.Write.NavigationOutcome(false, mode, mode));
 
     private CanfarDesktop.Mcp.Tools.Write.NavigationOutcome NavigateByKey(string mode)
     {
@@ -139,64 +159,38 @@ public sealed partial class MainWindow : Window
     }
 
     private Task<CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome> OpenFitsActionAsync(string id)
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome>();
-        if (!DispatcherQueue.TryEnqueue(async () =>
+        => OnUiAsync(async () =>
         {
-            try
-            {
-                var store = App.Services.GetRequiredService<ObservationStore>();
-                var obs = store.Observations.FirstOrDefault(o => o.Id == id || o.PublisherID == id);
-                if (obs is null)
-                    tcs.SetResult(new(false, id, null, "observation not found in Research"));
-                else if (!obs.FileExists)
-                    tcs.SetResult(new(false, id, obs.LocalPath, "not downloaded yet — use download_observation first"));
-                else
-                {
-                    // Await the actual parse and report opened:true only on a confirmed load — so a file
-                    // that won't parse (e.g. a non-FITS download) returns the real error, not optimism.
-                    var page = await OpenFitsViewerAsync(obs.LocalPath);
-                    var error = page?.ViewModel.LoadError;
-                    tcs.SetResult(error is null
-                        ? new(true, obs.Id, obs.LocalPath, null)
-                        : new(false, obs.Id, obs.LocalPath, error));
-                }
-            }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(new(false, id, null, "could not dispatch to UI"));
-        return tcs.Task;
-    }
+            var store = App.Services.GetRequiredService<ObservationStore>();
+            var obs = store.Observations.FirstOrDefault(o => o.Id == id || o.PublisherID == id);
+            if (obs is null)
+                return new CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome(false, id, null, "observation not found in Research");
+            if (!obs.FileExists)
+                return new(false, id, obs.LocalPath, "not downloaded yet — use download_observation first");
+            // Await the actual parse and report opened:true only on a confirmed load — so a file that won't
+            // parse (e.g. a non-FITS download) returns the real error, not optimism.
+            var page = await OpenFitsViewerAsync(obs.LocalPath);
+            var error = page?.ViewModel.LoadError;
+            return error is null ? new(true, obs.Id, obs.LocalPath, null) : new(false, obs.Id, obs.LocalPath, error);
+        }, new CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome(false, id, null, "could not dispatch to UI"));
 
     // ── Cube Viewer MCP actions (each marshals to the UI thread) ─────────────────────────────────
 
     private Task<CanfarDesktop.Mcp.Tools.Write.CubeOpenOutcome> OpenCubeActionAsync(string target)
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Mcp.Tools.Write.CubeOpenOutcome>();
-        if (!DispatcherQueue.TryEnqueue(async () =>
+        => OnUiAsync(async () =>
         {
-            try
-            {
-                var path = ResolveCubeTarget(target);
-                if (path is null)
-                {
-                    tcs.SetResult(new(false, target, 0, 0, 0,
-                        "file not found, or observation not downloaded (use download_observation first)"));
-                    return;
-                }
-                var host = EnsureCubeHost();
-                NavigateTo(AppMode.CubeViewer);
-                var page = await host.AddTabForFileAsync(path);
-                var st = page.GetCubeState();
-                tcs.SetResult(st.Loaded
-                    ? new(true, path, st.Nx, st.Ny, st.Nz, null)
-                    : new(false, path, st.Nx, st.Ny, st.Nz, "not a 3D cube (NAXIS=3) or could not be read"));
-            }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(new(false, target, 0, 0, 0, "could not dispatch to UI"));
-        return tcs.Task;
-    }
+            var path = ResolveCubeTarget(target);
+            if (path is null)
+                return new CanfarDesktop.Mcp.Tools.Write.CubeOpenOutcome(false, target, 0, 0, 0,
+                    "file not found, or observation not downloaded (use download_observation first)");
+            var host = EnsureCubeHost();
+            NavigateTo(AppMode.CubeViewer);
+            var page = await host.AddTabForFileAsync(path);
+            var st = page.GetCubeState();
+            return st.Loaded
+                ? new(true, path, st.Nx, st.Ny, st.Nz, null)
+                : new(false, path, st.Nx, st.Ny, st.Nz, "not a 3D cube (NAXIS=3) or could not be read");
+        }, new CanfarDesktop.Mcp.Tools.Write.CubeOpenOutcome(false, target, 0, 0, 0, "could not dispatch to UI"));
 
     private string? ResolveCubeTarget(string target)
     {
@@ -207,192 +201,87 @@ public sealed partial class MainWindow : Window
     }
 
     private Task<CanfarDesktop.Services.CubeViewer.CubeViewState?> GetCubeActionAsync()
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Services.CubeViewer.CubeViewState?>();
-        if (!DispatcherQueue.TryEnqueue(() =>
-        {
-            try { tcs.SetResult(_cubeTabHost?.ActivePage?.GetCubeState()); }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(null);
-        return tcs.Task;
-    }
+        => OnUi(() => _cubeTabHost?.ActivePage?.GetCubeState(), null);
 
     // ── 2D FITS viewer MCP actions (active tab) ──
 
     private Task<CanfarDesktop.Services.Fits.FitsViewState?> GetFitsActionAsync()
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Services.Fits.FitsViewState?>();
-        if (!DispatcherQueue.TryEnqueue(() =>
-        {
-            try { tcs.SetResult(_fitsTabHost?.GetFitsViewState()); }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(null);
-        return tcs.Task;
-    }
+        => OnUi(() => _fitsTabHost?.GetFitsViewState(), null);
 
     private Task<CanfarDesktop.Services.Fits.FitsViewState?> SetFitsActionAsync(
         CanfarDesktop.Mcp.Tools.Write.FitsViewArgs args)
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Services.Fits.FitsViewState?>();
-        if (!DispatcherQueue.TryEnqueue(() =>
-        {
-            try
-            {
-                if (_fitsTabHost is null) { tcs.SetResult(null); return; }
-                tcs.SetResult(_fitsTabHost.ApplyFitsView(
-                    stretch: args.Stretch, colormap: args.Colormap, minCut: args.MinCut, maxCut: args.MaxCut,
-                    zoomPercent: args.ZoomPercent, northUp: args.NorthUp, reset: args.Reset, clearCrosshair: args.ClearCrosshair));
-            }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(null);
-        return tcs.Task;
-    }
+        => OnUi(() => _fitsTabHost?.ApplyFitsView(
+            stretch: args.Stretch, colormap: args.Colormap, minCut: args.MinCut, maxCut: args.MaxCut,
+            zoomPercent: args.ZoomPercent, northUp: args.NorthUp, reset: args.Reset, clearCrosshair: args.ClearCrosshair), null);
 
     private Task<CanfarDesktop.Services.Fits.FitsPixelResult?> ProbeFitsActionAsync(int x, int y)
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Services.Fits.FitsPixelResult?>();
-        if (!DispatcherQueue.TryEnqueue(() =>
-        {
-            try { tcs.SetResult(_fitsTabHost?.ProbeFitsPixel(x, y)); }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(null);
-        return tcs.Task;
-    }
+        => OnUi(() => _fitsTabHost?.ProbeFitsPixel(x, y), null);
 
     private Task<CanfarDesktop.Services.Fits.FitsGotoOutcome> GotoFitsActionAsync(double ra, double dec)
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Services.Fits.FitsGotoOutcome>();
-        if (!DispatcherQueue.TryEnqueue(() =>
-        {
-            try
-            {
-                tcs.SetResult(_fitsTabHost is null
-                    ? new CanfarDesktop.Services.Fits.FitsGotoOutcome(false, ra, dec, "the FITS viewer is not open")
-                    : _fitsTabHost.GotoFitsCoordinate(ra, dec));
-            }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(new CanfarDesktop.Services.Fits.FitsGotoOutcome(false, ra, dec, "could not dispatch to the UI thread"));
-        return tcs.Task;
-    }
+        => OnUi(
+            () => _fitsTabHost is null
+                ? new CanfarDesktop.Services.Fits.FitsGotoOutcome(false, ra, dec, "the FITS viewer is not open")
+                : _fitsTabHost.GotoFitsCoordinate(ra, dec),
+            new CanfarDesktop.Services.Fits.FitsGotoOutcome(false, ra, dec, "could not dispatch to the UI thread"));
 
     // ── FITS coordinate bookmarks (routed through the host VM so the store + UI panel stay in sync) ──
 
     private Task<IReadOnlyList<CanfarDesktop.Services.Fits.FitsBookmark>> ListFitsBookmarksActionAsync()
-    {
-        var tcs = new TaskCompletionSource<IReadOnlyList<CanfarDesktop.Services.Fits.FitsBookmark>>();
-        if (!DispatcherQueue.TryEnqueue(() =>
-        {
-            try { tcs.SetResult(_fitsHostVm.SavedCoordinates.Select(ToBookmark).ToList()); }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(Array.Empty<CanfarDesktop.Services.Fits.FitsBookmark>());
-        return tcs.Task;
-    }
+        => OnUi<IReadOnlyList<CanfarDesktop.Services.Fits.FitsBookmark>>(
+            () => _fitsHostVm.SavedCoordinates.Select(ToBookmark).ToList(),
+            Array.Empty<CanfarDesktop.Services.Fits.FitsBookmark>());
 
     private Task<CanfarDesktop.Services.Fits.FitsBookmark?> SaveFitsBookmarkActionAsync(double ra, double dec, string? label, string? sourceFile)
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Services.Fits.FitsBookmark?>();
-        if (!DispatcherQueue.TryEnqueue(() =>
+        => OnUi(() =>
         {
-            try
-            {
-                _fitsHostVm.SaveCoordinate(label ?? string.Empty, ra, dec, sourceFile);
-                var saved = _fitsHostVm.SavedCoordinates.FirstOrDefault(); // SaveCoordinate inserts at index 0
-                tcs.SetResult(saved is null ? null : ToBookmark(saved));
-            }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(null);
-        return tcs.Task;
-    }
+            _fitsHostVm.SaveCoordinate(label ?? string.Empty, ra, dec, sourceFile);
+            var saved = _fitsHostVm.SavedCoordinates.FirstOrDefault(); // SaveCoordinate inserts at index 0
+            return saved is null ? null : ToBookmark(saved);
+        }, null);
 
     private Task<bool> DeleteFitsBookmarkActionAsync(string id)
-    {
-        var tcs = new TaskCompletionSource<bool>();
-        if (!DispatcherQueue.TryEnqueue(() =>
+        => OnUi(() =>
         {
-            try
-            {
-                var match = Guid.TryParse(id, out var gid)
-                    ? _fitsHostVm.SavedCoordinates.FirstOrDefault(c => c.Id == gid)
-                    : null;
-                if (match is null) { tcs.SetResult(false); return; }
-                _fitsHostVm.DeleteCoordinate(match);
-                tcs.SetResult(true);
-            }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(false);
-        return tcs.Task;
-    }
+            var match = Guid.TryParse(id, out var gid)
+                ? _fitsHostVm.SavedCoordinates.FirstOrDefault(c => c.Id == gid)
+                : null;
+            if (match is null) return false;
+            _fitsHostVm.DeleteCoordinate(match);
+            return true;
+        }, false);
 
     private static CanfarDesktop.Services.Fits.FitsBookmark ToBookmark(CanfarDesktop.Models.Fits.SavedCoordinate c)
         => new(c.Id.ToString(), c.Label, c.Ra, c.Dec, c.SourceFile, c.SavedAt);
 
     private Task<CanfarDesktop.Services.CubeViewer.CubeViewState?> SetCubeActionAsync(
         CanfarDesktop.Mcp.Tools.Write.CubeViewArgs args)
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Services.CubeViewer.CubeViewState?>();
-        if (!DispatcherQueue.TryEnqueue(() =>
+        => OnUi(() =>
         {
-            try
-            {
-                var cube = _cubeTabHost?.ActivePage;
-                if (cube is null) { tcs.SetResult(null); return; }
-                cube.ApplyCubeView(
-                    mode: args.Mode, channel: args.Channel, colormap: args.Colormap, stretch: args.Stretch,
-                    renderMode: args.RenderMode, windowLo: args.WindowLo, windowHi: args.WindowHi,
-                    azimuth: args.Azimuth, elevation: args.Elevation, distance: args.Distance,
-                    density: args.Density, spectralScale: args.SpectralScale, steps: args.Steps,
-                    background: args.Background, showSlicePlane: args.ShowSlicePlane, showCaptions: args.ShowCaptions,
-                    autoOrbit: args.AutoOrbit, playing: args.Playing, resetCamera: args.ResetCamera);
-                tcs.SetResult(cube.GetCubeState());
-            }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(null);
-        return tcs.Task;
-    }
+            var cube = _cubeTabHost?.ActivePage;
+            if (cube is null) return null;
+            cube.ApplyCubeView(
+                mode: args.Mode, channel: args.Channel, colormap: args.Colormap, stretch: args.Stretch,
+                renderMode: args.RenderMode, windowLo: args.WindowLo, windowHi: args.WindowHi,
+                azimuth: args.Azimuth, elevation: args.Elevation, distance: args.Distance,
+                density: args.Density, spectralScale: args.SpectralScale, steps: args.Steps,
+                background: args.Background, showSlicePlane: args.ShowSlicePlane, showCaptions: args.ShowCaptions,
+                autoOrbit: args.AutoOrbit, playing: args.Playing, resetCamera: args.ResetCamera);
+            return cube.GetCubeState();
+        }, null);
 
     private Task<CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome> ExportCubeActionAsync(
         string path, string format, int scale, bool dark)
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome>();
-        if (!DispatcherQueue.TryEnqueue(async () =>
+        => OnUiAsync(async () =>
         {
-            try
-            {
-                var cube = _cubeTabHost?.ActivePage;
-                if (cube is null)
-                {
-                    tcs.SetResult(new(false, path, "the cube viewer is not open (use open_cube first)"));
-                    return;
-                }
-                var err = await cube.ExportCubeToPathAsync(path, format, scale, dark);
-                tcs.SetResult(err is null ? new(true, path, null) : new(false, path, err));
-            }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(new(false, path, "could not dispatch to UI"));
-        return tcs.Task;
-    }
+            var cube = _cubeTabHost?.ActivePage;
+            if (cube is null)
+                return new CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome(false, path, "the cube viewer is not open (use open_cube first)");
+            var err = await cube.ExportCubeToPathAsync(path, format, scale, dark);
+            return err is null ? new(true, path, null) : new(false, path, err);
+        }, new CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome(false, path, "could not dispatch to UI"));
 
     private Task<CanfarDesktop.Services.CubeViewer.CubeSpectrumResult?> ProbeCubeActionAsync(int x, int y)
-    {
-        var tcs = new TaskCompletionSource<CanfarDesktop.Services.CubeViewer.CubeSpectrumResult?>();
-        if (!DispatcherQueue.TryEnqueue(() =>
-        {
-            try { tcs.SetResult(_cubeTabHost?.ActivePage?.ProbeCubeSpectrum(x, y)); }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(null);
-        return tcs.Task;
-    }
+        => OnUi(() => _cubeTabHost?.ActivePage?.ProbeCubeSpectrum(x, y), null);
 
     /// <summary>Map the current AppMode to the MCP mode name + title and publish it (UI thread).</summary>
     private void PublishViewMode()
@@ -768,16 +657,7 @@ public sealed partial class MainWindow : Window
     // ── Notebook MCP actions (active tab; mutations dispatched through one applier on the UI thread) ──
 
     private Task<NotebookState?> NotebookMutateActionAsync(NotebookCommand cmd)
-    {
-        var tcs = new TaskCompletionSource<NotebookState?>();
-        if (!DispatcherQueue.TryEnqueue(async () =>
-        {
-            try { tcs.SetResult(await ApplyNotebookCommandAsync(cmd)); }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(null);
-        return tcs.Task;
-    }
+        => OnUiAsync(() => ApplyNotebookCommandAsync(cmd), null);
 
     private async Task<NotebookState?> ApplyNotebookCommandAsync(NotebookCommand cmd)
     {
@@ -886,50 +766,19 @@ public sealed partial class MainWindow : Window
     }
 
     private Task<NotebookState?> GetNotebookActionAsync()
-    {
-        var tcs = new TaskCompletionSource<NotebookState?>();
-        if (!DispatcherQueue.TryEnqueue(() =>
-        {
-            try
-            {
-                var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
-                tcs.SetResult(vm is null ? null : ToNotebookState(vm));
-            }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(null);
-        return tcs.Task;
-    }
+        => OnUi(() => _notebookTabHost?.ViewModel.ActiveViewModel is { } vm ? ToNotebookState(vm) : null, null);
 
     private Task<NotebookCellOutputs?> GetCellOutputActionAsync(int index)
-    {
-        var tcs = new TaskCompletionSource<NotebookCellOutputs?>();
-        if (!DispatcherQueue.TryEnqueue(() =>
-        {
-            try { tcs.SetResult(GetCellOutputsCore(index)); }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(null);
-        return tcs.Task;
-    }
+        => OnUi(() => GetCellOutputsCore(index), null);
 
     private Task<NotebookKernelInfo> GetKernelStateActionAsync()
-    {
-        var tcs = new TaskCompletionSource<NotebookKernelInfo>();
-        if (!DispatcherQueue.TryEnqueue(() =>
+        => OnUi(() =>
         {
-            try
-            {
-                var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
-                tcs.SetResult(vm is null
-                    ? new NotebookKernelInfo("Dead", "no notebook open", "")
-                    : new NotebookKernelInfo(vm.KernelState.ToString(), vm.KernelStatusText, vm.KernelDisplayName));
-            }
-            catch (Exception ex) { tcs.SetException(ex); }
-        }))
-            tcs.SetResult(new NotebookKernelInfo("Dead", "could not dispatch", ""));
-        return tcs.Task;
-    }
+            var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
+            return vm is null
+                ? new NotebookKernelInfo("Dead", "no notebook open", "")
+                : new NotebookKernelInfo(vm.KernelState.ToString(), vm.KernelStatusText, vm.KernelDisplayName);
+        }, new NotebookKernelInfo("Dead", "could not dispatch", ""));
 
     private Task<IReadOnlyList<NotebookRef>> ListNotebooksActionAsync()
     {
