@@ -56,7 +56,7 @@ public class NotebookToolsTests
         {
             seen = i;
             return Task.FromResult<NotebookCellOutputs?>(new(i, "code", 2,
-                new[] { new NotebookOutputInfo("stream", "hello", false, "", "", false, false) }));
+                new[] { new NotebookOutputInfo("stream", "hello", false, false, "", "", false, false, false) }));
         });
         var doc = Json(await tool.InvokeAsync(Args("""{"index":3}"""), Ctx, default));
         Assert.Equal(3, seen);

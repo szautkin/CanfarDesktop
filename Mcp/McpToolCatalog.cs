@@ -23,11 +23,9 @@ namespace CanfarDesktop.Mcp;
 /// <summary>
 /// Builds the live MCP tool set by binding each pure tool to the app's real services (the tools take
 /// injected delegates so they stay testable; this is the one place those delegates are wired to the
-/// running DI graph). All tools are read-only (AgentSafe) — no tool here mutates state.
-///
-/// Deferred for a follow-up (need path/stream semantics an external agent can't readily drive):
-/// the FITS header/WCS tools (operate on a local file path) and the VOSpace list/read tools.
-/// Their omission is intentional, not a silent cap.
+/// running DI graph). The set spans read-only (AgentSafe) reads, live ViewState mutators (cube / FITS /
+/// notebook steering + figure/bundle exports), and proposal-based SemanticWrite/Destructive writes.
+/// Per-tool agent gating lives on each tool's verb class, not here.
 /// </summary>
 public static class McpToolCatalog
 {

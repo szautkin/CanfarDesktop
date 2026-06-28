@@ -678,6 +678,12 @@ public sealed partial class MainWindow : Window
             var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
             if (vm is null) return null;
 
+            // Index-addressed ops fail fast on an out-of-range index (consistent with move_cell) rather
+            // than silently no-op'ing while reporting success. add_cell intentionally appends instead.
+            int RequireIndex(int? i)
+                => InRange(vm, i) ? i!.Value
+                    : throw new InvalidOperationException($"cell index {i} out of range (notebook has {vm.Cells.Count} cells).");
+
             switch (cmd.Op)
             {
                 case NotebookOp.Save:
@@ -688,17 +694,16 @@ public sealed partial class MainWindow : Window
                     else await vm.SaveAsync();
                     break;
                 case NotebookOp.EditCell:
-                    if (InRange(vm, cmd.Index) && cmd.Source is not null)
-                        vm.Cells[cmd.Index!.Value].Source = cmd.Source;
+                    { var ei = RequireIndex(cmd.Index); if (cmd.Source is not null) vm.Cells[ei].Source = cmd.Source; }
                     break;
                 case NotebookOp.AddCell:
                     AddNotebookCell(vm, cmd.Index, cmd.CellType ?? "code", cmd.Source);
                     break;
                 case NotebookOp.DeleteCell:
-                    if (InRange(vm, cmd.Index)) { vm.SelectCell(cmd.Index!.Value); vm.DeleteSelectedCell(); }
+                    vm.SelectCell(RequireIndex(cmd.Index)); vm.DeleteSelectedCell();
                     break;
                 case NotebookOp.ChangeCellType:
-                    if (InRange(vm, cmd.Index) && cmd.CellType is not null) { vm.SelectCell(cmd.Index!.Value); vm.ChangeCellType(cmd.CellType); }
+                    if (cmd.CellType is not null) { vm.SelectCell(RequireIndex(cmd.Index)); vm.ChangeCellType(cmd.CellType); }
                     break;
                 case NotebookOp.MoveCell:
                     if (!MoveNotebookCell(vm, cmd.Index ?? -1, cmd.ToIndex ?? -1))
@@ -708,7 +713,7 @@ public sealed partial class MainWindow : Window
                     vm.ClearAllOutputs();
                     break;
                 case NotebookOp.RunCell:
-                    if (InRange(vm, cmd.Index)) { vm.SelectCell(cmd.Index!.Value); await vm.RunSelectedCellAsync(); }
+                    vm.SelectCell(RequireIndex(cmd.Index)); await vm.RunSelectedCellAsync();
                     break;
                 case NotebookOp.RunAll:
                     await vm.RunAllCellsAsync();
@@ -789,6 +794,9 @@ public sealed partial class MainWindow : Window
         return Task.FromResult(list);
     }
 
+    // Cap notebook cell source + outputs for MCP transport (one place so the two serializers can't drift).
+    private const int McpNotebookTextCap = 16000;
+
     private NotebookCellOutputs? GetCellOutputsCore(int index)
     {
         var vm = _notebookTabHost?.ViewModel.ActiveViewModel;
@@ -797,17 +805,23 @@ public sealed partial class MainWindow : Window
         if (cell is not ViewModels.Notebook.CodeCellViewModel code)
             return new NotebookCellOutputs(index, cell.CellType, null, Array.Empty<NotebookOutputInfo>());
 
-        const int cap = 16000;
         var outs = new List<NotebookOutputInfo>(code.Outputs.Count);
         foreach (var o in code.Outputs)
+        {
+            var text = o.TextContent ?? string.Empty;
+            var tb = o.Traceback ?? string.Empty;
             outs.Add(new NotebookOutputInfo(
-                o.OutputType, Clip(o.TextContent, cap), o.IsError, o.ErrorName, Clip(o.Traceback, cap), o.HasImage, o.HasHtml));
+                o.OutputType,
+                Clip(text, McpNotebookTextCap), text.Length > McpNotebookTextCap,
+                o.IsError, o.ErrorName,
+                Clip(tb, McpNotebookTextCap), tb.Length > McpNotebookTextCap,
+                o.HasImage, o.HasHtml));
+        }
         return new NotebookCellOutputs(index, "code", code.ExecutionCount, outs);
     }
 
     private static NotebookState ToNotebookState(ViewModels.Notebook.NotebookViewModel vm)
     {
-        const int cap = 16000;
         var cells = new List<NotebookCellInfo>(vm.Cells.Count);
         for (int i = 0; i < vm.Cells.Count; i++)
         {
@@ -815,7 +829,7 @@ public sealed partial class MainWindow : Window
             var src = c.Source ?? string.Empty;
             int? exec = c is ViewModels.Notebook.CodeCellViewModel code ? code.ExecutionCount : null;
             int outs = c is ViewModels.Notebook.CodeCellViewModel cc ? cc.Outputs.Count : 0;
-            cells.Add(new NotebookCellInfo(i, c.CellType, Clip(src, cap), src.Length > cap, exec, outs));
+            cells.Add(new NotebookCellInfo(i, c.CellType, Clip(src, McpNotebookTextCap), src.Length > McpNotebookTextCap, exec, outs));
         }
         return new NotebookState(
             Loaded: true, Title: vm.Title, FilePath: vm.FilePath, FileMode: vm.FileMode.ToString(),

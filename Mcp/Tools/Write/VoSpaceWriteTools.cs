@@ -116,9 +116,7 @@ public sealed class UploadFileToVoSpaceTool : JsonWriteTool<UploadFileToVoSpaceT
         var remote = (args.VospacePath ?? string.Empty).Trim();
         if (local.Length == 0) throw new McpToolException(new InvalidArgument("localPath is required"));
         if (remote.Length == 0) throw new McpToolException(new InvalidArgument("vospacePath is required"));
-        if (!Path.IsPathRooted(local)) throw new McpToolException(new InvalidArgument("localPath must be a full (rooted) path"));
-        string full;
-        try { full = Path.GetFullPath(local); } catch { throw new McpToolException(new InvalidArgument("invalid localPath")); }
+        var full = ToolPaths.RequireRootedFullPath(local, "localPath");
 
         var payload = new UploadFilePayload(full, remote, string.IsNullOrWhiteSpace(args.ContentType) ? null : args.ContentType!.Trim());
         return Task.FromResult(ProposalPlan.Encoding("upload_file_to_vospace", $"Upload {Path.GetFileName(full)} → {remote}", payload));
@@ -158,9 +156,7 @@ public sealed class DownloadVoSpaceFileTool : JsonReadTool<DownloadVoSpaceFileTo
         var local = (args.LocalPath ?? string.Empty).Trim();
         if (remote.Length == 0) throw new McpToolException(new InvalidArgument("path is required"));
         if (local.Length == 0) throw new McpToolException(new InvalidArgument("localPath is required"));
-        if (!Path.IsPathRooted(local)) throw new McpToolException(new InvalidArgument("localPath must be a full (rooted) path"));
-        string full;
-        try { full = Path.GetFullPath(local); } catch { throw new McpToolException(new InvalidArgument("invalid localPath")); }
+        var full = ToolPaths.RequireRootedFullPath(local, "localPath");
 
         // Bound the whole transfer so a stalled VOSpace stream can't run to the tool ceiling; honour the caller's token.
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);

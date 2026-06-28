@@ -29,9 +29,11 @@ public sealed record NotebookState(
 public sealed record NotebookOutputInfo(
     string OutputType,      // stream | execute_result | display_data | error
     string Text,
+    bool TextTruncated,
     bool IsError,
     string ErrorName,
     string Traceback,
+    bool TracebackTruncated,
     bool HasImage,
     bool HasHtml);
 

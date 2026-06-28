@@ -28,9 +28,7 @@ public sealed class ExportResearchBundleTool : JsonReadTool<ExportResearchBundle
     {
         var dest = (args.DestFolder ?? string.Empty).Trim();
         if (dest.Length == 0) throw new McpToolException(new InvalidArgument("destFolder is required"));
-        if (!Path.IsPathRooted(dest)) throw new McpToolException(new InvalidArgument("destFolder must be a full (rooted) path"));
-        string full;
-        try { full = Path.GetFullPath(dest); } catch { throw new McpToolException(new InvalidArgument("invalid destFolder")); }
+        var full = ToolPaths.RequireRootedFullPath(dest, "destFolder");
         if (!Directory.Exists(full)) throw new McpToolException(new InvalidArgument($"destFolder does not exist: {full}"));
 
         ExportBundleResult result;
