@@ -169,6 +169,7 @@ public partial class App : Application
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddSingleton<IColumnUnitStore, LocalSettingsColumnUnitStore>(); // per-column display units
         services.AddHttpClient<DataLinkService>();
+        services.AddTransient<ObservationDownloadService>(); // shared resolve-URL + atomic download core
 
         // Export bundle (Research + Search → Claude-friendly bundle)
         services.AddSingleton<CanfarDesktop.Services.Export.ExportService>();

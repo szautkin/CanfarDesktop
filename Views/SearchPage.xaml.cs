@@ -15,6 +15,7 @@ public sealed partial class SearchPage : Page
     public SearchViewModel ViewModel { get; }
     private readonly DataLinkService _dataLinkService;
     private readonly ObservationStore _observationStore;
+    private readonly ObservationDownloadService _downloads;
     private readonly DataTrainManager _dataTrainMgr = new();
     private bool _dataTrainLoaded;
 
@@ -25,11 +26,12 @@ public sealed partial class SearchPage : Page
     /// <summary>Raised when the user opens a result row's full CAOM2 detail (publisher ID).</summary>
     public event Action<string>? ObservationDetailRequested;
 
-    public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService, ObservationStore observationStore)
+    public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService, ObservationStore observationStore, ObservationDownloadService downloads)
     {
         ViewModel = viewModel;
         _dataLinkService = dataLinkService;
         _observationStore = observationStore;
+        _downloads = downloads;
         InitializeComponent();
 
         // Ctrl+Enter to search
@@ -836,8 +838,7 @@ public sealed partial class SearchPage : Page
             var file = await picker.PickSaveFileAsync();
             if (file is null) return;
 
-            // Download with progress tracking
-            var tempPath = file.Path + ".tmp";
+            // Download with progress tracking (the atomic .tmp-swap stream lives in ObservationDownloadService).
             try
             {
                 DownloadInfoBar.IsOpen = true;
@@ -845,46 +846,25 @@ public sealed partial class SearchPage : Page
                 DownloadProgressBar.IsIndeterminate = true;
                 DownloadProgressText.Text = "";
 
-                using var response = await _dataLinkService.DownloadAsync(url);
-                var totalBytes = response.Content.Headers.ContentLength;
-                using var stream = await response.Content.ReadAsStreamAsync();
-                using var fileStream = new System.IO.FileStream(tempPath, System.IO.FileMode.Create);
-
-                if (totalBytes.HasValue)
+                var progress = new Progress<(long Downloaded, long? Total)>(p =>
                 {
-                    DownloadProgressBar.IsIndeterminate = false;
-                    DownloadProgressBar.Maximum = totalBytes.Value;
-                }
-
-                var buffer = new byte[81920];
-                long downloaded = 0;
-                int bytesRead;
-                while ((bytesRead = await stream.ReadAsync(buffer)) > 0)
-                {
-                    await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
-                    downloaded += bytesRead;
-
-                    if (totalBytes.HasValue)
+                    if (p.Total is { } total)
                     {
-                        DownloadProgressBar.Value = downloaded;
-                        var pct = (double)downloaded / totalBytes.Value * 100;
-                        DownloadProgressText.Text = $"{FormatBytes(downloaded)} / {FormatBytes(totalBytes.Value)} ({pct:F0}%)";
+                        DownloadProgressBar.IsIndeterminate = false;
+                        DownloadProgressBar.Maximum = total;
+                        DownloadProgressBar.Value = p.Downloaded;
+                        DownloadProgressText.Text = $"{FormatBytes(p.Downloaded)} / {FormatBytes(total)} ({(double)p.Downloaded / total * 100:F0}%)";
                     }
                     else
                     {
-                        DownloadProgressText.Text = FormatBytes(downloaded);
+                        DownloadProgressText.Text = FormatBytes(p.Downloaded);
                     }
-                }
-
-                await fileStream.FlushAsync();
-
-                if (File.Exists(file.Path)) File.Delete(file.Path);
-                File.Move(tempPath, file.Path);
+                });
+                await _downloads.DownloadToPathAsync(url, file.Path, progress: progress);
 
                 DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
                 DownloadInfoBar.Title = $"Downloaded {Path.GetFileName(file.Path)}";
                 DownloadProgressBar.Visibility = Visibility.Collapsed;
-                DownloadProgressText.Text = FormatBytes(downloaded);
                 _ = Task.Delay(3000).ContinueWith(_ => DispatcherQueue.TryEnqueue(() =>
                 {
                     DownloadInfoBar.IsOpen = false;
@@ -894,8 +874,7 @@ public sealed partial class SearchPage : Page
             catch
             {
                 DownloadInfoBar.IsOpen = false;
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
-                throw;
+                throw; // ObservationDownloadService already removed the partial .tmp
             }
 
             // Track in Research module

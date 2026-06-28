@@ -11,6 +11,7 @@ public partial class ResearchViewModel : ObservableObject
     private readonly ObservationStore _store;
     private readonly DataLinkService _dataLinkService;
     private readonly ObservationNoteStore _noteStore;
+    private readonly ObservationDownloadService _downloads;
 
     [ObservableProperty]
     private DownloadedObservation? _selectedObservation;
@@ -24,11 +25,12 @@ public partial class ResearchViewModel : ObservableObject
     [ObservableProperty]
     private int _observationCount;
 
-    public ResearchViewModel(ObservationStore store, DataLinkService dataLinkService, ObservationNoteStore noteStore)
+    public ResearchViewModel(ObservationStore store, DataLinkService dataLinkService, ObservationNoteStore noteStore, ObservationDownloadService downloads)
     {
         _store = store;
         _dataLinkService = dataLinkService;
         _noteStore = noteStore;
+        _downloads = downloads;
         Refresh();
     }
 
@@ -91,19 +93,8 @@ public partial class ResearchViewModel : ObservableObject
 
         try
         {
-            var dataLink = await _dataLinkService.GetLinksAsync(SelectedObservation.PublisherID);
-            var url = dataLink.DirectFileUrl ?? _dataLinkService.GetDownloadUrl(SelectedObservation.PublisherID);
-
-            var tempPath = savePath + ".tmp";
-            using (var response = await _dataLinkService.DownloadAsync(url))
-            using (var stream = await response.Content.ReadAsStreamAsync())
-            using (var fileStream = new FileStream(tempPath, FileMode.Create))
-            {
-                await stream.CopyToAsync(fileStream);
-            }
-
-            if (File.Exists(savePath)) File.Delete(savePath);
-            File.Move(tempPath, savePath);
+            var url = await _downloads.ResolveUrlAsync(SelectedObservation.PublisherID);
+            await _downloads.DownloadToPathAsync(url, savePath);
 
             // Update observation with the file path
             SelectedObservation.LocalPath = savePath;

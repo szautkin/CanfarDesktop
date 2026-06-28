@@ -216,7 +216,7 @@ public static class McpToolCatalog
         var noteStore = sp.GetRequiredService<ObservationNoteStore>();
         var sessions = sp.GetRequiredService<ISessionService>();
         var observations = sp.GetRequiredService<ObservationStore>();
-        var dataLink = sp.GetRequiredService<DataLinkService>();
+        var downloads = sp.GetRequiredService<ObservationDownloadService>();
         var storage = sp.GetRequiredService<IStorageService>();
         var discovery = sp.GetRequiredService<ImageDiscoveryCoordinator>();
 
@@ -257,7 +257,7 @@ public static class McpToolCatalog
             new DeleteSessionApplier(p => sessions.DeleteSessionAsync(p.Id)),
             new RenewSessionApplier(p => sessions.RenewSessionAsync(p.Id)),
 
-            new DownloadObservationApplier(p => DownloadObservationAsync(dataLink, observations, p.PublisherId)),
+            new DownloadObservationApplier(p => DownloadObservationAsync(downloads, observations, p.PublisherId)),
             new DeleteDownloadedObservationApplier(p =>
             {
                 var match = observations.Observations.FirstOrDefault(o => o.Id == p.Id || o.PublisherID == p.Id);
@@ -282,27 +282,16 @@ public static class McpToolCatalog
     }
 
     /// <summary>Resolve an observation's FITS URL, stream it to ~/Downloads/Verbinal, and register it in Research.</summary>
-    private static async Task DownloadObservationAsync(DataLinkService dataLink, ObservationStore store, string publisherId)
+    private static async Task DownloadObservationAsync(ObservationDownloadService downloads, ObservationStore store, string publisherId)
     {
-        var links = await dataLink.GetLinksAsync(publisherId);
-        var url = links.DirectFileUrl ?? dataLink.GetDownloadUrl(publisherId);
-
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Verbinal");
         Directory.CreateDirectory(dir);
         var localPath = Path.Combine(dir, SafeFileName(publisherId) + ".fits");
-        var tmp = localPath + ".tmp";
 
-        // Bounded below McpHost's apply backstop so a stuck download fails with its own error (and
-        // releases the apply gate) rather than tripping the generic apply timeout.
-        using (var response = await dataLink.DownloadAsync(url, timeoutSeconds: 120))
-        {
-            response.EnsureSuccessStatusCode();
-            await using var stream = await response.Content.ReadAsStreamAsync();
-            await using var fs = new FileStream(tmp, FileMode.Create);
-            await stream.CopyToAsync(fs);
-        }
-        if (File.Exists(localPath)) File.Delete(localPath);
-        File.Move(tmp, localPath);
+        var url = await downloads.ResolveUrlAsync(publisherId);
+        // Bounded below McpHost's apply backstop so a stuck download fails with its own error (and releases
+        // the apply gate) rather than tripping the generic apply timeout.
+        await downloads.DownloadToPathAsync(url, localPath, timeoutSeconds: 120);
 
         var observation = new DownloadedObservation { PublisherID = publisherId, LocalPath = localPath };
         var info = new FileInfo(localPath);
@@ -322,7 +311,7 @@ public static class McpToolCatalog
             IncludeSearchHistory = includeSearchHistory,
             IncludeFileCopies = includeFiles,
         };
-        var svc = new ExportService();
+        var svc = sp.GetRequiredService<ExportService>();
         var bundleDir = await svc.BuildBundleAsync(destFolder, modules, options, DateTimeOffset.Now, appVersion, Environment.MachineName);
         var zipPath = svc.ZipBundle(bundleDir);
 
