@@ -76,6 +76,14 @@ public class CubeViewerToolsTests
     }
 
     [Fact]
+    public async Task SetCubeView_NoCubeOpen_TargetNotResolved()
+    {
+        var tool = new SetCubeViewTool(_ => Task.FromResult<CubeViewState?>(null));
+        var r = await tool.InvokeAsync(Args("""{"mode":"slice"}"""), Ctx, default);
+        Assert.IsType<TargetNotResolved>(Assert.IsType<FailedResult>(r).Reason);
+    }
+
+    [Fact]
     public async Task SetCubeView_MapsCameraVolumeTogglesAndPlayback()
     {
         CubeViewArgs? seen = null;

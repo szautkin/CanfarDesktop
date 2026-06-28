@@ -92,9 +92,15 @@ public sealed class GetKernelStateTool : JsonReadTool<GetKernelStateTool.Args, N
 /// <summary>Base for the single-applier notebook mutation tools (each returns the resulting NotebookState).</summary>
 public abstract class NotebookMutationTool<TArgs> : JsonReadTool<TArgs, NotebookState?> where TArgs : class, new()
 {
-    protected readonly Func<NotebookCommand, Task<NotebookState?>> Apply;
-    protected NotebookMutationTool(Func<NotebookCommand, Task<NotebookState?>> apply) => Apply = apply;
+    private readonly Func<NotebookCommand, Task<NotebookState?>> _apply;
+    protected NotebookMutationTool(Func<NotebookCommand, Task<NotebookState?>> apply) => _apply = apply;
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    /// <summary>Apply the command; a null result means no notebook is open, surfaced as TargetNotResolved so
+    /// the agent gets an actionable "open_notebook / create_notebook first" instead of a bare null.</summary>
+    protected async Task<NotebookState?> Apply(NotebookCommand cmd)
+        => await _apply(cmd)
+           ?? throw new McpToolException(new TargetNotResolved("no notebook is open — use open_notebook or create_notebook first"));
 }
 
 /// <summary><c>open_notebook</c> — open a .ipynb/.py/.md file in the notebook editor (creates the host + switches to it).</summary>

@@ -26,10 +26,13 @@ public sealed class SetFitsViewTool : JsonReadTool<SetFitsViewTool.Args, FitsVie
         "resulting view state. Live-applied.",
         """{"type":"object","properties":{"stretch":{"type":"string","enum":["linear","log","sqrt","squared","asinh"]},"colormap":{"type":"string","enum":["grayscale","inverted","heat","cool","viridis"]},"minCut":{"type":"number"},"maxCut":{"type":"number"},"zoomPercent":{"type":"number","minimum":5,"maximum":2000},"northUp":{"type":"boolean"},"reset":{"type":"boolean"},"clearCrosshair":{"type":"boolean"}},"additionalProperties":false}""");
 
-    protected override Task<FitsViewState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
-        => _apply(new FitsViewArgs(
+    protected override async Task<FitsViewState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var state = await _apply(new FitsViewArgs(
             args.Stretch, args.Colormap, args.MinCut, args.MaxCut,
             args.ZoomPercent, args.NorthUp, args.Reset, args.ClearCrosshair));
+        return state ?? throw new McpToolException(new TargetNotResolved("the FITS viewer is not open — open a FITS file first"));
+    }
 
     public sealed record Args
     {

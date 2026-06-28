@@ -184,6 +184,14 @@ public class NotebookToolsTests
     }
 
     [Fact]
+    public async Task Mutator_NoNotebookOpen_TargetNotResolved()
+    {
+        var tool = new EditCellTool(_ => Task.FromResult<NotebookState?>(null));
+        var r = await tool.InvokeAsync(Args("""{"index":0,"source":"x=1"}"""), Ctx, default);
+        Assert.IsType<TargetNotResolved>(Assert.IsType<FailedResult>(r).Reason);
+    }
+
+    [Fact]
     public void MutationTools_AreViewStateVerbs()
     {
         Func<NotebookCommand, Task<NotebookState?>> noop = _ => Task.FromResult<NotebookState?>(null);

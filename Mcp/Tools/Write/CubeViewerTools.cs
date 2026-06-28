@@ -71,10 +71,11 @@ public sealed class SetCubeViewTool : JsonReadTool<SetCubeViewTool.Args, CubeVie
     {
         if (args.Channel is < 0)
             throw new McpToolException(new InvalidArgument("channel must be >= 0"));
-        return await _apply(new CubeViewArgs(
+        var state = await _apply(new CubeViewArgs(
             args.Mode, args.Channel, args.Colormap, args.Stretch, args.RenderMode, args.WindowLo, args.WindowHi,
             args.Azimuth, args.Elevation, args.Distance, args.Density, args.SpectralScale, args.Steps,
             args.Background, args.ShowSlicePlane, args.ShowCaptions, args.AutoOrbit, args.Playing, args.ResetCamera));
+        return state ?? throw new McpToolException(new TargetNotResolved("the cube viewer is not open — open a cube with open_cube first"));
     }
 
     public sealed record Args

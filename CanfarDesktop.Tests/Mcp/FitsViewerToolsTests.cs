@@ -45,6 +45,14 @@ public class FitsViewerToolsTests
         => Assert.Equal(McpVerbClass.ViewState,
             new SetFitsViewTool(_ => Task.FromResult<FitsViewState?>(null)).VerbClass);
 
+    [Fact]
+    public async Task SetFitsView_NotOpen_TargetNotResolved()
+    {
+        var tool = new SetFitsViewTool(_ => Task.FromResult<FitsViewState?>(null));
+        var r = await tool.InvokeAsync(Args("""{"stretch":"log"}"""), Ctx, default);
+        Assert.IsType<TargetNotResolved>(Assert.IsType<FailedResult>(r).Reason);
+    }
+
     // ── get_fits_view ─────────────────────────────────────────────────────────
 
     [Fact]
