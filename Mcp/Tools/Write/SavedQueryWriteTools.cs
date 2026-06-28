@@ -95,8 +95,7 @@ public sealed class DeleteSavedQueryApplier : IProposalApplier
 
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
     {
-        var payload = JsonSerializer.Deserialize<DeleteSavedQueryPayload>(proposal.Payload, McpJson.Options)
-                      ?? throw ProposalApplyException.BackendError("delete_saved_query payload was empty");
+        var payload = ProposalPayload.Decode<DeleteSavedQueryPayload>(proposal);
         return _delete(payload);
     }
 }

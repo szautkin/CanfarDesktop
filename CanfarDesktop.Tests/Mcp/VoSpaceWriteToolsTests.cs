@@ -152,4 +152,23 @@ public class VoSpaceWriteToolsTests
 
     private static PendingProposal Proposal<T>(string kind, T payload)
         => PendingProposal.Create("t", kind, "s", JsonSerializer.SerializeToUtf8Bytes(payload, McpJson.Options), OperationOrigin.External("c1"));
+
+    // ── ProposalPayload.Decode (the one shared decode path for every applier) ──
+
+    [Fact]
+    public void Decode_ValidPayload_RoundTrips()
+    {
+        var decoded = ProposalPayload.Decode<UploadTextPayload>(
+            Proposal("upload_text_to_vospace", new UploadTextPayload("/p", "c", null)));
+        Assert.Equal("/p", decoded.Path);
+    }
+
+    [Fact]
+    public void Decode_EmptyPayload_ThrowsWithKind()
+    {
+        var proposal = PendingProposal.Create("t", "my_kind", "s",
+            JsonSerializer.SerializeToUtf8Bytes((UploadTextPayload?)null, McpJson.Options), OperationOrigin.External("c1"));
+        var ex = Assert.Throws<ProposalApplyException>(() => ProposalPayload.Decode<UploadTextPayload>(proposal));
+        Assert.Contains("my_kind", ex.Message);
+    }
 }

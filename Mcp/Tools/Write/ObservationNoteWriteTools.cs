@@ -108,8 +108,7 @@ public sealed class UpdateObservationNoteApplier : IProposalApplier
     public string Kind => "update_observation_note";
 
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _apply(JsonSerializer.Deserialize<UpdateObservationNotePayload>(proposal.Payload, McpJson.Options)
-                  ?? throw ProposalApplyException.BackendError("update_observation_note payload was empty"));
+        => _apply(ProposalPayload.Decode<UpdateObservationNotePayload>(proposal));
 }
 
 /// <summary>Applies a <c>bulk_update_observation_notes</c> proposal (all items).</summary>
@@ -122,8 +121,7 @@ public sealed class BulkUpdateObservationNotesApplier : IProposalApplier
 
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
     {
-        var payload = JsonSerializer.Deserialize<BulkUpdateObservationNotesPayload>(proposal.Payload, McpJson.Options)
-                      ?? throw ProposalApplyException.BackendError("bulk_update_observation_notes payload was empty");
+        var payload = ProposalPayload.Decode<BulkUpdateObservationNotesPayload>(proposal);
         return _apply(payload.Items);
     }
 }

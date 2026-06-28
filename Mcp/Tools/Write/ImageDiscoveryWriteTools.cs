@@ -64,6 +64,5 @@ public sealed class DiscoverImagePackagesApplier : IProposalApplier
     public string Kind => "discover_image_packages";
 
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _apply(JsonSerializer.Deserialize<DiscoverImagePackagesPayload>(proposal.Payload, McpJson.Options)
-                  ?? throw ProposalApplyException.BackendError("discover_image_packages payload was empty"));
+        => _apply(ProposalPayload.Decode<DiscoverImagePackagesPayload>(proposal));
 }

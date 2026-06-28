@@ -151,9 +151,7 @@ public sealed class LaunchSessionApplier : IProposalApplier
     public LaunchSessionApplier(Func<LaunchSessionPayload, Task> launch) => _launch = launch;
     public string Kind => "launch_session";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _launch(Decode<LaunchSessionPayload>(proposal));
-    private static T Decode<T>(PendingProposal p)
-        => JsonSerializer.Deserialize<T>(p.Payload, McpJson.Options) ?? throw ProposalApplyException.BackendError($"{p.Kind} payload was empty");
+        => _launch(ProposalPayload.Decode<LaunchSessionPayload>(proposal));
 }
 
 public sealed class LaunchHeadlessApplier : IProposalApplier
@@ -162,8 +160,7 @@ public sealed class LaunchHeadlessApplier : IProposalApplier
     public LaunchHeadlessApplier(Func<LaunchHeadlessPayload, Task> launch) => _launch = launch;
     public string Kind => "launch_headless_job";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _launch(JsonSerializer.Deserialize<LaunchHeadlessPayload>(proposal.Payload, McpJson.Options)
-                   ?? throw ProposalApplyException.BackendError("launch_headless_job payload was empty"));
+        => _launch(ProposalPayload.Decode<LaunchHeadlessPayload>(proposal));
 }
 
 public sealed class DeleteSessionApplier : IProposalApplier
@@ -172,8 +169,7 @@ public sealed class DeleteSessionApplier : IProposalApplier
     public DeleteSessionApplier(Func<DeleteSessionPayload, Task> delete) => _delete = delete;
     public string Kind => "delete_session";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _delete(JsonSerializer.Deserialize<DeleteSessionPayload>(proposal.Payload, McpJson.Options)
-                   ?? throw ProposalApplyException.BackendError("delete_session payload was empty"));
+        => _delete(ProposalPayload.Decode<DeleteSessionPayload>(proposal));
 }
 
 public sealed class RenewSessionApplier : IProposalApplier
@@ -182,6 +178,5 @@ public sealed class RenewSessionApplier : IProposalApplier
     public RenewSessionApplier(Func<RenewSessionPayload, Task> renew) => _renew = renew;
     public string Kind => "renew_session";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _renew(JsonSerializer.Deserialize<RenewSessionPayload>(proposal.Payload, McpJson.Options)
-                  ?? throw ProposalApplyException.BackendError("renew_session payload was empty"));
+        => _renew(ProposalPayload.Decode<RenewSessionPayload>(proposal));
 }

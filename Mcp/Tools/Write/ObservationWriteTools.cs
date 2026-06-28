@@ -62,8 +62,7 @@ public sealed class DownloadObservationApplier : IProposalApplier
     public DownloadObservationApplier(Func<DownloadObservationPayload, Task> download) => _download = download;
     public string Kind => "download_observation";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _download(JsonSerializer.Deserialize<DownloadObservationPayload>(proposal.Payload, McpJson.Options)
-                     ?? throw ProposalApplyException.BackendError("download_observation payload was empty"));
+        => _download(ProposalPayload.Decode<DownloadObservationPayload>(proposal));
 }
 
 public sealed class DeleteDownloadedObservationApplier : IProposalApplier
@@ -72,6 +71,5 @@ public sealed class DeleteDownloadedObservationApplier : IProposalApplier
     public DeleteDownloadedObservationApplier(Func<DeleteDownloadedObservationPayload, Task> delete) => _delete = delete;
     public string Kind => "delete_downloaded_observation";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _delete(JsonSerializer.Deserialize<DeleteDownloadedObservationPayload>(proposal.Payload, McpJson.Options)
-                   ?? throw ProposalApplyException.BackendError("delete_downloaded_observation payload was empty"));
+        => _delete(ProposalPayload.Decode<DeleteDownloadedObservationPayload>(proposal));
 }

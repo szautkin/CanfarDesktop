@@ -21,6 +21,15 @@ public sealed class ProposalApplyException : Exception
     public static ProposalApplyException BackendError(string detail) => new($"Apply failed: {detail}");
 }
 
+/// <summary>The one place every applier decodes its JSON payload — derives the "empty payload" error from
+/// the proposal's own <see cref="PendingProposal.Kind"/> so it can't drift from each applier's Kind.</summary>
+public static class ProposalPayload
+{
+    public static T Decode<T>(PendingProposal proposal)
+        => System.Text.Json.JsonSerializer.Deserialize<T>(proposal.Payload, McpJson.Options)
+           ?? throw ProposalApplyException.BackendError($"{proposal.Kind} payload was empty");
+}
+
 /// <summary>Maps a proposal <c>kind</c> to its <see cref="IProposalApplier"/>. Thread-safe.</summary>
 public sealed class ProposalApplierRegistry
 {

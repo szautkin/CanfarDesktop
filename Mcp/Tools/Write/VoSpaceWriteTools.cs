@@ -203,8 +203,7 @@ public sealed class UploadTextToVoSpaceApplier : IProposalApplier
     public UploadTextToVoSpaceApplier(Func<UploadTextPayload, Task> upload) => _upload = upload;
     public string Kind => "upload_text_to_vospace";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _upload(JsonSerializer.Deserialize<UploadTextPayload>(proposal.Payload, McpJson.Options)
-                   ?? throw ProposalApplyException.BackendError("upload_text_to_vospace payload was empty"));
+        => _upload(ProposalPayload.Decode<UploadTextPayload>(proposal));
 }
 
 public sealed class UploadFileToVoSpaceApplier : IProposalApplier
@@ -213,8 +212,7 @@ public sealed class UploadFileToVoSpaceApplier : IProposalApplier
     public UploadFileToVoSpaceApplier(Func<UploadFilePayload, Task> upload) => _upload = upload;
     public string Kind => "upload_file_to_vospace";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _upload(JsonSerializer.Deserialize<UploadFilePayload>(proposal.Payload, McpJson.Options)
-                   ?? throw ProposalApplyException.BackendError("upload_file_to_vospace payload was empty"));
+        => _upload(ProposalPayload.Decode<UploadFilePayload>(proposal));
 }
 
 public sealed class CreateVoSpaceFolderApplier : IProposalApplier
@@ -223,8 +221,7 @@ public sealed class CreateVoSpaceFolderApplier : IProposalApplier
     public CreateVoSpaceFolderApplier(Func<CreateFolderPayload, Task> create) => _create = create;
     public string Kind => "create_vospace_folder";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _create(JsonSerializer.Deserialize<CreateFolderPayload>(proposal.Payload, McpJson.Options)
-                   ?? throw ProposalApplyException.BackendError("create_vospace_folder payload was empty"));
+        => _create(ProposalPayload.Decode<CreateFolderPayload>(proposal));
 }
 
 public sealed class DeleteVoSpaceNodeApplier : IProposalApplier
@@ -233,6 +230,5 @@ public sealed class DeleteVoSpaceNodeApplier : IProposalApplier
     public DeleteVoSpaceNodeApplier(Func<DeleteNodePayload, Task> delete) => _delete = delete;
     public string Kind => "delete_vospace_node";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _delete(JsonSerializer.Deserialize<DeleteNodePayload>(proposal.Payload, McpJson.Options)
-                   ?? throw ProposalApplyException.BackendError("delete_vospace_node payload was empty"));
+        => _delete(ProposalPayload.Decode<DeleteNodePayload>(proposal));
 }
