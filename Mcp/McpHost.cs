@@ -3,6 +3,7 @@ using CanfarDesktop.Helpers;
 using CanfarDesktop.Mcp.Agents;
 using CanfarDesktop.Mcp.Listener;
 using CanfarDesktop.Mcp.Tools.Proposals;
+using CanfarDesktop.Services.AiGuide;
 
 namespace CanfarDesktop.Mcp;
 
@@ -127,12 +128,19 @@ public sealed class McpHost : IAsyncDisposable
             onAgentActivity: FollowToolActivity,
             onAgentDispatchStart: NotifyAgentWorking);
 
+        // AI Guide (optional): description overrides + user guide tools, read live per tools/list call.
+        // Tell it the real tool names so a guide can't shadow a built-in. Absent → un-tuned manifest.
+        var aiGuide = _services.GetService<AiGuideService>();
+        if (aiGuide is not null)
+            aiGuide.KnownToolNames = router.ToolNames.ToHashSet(StringComparer.Ordinal);
+        Func<AiGuideSnapshot>? aiGuideSnapshot = aiGuide is null ? null : aiGuide.Snapshot;
+
         // Write the sidecar to the REAL %LOCALAPPDATA% (un-redirected) so the UNPACKAGED bridge can find
         // it — a packaged app's default AppData is sandboxed to its package container (PackagePaths).
         var sidecar = new McpSidecar(Path.Combine(PackagePaths.RealLocalAppData(), McpConstants.SidecarFolderName));
 
         _listener = new McpListenerService(
-            () => new McpServerService(router, identity, proposals: proposals, budget: budget),
+            () => new McpServerService(router, identity, proposals: proposals, budget: budget, aiGuide: aiGuideSnapshot),
             sidecar: sidecar,
             log: CrashLogger.Info);
         _listener.Start(Guid.NewGuid());

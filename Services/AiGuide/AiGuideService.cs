@@ -28,9 +28,10 @@ public sealed class AiGuideService
     private Dictionary<string, string> _overrides = new();
     private List<AiGuideToolEntry> _guides = new();
 
-    /// <summary>Names of the registered built-in tools, set once by the host after the agent tools
-    /// are composed. Used to reject a guide name that would shadow a real tool.</summary>
-    public IReadOnlySet<string> KnownToolNames { get; set; } = new HashSet<string>();
+    /// <summary>Names a guide may not shadow. Defaults to every name the catalog knows so collision
+    /// protection holds even before the MCP host starts; the host refines it to the precise live router
+    /// set once the agent tools are composed.</summary>
+    public IReadOnlySet<string> KnownToolNames { get; set; } = AiGuideCatalog.MappedToolNames;
 
     public AiGuideService(AiGuideStore store)
     {
@@ -101,19 +102,25 @@ public sealed class AiGuideService
             throw AiGuideValidationException.TooLong("Description", MaxDescriptionChars);
         if (trimmed.Length == 0) { ClearOverride(toolName); return; }
 
-        _store.UpsertOverride(toolName, trimmed);
-        lock (_gate) _overrides[toolName] = trimmed;
+        // Hold the gate across the DB write + mirror update so a concurrent Snapshot() can never observe
+        // a mirror that disagrees with the DB. The store has its own lock; the order is always
+        // service -> store (Snapshot only takes the service gate), so there's no lock-order inversion.
+        lock (_gate)
+        {
+            _store.UpsertOverride(toolName, trimmed);
+            _overrides[toolName] = trimmed;
+        }
     }
 
     /// <summary>Reset a tool to its built-in description (soft-delete the override row).</summary>
     public void ClearOverride(string toolName)
     {
-        bool present;
-        lock (_gate) present = _overrides.ContainsKey(toolName);
-        if (!present) return;
-
-        _store.SoftDeleteOverride(toolName);
-        lock (_gate) _overrides.Remove(toolName);
+        lock (_gate)
+        {
+            if (!_overrides.ContainsKey(toolName)) return;
+            _store.SoftDeleteOverride(toolName);
+            _overrides.Remove(toolName);
+        }
     }
 
     // MARK: - Custom guide tools
@@ -122,35 +129,44 @@ public sealed class AiGuideService
     /// Throws <see cref="AiGuideValidationException"/> on validation failure.</summary>
     public AiGuideToolEntry AddGuide(string name, string description, string? body)
     {
-        var slug = ValidatedName(name, excluding: null);
-        var desc = ValidatedDescription(description);
-        var bod = ValidatedBody(body);
+        // The whole operation runs under the gate (validate -> assign order -> write -> reload) so two
+        // concurrent adds can't collide on a name or an orderIndex, and readers never see a half-applied
+        // state. The gate is recursive, so the nested ValidatedName/Reload re-acquisitions are fine.
+        lock (_gate)
+        {
+            var slug = ValidatedName(name, excluding: null);
+            var desc = ValidatedDescription(description);
+            var bod = ValidatedBody(body);
 
-        int order;
-        lock (_gate) order = _guides.Count;
-
-        var entry = new AiGuideToolEntry(Guid.NewGuid(), slug, desc, bod);
-        _store.InsertGuide(entry, order);
-        Reload();
-        return entry;
+            var entry = new AiGuideToolEntry(Guid.NewGuid(), slug, desc, bod);
+            _store.InsertGuide(entry, _guides.Count);
+            Reload();
+            return entry;
+        }
     }
 
     /// <summary>Update an existing guide. Re-validates the (possibly changed) name.</summary>
     public void UpdateGuide(Guid id, string name, string description, string? body)
     {
-        var slug = ValidatedName(name, excluding: id);
-        var desc = ValidatedDescription(description);
-        var bod = ValidatedBody(body);
+        lock (_gate)
+        {
+            var slug = ValidatedName(name, excluding: id);
+            var desc = ValidatedDescription(description);
+            var bod = ValidatedBody(body);
 
-        _store.UpdateGuide(id, slug, desc, bod);
-        Reload();
+            _store.UpdateGuide(id, slug, desc, bod);
+            Reload();
+        }
     }
 
     /// <summary>Soft-delete a guide tool.</summary>
     public void DeleteGuide(Guid id)
     {
-        _store.SoftDeleteGuide(id);
-        Reload();
+        lock (_gate)
+        {
+            _store.SoftDeleteGuide(id);
+            Reload();
+        }
     }
 
     // MARK: - Validation
@@ -171,6 +187,9 @@ public sealed class AiGuideService
     private static string ValidatedDescription(string raw)
     {
         var trimmed = (raw ?? string.Empty).Trim();
+        // A guide must carry a one-liner (it's shown in tools/list and is the call fallback when there's
+        // no body). macOS enforces this in the edit sheet; we enforce it at the service for safety.
+        if (trimmed.Length == 0) throw AiGuideValidationException.DescriptionEmpty();
         if (trimmed.Length > MaxDescriptionChars)
             throw AiGuideValidationException.TooLong("Description", MaxDescriptionChars);
         return trimmed;

@@ -73,6 +73,7 @@ public enum AiGuideErrorKind
     NameEmpty,
     NameTaken,
     NameCollidesWithTool,
+    DescriptionEmpty,
 }
 
 /// <summary>User-actionable validation failure raised by <see cref="AiGuideService"/> edits.</summary>
@@ -94,4 +95,7 @@ public sealed class AiGuideValidationException : Exception
 
     public static AiGuideValidationException NameCollidesWithTool()
         => new(AiGuideErrorKind.NameCollidesWithTool, "That name is already used by a built-in tool. Choose another.");
+
+    public static AiGuideValidationException DescriptionEmpty()
+        => new(AiGuideErrorKind.DescriptionEmpty, "Enter a one-line description the agent will see in the tool list.");
 }

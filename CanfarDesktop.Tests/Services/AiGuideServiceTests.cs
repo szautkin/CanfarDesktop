@@ -114,10 +114,27 @@ public class AiGuideServiceTests : IDisposable
     }
 
     [Fact]
+    public void AddGuide_CollidesWithBuiltin_ByDefault_WithoutHostStart()
+    {
+        // A fresh service (host never started) still rejects a name that shadows a live built-in,
+        // because KnownToolNames defaults to the catalog's known names.
+        var ex = Assert.Throws<AiGuideValidationException>(
+            () => _service.AddGuide("navigate to", "desc", null)); // slugs to "navigate_to" (a real tool)
+        Assert.Equal(AiGuideErrorKind.NameCollidesWithTool, ex.Kind);
+    }
+
+    [Fact]
     public void AddGuide_EmptyNameAfterSlug_Throws()
     {
         var ex = Assert.Throws<AiGuideValidationException>(() => _service.AddGuide("界面", "desc", null));
         Assert.Equal(AiGuideErrorKind.NameEmpty, ex.Kind);
+    }
+
+    [Fact]
+    public void AddGuide_EmptyDescription_Throws()
+    {
+        var ex = Assert.Throws<AiGuideValidationException>(() => _service.AddGuide("ok", "   ", "body"));
+        Assert.Equal(AiGuideErrorKind.DescriptionEmpty, ex.Kind);
     }
 
     [Fact]

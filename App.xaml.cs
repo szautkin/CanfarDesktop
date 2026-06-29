@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Services;
+using CanfarDesktop.Services.AiGuide;
 using CanfarDesktop.Services.Database;
 using CanfarDesktop.Services.Fits;
 using CanfarDesktop.Services.ImageDiscovery;
@@ -162,6 +163,10 @@ public partial class App : Application
         services.AddSingleton<ObservationStore>();
         services.AddSingleton<AppDatabase>();
         services.AddSingleton<ObservationNoteStore>();
+
+        // AI Guide (per-tool description overrides + user-authored guide tools; shared by UI + MCP server)
+        services.AddSingleton<AiGuideStore>();
+        services.AddSingleton<AiGuideService>();
 
         // Search (TAP is public, no auth needed)
         services.AddHttpClient<ITAPService, TAPService>(client =>

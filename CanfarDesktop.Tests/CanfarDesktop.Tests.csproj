@@ -107,6 +107,7 @@
     <Compile Include="..\Services\AiGuide\AiGuideModels.cs" Link="Linked\AiGuide\AiGuideModels.cs" />
     <Compile Include="..\Services\AiGuide\AiGuideStore.cs" Link="Linked\AiGuide\AiGuideStore.cs" />
     <Compile Include="..\Services\AiGuide\AiGuideService.cs" Link="Linked\AiGuide\AiGuideService.cs" />
+    <Compile Include="..\Services\AiGuide\AiGuideCatalog.cs" Link="Linked\AiGuide\AiGuideCatalog.cs" />
     <Compile Include="..\Services\CAOM2Parser.cs" Link="Linked\CAOM2Parser.cs" />
     <Compile Include="..\Services\ICAOM2Service.cs" Link="Linked\ICAOM2Service.cs" />
     <Compile Include="..\Services\CAOM2Service.cs" Link="Linked\CAOM2Service.cs" />

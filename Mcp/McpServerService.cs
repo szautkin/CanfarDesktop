@@ -4,6 +4,7 @@ using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Proposals;
 using CanfarDesktop.Mcp.Transport;
 using CanfarDesktop.Mcp.Wire;
+using CanfarDesktop.Services.AiGuide;
 
 namespace CanfarDesktop.Mcp;
 
@@ -43,6 +44,20 @@ public sealed class McpServerService
     private readonly IProposalStore? _proposals;
     private readonly ProposalBudget? _budget;
 
+    // Names of the agent-visible built-in tools (fixed for this connection). A user guide tool may
+    // never shadow one: built-ins win in both tools/list (no duplicate names) and tools/call.
+    private readonly HashSet<string> _builtinNames;
+
+    // Optional AI Guide hook: read live (per request) so user edits re-tune tools/list without a
+    // reconnect. The snapshot is an immutable, lock-built copy, so it's safe on the concurrent serve
+    // loop. Null when the server is built without AI Guide → behaviour is exactly the un-tuned manifest.
+    private readonly Func<AiGuideSnapshot>? _aiGuide;
+
+    // Empty-object input schema advertised for user guide tools (they take no arguments — a call just
+    // returns the stored instruction text).
+    private static readonly JsonValue GuideToolSchema =
+        JsonValue.Parse("{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}");
+
     private bool _initialized;
     private string _clientId = "unknown-client";
 
@@ -51,13 +66,16 @@ public sealed class McpServerService
         ServerIdentity identity,
         IApprovalGate? gate = null,
         IProposalStore? proposals = null,
-        ProposalBudget? budget = null)
+        ProposalBudget? budget = null,
+        Func<AiGuideSnapshot>? aiGuide = null)
     {
         _router = router;
         _identity = identity;
         _gate = gate ?? AllowAllGate.Instance;
         _proposals = proposals;
         _budget = budget;
+        _aiGuide = aiGuide;
+        _builtinNames = new HashSet<string>(router.ExternalManifest.Select(d => d.Name), StringComparer.Ordinal);
     }
 
     public async Task ServeAsync(IMcpTransport transport, CancellationToken cancellationToken = default)
@@ -142,7 +160,24 @@ public sealed class McpServerService
     }
 
     private JsonRpcResponse HandleToolsList(JsonRpcRequest req)
-        => JsonRpcResponse.Success(req.Id, new ListToolsResult(_router.ExternalManifest.Select(d => d.ToWire()).ToList()).ToJson());
+    {
+        var guide = _aiGuide?.Invoke() ?? AiGuideSnapshot.Empty;
+        var tools = new List<ToolDefinitionWire>(_router.ExternalManifest.Count + guide.Guides.Count);
+
+        // Built-in tools — substitute the user's description override when present.
+        foreach (var d in _router.ExternalManifest)
+            tools.Add(new ToolDefinitionWire(d.Name, guide.DescriptionForTool(d.Name, d.Description), d.InputSchema));
+
+        // Append the user's read-only guide tools (no schema; calling one returns its stored text).
+        // Defensive: never emit a guide whose name collides with a built-in — that would put a duplicate
+        // name in tools/list (an MCP-spec violation). Creation-time validation already prevents this; this
+        // guards a DB hand-edit or a future built-in added under an existing guide's name.
+        foreach (var g in guide.Guides)
+            if (!_builtinNames.Contains(g.Name))
+                tools.Add(new ToolDefinitionWire(g.Name, g.Description, GuideToolSchema));
+
+        return JsonRpcResponse.Success(req.Id, new ListToolsResult(tools).ToJson());
+    }
 
     private async Task<JsonRpcResponse> HandleToolsCallAsync(JsonRpcRequest req, CancellationToken ct)
     {
@@ -152,6 +187,16 @@ public sealed class McpServerService
         CallToolParams p;
         try { p = CallToolParams.Parse(req.Params); }
         catch (JsonException ex) { return JsonRpcResponse.Failure(req.Id, Err(JsonRpcErrorCode.InvalidParams, ex.Message)); }
+
+        // AI Guide tools aren't in the router — a call just returns the user's stored instruction text.
+        // Built-ins always win (a guide can never shadow one), so only short-circuit for a non-built-in name.
+        if (!_builtinNames.Contains(p.Name))
+        {
+            var guideBody = (_aiGuide?.Invoke() ?? AiGuideSnapshot.Empty).GuideBody(p.Name);
+            if (guideBody is not null)
+                return JsonRpcResponse.Success(req.Id,
+                    new CallToolResult(new[] { CallToolContent.Text(guideBody) }, IsError: false).ToJson());
+        }
 
         var context = McpToolContext.ForExternal(_clientId, Guid.NewGuid(), _proposals, _budget);
         var result = await _router.DispatchAsync(p.Name, p.Arguments, context, ct);
