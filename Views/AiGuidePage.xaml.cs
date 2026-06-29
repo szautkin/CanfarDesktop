@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using CanfarDesktop.Services.AiGuide;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views.Dialogs;
@@ -61,6 +62,30 @@ public sealed partial class AiGuidePage : Page
     {
         if ((sender as FrameworkElement)?.DataContext is AiGuideToolRowViewModel row)
             row.IsExpanded = false;
+    }
+
+    /// <summary>When a tool row opens, drop the cursor into its description box so it's immediately
+    /// editable (the row's header — name + description — is what was clicked to expand).</summary>
+    private void OnToolRowExpanding(Expander sender, ExpanderExpandingEventArgs args)
+        => sender.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (FindDescendant<TextBox>(sender) is { } box)
+            {
+                box.Focus(FocusState.Programmatic);
+                box.SelectionStart = box.Text?.Length ?? 0;
+            }
+        });
+
+    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T hit) return hit;
+            if (FindDescendant<T>(child) is { } deep) return deep;
+        }
+        return null;
     }
 
     // ── My guide tools ───────────────────────────────────────────────────────
