@@ -35,8 +35,9 @@ public sealed class LaunchSessionTool : JsonWriteTool<LaunchSessionTool.Args>
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "launch_session",
         "Propose launching an interactive Skaha session (notebook/desktop/carta/contributed/firefly) from " +
-        "a container image, with optional name + CPU/RAM(GB)/GPU. Queues for the user to apply; after it " +
-        "applies, find the new session via list_sessions.",
+        "a container image (use an id from list_session_images — hand-typed image strings can be rejected), " +
+        "with optional name + CPU/RAM(GB)/GPU. Queues for the user to apply; after it applies, find the new " +
+        "session via list_sessions.",
         """{"type":"object","properties":{"type":{"type":"string","enum":["notebook","desktop","carta","contributed","firefly"]},"image":{"type":"string"},"name":{"type":"string"},"cores":{"type":"integer","minimum":1},"ram":{"type":"integer","minimum":1},"gpus":{"type":"integer","minimum":0}},"required":["type","image"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -72,7 +73,8 @@ public sealed class LaunchHeadlessJobTool : JsonWriteTool<LaunchHeadlessJobTool.
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "launch_headless_job",
-        "Propose launching a headless (batch) Skaha job from a container image, with an optional args string, " +
+        "Propose launching a headless (batch) Skaha job from a container image (use an id from " +
+        "list_session_images — hand-typed image strings can be rejected), with an optional args string, " +
         "resources, and replica count (1-50). Queues for the user to apply; track it via list_headless_jobs.",
         """{"type":"object","properties":{"image":{"type":"string"},"name":{"type":"string"},"args":{"type":"string"},"cores":{"type":"integer","minimum":1},"ram":{"type":"integer","minimum":1},"gpus":{"type":"integer","minimum":0},"replicas":{"type":"integer","minimum":1,"maximum":50}},"required":["image"],"additionalProperties":false}""");
 

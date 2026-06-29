@@ -78,7 +78,8 @@ public sealed class SearchObservationsTool : JsonReadTool<SearchObservationsTool
         "search_observations",
         "Search CADC observations. Provide either an explicit ADQL query, or a spatial cone " +
         "(target name OR ra+dec in degrees, with an optional radius in degrees). Returns column names, " +
-        "a capped set of rows, and the total row count.",
+        "a capped set of rows (max 1000), and the total row count. Pass the returned `publisher_id` " +
+        "column verbatim to get_observation_caom2, get_data_links, or download_observation.",
         """
         {"type":"object","properties":{
           "adql":{"type":"string","description":"Explicit ADQL query. If set, the spatial fields are ignored."},

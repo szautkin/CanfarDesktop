@@ -21,8 +21,8 @@ public sealed class DownloadObservationTool : JsonWriteTool<DownloadObservationT
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "download_observation",
         "Propose downloading a CADC observation's FITS file into the Research module by its publisher id " +
-        "(from search_observations). Queues for the user to apply; after it applies it appears in " +
-        "list_downloaded_observations.",
+        "(from search_observations). Proprietary/embargoed collections require the user to be signed in to " +
+        "CADC. Queues for the user to apply; after it applies it appears in list_downloaded_observations.",
         """{"type":"object","properties":{"publisherId":{"type":"string"}},"required":["publisherId"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
