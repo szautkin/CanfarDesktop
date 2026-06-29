@@ -55,12 +55,13 @@ public sealed partial class LandingView : UserControl
 
     private static bool ReadShowAiGuideTile()
     {
+        // Default ON: the tile shows unless the user has explicitly turned it off in Settings ▸ MCP server.
         try
         {
-            return ApplicationData.Current.LocalSettings.Values
-                .TryGetValue(AiGuidePreferences.ShowLandingTileKey, out var v) && v is bool b && b;
+            var values = ApplicationData.Current.LocalSettings.Values;
+            return !values.TryGetValue(AiGuidePreferences.ShowLandingTileKey, out var v) || v is not bool b || b;
         }
-        catch { return false; }
+        catch { return true; }
     }
 
     private void OnTileClicked(object sender, RoutedEventArgs e)

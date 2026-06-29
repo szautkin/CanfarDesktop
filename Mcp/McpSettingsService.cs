@@ -43,11 +43,11 @@ public sealed class McpSettingsService
         set => WriteBool(KeyFollowActivity, value);
     }
 
-    /// <summary>Whether the AI Guide tile shows on the landing launchpad. Defaults to false (hidden);
+    /// <summary>Whether the AI Guide tile shows on the landing launchpad. Defaults to true (visible);
     /// the saved overrides + guide tools stay active regardless. Shares the key with the landing view.</summary>
     public bool ShowAiGuideTile
     {
-        get => ReadBool(AiGuidePreferences.ShowLandingTileKey, defaultValue: false);
+        get => ReadBool(AiGuidePreferences.ShowLandingTileKey, defaultValue: true);
         set => WriteBool(AiGuidePreferences.ShowLandingTileKey, value);
     }
 

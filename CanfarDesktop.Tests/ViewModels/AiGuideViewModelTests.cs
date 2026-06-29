@@ -91,22 +91,60 @@ public class AiGuideViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Search_TogglesRowAndCategoryVisibility()
+    public void Search_PopulatesFlatResults()
     {
         var vm = NewVm();
         vm.Load();
+        Assert.False(vm.IsSearching);
 
         vm.SearchText = "auth";
+        Assert.True(vm.IsSearching);
+        var hit = Assert.Single(vm.SearchResults);
+        Assert.Equal("get_auth_state", hit.Name);
 
-        var foundational = vm.Categories.Single(c => c.Id == "foundational");
-        var search = vm.Categories.Single(c => c.Id == "search");
-        Assert.True(foundational.IsVisible);
-        Assert.True(foundational.Tools.Single().IsVisible);
-        Assert.False(search.IsVisible);
-        Assert.False(search.Tools.Single().IsVisible);
+        vm.SearchText = ""; // cleared → flat results gone, sections return
+        Assert.False(vm.IsSearching);
+        Assert.Empty(vm.SearchResults);
+    }
 
-        vm.SearchText = ""; // cleared → everything visible again
-        Assert.All(vm.Categories, c => Assert.True(c.IsVisible));
+    [Fact]
+    public void ShowTiles_DefaultsTrue_AndPairsWithEverything()
+    {
+        var vm = NewVm();
+        Assert.True(vm.ShowTiles);       // launchpad is the default mode (1:1 with macOS)
+        Assert.False(vm.ShowEverything);
+
+        vm.ShowEverything = true;
+        Assert.False(vm.ShowTiles);
+        Assert.True(vm.ShowEverything);
+    }
+
+    [Fact]
+    public void OpenCategory_ThenClose_TogglesFocusPanel()
+    {
+        var vm = NewVm();
+        vm.Load();
+        var cat = vm.Categories.First();
+
+        vm.OpenCategory(cat);
+        Assert.True(vm.IsFocusOpen);
+        Assert.Same(cat, vm.FocusedCategory);
+
+        vm.CloseFocus();
+        Assert.False(vm.IsFocusOpen);
+        Assert.Null(vm.FocusedCategory);
+    }
+
+    [Fact]
+    public void Search_SupersedesOpenFocusPanel()
+    {
+        var vm = NewVm();
+        vm.Load();
+        vm.OpenCategory(vm.Categories.First());
+        Assert.True(vm.IsFocusOpen);
+
+        vm.SearchText = "auth";
+        Assert.False(vm.IsFocusOpen); // overlay closes when search starts
     }
 
     [Fact]

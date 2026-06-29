@@ -5,182 +5,332 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:CanfarDesktop.ViewModels"
     xmlns:converters="using:CanfarDesktop.Converters"
-    mc:Ignorable="d"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
 
     <Page.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
-    </Page.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Padding="24" Spacing="16" MaxWidth="1080" HorizontalAlignment="Stretch">
+        <!-- One built-in tool: inline accordion description editor. Shared by the everything grid,
+             the focus panel, and the search results so an edit reflects everywhere. -->
+        <DataTemplate x:Key="ToolRowTemplate" x:DataType="vm:AiGuideToolRowViewModel">
+            <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,2"
+                      IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}">
+                <Expander.Header>
+                    <Grid ColumnSpacing="10" Padding="0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Name}" FontFamily="Consolas" VerticalAlignment="Center" />
+                            <Border CornerRadius="8" Padding="6,1" VerticalAlignment="Center"
+                                    Background="{ThemeResource AccentFillColorSecondaryBrush}"
+                                    Visibility="{x:Bind IsOverridden, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="Overridden" Style="{StaticResource CaptionTextBlockStyle}" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{x:Bind EffectiveDescription, Mode=OneWay}"
+                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </Grid>
+                </Expander.Header>
+                <StackPanel Spacing="8" Padding="0,4">
+                    <TextBlock Text="Built-in default" Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <TextBlock Text="{x:Bind DefaultDescription}" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBox Header="Your description" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"
+                             Text="{x:Bind EditText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             PlaceholderText="Describe this tool the way you want the agent to read it" />
+                    <Grid>
+                        <TextBlock Text="{x:Bind ErrorMessage, Mode=OneWay}" TextWrapping="Wrap"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                   Visibility="{x:Bind HasError, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Text="{x:Bind CharCountText, Mode=OneWay}" HorizontalAlignment="Right"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Save" Click="OnSaveOverrideClick" Style="{StaticResource AccentButtonStyle}" />
+                        <Button Content="Reset to default" Click="OnResetOverrideClick"
+                                Visibility="{x:Bind IsOverridden, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                        <Button Content="Cancel" Click="OnCancelEditClick" />
+                    </StackPanel>
+                </StackPanel>
+            </Expander>
+        </DataTemplate>
 
-            <!-- Header + stats + search -->
-            <StackPanel Spacing="6">
-                <TextBlock Text="AI Guide" Style="{StaticResource TitleTextBlockStyle}" />
-                <TextBlock TextWrapping="Wrap" Style="{StaticResource BodyTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Text="Re-tune how the AI agent sees each tool, and add your own read-only guide tools it can call for instructions. Changes apply live to the MCP server." />
-                <TextBlock Text="{x:Bind ViewModel.StatsText, Mode=OneWay}"
-                           Style="{StaticResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                <TextBox PlaceholderText="Search tools…" Margin="0,4,0,0"
-                         Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            </StackPanel>
+        <!-- One launchpad tile: icon + title + 2-line summary + override dot + tool count. -->
+        <DataTemplate x:Key="TileTemplate" x:DataType="vm:AiGuideCategoryGroup">
+            <Button Click="OnCategoryTileClick" Padding="0" Width="260" Height="120" Margin="0,0,16,16"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                    CornerRadius="8" BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <Grid Padding="14" RowSpacing="6">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="{x:Bind Glyph}" FontSize="16"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Text="{x:Bind Title}" Style="{StaticResource BodyStrongTextBlockStyle}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Text="{x:Bind Summary}" TextWrapping="Wrap" MaxLines="2"
+                               TextTrimming="CharacterEllipsis"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                        <Ellipse Width="6" Height="6" VerticalAlignment="Center"
+                                 Fill="{ThemeResource AccentFillColorDefaultBrush}"
+                                 Visibility="{x:Bind HasOverrides, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Text="{x:Bind ToolCountText, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+            </Button>
+        </DataTemplate>
 
-            <!-- My guide tools -->
-            <Border CornerRadius="8" Padding="16"
+        <!-- One full "See everything" category card: header + all tool rows inline. -->
+        <DataTemplate x:Key="CategoryCardTemplate" x:DataType="vm:AiGuideCategoryGroup">
+            <Border CornerRadius="8" Padding="16" Margin="0,0,0,12"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                <StackPanel Spacing="10">
+                <StackPanel Spacing="8">
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="My guide tools" Style="{StaticResource SubtitleTextBlockStyle}" />
-                            <TextBlock Text="Read-only instructions the agent can call by name."
+                        <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph}" FontSize="20" VerticalAlignment="Center"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock Text="{x:Bind Title}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                            <TextBlock Text="{x:Bind Summary}" TextWrapping="Wrap"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
-                        <Button Grid.Column="1" VerticalAlignment="Center" Click="OnAddGuideClick">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                <TextBlock Text="Add guide" />
-                            </StackPanel>
-                        </Button>
+                        <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="10" Padding="8,2"
+                                Background="{ThemeResource AccentFillColorSecondaryBrush}"
+                                Visibility="{x:Bind HasOverrides, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="{x:Bind OverriddenBadgeText, Mode=OneWay}"
+                                       Style="{StaticResource CaptionTextBlockStyle}" />
+                        </Border>
                     </Grid>
-
-                    <TextBlock Text="No guide tools yet. Add one to give the agent reusable instructions."
-                               Style="{StaticResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                               Visibility="{x:Bind ViewModel.HasGuides, Mode=OneWay, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}" />
-
-                    <ItemsControl ItemsSource="{x:Bind ViewModel.Guides, Mode=OneWay}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:AiGuideGuideRowViewModel">
-                                <Grid ColumnSpacing="12" Padding="0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" Spacing="2">
-                                        <TextBlock Text="{x:Bind Name}" FontFamily="Consolas" />
-                                        <TextBlock Text="{x:Bind Description}" TextWrapping="Wrap"
-                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
-                                        <Button Click="OnEditGuideClick" ToolTipService.ToolTip="Edit" Padding="8,4">
-                                            <FontIcon Glyph="&#xE70F;" FontSize="13" />
-                                        </Button>
-                                        <Button Click="OnDeleteGuideClick" ToolTipService.ToolTip="Delete" Padding="8,4">
-                                            <FontIcon Glyph="&#xE74D;" FontSize="13"
-                                                      Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
-                                        </Button>
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <ItemsControl ItemsSource="{x:Bind Tools, Mode=OneWay}"
+                                  ItemTemplate="{StaticResource ToolRowTemplate}" />
                 </StackPanel>
             </Border>
+        </DataTemplate>
 
-            <!-- Tool categories -->
-            <ItemsControl ItemsSource="{x:Bind ViewModel.Categories, Mode=OneWay}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:AiGuideCategoryGroup">
-                        <Border CornerRadius="8" Padding="16" Margin="0,0,0,12"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                Visibility="{x:Bind IsVisible, Mode=OneWay, Converter={StaticResource BoolToVis}}">
-                            <StackPanel Spacing="8">
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph}" FontSize="20" VerticalAlignment="Center"
+        <!-- One "My Guides" row. -->
+        <DataTemplate x:Key="GuideRowTemplate" x:DataType="vm:AiGuideGuideRowViewModel">
+            <Grid ColumnSpacing="12" Padding="0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="{x:Bind Name}" FontFamily="Consolas" />
+                    <TextBlock Text="{x:Bind Description}" TextWrapping="Wrap"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Text="{x:Bind BodyInfo}" Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               Visibility="{x:Bind HasBody, Converter={StaticResource BoolToVis}}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
+                    <Button Click="OnEditGuideClick" ToolTipService.ToolTip="Edit" Padding="8,4">
+                        <FontIcon Glyph="&#xE70F;" FontSize="13" />
+                    </Button>
+                    <Button Click="OnDeleteGuideClick" ToolTipService.ToolTip="Delete" Padding="8,4">
+                        <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid>
+        <!-- Main scrollable content -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="24" Spacing="16" MaxWidth="1100" HorizontalAlignment="Stretch">
+
+                <!-- Header: intro + stat chips + search -->
+                <Border CornerRadius="8" Padding="16"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xE945;" FontSize="20" VerticalAlignment="Top"
                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                    <StackPanel Grid.Column="1" Spacing="2">
-                                        <TextBlock Text="{x:Bind Title}" Style="{StaticResource SubtitleTextBlockStyle}" />
-                                        <TextBlock Text="{x:Bind Summary}" TextWrapping="Wrap"
-                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    </StackPanel>
-                                    <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="10" Padding="8,2"
-                                            Background="{ThemeResource AccentFillColorSecondaryBrush}"
-                                            Visibility="{x:Bind HasOverrides, Mode=OneWay, Converter={StaticResource BoolToVis}}">
-                                        <TextBlock Text="{x:Bind OverriddenBadgeText, Mode=OneWay}"
+                                    <TextBlock TextWrapping="Wrap" MaxWidth="640"
+                                               Style="{StaticResource BodyTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               Text="Re-tune how the AI agent sees each tool. Your edits override the built-in description the MCP server advertises, live." />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Border CornerRadius="12" Padding="10,3" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                                        <TextBlock Text="{x:Bind ViewModel.ToolsChipText, Mode=OneWay}"
                                                    Style="{StaticResource CaptionTextBlockStyle}" />
                                     </Border>
-                                </Grid>
-
-                                <ItemsControl ItemsSource="{x:Bind Tools, Mode=OneWay}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:AiGuideToolRowViewModel">
-                                            <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                                                      Margin="0,2" IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
-                                                      Visibility="{x:Bind IsVisible, Mode=OneWay, Converter={StaticResource BoolToVis}}">
-                                                <Expander.Header>
-                                                    <Grid ColumnSpacing="10" Padding="0,6">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto" />
-                                                            <ColumnDefinition Width="*" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                                            <TextBlock Text="{x:Bind Name}" FontFamily="Consolas" VerticalAlignment="Center" />
-                                                            <Border CornerRadius="8" Padding="6,1" VerticalAlignment="Center"
-                                                                    Background="{ThemeResource AccentFillColorSecondaryBrush}"
-                                                                    Visibility="{x:Bind IsOverridden, Mode=OneWay, Converter={StaticResource BoolToVis}}">
-                                                                <TextBlock Text="Overridden" Style="{StaticResource CaptionTextBlockStyle}" />
-                                                            </Border>
-                                                        </StackPanel>
-                                                        <TextBlock Grid.Column="1" Text="{x:Bind EffectiveDescription, Mode=OneWay}"
-                                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                    </Grid>
-                                                </Expander.Header>
-                                                <StackPanel Spacing="8" Padding="0,4">
-                                                    <TextBlock Text="Built-in default" Style="{StaticResource CaptionTextBlockStyle}"
-                                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                                    <TextBlock Text="{x:Bind DefaultDescription}" TextWrapping="Wrap" IsTextSelectionEnabled="True"
-                                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                    <TextBox Header="Your description" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"
-                                                             Text="{x:Bind EditText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                             PlaceholderText="Describe this tool the way you want the agent to read it" />
-                                                    <Grid>
-                                                        <TextBlock Text="{x:Bind ErrorMessage, Mode=OneWay}" TextWrapping="Wrap"
-                                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                                   Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                                                   Visibility="{x:Bind HasError, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
-                                                        <TextBlock Text="{x:Bind CharCountText, Mode=OneWay}" HorizontalAlignment="Right"
-                                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                                    </Grid>
-                                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                                        <Button Content="Save" Click="OnSaveOverrideClick"
-                                                                Style="{StaticResource AccentButtonStyle}" />
-                                                        <Button Content="Reset to default" Click="OnResetOverrideClick"
-                                                                Visibility="{x:Bind IsOverridden, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
-                                                        <Button Content="Cancel" Click="OnCancelEditClick" />
-                                                    </StackPanel>
-                                                </StackPanel>
-                                            </Expander>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                    <Border CornerRadius="12" Padding="10,3" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                            Visibility="{x:Bind ViewModel.HasOverriddenStat, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="{x:Bind ViewModel.OverriddenChipText, Mode=OneWay}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                                    </Border>
+                                    <Border CornerRadius="12" Padding="10,3" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                                        <TextBlock Text="{x:Bind ViewModel.CategoriesChipText, Mode=OneWay}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                                    </Border>
+                                </StackPanel>
                             </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top">
+                                <TextBox x:Name="SearchBox" Width="240" PlaceholderText="Filter tools…"
+                                         Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Click="OnClearSearchClick" ToolTipService.ToolTip="Clear filter"
+                                        Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                                    <FontIcon Glyph="&#xE711;" FontSize="13" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Text="{x:Bind ViewModel.MatchCountText, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                </Border>
 
-        </StackPanel>
-    </ScrollViewer>
+                <!-- My guide tools -->
+                <Border CornerRadius="8" Padding="16"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="My guide tools" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Text="Custom read-only instruction tools you author. The agent sees each as a callable tool and receives your text when it calls it — no code runs." />
+                            </StackPanel>
+                            <Button Grid.Column="1" VerticalAlignment="Center" Click="OnAddGuideClick">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                    <TextBlock Text="New guide" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                        <TextBlock Text="No guides yet. Add one to teach the agent a workflow, a naming convention, or a project rule."
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   Visibility="{x:Bind ViewModel.HasGuides, Mode=OneWay, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Guides, Mode=OneWay}"
+                                      ItemTemplate="{StaticResource GuideRowTemplate}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Search results (flat) -->
+                <Border CornerRadius="8" Padding="16"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                        Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.SearchResults, Mode=OneWay}"
+                                  ItemTemplate="{StaticResource ToolRowTemplate}" />
+                </Border>
+
+                <!-- Not searching: mode toggle + tiles launchpad / everything grid -->
+                <StackPanel Spacing="12"
+                            Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <TextBlock Text="View:" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <RadioButton GroupName="aiGuideView" Content="Tiles" Checked="OnTilesChecked"
+                                     IsChecked="{x:Bind ViewModel.ShowTiles, Mode=OneWay}" />
+                        <RadioButton GroupName="aiGuideView" Content="See everything" Checked="OnEverythingChecked"
+                                     IsChecked="{x:Bind ViewModel.ShowEverything, Mode=OneWay}" />
+                    </StackPanel>
+
+                    <ItemsRepeater ItemsSource="{x:Bind ViewModel.Categories, Mode=OneWay}"
+                                   ItemTemplate="{StaticResource TileTemplate}"
+                                   Visibility="{x:Bind ViewModel.ShowTiles, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                        <ItemsRepeater.Layout>
+                            <UniformGridLayout Orientation="Horizontal" MinItemWidth="260" MinItemHeight="120"
+                                               MinColumnSpacing="0" MinRowSpacing="0" />
+                        </ItemsRepeater.Layout>
+                    </ItemsRepeater>
+
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Categories, Mode=OneWay}"
+                                  ItemTemplate="{StaticResource CategoryCardTemplate}"
+                                  Visibility="{x:Bind ViewModel.ShowEverything, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Focus panel overlay (centered category detail) -->
+        <Grid Background="#99000000"
+              Visibility="{x:Bind ViewModel.IsFocusOpen, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+            <!-- Backdrop: tap to close (the panel sits on top, so its taps don't reach here) -->
+            <Border Background="Transparent" Tapped="OnBackdropTapped" />
+            <Border MaxWidth="600" MaxHeight="640" Margin="40" Padding="16"
+                    VerticalAlignment="Center" HorizontalAlignment="Center"
+                    CornerRadius="10"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <Grid RowSpacing="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Grid.Column="0" Glyph="{x:Bind ViewModel.FocusedCategory.Glyph, Mode=OneWay}" FontSize="20"
+                                  VerticalAlignment="Center" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.FocusedCategory.Title, Mode=OneWay}"
+                                   Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.FocusedCategory.ToolCountText, Mode=OneWay}"
+                                   VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Button Grid.Column="3" Click="OnCloseFocusClick" ToolTipService.ToolTip="Close"
+                                Background="Transparent" BorderThickness="0" Padding="6">
+                            <FontIcon Glyph="&#xE711;" FontSize="14" />
+                        </Button>
+                    </Grid>
+                    <TextBlock Grid.Row="1" Text="{x:Bind ViewModel.FocusedCategory.Summary, Mode=OneWay}"
+                               TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.FocusedCategory.Tools, Mode=OneWay}"
+                                      ItemTemplate="{StaticResource ToolRowTemplate}" />
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
 </Page>

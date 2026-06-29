@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using CanfarDesktop.Services.AiGuide;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views.Dialogs;
@@ -7,9 +8,9 @@ using CanfarDesktop.Views.Dialogs;
 namespace CanfarDesktop.Views;
 
 /// <summary>
-/// The AI Guide dashboard: built-in tools grouped into category cards with inline description-override
-/// editors, plus the user's read-only guide tools (add/edit/delete). Edits flow straight to
-/// <see cref="AiGuideService"/>, which the MCP server reads live on the next tools/list.
+/// The AI Guide dashboard: a launchpad of category tiles (default) that open a centered focus panel,
+/// a "See everything" full grid, a flat search view, and the user's read-only guide tools. Edits flow
+/// straight to <see cref="AiGuideService"/>, which the MCP server reads live on the next tools/list.
 /// </summary>
 public sealed partial class AiGuidePage : Page
 {
@@ -26,6 +27,24 @@ public sealed partial class AiGuidePage : Page
     /// <summary>(Re)load the tool surface — called by the host when the page is shown.</summary>
     public void LoadAsync() => ViewModel.Load();
 
+    // ── Launchpad / focus panel ──────────────────────────────────────────────
+    private void OnCategoryTileClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is AiGuideCategoryGroup group)
+            ViewModel.OpenCategory(group);
+    }
+
+    private void OnCloseFocusClick(object sender, RoutedEventArgs e) => ViewModel.CloseFocus();
+
+    private void OnBackdropTapped(object sender, TappedRoutedEventArgs e) => ViewModel.CloseFocus();
+
+    private void OnClearSearchClick(object sender, RoutedEventArgs e) => ViewModel.ClearSearch();
+
+    private void OnTilesChecked(object sender, RoutedEventArgs e) => ViewModel.ShowTiles = true;
+
+    private void OnEverythingChecked(object sender, RoutedEventArgs e) => ViewModel.ShowEverything = true;
+
+    // ── Description overrides ────────────────────────────────────────────────
     private void OnSaveOverrideClick(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is AiGuideToolRowViewModel row)
@@ -44,6 +63,7 @@ public sealed partial class AiGuidePage : Page
             row.IsExpanded = false;
     }
 
+    // ── My guide tools ───────────────────────────────────────────────────────
     private async void OnAddGuideClick(object sender, RoutedEventArgs e)
     {
         var dialog = new AiGuideEditDialog(_service) { XamlRoot = XamlRoot };
