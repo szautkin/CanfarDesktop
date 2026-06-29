@@ -167,6 +167,7 @@ public partial class App : Application
         // AI Guide (per-tool description overrides + user-authored guide tools; shared by UI + MCP server)
         services.AddSingleton<AiGuideStore>();
         services.AddSingleton<AiGuideService>();
+        services.AddSingleton<CanfarDesktop.Mcp.AiGuideToolInventory>();
 
         // Search (TAP is public, no auth needed)
         services.AddHttpClient<ITAPService, TAPService>(client =>
@@ -244,6 +245,9 @@ public partial class App : Application
         services.AddTransient<StorageBrowserViewModel>();
         services.AddTransient<NotebookViewModel>();
         services.AddSingleton<NotebookTabHostViewModel>();
+        services.AddTransient<AiGuideViewModel>(sp => new AiGuideViewModel(
+            sp.GetRequiredService<AiGuideService>(),
+            sp.GetRequiredService<CanfarDesktop.Mcp.AiGuideToolInventory>().BuildInputs));
 
         // Pages
         services.AddTransient<DashboardPage>();
@@ -251,6 +255,7 @@ public partial class App : Application
         services.AddTransient<ResearchPage>();
         services.AddTransient<StorageBrowserPage>();
         services.AddTransient<ObservationDetailPage>();
+        services.AddTransient<AiGuidePage>();
         // NotebookPage is created manually by NotebookTabHost (not DI-resolved)
 
         return services.BuildServiceProvider();

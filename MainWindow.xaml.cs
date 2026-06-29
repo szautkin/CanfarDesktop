@@ -16,7 +16,7 @@ namespace CanfarDesktop;
 
 public sealed partial class MainWindow : Window
 {
-    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer, ObservationDetail, CubeViewer }
+    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer, ObservationDetail, CubeViewer, AiGuide }
 
     private readonly MainViewModel _viewModel;
     private readonly ILegalAgreementService _legal;
@@ -26,6 +26,7 @@ public sealed partial class MainWindow : Window
     private ResearchPage? _researchPage;
     private StorageBrowserPage? _storagePage;
     private ObservationDetailPage? _obsDetailPage;
+    private AiGuidePage? _aiGuidePage;
     private LocalFileBrowserPanel? _filePanel;
     private bool _filePanelVisible;
     private AppMode _currentMode = AppMode.Landing;
@@ -62,6 +63,7 @@ public sealed partial class MainWindow : Window
         _landingView.NotebookRequested += (_, _) => OpenNotebook();
         _landingView.FitsViewerRequested += (_, _) => OpenFitsViewer();
         _landingView.CubeViewerRequested += (_, _) => OpenCubeViewer();
+        _landingView.AiGuideRequested += (_, _) => OpenAiGuidePage();
         LandingContainer.Child = _landingView;
 
         Activated += OnWindowActivated;
@@ -135,6 +137,7 @@ public sealed partial class MainWindow : Window
             case "storage": OpenStorageBrowser(); return new(true, "storage", "Storage");
             case "notebook": OpenNotebook(); return new(true, "notebook", "Notebook");
             case "fitsViewer": NavigateTo(AppMode.FitsViewer); return new(true, "fitsViewer", "FITS Viewer");
+            case "aiGuide": OpenAiGuidePage(); return new(true, "aiGuide", "AI Guide");
             default: return new(false, mode, mode);
         }
     }
@@ -296,6 +299,7 @@ public sealed partial class MainWindow : Window
             AppMode.Notebook => ("notebook", "Notebook"),
             AppMode.FitsViewer => ("fitsViewer", "FITS Viewer"),
             AppMode.ObservationDetail => ("observationDetail", "Observation"),
+            AppMode.AiGuide => ("aiGuide", "AI Guide"),
             _ => ("landing", "Home"),
         };
         _viewState?.SetMode(mode, title);
@@ -462,6 +466,7 @@ public sealed partial class MainWindow : Window
         FitsViewerContainer.Visibility = mode == AppMode.FitsViewer ? Visibility.Visible : Visibility.Collapsed;
         ObsDetailContainer.Visibility = mode == AppMode.ObservationDetail ? Visibility.Visible : Visibility.Collapsed;
         CubeViewerContainer.Visibility = mode == AppMode.CubeViewer ? Visibility.Visible : Visibility.Collapsed;
+        AiGuideContainer.Visibility = mode == AppMode.AiGuide ? Visibility.Visible : Visibility.Collapsed;
 
         BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         PublishViewMode();
@@ -484,6 +489,7 @@ public sealed partial class MainWindow : Window
             FitsViewerContainer.Visibility = previous == AppMode.FitsViewer ? Visibility.Visible : Visibility.Collapsed;
             ObsDetailContainer.Visibility = previous == AppMode.ObservationDetail ? Visibility.Visible : Visibility.Collapsed;
             CubeViewerContainer.Visibility = previous == AppMode.CubeViewer ? Visibility.Visible : Visibility.Collapsed;
+            AiGuideContainer.Visibility = previous == AppMode.AiGuide ? Visibility.Visible : Visibility.Collapsed;
 
             BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             PublishViewMode();
@@ -505,6 +511,7 @@ public sealed partial class MainWindow : Window
         FitsViewerContainer.Visibility = Visibility.Collapsed;
         ObsDetailContainer.Visibility = Visibility.Collapsed;
         CubeViewerContainer.Visibility = Visibility.Collapsed;
+        AiGuideContainer.Visibility = Visibility.Collapsed;
         BackButton.Visibility = Visibility.Collapsed;
         PublishViewMode();
     }
@@ -529,6 +536,20 @@ public sealed partial class MainWindow : Window
     {
         EnsureResearchPage();
         NavigateTo(AppMode.Research);
+    }
+
+    private void EnsureAiGuidePage()
+    {
+        if (_aiGuidePage is not null) return;
+        _aiGuidePage = App.Services.GetRequiredService<AiGuidePage>();
+        AiGuideContainer.Child = _aiGuidePage;
+        _aiGuidePage.LoadAsync();
+    }
+
+    private void OpenAiGuidePage()
+    {
+        EnsureAiGuidePage();
+        NavigateTo(AppMode.AiGuide);
     }
 
     private void EnsureDashboard()

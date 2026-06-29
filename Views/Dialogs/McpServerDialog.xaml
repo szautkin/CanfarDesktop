@@ -40,6 +40,12 @@
                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                        Text="Navigate to the relevant view after an applied write." />
 
+            <ToggleSwitch x:Name="ShowAiGuideToggle" Header="Show AI Guide on landing"
+                          OnContent="On" OffContent="Off" Toggled="OnShowAiGuideToggled" />
+            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       Text="Add an AI Guide tile to the landing page — re-tune each tool's description and add your own read-only guide tools. Your overrides stay active whether or not the tile is shown." />
+
             <TextBlock Text="Connect Claude Desktop" Style="{StaticResource BodyStrongTextBlockStyle}" />
             <TextBlock x:Name="ConnectIntro" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="CanfarDesktop.Views.Dialogs.AiGuideEditDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Guide tool"
+    PrimaryButtonText="Save"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    PrimaryButtonClick="OnPrimaryClick">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12" Width="480">
+            <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Text="A guide tool is read-only guidance the agent can call by name. Give it a name and a one-line description (shown in the tool list); the optional instructions are returned verbatim when the agent calls it." />
+
+            <TextBox x:Name="NameBox" Header="Name" PlaceholderText="e.g. Survey workflow"
+                     TextChanged="OnNameChanged" />
+            <TextBlock x:Name="SlugText" Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+
+            <TextBox x:Name="DescriptionBox" Header="Description"
+                     PlaceholderText="One line the agent sees in the tool list" />
+            <TextBlock x:Name="DescCounter" HorizontalAlignment="Right" Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+
+            <TextBox x:Name="BodyBox" Header="Instructions (optional)" AcceptsReturn="True"
+                     TextWrapping="Wrap" Height="140"
+                     PlaceholderText="The full text returned when the agent calls this tool" />
+            <TextBlock x:Name="BodyCounter" HorizontalAlignment="Right" Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+
+            <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="True" Severity="Error" />
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>

@@ -1,5 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Storage;
+using CanfarDesktop.Services.AiGuide;
 
 namespace CanfarDesktop.Views;
 
@@ -12,6 +14,7 @@ public sealed partial class LandingView : UserControl
     public event EventHandler? NotebookRequested;
     public event EventHandler? FitsViewerRequested;
     public event EventHandler? CubeViewerRequested;
+    public event EventHandler? AiGuideRequested;
 
     public string StatusMessage
     {
@@ -41,7 +44,23 @@ public sealed partial class LandingView : UserControl
     public LandingView()
     {
         InitializeComponent();
+
+        // The AI Guide tile is opt-in (hidden by default; toggle in Settings ▸ MCP server). The saved
+        // overrides + guide tools stay active regardless — this only controls the launchpad shortcut.
+        if (ReadShowAiGuideTile())
+            Tiles.Add(new() { Title = "AI Guide", Glyph = "", Subtitle = "Tune the agent's tools", Key = "aiGuide" });
+
         TilesRepeater.ItemsSource = Tiles;
+    }
+
+    private static bool ReadShowAiGuideTile()
+    {
+        try
+        {
+            return ApplicationData.Current.LocalSettings.Values
+                .TryGetValue(AiGuidePreferences.ShowLandingTileKey, out var v) && v is bool b && b;
+        }
+        catch { return false; }
     }
 
     private void OnTileClicked(object sender, RoutedEventArgs e)
@@ -57,6 +76,7 @@ public sealed partial class LandingView : UserControl
                 case "notebook": NotebookRequested?.Invoke(this, EventArgs.Empty); break;
                 case "fits": FitsViewerRequested?.Invoke(this, EventArgs.Empty); break;
                 case "cube": CubeViewerRequested?.Invoke(this, EventArgs.Empty); break;
+                case "aiGuide": AiGuideRequested?.Invoke(this, EventArgs.Empty); break;
             }
         }
     }

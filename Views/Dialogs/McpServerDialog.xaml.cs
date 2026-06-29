@@ -34,6 +34,7 @@ public sealed partial class McpServerDialog : ContentDialog
         EnableToggle.IsOn = _host.IsRunning;
         AutoApplyToggle.IsOn = _settings.AutoApplyEnabled;
         FollowActivityToggle.IsOn = _settings.FollowAgentActivityEnabled;
+        ShowAiGuideToggle.IsOn = _settings.ShowAiGuideTile;
         _suppressToggle = false;
 
         RefreshStatus();
@@ -54,6 +55,14 @@ public sealed partial class McpServerDialog : ContentDialog
     {
         if (_suppressToggle) return;
         _settings.FollowAgentActivityEnabled = FollowActivityToggle.IsOn;
+    }
+
+    private void OnShowAiGuideToggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressToggle) return;
+        _settings.ShowAiGuideTile = ShowAiGuideToggle.IsOn;
+        // The landing tiles are built once at construction; the change takes effect next launch (or
+        // next time the landing view is recreated). No live mutation of the existing tile list.
     }
 
     private void LoadActivity()

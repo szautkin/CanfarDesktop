@@ -52,7 +52,7 @@ public sealed class NavigateToTool : JsonReadTool<NavigateToTool.Args, Navigatio
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "navigate_to",
         "Switch the app to a top-level mode so the user sees the relevant view. Live-applied (no proposal).",
-        """{"type":"object","properties":{"mode":{"type":"string","enum":["landing","portal","search","research","storage","notebook","fitsViewer"]}},"required":["mode"],"additionalProperties":false}""");
+        """{"type":"object","properties":{"mode":{"type":"string","enum":["landing","portal","search","research","storage","notebook","fitsViewer","aiGuide"]}},"required":["mode"],"additionalProperties":false}""");
 
     protected override async Task<NavigationOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {

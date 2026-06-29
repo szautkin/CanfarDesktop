@@ -1,4 +1,5 @@
 using Windows.Storage;
+using CanfarDesktop.Services.AiGuide;
 
 namespace CanfarDesktop.Mcp;
 
@@ -40,6 +41,14 @@ public sealed class McpSettingsService
     {
         get => ReadBool(KeyFollowActivity, defaultValue: true);
         set => WriteBool(KeyFollowActivity, value);
+    }
+
+    /// <summary>Whether the AI Guide tile shows on the landing launchpad. Defaults to false (hidden);
+    /// the saved overrides + guide tools stay active regardless. Shares the key with the landing view.</summary>
+    public bool ShowAiGuideTile
+    {
+        get => ReadBool(AiGuidePreferences.ShowLandingTileKey, defaultValue: false);
+        set => WriteBool(AiGuidePreferences.ShowLandingTileKey, value);
     }
 
     private bool ReadBool(string key, bool defaultValue)
