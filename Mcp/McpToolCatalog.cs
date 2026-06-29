@@ -7,6 +7,7 @@ using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.Fits;
 using CanfarDesktop.Services;
+using CanfarDesktop.Services.AiGuide;
 using CanfarDesktop.Services.Database;
 using CanfarDesktop.Services.Export;
 using CanfarDesktop.Services.Fits;
@@ -47,6 +48,7 @@ public static class McpToolCatalog
         var endpoints = sp.GetRequiredService<ApiEndpoints>();
         var viewState = sp.GetRequiredService<AppViewStateService>();
         var settings = sp.GetRequiredService<McpSettingsService>();
+        var aiGuide = sp.GetRequiredService<AiGuideService>();
         var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
         var previewFetcher = new McpPreviewFetcher(dataLink, httpFactory);
 
@@ -205,6 +207,15 @@ public static class McpToolCatalog
             new UploadFileToVoSpaceTool(),
             new CreateVoSpaceFolderTool(),
             new DeleteVoSpaceNodeTool(),
+
+            // AI Guide management: let the agent re-tune its own tool surface — list/add/update/delete
+            // guide tools + override/reset another tool's description (the MCP server reads these live).
+            new ListGuideToolsTool(() => aiGuide.Snapshot().Guides),
+            new SetToolDescriptionTool(),
+            new ClearToolDescriptionTool(),
+            new AddGuideToolTool(),
+            new UpdateGuideToolTool(),
+            new DeleteGuideToolTool(),
         };
     }
 
@@ -218,6 +229,7 @@ public static class McpToolCatalog
         var downloads = sp.GetRequiredService<ObservationDownloadService>();
         var storage = sp.GetRequiredService<IStorageService>();
         var discovery = sp.GetRequiredService<ImageDiscoveryCoordinator>();
+        var aiGuide = sp.GetRequiredService<AiGuideService>();
 
         return new IProposalApplier[]
         {
@@ -277,6 +289,13 @@ public static class McpToolCatalog
             new DiscoverImagePackagesApplier(p => p.Force
                 ? discovery.RediscoverAsync(p.Image)
                 : discovery.DiscoverAsync(p.Image)),
+
+            // AI Guide management — re-tune the agent's own tool surface via the live AiGuideService.
+            new SetToolDescriptionApplier(p => { aiGuide.SetOverride(p.ToolName, p.Description); return Task.CompletedTask; }),
+            new ClearToolDescriptionApplier(p => { aiGuide.ClearOverride(p.ToolName); return Task.CompletedTask; }),
+            new AddGuideToolApplier(p => { aiGuide.AddGuide(p.Name, p.Description, p.Body); return Task.CompletedTask; }),
+            new UpdateGuideToolApplier(p => { aiGuide.UpdateGuide(Guid.Parse(p.Id), p.Name, p.Description, p.Body); return Task.CompletedTask; }),
+            new DeleteGuideToolApplier(p => { aiGuide.DeleteGuide(Guid.Parse(p.Id)); return Task.CompletedTask; }),
         };
     }
 

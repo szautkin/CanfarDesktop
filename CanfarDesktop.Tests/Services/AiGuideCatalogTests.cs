@@ -50,6 +50,9 @@ public class AiGuideCatalogTests
         "navigate_to", "set_search_focus",
         // Agent Control
         "list_pending_proposals", "get_proposal_state", "withdraw_proposal",
+        // AI Guide management
+        "list_guide_tools", "set_tool_description", "clear_tool_description",
+        "add_guide_tool", "update_guide_tool", "delete_guide_tool",
     };
 
     [Fact]
@@ -87,7 +90,7 @@ public class AiGuideCatalogTests
         Assert.Equal(ids.Distinct().Count(), ids.Count);              // unique ids
         Assert.DoesNotContain("other", ids);                          // Other is separate
         Assert.Equal("foundational", ids.First());                    // ordered render
-        Assert.Equal("control", ids.Last());
+        Assert.Equal("guide", ids.Last());
         Assert.All(AiGuideCatalog.Categories, c =>
         {
             Assert.False(string.IsNullOrWhiteSpace(c.Title));

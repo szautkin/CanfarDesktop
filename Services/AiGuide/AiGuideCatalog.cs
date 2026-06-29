@@ -31,6 +31,7 @@ public static class AiGuideCatalog
         new AiGuideCategory("compute",      "AI Compute",       "", "Run agent-authored code on a warm remote session."),
         new AiGuideCategory("navigation",   "View & Navigation","", "Steer the app's views and focus the search field."),
         new AiGuideCategory("control",      "Agent Control",    "", "Inspect and withdraw the agent's pending proposals."),
+        new AiGuideCategory("guide", "AI Guide", "", "Re-tune tool descriptions and add your own guide tools (agent-editable)."),
     };
 
     /// <summary>Fallback bucket for any tool not explicitly categorized.</summary>
@@ -166,6 +167,13 @@ public static class AiGuideCatalog
         ["get_proposal_state"] = "control",
         ["withdraw_proposal"] = "control",
         ["list_events"] = "control",
+        // AI Guide management (agent re-tunes its own tool surface)
+        ["list_guide_tools"] = "guide",
+        ["set_tool_description"] = "guide",
+        ["clear_tool_description"] = "guide",
+        ["add_guide_tool"] = "guide",
+        ["update_guide_tool"] = "guide",
+        ["delete_guide_tool"] = "guide",
     };
 
     /// <summary>
