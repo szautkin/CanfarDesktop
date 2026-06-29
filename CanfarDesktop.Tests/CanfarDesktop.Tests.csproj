@@ -103,6 +103,10 @@
     <Compile Include="..\Models\ObservationNote.cs" Link="Linked\ObservationNote.cs" />
     <Compile Include="..\Services\Database\AppDatabase.cs" Link="Linked\Database\AppDatabase.cs" />
     <Compile Include="..\Services\Database\ObservationNoteStore.cs" Link="Linked\Database\ObservationNoteStore.cs" />
+    <!-- AI Guide (description overrides + user guide tools) -->
+    <Compile Include="..\Services\AiGuide\AiGuideModels.cs" Link="Linked\AiGuide\AiGuideModels.cs" />
+    <Compile Include="..\Services\AiGuide\AiGuideStore.cs" Link="Linked\AiGuide\AiGuideStore.cs" />
+    <Compile Include="..\Services\AiGuide\AiGuideService.cs" Link="Linked\AiGuide\AiGuideService.cs" />
     <Compile Include="..\Services\CAOM2Parser.cs" Link="Linked\CAOM2Parser.cs" />
     <Compile Include="..\Services\ICAOM2Service.cs" Link="Linked\ICAOM2Service.cs" />
     <Compile Include="..\Services\CAOM2Service.cs" Link="Linked\CAOM2Service.cs" />

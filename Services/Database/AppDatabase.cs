@@ -9,7 +9,7 @@ namespace CanfarDesktop.Services.Database;
 /// </summary>
 public sealed class AppDatabase : IDisposable
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
     private const string DbFileName = "verbinal.db";
 
     private readonly SqliteConnection _connection;
@@ -74,6 +74,13 @@ public sealed class AppDatabase : IDisposable
             cmd.CommandText = SchemaV1;
             cmd.ExecuteNonQuery();
         }
+        if (version < 2)
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = SchemaV2;
+            cmd.ExecuteNonQuery();
+        }
         using var bump = connection.CreateCommand();
         bump.Transaction = tx;
         bump.CommandText = $"PRAGMA user_version={CurrentSchemaVersion};";
@@ -108,6 +115,36 @@ public sealed class AppDatabase : IDisposable
             INSERT INTO noteSearch(noteSearch, rowid, note, tags) VALUES ('delete', old.rowid, old.note, old.tags);
             INSERT INTO noteSearch(rowid, note, tags) VALUES (new.rowid, new.note, new.tags);
         END;
+        """;
+
+    // v2: AI Guide — per-tool description overrides + user-authored read-only guide tools.
+    // Mirrors the macOS GRDB v2 schema (sparse delta overrides; soft-delete tombstones; version +
+    // lastWriterDeviceID columns reserved for future sync). Guide-name uniqueness among LIVE rows is
+    // enforced in AiGuideService, not by a constraint, so a deleted name can be reused.
+    private const string SchemaV2 = """
+        CREATE TABLE IF NOT EXISTS aiToolOverride (
+            uuid               TEXT PRIMARY KEY NOT NULL,
+            toolName           TEXT NOT NULL UNIQUE,
+            userDescription    TEXT NOT NULL,
+            createdAt          TEXT,
+            updatedAt          TEXT,
+            version            INTEGER NOT NULL DEFAULT 1,
+            deletedAt          TEXT,
+            lastWriterDeviceID TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS aiGuideTool (
+            uuid               TEXT PRIMARY KEY NOT NULL,
+            name               TEXT NOT NULL,
+            description        TEXT NOT NULL,
+            body               TEXT,
+            orderIndex         INTEGER NOT NULL DEFAULT 0,
+            createdAt          TEXT,
+            updatedAt          TEXT,
+            version            INTEGER NOT NULL DEFAULT 1,
+            deletedAt          TEXT,
+            lastWriterDeviceID TEXT
+        );
         """;
 
     private static string? ResolveDefaultPath()
