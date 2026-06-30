@@ -210,6 +210,17 @@ public class ExportService
         sb.Append("- *\"Which items stand out as needing further investigation?\"*\n");
         sb.Append("- *\"List everything tagged `calibration` across all modules.\"*\n\n");
 
+        sb.Append("## Data citation & provenance\n\n");
+        sb.Append($"- **Retrieved:** {date} — from CADC/CANFAR via Verbinal v{m.AppVersion}.\n");
+        sb.Append("- **How to cite:** acknowledge the Canadian Astronomy Data Centre (CADC) and the ");
+        sb.Append("originating collection/telescope of each observation. Each downloaded observation in the ");
+        sb.Append("research module records its collection, instrument, calibration level, and data-release ");
+        sb.Append("date — cite the collection's standard reference and include the retrieval date above.\n");
+        sb.Append("- **Reproducibility:** saved/recent searches keep the exact ADQL; re-running it against ");
+        sb.Append("CADC's TAP service reproduces the selection (note that name-resolver coordinates can drift ");
+        sb.Append("between services/epochs).\n");
+        sb.Append("- See https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/ for collection documentation and DOIs.\n\n");
+
         sb.Append("## Privacy note\n\n");
         sb.Append("This bundle excludes all authentication tokens, Keychain entries, session state, ");
         sb.Append("and cached credentials. Only user-authored data and public CADC metadata are exported.\n");
