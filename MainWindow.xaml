@@ -65,24 +65,9 @@
                                 </MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
                             <MenuFlyoutSeparator />
-                            <MenuFlyoutItem Text="MCP server…" Click="OnMcpServerClick">
+                            <MenuFlyoutItem Text="Settings…" Click="OnOpenSettingsClick">
                                 <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE774;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="Notebook settings…" Click="OnSettingsClick">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE7C3;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="Image discovery…" Click="OnImageDiscoveryClick">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE71D;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="AI compute…" Click="OnAIComputeClick">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE753;" />
+                                    <FontIcon Glyph="&#xE713;" />
                                 </MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
                         </MenuFlyout>

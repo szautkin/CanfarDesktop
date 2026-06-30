@@ -40,6 +40,10 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         TrackWindow(this);
 
+        // Apply the user's saved theme (General settings) to the window root.
+        try { ThemeApplier.Apply(Content as FrameworkElement, App.Services.GetRequiredService<ISettingsService>().Theme); }
+        catch { /* theme is best-effort */ }
+
         // Window setup
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
@@ -1008,6 +1012,11 @@ public sealed partial class MainWindow : Window
     private async void OnMcpServerClick(object sender, RoutedEventArgs e)
     {
         await Views.Dialogs.McpServerDialog.ShowAsync(Content.XamlRoot);
+    }
+
+    private async void OnOpenSettingsClick(object sender, RoutedEventArgs e)
+    {
+        await Views.Dialogs.SettingsDialog.ShowAsync(Content.XamlRoot);
     }
 
     private async void OnImageDiscoveryClick(object sender, RoutedEventArgs e)
