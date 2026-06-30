@@ -3,68 +3,12 @@
     x:Class="CanfarDesktop.Views.Dialogs.AIComputeSettingsDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:CanfarDesktop.Views.Dialogs"
     Title="AI compute settings"
-    PrimaryButtonText="Save"
     CloseButtonText="Close"
-    DefaultButton="Primary">
+    DefaultButton="Close">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="12" Width="460">
-            <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       Text="Configure the remote compute the agent's run_code tool uses. Leave the image blank to disable run_code. run_code launches paid compute and runs agent-authored code on your CADC account, so every call queues for your approval." />
-
-            <TextBox x:Name="ImageBox" Header="Compute image"
-                     PlaceholderText="images.canfar.net/project/verbinal-compute:1.0" />
-            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
-                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                       Text="A verbinal-execution watcher image. Blank disables run_code / start_compute." />
-
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <NumberBox x:Name="CoresBox" Header="Cores" Minimum="1" Maximum="64"
-                           SpinButtonPlacementMode="Inline" Width="130" />
-                <NumberBox x:Name="RamBox" Header="RAM (GB)" Minimum="1" Maximum="256"
-                           SpinButtonPlacementMode="Inline" Width="130" />
-            </StackPanel>
-
-            <TextBlock Text="Registry credentials" Style="{StaticResource BodyStrongTextBlockStyle}" />
-            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
-                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                       Text="Used to pull a private compute image. Stored separately from the Image Discovery tab's credentials." />
-            <TextBox x:Name="RegistryHostBox" Header="Registry host" PlaceholderText="images.canfar.net" />
-            <TextBox x:Name="RegistryRepoBox" Header="Registry repository (project)" PlaceholderText="project" />
-            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
-                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                       Text="Optional project/namespace used to expand a short compute image name to host/project/name. A full image path is used as-is." />
-            <TextBox x:Name="UsernameBox" Header="Registry username" />
-
-            <StackPanel Spacing="4">
-                <PasswordBox x:Name="SecretBox" Header="Registry secret (Harbor CLI secret)" />
-                <TextBlock x:Name="SecretStatus" Style="{StaticResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" />
-                <Button x:Name="RemoveSecretButton" Content="Remove secret" Click="OnRemoveSecret"
-                        HorizontalAlignment="Left" Visibility="Collapsed" />
-            </StackPanel>
-
-            <Button x:Name="TestButton" Content="Test credentials" Click="OnTestCredentials"
-                    HorizontalAlignment="Left" />
-
-            <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="True" Severity="Informational" />
-
-            <Button x:Name="ResetButton" Content="Reset to defaults" Click="OnResetClick" HorizontalAlignment="Left" />
-            <Border x:Name="ResetConfirmPanel" Visibility="Collapsed" CornerRadius="6" Padding="12,10"
-                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                <StackPanel Spacing="8">
-                    <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="Reset the compute image, cores/RAM, registry host/username, and the stored secret to defaults? This disables run_code until you set an image again." />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="Reset" Click="OnResetConfirm" Style="{StaticResource AccentButtonStyle}" />
-                        <Button Content="Cancel" Click="OnResetCancel" />
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </StackPanel>
+        <local:AIComputeSettingsPanel Width="460" />
     </ScrollViewer>
 </ContentDialog>

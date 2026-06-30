@@ -84,11 +84,8 @@ public sealed partial class SettingsDialog : ContentDialog
 
     // ── launchers (close this dialog first — only one ContentDialog may be open) ──
 
+    // The guided wizard is still a launcher (it's a ContentDialog; only one may be open at a time).
     private async void OnOpenWizard(object sender, RoutedEventArgs e) => await OpenAsync(AiConnectWizardDialog.ShowAsync);
-    private async void OnOpenMcpServer(object sender, RoutedEventArgs e) => await OpenAsync(McpServerDialog.ShowAsync);
-    private async void OnOpenImageDiscovery(object sender, RoutedEventArgs e) => await OpenAsync(ImageDiscoverySettingsDialog.ShowAsync);
-    private async void OnOpenAICompute(object sender, RoutedEventArgs e) => await OpenAsync(AIComputeSettingsDialog.ShowAsync);
-    private async void OnOpenNotebook(object sender, RoutedEventArgs e) => await OpenAsync(Notebook.NotebookSettingsDialog.ShowAsync);
 
     private async Task OpenAsync(Func<XamlRoot, Task> open)
     {

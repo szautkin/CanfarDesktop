@@ -90,8 +90,7 @@ public sealed partial class CanfarImagesControl : UserControl
     {
         try
         {
-            var dialog = new ImageDiscoverySettingsDialog(_settings, _coordinator) { XamlRoot = XamlRoot };
-            await dialog.ShowAsync();
+            await ImageDiscoverySettingsDialog.ShowAsync(XamlRoot);
         }
         catch (Exception ex)
         {

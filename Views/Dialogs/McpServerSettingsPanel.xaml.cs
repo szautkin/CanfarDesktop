@@ -1,0 +1,222 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Windows.ApplicationModel.DataTransfer;
+using CanfarDesktop.Mcp;
+using CanfarDesktop.Mcp.Agents;
+using CanfarDesktop.Mcp.Config;
+
+namespace CanfarDesktop.Views.Dialogs;
+
+/// <summary>
+/// The MCP server settings as a self-contained panel: toggle the local named-pipe server, agent autonomy
+/// (auto-apply + follow-activity), the AI-Guide tile, connect Claude Desktop/Code, manage connected-client
+/// approval, and review recent activity. Resolves its services from DI so it embeds both in the standalone
+/// <see cref="McpServerDialog"/> and the unified Settings window. All settings persist live (no Save).
+/// </summary>
+public sealed partial class McpServerSettingsPanel : UserControl
+{
+    private readonly McpHost _host;
+    private readonly McpSettingsService _settings;
+    private readonly McpClientApprovalStore _approval;
+    private readonly ClaudeConfigRepair _repair = new(ClaudeConfigLocator.Resolve());
+    private readonly string? _bridgeCommand;
+    private bool _suppressToggle;
+
+    public McpServerSettingsPanel()
+    {
+        InitializeComponent();
+        _host = App.Services.GetRequiredService<McpHost>();
+        _settings = App.Services.GetRequiredService<McpSettingsService>();
+        _approval = App.Services.GetRequiredService<McpClientApprovalStore>();
+        _bridgeCommand = McpBridgeLocator.Resolve();
+
+        _suppressToggle = true;
+        EnableToggle.IsOn = _host.IsRunning;
+        AutoApplyToggle.IsOn = _settings.AutoApplyEnabled;
+        FollowActivityToggle.IsOn = _settings.FollowAgentActivityEnabled;
+        ShowAiGuideToggle.IsOn = _settings.ShowAiGuideTile;
+        RequireApprovalToggle.IsOn = _approval.RequireApproval;
+        _suppressToggle = false;
+
+        RefreshStatus();
+        InitConnectSection();
+        LoadActivity();
+        LoadClients();
+    }
+
+    private void OnAutoApplyToggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressToggle) return;
+        _settings.AutoApplyEnabled = AutoApplyToggle.IsOn;
+    }
+
+    private void OnFollowActivityToggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressToggle) return;
+        _settings.FollowAgentActivityEnabled = FollowActivityToggle.IsOn;
+    }
+
+    private void OnShowAiGuideToggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressToggle) return;
+        _settings.ShowAiGuideTile = ShowAiGuideToggle.IsOn;
+        // Landing tiles are built once; the change takes effect next launch / landing rebuild.
+    }
+
+    private void LoadActivity()
+    {
+        var rows = _host.Activity.Recent(25).Select(ActivityRow.From).ToList();
+        ActivityList.ItemsSource = rows;
+        NoActivityText.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Display row for one agent-activity entry.</summary>
+    public sealed class ActivityRow
+    {
+        public string Glyph { get; init; } = string.Empty;
+        public string Summary { get; init; } = string.Empty;
+        public string Subtitle { get; init; } = string.Empty;
+
+        public static ActivityRow From(AgentActivityEntry e) => new()
+        {
+            Glyph = char.ConvertFromUtf32(e.Outcome switch
+            {
+                AgentActivityOutcome.Applied => 0xE73E,
+                AgentActivityOutcome.Rejected => 0xE711,
+                AgentActivityOutcome.Withdrawn => 0xE7A7,
+                _ => 0xE946,
+            }),
+            Summary = e.Summary,
+            Subtitle = string.Join(" · ",
+                new[]
+                {
+                    e.Kind,
+                    $"{e.OriginLabel} ({e.OriginFingerprint})",
+                    e.AutoApplied ? "auto" : null,
+                    e.Timestamp.ToLocalTime().ToString("t"),
+                }.Where(s => !string.IsNullOrEmpty(s))),
+        };
+    }
+
+    private void RefreshStatus()
+    {
+        if (_host.IsRunning)
+        {
+            StatusText.Text = "Running";
+            PipeText.Text = $"pipe: {_host.PipeName}";
+            PipeText.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            StatusText.Text = "Stopped";
+            PipeText.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void InitConnectSection()
+    {
+        if (_bridgeCommand is null)
+        {
+            ConnectButton.IsEnabled = false;
+            CopyCommandButton.IsEnabled = false;
+            ConnectIntro.Text = "The MCP bridge (CanfarDesktop.McpBridge.exe) wasn't found. Build the bridge project, then reopen this.";
+            ClaudeCodeBox.Text = string.Empty;
+            return;
+        }
+
+        ClaudeCodeBox.Text = ClaudeConfigMerge.ClaudeCodeAddCommand(_bridgeCommand);
+    }
+
+    private async void OnEnableToggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressToggle) return;
+        try
+        {
+            await _host.SetEnabledAsync(EnableToggle.IsOn);
+        }
+        catch (Exception ex)
+        {
+            ShowResult(InfoBarSeverity.Error, $"Couldn't {(EnableToggle.IsOn ? "start" : "stop")} the server: {ex.Message}");
+        }
+        RefreshStatus();
+    }
+
+    private void OnConnectClick(object sender, RoutedEventArgs e)
+    {
+        if (_bridgeCommand is null) return;
+        ConfirmTargetText.Text = $"Verbinal will be added to:\n{_repair.ConfigPath}";
+        ConfirmCommandText.Text = $"{_bridgeCommand} mcp";
+        ResultBar.IsOpen = false;
+        ConfirmPanel.Visibility = Visibility.Visible;
+    }
+
+    private void OnConfirmCancelClick(object sender, RoutedEventArgs e)
+        => ConfirmPanel.Visibility = Visibility.Collapsed;
+
+    private void OnConfirmWriteClick(object sender, RoutedEventArgs e)
+    {
+        ConfirmPanel.Visibility = Visibility.Collapsed;
+        try
+        {
+            _repair.Apply(_bridgeCommand!);
+            ShowResult(InfoBarSeverity.Success, "Added to Claude Desktop. Restart Claude Desktop to pick it up.");
+        }
+        catch (Exception ex)
+        {
+            ShowResult(InfoBarSeverity.Error, $"Couldn't write the config: {ex.Message}");
+        }
+    }
+
+    private void OnCopyCommandClick(object sender, RoutedEventArgs e)
+    {
+        var data = new DataPackage();
+        data.SetText(ClaudeCodeBox.Text);
+        Clipboard.SetContent(data);
+        ShowResult(InfoBarSeverity.Informational, "Command copied.");
+    }
+
+    private void OnRequireApprovalToggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressToggle) return;
+        _approval.RequireApproval = RequireApprovalToggle.IsOn;
+    }
+
+    private void LoadClients()
+    {
+        var rows = _approval.SeenClients().Select(c => ClientRow.From(c, _approval.IsApproved(c.ClientId))).ToList();
+        ClientsList.ItemsSource = rows;
+        NoClientsText.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnClientActionClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string clientId } || string.IsNullOrEmpty(clientId)) return;
+        if (_approval.IsApproved(clientId)) _approval.Revoke(clientId);
+        else _approval.Approve(clientId);
+        LoadClients();
+    }
+
+    /// <summary>Display row for one connected client.</summary>
+    public sealed class ClientRow
+    {
+        public string ClientId { get; init; } = string.Empty;
+        public string Subtitle { get; init; } = string.Empty;
+        public string ActionLabel { get; init; } = "Approve";
+
+        public static ClientRow From(McpSeenClient c, bool approved) => new()
+        {
+            ClientId = c.ClientId,
+            Subtitle = $"{c.ConnectCount} connection{(c.ConnectCount == 1 ? "" : "s")} · last {c.LastSeen.ToLocalTime():t}"
+                       + (approved ? " · approved" : ""),
+            ActionLabel = approved ? "Revoke" : "Approve",
+        };
+    }
+
+    private void ShowResult(InfoBarSeverity severity, string message)
+    {
+        ResultBar.Severity = severity;
+        ResultBar.Message = message;
+        ResultBar.IsOpen = true;
+    }
+}

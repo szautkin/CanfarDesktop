@@ -4,6 +4,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:dialogs="using:CanfarDesktop.Views.Dialogs"
+    xmlns:notebook="using:CanfarDesktop.Views.Notebook"
     Title="Settings"
     CloseButtonText="Close"
     DefaultButton="Close">
@@ -67,41 +69,29 @@
                                Text="Changes are saved automatically." />
                 </StackPanel>
 
-                <!-- AI agent (launchers) -->
+                <!-- AI agent (embedded MCP panel + the guided wizard) -->
                 <StackPanel x:Name="AgentPanel" Spacing="12" Visibility="Collapsed">
                     <TextBlock Text="AI agent" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="Connect an external AI agent (Claude Desktop / Claude Code) to Verbinal's tools, or manage the MCP server, autonomy, and connected clients." />
-                    <Button Content="Connect an AI agent…" Click="OnOpenWizard" Style="{StaticResource AccentButtonStyle}" />
-                    <Button Content="MCP server settings…" Click="OnOpenMcpServer" />
+                    <Button Content="Connect an AI agent (guided)…" Click="OnOpenWizard" Style="{StaticResource AccentButtonStyle}" />
+                    <dialogs:McpServerSettingsPanel />
                 </StackPanel>
 
-                <!-- Image discovery (launcher) -->
+                <!-- Image discovery (embedded) -->
                 <StackPanel x:Name="DiscoveryPanel" Spacing="12" Visibility="Collapsed">
                     <TextBlock Text="Image discovery" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="The inspector image, registry host/repository/credentials, and discovery cache used to find images by the packages they contain." />
-                    <Button Content="Open image discovery settings…" Click="OnOpenImageDiscovery" />
+                    <dialogs:ImageDiscoverySettingsPanel Width="440" />
                 </StackPanel>
 
-                <!-- AI compute (launcher) -->
+                <!-- AI compute (embedded) -->
                 <StackPanel x:Name="ComputePanel" Spacing="12" Visibility="Collapsed">
                     <TextBlock Text="AI compute" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="The compute image, instance size, and registry for the agent's run_code tool. Leave the image blank to keep run_code disabled." />
-                    <Button Content="Open AI compute settings…" Click="OnOpenAICompute" />
+                    <dialogs:AIComputeSettingsPanel Width="440" />
                 </StackPanel>
 
-                <!-- Notebook (launcher) -->
+                <!-- Notebook (embedded) -->
                 <StackPanel x:Name="NotebookPanel" Spacing="12" Visibility="Collapsed">
                     <TextBlock Text="Notebook" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="Editor, saving, execution, and interface options for the native notebook." />
-                    <Button Content="Open notebook settings…" Click="OnOpenNotebook" />
+                    <notebook:NotebookSettingsPanel />
                 </StackPanel>
 
                 <!-- About -->
