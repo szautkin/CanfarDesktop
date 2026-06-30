@@ -220,4 +220,21 @@ public sealed class AppViewStateService
 
     public Task<IReadOnlyList<NotebookRef>> ListNotebooksAsync()
         => _notebookList?.Invoke() ?? Task.FromResult<IReadOnlyList<NotebookRef>>(Array.Empty<NotebookRef>());
+
+    // ── Tab management (close the active viewer tab; count open tabs) ─────────────────────────────
+
+    private volatile Func<string, Task<TabCloseOutcome>>? _closeTab;
+    private volatile Func<Task<OpenTabsState>>? _listTabs;
+
+    public void SetTabActions(Func<string, Task<TabCloseOutcome>> close, Func<Task<OpenTabsState>> list)
+    {
+        _closeTab = close;
+        _listTabs = list;
+    }
+
+    public Task<TabCloseOutcome> CloseTabAsync(string kind)
+        => _closeTab?.Invoke(kind) ?? Task.FromResult(new TabCloseOutcome(false, kind, "viewer unavailable"));
+
+    public Task<OpenTabsState> ListTabsAsync()
+        => _listTabs?.Invoke() ?? Task.FromResult(new OpenTabsState(0, 0, 0));
 }

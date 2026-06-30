@@ -47,7 +47,7 @@ public class AiGuideCatalogTests
         // Image Discovery
         "find_images_with_packages", "discover_image_packages",
         // View & Navigation
-        "navigate_to", "set_search_focus",
+        "navigate_to", "set_search_focus", "close_active_tab", "list_open_tabs",
         // Agent Control
         "list_pending_proposals", "get_proposal_state", "withdraw_proposal",
         // AI Guide management

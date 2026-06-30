@@ -184,6 +184,10 @@ public static class McpToolCatalog
             new InterruptKernelTool(cmd => viewState.NotebookMutateAsync(cmd)),
             new RestartKernelTool(cmd => viewState.NotebookMutateAsync(cmd)),
 
+            // Tab management: close the active viewer tab / count open tabs (open_* tools accumulate them)
+            new CloseActiveTabTool(kind => viewState.CloseTabAsync(kind)),
+            new ListOpenTabsTool(() => viewState.ListTabsAsync()),
+
             // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
             new SaveQueryTool(),
             new DeleteSavedQueryTool(),

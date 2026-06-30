@@ -6,6 +6,7 @@ using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.HttpClients;
 using CanfarDesktop.Services.Notebook;
+using CanfarDesktop.Mcp.Tools.Write;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views;
 using CanfarDesktop.Views.Dialogs;
@@ -88,6 +89,7 @@ public sealed partial class MainWindow : Window
         _viewState.SetFitsBookmarkActions(ListFitsBookmarksActionAsync, SaveFitsBookmarkActionAsync, DeleteFitsBookmarkActionAsync);
         _viewState.SetNotebookActions(NotebookMutateActionAsync, GetNotebookActionAsync, GetCellOutputActionAsync,
                                       GetKernelStateActionAsync, ListNotebooksActionAsync);
+        _viewState.SetTabActions(CloseTabActionAsync, ListOpenTabsActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
     }
@@ -285,6 +287,39 @@ public sealed partial class MainWindow : Window
 
     private Task<CanfarDesktop.Services.CubeViewer.CubeSpectrumResult?> ProbeCubeActionAsync(int x, int y)
         => OnUi(() => _cubeTabHost?.ActivePage?.ProbeCubeSpectrum(x, y), null);
+
+    // ── Tab management (close the active viewer tab / count open tabs) ──
+    private Task<TabCloseOutcome> CloseTabActionAsync(string kind)
+        => OnUi(() =>
+        {
+            switch (kind)
+            {
+                case "notebook":
+                    if (_notebookTabHost?.ViewModel.ActiveViewModel is null)
+                        return new TabCloseOutcome(false, kind, "no notebook tab is open");
+                    _notebookTabHost.DiscardActiveTab(); // no save prompt; autosave keeps a recovery copy
+                    return new TabCloseOutcome(true, kind, null);
+                case "fits":
+                {
+                    var closed = _fitsTabHost?.CloseActiveTab() == true;
+                    return new TabCloseOutcome(closed, kind, closed ? null : "no FITS tab is open");
+                }
+                case "cube":
+                {
+                    var closed = _cubeTabHost?.CloseActiveTab() == true;
+                    return new TabCloseOutcome(closed, kind, closed ? null : "no cube tab is open");
+                }
+                default:
+                    return new TabCloseOutcome(false, kind, "unknown kind");
+            }
+        }, new TabCloseOutcome(false, kind, "could not dispatch to UI"));
+
+    private Task<OpenTabsState> ListOpenTabsActionAsync()
+        => OnUi(() => new OpenTabsState(
+            _notebookTabHost?.ViewModel.Tabs.Count ?? 0,
+            _fitsHostVm?.Tabs.Count ?? 0,
+            _cubeTabHost?.OpenTabCount ?? 0),
+            new OpenTabsState(0, 0, 0));
 
     /// <summary>Map the current AppMode to the MCP mode name + title and publish it (UI thread).</summary>
     private void PublishViewMode()

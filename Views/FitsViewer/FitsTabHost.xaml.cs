@@ -122,16 +122,29 @@ public sealed partial class FitsTabHost : UserControl
 
     private void OnAddTab(TabView sender, object args) => PromptOpenFile();
 
-    private void OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
+    private void OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args) => CloseTabItem(args.Tab);
+
+    /// <summary>Close the active FITS tab (the MCP close_active_tab tool). False when none is open.</summary>
+    public bool CloseActiveTab()
     {
-        if (args.Tab.Tag is not FitsViewerTabItem tabItem) return;
+        if (TabViewControl.SelectedItem is not TabViewItem tab) return false;
+        CloseTabItem(tab);
+        return true;
+    }
+
+    /// <summary>Number of open FITS tabs.</summary>
+    public int OpenTabCount => TabViewControl.TabItems.Count;
+
+    private void CloseTabItem(TabViewItem tab)
+    {
+        if (tab.Tag is not FitsViewerTabItem tabItem) return;
 
         // Unsubscribe all handlers and clean up page resources
         if (_tabHandlers.Remove(tabItem, out var handlers))
         {
             tabItem.PropertyChanged -= handlers.HeaderHandler;
             tabItem.ViewModel.PropertyChanged -= handlers.LoadingHandler;
-            if (args.Tab.Content is FitsViewerPage page)
+            if (tab.Content is FitsViewerPage page)
             {
                 page.SearchAtPositionRequested -= handlers.SearchHandler;
                 page.ZoomChanged -= handlers.ZoomHandler;
@@ -145,9 +158,9 @@ public sealed partial class FitsTabHost : UserControl
 
         _tabPages.Remove(tabItem);
         ViewModel.CloseTab(tabItem);
-        sender.TabItems.Remove(args.Tab);
+        TabViewControl.TabItems.Remove(tab);
 
-        if (sender.TabItems.Count == 0)
+        if (TabViewControl.TabItems.Count == 0)
         {
             _activePage = null;
             AllTabsClosed?.Invoke();

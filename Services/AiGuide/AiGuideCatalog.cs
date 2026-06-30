@@ -162,6 +162,8 @@ public static class AiGuideCatalog
         // View & Navigation
         ["set_search_focus"] = "navigation",
         ["navigate_to"] = "navigation",
+        ["close_active_tab"] = "navigation",
+        ["list_open_tabs"] = "navigation",
         // Agent Control
         ["list_pending_proposals"] = "control",
         ["get_proposal_state"] = "control",

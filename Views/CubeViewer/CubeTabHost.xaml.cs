@@ -69,10 +69,23 @@ public sealed partial class CubeTabHost : UserControl
         if (file is not null) await AddTabForFileAsync(file.Path);
     }
 
-    private void OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
+    private void OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args) => CloseTabItem(args.Tab);
+
+    /// <summary>Close the active cube tab (the MCP close_active_tab tool). False when none is open.</summary>
+    public bool CloseActiveTab()
     {
-        if (args.Tab.Content is CubeViewerPage page) page.CleanupForClose();
-        sender.TabItems.Remove(args.Tab);
+        if (TabViewControl.SelectedItem is not TabViewItem tab) return false;
+        CloseTabItem(tab);
+        return true;
+    }
+
+    /// <summary>Number of open cube tabs.</summary>
+    public int OpenTabCount => TabViewControl.TabItems.Count;
+
+    private void CloseTabItem(TabViewItem tab)
+    {
+        if (tab.Content is CubeViewerPage page) page.CleanupForClose();
+        TabViewControl.TabItems.Remove(tab);
         UpdateEmptyState();
     }
 
