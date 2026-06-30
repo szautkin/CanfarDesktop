@@ -94,20 +94,32 @@ public static class VoSpaceParser
         return node;
     }
 
+    /// <summary>VOSpace roots that own a path: personal (<c>/home/&lt;user&gt;</c>) and group
+    /// (<c>/projects/&lt;group&gt;</c>) trees on the ARC node service.</summary>
+    private static readonly string[] ScopeRoots = { "/home/", "/projects/" };
+
     /// <summary>
-    /// Extract relative path from VOSpace URI.
-    /// e.g. "vos://cadc.nrc.ca~arc/home/user/folder" → "folder"
+    /// Extract the path relative to its owner segment from a VOSpace URI. Scope-aware: handles both
+    /// personal (<c>/home/&lt;user&gt;/…</c>) and group (<c>/projects/&lt;group&gt;/…</c>) trees.
+    /// e.g. "vos://cadc.nrc.ca~arc/home/user/folder" → "folder";
+    ///      "vos://cadc.nrc.ca~arc/projects/grp/sub/x.fits" → "sub/x.fits".
     /// </summary>
     internal static string ExtractPath(string uri)
     {
-        // Find the /home/username/ prefix and return everything after it
-        var homeIdx = uri.IndexOf("/home/", StringComparison.OrdinalIgnoreCase);
-        if (homeIdx < 0) return uri;
+        // Find the scope marker (/home/ or /projects/) and return everything below the owner segment
+        // (the user or group). A /projects/ URI previously fell through and returned the raw URI.
+        foreach (var scope in ScopeRoots)
+        {
+            var idx = uri.IndexOf(scope, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) continue;
 
-        var afterHome = uri[(homeIdx + 6)..]; // skip "/home/"
-        var slashIdx = afterHome.IndexOf('/');
-        if (slashIdx < 0) return ""; // just /home/user, no path
-        return afterHome[(slashIdx + 1)..]; // everything after /home/user/
+            var afterScope = uri[(idx + scope.Length)..]; // skip "/home/" or "/projects/"
+            var slashIdx = afterScope.IndexOf('/');
+            if (slashIdx < 0) return ""; // just /home/user or /projects/group, no sub-path
+            return afterScope[(slashIdx + 1)..]; // everything after the owner segment
+        }
+
+        return uri;
     }
 
     /// <summary>

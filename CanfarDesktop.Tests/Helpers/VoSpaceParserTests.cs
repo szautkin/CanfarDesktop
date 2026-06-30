@@ -110,6 +110,23 @@ public class VoSpaceParserTests
     }
 
     [Fact]
+    public void ExtractPath_ProjectsUri_ExtractsRelativePath()
+    {
+        // SCI-12-3: group (/projects/<group>/) URIs used to fall through and return the raw URI.
+        Assert.Equal("sub/x.fits", VoSpaceParser.ExtractPath("vos://cadc.nrc.ca~arc/projects/grp/sub/x.fits"));
+        Assert.Equal("data", VoSpaceParser.ExtractPath("vos://cadc.nrc.ca~arc/projects/grp/data"));
+        Assert.Equal("", VoSpaceParser.ExtractPath("vos://cadc.nrc.ca~arc/projects/grp"));
+    }
+
+    [Fact]
+    public void ExtractPath_UnknownRoot_ReturnsUriUnchanged()
+    {
+        // No recognized scope marker → unchanged (the pre-existing fall-through contract).
+        const string uri = "vos://cadc.nrc.ca~arc/scratch/whatever";
+        Assert.Equal(uri, VoSpaceParser.ExtractPath(uri));
+    }
+
+    [Fact]
     public void ParseNodeList_NodeNames_ExtractedFromUri()
     {
         var nodes = VoSpaceParser.ParseNodeList(SampleXml);
