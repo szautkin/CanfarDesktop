@@ -138,6 +138,7 @@
     <Compile Include="..\Mcp\Tools\Proposals\ProposalStore.cs" Link="Linked\Mcp\ProposalStore.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\ProposalBudget.cs" Link="Linked\Mcp\ProposalBudget.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\AutoApplyHook.cs" Link="Linked\Mcp\AutoApplyHook.cs" />
+    <Compile Include="..\Mcp\Tools\Proposals\AutoApplyPolicy.cs" Link="Linked\Mcp\AutoApplyPolicy.cs" />
     <Compile Include="..\Mcp\Tools\JsonWriteTool.cs" Link="Linked\Mcp\JsonWriteTool.cs" />
     <Compile Include="..\Mcp\Tools\Write\ProposalLifecycleTools.cs" Link="Linked\Mcp\ProposalLifecycleTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ViewStateWriteTools.cs" Link="Linked\Mcp\ViewStateWriteTools.cs" />

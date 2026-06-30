@@ -73,7 +73,9 @@ public sealed class McpHost : IAsyncDisposable
         var registry = new ProposalApplierRegistry();
         registry.Register(McpToolCatalog.BuildAppliers(_services));
         var autoApply = new AutoApplyHook(
-            (verb, proposal) => Task.FromResult(_settings.AutoApplyEnabled),
+            // Destructive writes (deletes, etc.) NEVER auto-apply — they always queue for explicit
+            // approval, even with auto-apply on. Auto-apply only fast-paths reversible SemanticWrite.
+            (verb, proposal) => Task.FromResult(AutoApplyPolicy.ShouldAutoApply(_settings.AutoApplyEnabled, verb)),
             async proposalId =>
             {
                 var proposal = proposals.Get(proposalId)
