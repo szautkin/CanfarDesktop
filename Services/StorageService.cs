@@ -40,7 +40,10 @@ public class StorageService : IStorageService
         response.EnsureSuccessStatusCode();
 
         var xml = await response.Content.ReadAsStringAsync(cancellationToken);
-        return VoSpaceParser.ParseNodeList(xml);
+        var nodes = VoSpaceParser.ParseNodeList(xml);
+        // The ARC backend can ignore ?limit and return the whole directory, which overflows the MCP
+        // response cap and blocks paging. Enforce the cap client-side so callers can page large homes.
+        return limit is int n && n >= 0 && nodes.Count > n ? nodes.Take(n).ToList() : nodes;
     }
 
     public async Task UploadFileAsync(string remotePath, Stream content, string? contentType = null, CancellationToken cancellationToken = default)
@@ -74,9 +77,13 @@ public class StorageService : IStorageService
         if (folderName.Contains("..") || folderName.Contains('/') || folderName.Contains('\\'))
             throw new ArgumentException("Folder name contains invalid characters.");
 
-        var fullPath = string.IsNullOrEmpty(remotePath)
+        // Normalize the parent: a leading '/' (the MCP layer passes "/szautkin") would otherwise yield
+        // a malformed "vos://cadc.nrc.ca~arc/home//szautkin/..." node URI that the backend 400s — even
+        // though the file URL tolerates the double slash (which is why upload to the same parent works).
+        var cleanParent = (remotePath ?? string.Empty).Trim('/');
+        var fullPath = string.IsNullOrEmpty(cleanParent)
             ? folderName
-            : $"{remotePath}/{folderName}";
+            : $"{cleanParent}/{folderName}";
         var nodeUri = $"vos://cadc.nrc.ca~arc/home/{fullPath}";
         var url = _endpoints.StorageNodeUrl(fullPath);
 

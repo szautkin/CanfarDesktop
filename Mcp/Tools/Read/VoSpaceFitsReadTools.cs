@@ -21,8 +21,9 @@ public sealed class ListVoSpacePathTool : JsonReadTool<ListVoSpacePathTool.Args,
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_vospace_path",
-        "List the files and folders under a VOSpace/ARC storage path (name, type, size).",
-        """{"type":"object","properties":{"path":{"type":"string","description":"VOSpace/ARC path to list, e.g. /home/user or /projects/foo"},"limit":{"type":"integer","minimum":1,"description":"Optional maximum number of nodes to return"}},"required":["path"],"additionalProperties":false}""");
+        "List the files and folders under a VOSpace/ARC storage path (name, type, size). The root \"/\" "
+        + "lists every user's home; use \"/<username>\" for your own home and \"/projects/<name>\" for shared projects.",
+        """{"type":"object","properties":{"path":{"type":"string","description":"VOSpace/ARC path to list. Root \"/\" lists all homes; \"/<username>\" is your home; \"/projects/<name>\" is a shared project. (NOT /home/<user>.)"},"limit":{"type":"integer","minimum":1,"description":"Optional maximum number of nodes to return (honoured client-side)"}},"required":["path"],"additionalProperties":false}""");
 
     protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
