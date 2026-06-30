@@ -51,6 +51,20 @@ public class SearchExecToolTests
     }
 
     [Fact]
+    public async Task ResolveTarget_IncludesResolverProvenance()
+    {
+        // SCI-9-3: the agent gets the resolver that produced the coords + the resolution epoch.
+        var when = new DateTime(2026, 6, 24, 10, 0, 0, DateTimeKind.Utc);
+        var tool = new ResolveTargetTool((t, _, _) => Task.FromResult<ResolverResult?>(
+            new ResolverResult { Target = t, RA = 1, Dec = 2, Service = "NED", ResolvedAt = when }));
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"target":"M31"}"""), Ctx, default));
+
+        Assert.Equal("NED", Str(data["service"]));
+        Assert.Equal("2026-06-24T10:00:00Z", Str(data["resolvedAt"]));
+    }
+
+    [Fact]
     public async Task ResolveTarget_DefaultsServiceToAll()
     {
         string? capturedService = null;

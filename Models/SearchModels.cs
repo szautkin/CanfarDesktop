@@ -19,6 +19,10 @@ public class SearchFormState
     public string ResolverService { get; set; } = "ALL";
     public double? ResolvedRA { get; set; }
     public double? ResolvedDec { get; set; }
+    // Provenance (SCI-9-3): which resolver actually produced the coordinates, and when. SIMBAD vs NED
+    // can disagree at the arcsec level, so freezing this makes a name-based search reproducible.
+    public string? ResolverServiceUsed { get; set; }
+    public DateTime? ResolutionEpoch { get; set; }
     public double SearchRadius { get; set; } = 0.0167;
     public string PixelScale { get; set; } = string.Empty;
     public string PixelScaleUnit { get; set; } = "arcsec";
@@ -74,6 +78,8 @@ public class ResolverResult
     public string? CoordSys { get; set; }
     public string? ObjectType { get; set; }
     public string? Service { get; set; }
+    /// <summary>UTC instant the resolution was performed — provenance for reproducible coordinates.</summary>
+    public DateTime ResolvedAt { get; set; }
 }
 
 /// <summary>

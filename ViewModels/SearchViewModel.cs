@@ -310,12 +310,19 @@ public partial class SearchViewModel : ObservableObject
 
     #region Target resolver
 
+    // Provenance (SCI-9-3): the resolver that actually produced the current coordinates, and when.
+    // Captured on a successful resolution and frozen into the saved/recent search + export bundle.
+    private string? _resolverServiceUsed;
+    private DateTime? _resolutionEpoch;
+
     partial void OnTargetChanged(string value)
     {
         if (ResolverService == "NONE" || string.IsNullOrWhiteSpace(value))
         {
             ResolvedRA = null;
             ResolvedDec = null;
+            _resolverServiceUsed = null;
+            _resolutionEpoch = null;
             ResolverStatus = string.Empty;
             return;
         }
@@ -344,6 +351,8 @@ public partial class SearchViewModel : ObservableObject
             {
                 ResolvedRA = result.RA;
                 ResolvedDec = result.Dec;
+                _resolverServiceUsed = string.IsNullOrWhiteSpace(result.Service) ? ResolverService : result.Service;
+                _resolutionEpoch = result.ResolvedAt;
                 ResolverStatus = $"RA: {result.RA:F4}  Dec: {result.Dec:F4}";
                 if (result.ObjectType is not null)
                     ResolverStatus += $"  ({result.ObjectType})";
@@ -352,6 +361,8 @@ public partial class SearchViewModel : ObservableObject
             {
                 ResolvedRA = null;
                 ResolvedDec = null;
+                _resolverServiceUsed = null;
+                _resolutionEpoch = null;
                 ResolverStatus = "Not found";
             }
         }
@@ -719,6 +730,8 @@ public partial class SearchViewModel : ObservableObject
         ResolverService = ResolverService,
         ResolvedRA = ResolvedRA,
         ResolvedDec = ResolvedDec,
+        ResolverServiceUsed = _resolverServiceUsed,
+        ResolutionEpoch = _resolutionEpoch,
         SearchRadius = SearchRadius,
         PixelScale = PixelScale,
         PixelScaleUnit = PixelScaleUnit,
@@ -768,6 +781,8 @@ public partial class SearchViewModel : ObservableObject
         ResolverService = s.ResolverService;
         ResolvedRA = s.ResolvedRA;
         ResolvedDec = s.ResolvedDec;
+        _resolverServiceUsed = s.ResolverServiceUsed;
+        _resolutionEpoch = s.ResolutionEpoch;
         SearchRadius = s.SearchRadius;
         PixelScale = s.PixelScale;
         PixelScaleUnit = s.PixelScaleUnit;
@@ -822,6 +837,8 @@ public partial class SearchViewModel : ObservableObject
         Target = string.Empty;
         ResolverService = "ALL";
         ResolvedRA = ResolvedDec = null;
+        _resolverServiceUsed = null;
+        _resolutionEpoch = null;
         SearchRadius = 0.0167;
         PixelScale = string.Empty;
         PixelScaleUnit = "arcsec";

@@ -71,6 +71,7 @@ public static class SearchExportBuilder
             {
                 md.Append($"### {(string.IsNullOrEmpty(s.Summary) ? "(search)" : s.Summary)}\n\n");
                 md.Append($"- **Searched:** {Iso(s.SearchedAt)}\n");
+                AppendResolverProvenance(md, s.FormState);
                 md.Append($"- **Results:** {s.ResultCount}\n\n");
                 if (!string.IsNullOrWhiteSpace(s.Adql))
                 {
@@ -86,6 +87,21 @@ public static class SearchExportBuilder
             md.Append("_No saved queries or recent searches yet._\n");
 
         return md.ToString();
+    }
+
+    /// <summary>Freeze the name-resolution provenance (SCI-9-3): which resolver produced the coordinates
+    /// for a name-based cone search, and when. SIMBAD/NED can disagree at the arcsec level, so a bundle
+    /// reader needs this to reproduce or trust the search footprint.</summary>
+    private static void AppendResolverProvenance(StringBuilder md, SearchFormState? fs)
+    {
+        if (fs is null || string.IsNullOrWhiteSpace(fs.Target)) return;
+        if (fs.ResolvedRA is not double ra || fs.ResolvedDec is not double dec) return;
+
+        var svc = string.IsNullOrWhiteSpace(fs.ResolverServiceUsed) ? fs.ResolverService : fs.ResolverServiceUsed;
+        var epoch = fs.ResolutionEpoch is DateTime ep ? Iso(ep) : "unknown epoch";
+        var raStr = ra.ToString("F5", CultureInfo.InvariantCulture);
+        var decStr = dec.ToString("F5", CultureInfo.InvariantCulture);
+        md.Append($"- **Resolved:** '{fs.Target}' via {svc} at {epoch} → RA {raStr}, Dec {decStr}\n");
     }
 
     private static string Iso(DateTime dt)

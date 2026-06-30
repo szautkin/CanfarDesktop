@@ -35,7 +35,8 @@ public sealed class ResolveTargetTool : JsonReadTool<ResolveTargetTool.Args, Res
         if (result is null)
             throw new McpToolException(new TargetNotResolved(args.Target.Trim()));
 
-        return new Output(result.Target, result.RA, result.Dec, result.CoordSys, result.ObjectType, result.Service);
+        return new Output(result.Target, result.RA, result.Dec, result.CoordSys, result.ObjectType, result.Service,
+            result.ResolvedAt.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture));
     }
 
     public sealed record Args
@@ -44,7 +45,10 @@ public sealed class ResolveTargetTool : JsonReadTool<ResolveTargetTool.Args, Res
         public string? Service { get; init; }
     }
 
-    public sealed record Output(string Target, double Ra, double Dec, string? CoordSys, string? ObjectType, string? Service);
+    /// <summary><c>service</c> is the resolver that actually produced the coordinates (may differ from a
+    /// requested "ALL"); <c>resolvedAt</c> is the UTC epoch of resolution — record both for provenance,
+    /// as SIMBAD/NED can disagree at the arcsec level.</summary>
+    public sealed record Output(string Target, double Ra, double Dec, string? CoordSys, string? ObjectType, string? Service, string ResolvedAt);
 }
 
 /// <summary>

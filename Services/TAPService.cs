@@ -170,7 +170,8 @@ public class TAPService : ITAPService
             Dec = dec,
             CoordSys = values.GetValueOrDefault("coordsys"),
             ObjectType = values.GetValueOrDefault("oType"),
-            Service = values.GetValueOrDefault("service")
+            Service = values.GetValueOrDefault("service"),
+            ResolvedAt = DateTime.UtcNow,
         };
     }
 
