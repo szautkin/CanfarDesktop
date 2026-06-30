@@ -32,6 +32,10 @@
                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                        Text="Used to pull a private compute image. Stored separately from the Image Discovery tab's credentials." />
             <TextBox x:Name="RegistryHostBox" Header="Registry host" PlaceholderText="images.canfar.net" />
+            <TextBox x:Name="RegistryRepoBox" Header="Registry repository (project)" PlaceholderText="project" />
+            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       Text="Optional project/namespace used to expand a short compute image name to host/project/name. A full image path is used as-is." />
             <TextBox x:Name="UsernameBox" Header="Registry username" />
 
             <StackPanel Spacing="4">

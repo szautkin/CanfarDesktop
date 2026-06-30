@@ -36,6 +36,7 @@ public sealed partial class AIComputeSettingsDialog : ContentDialog
         CoresBox.Value = s.Cores;
         RamBox.Value = s.Ram;
         RegistryHostBox.Text = s.RegistryHost == Models.AICompute.AIComputeSettings.DefaultRegistryHost ? string.Empty : s.RegistryHost;
+        RegistryRepoBox.Text = s.RegistryRepository;
         UsernameBox.Text = s.RegistryUsername;
         SecretBox.Password = string.Empty;
         RefreshSecretStatus();
@@ -59,6 +60,7 @@ public sealed partial class AIComputeSettingsDialog : ContentDialog
         _service.SetCores(ToInt(CoresBox.Value, _service.Settings.Cores));
         _service.SetRam(ToInt(RamBox.Value, _service.Settings.Ram));
         _service.SetRegistryHost(RegistryHostBox.Text);
+        _service.SetRegistryRepository(RegistryRepoBox.Text);
         _service.SetUsername(UsernameBox.Text);
 
         if (SecretBox.Password.Length > 0)

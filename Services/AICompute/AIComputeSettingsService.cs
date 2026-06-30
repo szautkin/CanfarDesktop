@@ -18,6 +18,7 @@ public class AIComputeSettingsService
     private const string KeyCores = "AICompute.Cores";
     private const string KeyRam = "AICompute.Ram";
     private const string KeyRegistryHost = "AICompute.RegistryHost";
+    private const string KeyRegistryRepository = "AICompute.RegistryRepository";
     private const string KeyUsername = "AICompute.RegistryUsername";
     private const string VaultResource = "Verbinal.AICompute";
 
@@ -32,8 +33,10 @@ public class AIComputeSettingsService
         Settings = Load();
     }
 
-    /// <summary>The configured compute image (trimmed); empty string when run_code is disabled.</summary>
-    public string ResolveImage() => Settings.Image.Trim();
+    /// <summary>The compute image to launch — a short name is prefixed with the configured registry host +
+    /// repository; a full <c>host/project/name:tag</c> is used as-is. Empty when run_code is disabled.</summary>
+    public string ResolveImage()
+        => CanfarDesktop.Helpers.RegistryImageResolver.Resolve(Settings.Image, Settings.RegistryHost, Settings.RegistryRepository);
 
     /// <summary>The clamped (cores, ram) for the lazy compute launch.</summary>
     public (int Cores, int Ram) ResolveResources()
@@ -79,6 +82,13 @@ public class AIComputeSettingsService
         var final = string.IsNullOrWhiteSpace(value) ? AIComputeSettings.DefaultRegistryHost : value.Trim();
         WriteSetting(KeyRegistryHost, final);
         Settings = Settings with { RegistryHost = final, HasSecret = HasStoredSecret(final, Settings.RegistryUsername) };
+    }
+
+    public void SetRegistryRepository(string value)
+    {
+        var final = (value ?? string.Empty).Trim().Trim('/');
+        WriteSetting(KeyRegistryRepository, final);
+        Settings = Settings with { RegistryRepository = final };
     }
 
     public void SetUsername(string value)
@@ -132,6 +142,7 @@ public class AIComputeSettingsService
             _localSettings.Values.Remove(KeyCores);
             _localSettings.Values.Remove(KeyRam);
             _localSettings.Values.Remove(KeyRegistryHost);
+            _localSettings.Values.Remove(KeyRegistryRepository);
             _localSettings.Values.Remove(KeyUsername);
         }
         Settings = new AIComputeSettings();
@@ -147,6 +158,7 @@ public class AIComputeSettingsService
             Cores = ReadInt(KeyCores, RunCodeContract.DefaultCores),
             Ram = ReadInt(KeyRam, RunCodeContract.DefaultRam),
             RegistryHost = host,
+            RegistryRepository = ReadSetting(KeyRegistryRepository) ?? string.Empty,
             RegistryUsername = user,
             HasSecret = HasStoredSecret(host, user),
         };

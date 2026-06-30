@@ -13,6 +13,7 @@ namespace CanfarDesktop.Services.ImageDiscovery;
 public class ImageDiscoverySettingsService
 {
     private const string KeyRegistryHost = "ImageDiscovery.RegistryHost";
+    private const string KeyRegistryRepository = "ImageDiscovery.RegistryRepository";
     private const string KeyUsername = "ImageDiscovery.Username";
     private const string KeyInspectorImage = "ImageDiscovery.InspectorImage";
     private const string VaultResource = "Verbinal.ImageDiscovery";
@@ -28,8 +29,10 @@ public class ImageDiscoverySettingsService
         Settings = Load();
     }
 
-    /// <summary>The inspector host image to launch (user override, or the built-in default).</summary>
-    public string ResolveInspectorImage() => Settings.InspectorImage;
+    /// <summary>The inspector host image to launch — a short name is prefixed with the configured
+    /// registry host + repository; a full <c>host/project/name:tag</c> is used as-is.</summary>
+    public string ResolveInspectorImage()
+        => Helpers.RegistryImageResolver.Resolve(Settings.InspectorImage, Settings.RegistryHost, Settings.RegistryRepository);
 
     /// <summary>
     /// Verify the stored credentials against the configured registry (Docker V2 token-auth).
@@ -63,6 +66,13 @@ public class ImageDiscoverySettingsService
         var final = string.IsNullOrWhiteSpace(value) ? ImageDiscoverySettings.DefaultRegistryHost : value.Trim();
         WriteSetting(KeyRegistryHost, final);
         Settings = Settings with { RegistryHost = final, HasSecret = HasStoredSecret(final, Settings.Username) };
+    }
+
+    public void SetRegistryRepository(string value)
+    {
+        var final = (value ?? string.Empty).Trim().Trim('/');
+        WriteSetting(KeyRegistryRepository, final);
+        Settings = Settings with { RegistryRepository = final };
     }
 
     public void SetUsername(string value)
@@ -114,6 +124,7 @@ public class ImageDiscoverySettingsService
         if (_localSettings is not null)
         {
             _localSettings.Values.Remove(KeyRegistryHost);
+            _localSettings.Values.Remove(KeyRegistryRepository);
             _localSettings.Values.Remove(KeyUsername);
             _localSettings.Values.Remove(KeyInspectorImage);
         }
@@ -128,6 +139,7 @@ public class ImageDiscoverySettingsService
         return new ImageDiscoverySettings
         {
             RegistryHost = host,
+            RegistryRepository = ReadSetting(KeyRegistryRepository) ?? string.Empty,
             Username = user,
             InspectorImage = image,
             HasSecret = HasStoredSecret(host, user),

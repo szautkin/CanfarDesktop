@@ -106,5 +106,6 @@ public class RunCodeContractTests
         Assert.True(new AIComputeSettings().IsAllDefaults);
         Assert.False(new AIComputeSettings { Image = "img:1" }.IsAllDefaults);
         Assert.False(new AIComputeSettings { Cores = 4 }.IsAllDefaults);
+        Assert.False(new AIComputeSettings { RegistryRepository = "project" }.IsAllDefaults);
     }
 }

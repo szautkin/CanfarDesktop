@@ -41,6 +41,7 @@ public sealed partial class ImageDiscoverySettingsDialog : ContentDialog
         // Show overrides only; blank fields mean "use the default".
         InspectorImageBox.Text = s.InspectorImage == ImageDiscoverySettings.DefaultInspectorImage ? string.Empty : s.InspectorImage;
         RegistryHostBox.Text = s.RegistryHost == ImageDiscoverySettings.DefaultRegistryHost ? string.Empty : s.RegistryHost;
+        RegistryRepoBox.Text = s.RegistryRepository;
         UsernameBox.Text = s.Username;
         SecretBox.Password = string.Empty;
         RefreshSecretStatus();
@@ -78,6 +79,7 @@ public sealed partial class ImageDiscoverySettingsDialog : ContentDialog
     {
         _service.SetInspectorImage(InspectorImageBox.Text);
         _service.SetRegistryHost(RegistryHostBox.Text);
+        _service.SetRegistryRepository(RegistryRepoBox.Text);
         _service.SetUsername(UsernameBox.Text);
 
         if (SecretBox.Password.Length > 0)

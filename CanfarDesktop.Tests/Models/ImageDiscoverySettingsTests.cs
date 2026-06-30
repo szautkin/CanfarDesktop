@@ -30,4 +30,8 @@ public class ImageDiscoverySettingsTests
     [InlineData("", false, "images.canfar.net/custom/inspector:1")]              // custom inspector image
     public void IsAllDefaults_FalseWhenAnyOverrideSet(string user, bool hasSecret, string image)
         => Assert.False(new ImageDiscoverySettings { Username = user, HasSecret = hasSecret, InspectorImage = image }.IsAllDefaults);
+
+    [Fact]
+    public void IsAllDefaults_FalseWhenRepositorySet()
+        => Assert.False(new ImageDiscoverySettings { RegistryRepository = "skaha" }.IsAllDefaults);
 }

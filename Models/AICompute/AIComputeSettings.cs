@@ -15,6 +15,8 @@ public record AIComputeSettings
     public int Cores { get; init; } = 1;
     public int Ram { get; init; } = 1;
     public string RegistryHost { get; init; } = DefaultRegistryHost;
+    /// <summary>Registry repository/project (e.g. "project"); used to prefix a short compute image name.</summary>
+    public string RegistryRepository { get; init; } = string.Empty;
     public string RegistryUsername { get; init; } = string.Empty;
     /// <summary>True when a secret is stored for the current (host, username) — value lives in PasswordVault.</summary>
     public bool HasSecret { get; init; }
@@ -27,6 +29,7 @@ public record AIComputeSettings
         string.IsNullOrEmpty(Image)
         && Cores == 1 && Ram == 1
         && string.IsNullOrEmpty(RegistryUsername)
+        && string.IsNullOrEmpty(RegistryRepository)
         && !HasSecret
         && (RegistryHost == DefaultRegistryHost || RegistryHost.Length == 0);
 }

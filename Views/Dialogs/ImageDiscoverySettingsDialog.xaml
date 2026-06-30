@@ -21,6 +21,10 @@
                        Text="The headless host that runs syft against a non-headless target image. Must ship bash + python3 + curl/wget. Leave blank to use the default." />
 
             <TextBox x:Name="RegistryHostBox" Header="Registry host" PlaceholderText="images.canfar.net" />
+            <TextBox x:Name="RegistryRepoBox" Header="Registry repository (project)" PlaceholderText="skaha" />
+            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       Text="Optional project/namespace used to expand a short inspector image name to host/project/name. A full image path is used as-is." />
             <TextBox x:Name="UsernameBox" Header="Registry username" />
 
             <StackPanel Spacing="4">
