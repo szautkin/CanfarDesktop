@@ -5,8 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Image Discovery settings"
     PrimaryButtonText="Save"
-    SecondaryButtonText="Reset to defaults"
-    CloseButtonText="Cancel"
+    CloseButtonText="Close"
     DefaultButton="Primary">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -28,12 +27,38 @@
                 <PasswordBox x:Name="SecretBox" Header="Registry secret (Harbor CLI secret)" />
                 <TextBlock x:Name="SecretStatus" Style="{StaticResource CaptionTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" />
+                <Button x:Name="RemoveSecretButton" Content="Remove secret" Click="OnRemoveSecret"
+                        HorizontalAlignment="Left" Visibility="Collapsed" />
             </StackPanel>
 
             <Button x:Name="TestButton" Content="Test credentials" Click="OnTestCredentials"
                     HorizontalAlignment="Left" />
 
             <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="True" Severity="Informational" />
+
+            <!-- Discovery cache (shown only when the discovery engine is available) -->
+            <StackPanel x:Name="CacheSection" Spacing="6" Visibility="Collapsed">
+                <TextBlock Text="Discovery cache" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <TextBlock x:Name="CacheCountText" Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                <Button x:Name="ClearCacheButton" Content="Clear cache" Click="OnClearCache" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <!-- Reset (disabled when nothing is customized; confirmed inline) -->
+            <Button x:Name="ResetButton" Content="Reset to defaults" Click="OnResetClick" HorizontalAlignment="Left" />
+            <Border x:Name="ResetConfirmPanel" Visibility="Collapsed" CornerRadius="6" Padding="12,10"
+                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                    <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="Reset the registry host, username, inspector image, and the stored secret to defaults? Cached discovery manifests on disk are not affected." />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Reset" Click="OnResetConfirm" Style="{StaticResource AccentButtonStyle}" />
+                        <Button Content="Cancel" Click="OnResetCancel" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </ContentDialog>

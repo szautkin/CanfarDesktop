@@ -1010,6 +1010,11 @@ public sealed partial class MainWindow : Window
         await Views.Dialogs.McpServerDialog.ShowAsync(Content.XamlRoot);
     }
 
+    private async void OnImageDiscoveryClick(object sender, RoutedEventArgs e)
+    {
+        await Views.Dialogs.ImageDiscoverySettingsDialog.ShowAsync(Content.XamlRoot);
+    }
+
     #endregion
 
     #region About

@@ -1,3 +1,5 @@
+using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CanfarDesktop.Models.ImageDiscovery;
@@ -6,20 +8,31 @@ using CanfarDesktop.Services.ImageDiscovery;
 namespace CanfarDesktop.Views.Dialogs;
 
 /// <summary>
-/// Configures image discovery: the inspector host image, and registry host/username/secret used to
-/// pull private images (secret stored in the Windows PasswordVault).
+/// Configures image discovery: the inspector host image, registry host/username/secret used to pull
+/// private images (secret stored in the Windows PasswordVault), the discovery cache, and reset. When a
+/// <see cref="ImageDiscoveryCoordinator"/> is supplied (the main-Settings entry point passes it) the
+/// cache section is shown.
 /// </summary>
 public sealed partial class ImageDiscoverySettingsDialog : ContentDialog
 {
     private readonly ImageDiscoverySettingsService _service;
+    private readonly ImageDiscoveryCoordinator? _coordinator;
 
-    public ImageDiscoverySettingsDialog(ImageDiscoverySettingsService service)
+    public ImageDiscoverySettingsDialog(ImageDiscoverySettingsService service, ImageDiscoveryCoordinator? coordinator = null)
     {
         InitializeComponent();
         _service = service;
+        _coordinator = coordinator;
         PrimaryButtonClick += OnSave;
-        SecondaryButtonClick += OnReset;
         Populate();
+    }
+
+    /// <summary>Resolve the shared services from DI and show the dialog (the main-Settings entry point).</summary>
+    public static Task ShowAsync(XamlRoot root)
+    {
+        var service = App.Services.GetRequiredService<ImageDiscoverySettingsService>();
+        var coordinator = App.Services.GetService<ImageDiscoveryCoordinator>();
+        return new ImageDiscoverySettingsDialog(service, coordinator) { XamlRoot = root }.ShowAsync().AsTask();
     }
 
     private void Populate()
@@ -31,13 +44,35 @@ public sealed partial class ImageDiscoverySettingsDialog : ContentDialog
         UsernameBox.Text = s.Username;
         SecretBox.Password = string.Empty;
         RefreshSecretStatus();
+        ResetConfirmPanel.Visibility = Visibility.Collapsed;
+        ResetButton.IsEnabled = !s.IsAllDefaults;
         StatusBar.IsOpen = false;
+        LoadCache();
     }
 
     private void RefreshSecretStatus()
-        => SecretStatus.Text = _service.Settings.HasSecret
+    {
+        var hasSecret = _service.Settings.HasSecret;
+        SecretStatus.Text = hasSecret
             ? "A secret is stored. Type a new one to replace it, or leave blank to keep it."
             : "No secret stored.";
+        RemoveSecretButton.Visibility = hasSecret ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void LoadCache()
+    {
+        if (_coordinator is null)
+        {
+            CacheSection.Visibility = Visibility.Collapsed;
+            return;
+        }
+        CacheSection.Visibility = Visibility.Visible;
+        var count = _coordinator.CacheCount();
+        CacheCountText.Text = count == 0
+            ? "No images cached yet."
+            : $"{count.ToString(CultureInfo.InvariantCulture)} image{(count == 1 ? "" : "s")} cached.";
+        ClearCacheButton.IsEnabled = count > 0;
+    }
 
     private void OnSave(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
@@ -59,11 +94,36 @@ public sealed partial class ImageDiscoverySettingsDialog : ContentDialog
         }
     }
 
-    private void OnReset(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    private void OnRemoveSecret(object sender, RoutedEventArgs e)
+    {
+        _service.ClearSecret();
+        SecretBox.Password = string.Empty;
+        RefreshSecretStatus();
+        ResetButton.IsEnabled = !_service.Settings.IsAllDefaults;
+        ShowStatus(InfoBarSeverity.Success, "Secret removed", "The stored registry secret was deleted.");
+    }
+
+    private void OnClearCache(object sender, RoutedEventArgs e)
+    {
+        _coordinator?.ClearCache();
+        LoadCache();
+        ShowStatus(InfoBarSeverity.Success, "Cache cleared", "Discovered image manifests were cleared.");
+    }
+
+    private void OnResetClick(object sender, RoutedEventArgs e)
+    {
+        StatusBar.IsOpen = false;
+        ResetConfirmPanel.Visibility = Visibility.Visible;
+    }
+
+    private void OnResetCancel(object sender, RoutedEventArgs e)
+        => ResetConfirmPanel.Visibility = Visibility.Collapsed;
+
+    private void OnResetConfirm(object sender, RoutedEventArgs e)
     {
         _service.ResetToDefaults();
         Populate();
-        args.Cancel = true; // keep open to show the reset state
+        ShowStatus(InfoBarSeverity.Success, "Reset", "Image-discovery settings were reset to defaults.");
     }
 
     /// <summary>
@@ -94,7 +154,8 @@ public sealed partial class ImageDiscoverySettingsDialog : ContentDialog
         ShowStatus(InfoBarSeverity.Informational, "Testing…", $"Contacting {_service.Settings.RegistryHost} …");
         try
         {
-            using var client = new HttpClient();
+            // A PLAIN factory client (never the CADC-auth'd one) — the registry test must not leak the token.
+            var client = App.Services.GetRequiredService<IHttpClientFactory>().CreateClient();
             var result = await _service.TestRegistryCredentialsAsync(client);
             var severity = result.Kind switch
             {
