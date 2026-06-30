@@ -381,6 +381,15 @@ public static class McpToolCatalog
             if (auth.CurrentUsername is { Length: > 0 } username)
             {
                 var storage = sp.GetRequiredService<IStorageService>();
+                // Pre-flight (SCI-12-1): don't begin a multi-GB upload that fails mid-way on quota — surface
+                // a clear, upfront error. The local bundle is already written, so the agent isn't empty-handed.
+                var quota = await storage.GetQuotaAsync(username);
+                var zipSize = new FileInfo(zipPath).Length;
+                if (quota is { QuotaBytes: > 0 } && quota.UsedBytes + zipSize > quota.QuotaBytes)
+                    throw new McpToolException(new InvalidArgument(
+                        $"VOSpace quota insufficient: {quota.UsedGB:F1} GB used of {quota.QuotaGB:F0} GB, and the bundle is " +
+                        $"{zipSize / 1_073_741_824.0:F2} GB. Free space (or export with includeFiles:false). " +
+                        $"The local bundle was still written to {destFolder}."));
                 remote = await svc.UploadBundleToVoSpaceAsync(zipPath, storage, username);
             }
         }
