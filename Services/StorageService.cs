@@ -84,7 +84,9 @@ public class StorageService : IStorageService
         var fullPath = string.IsNullOrEmpty(cleanParent)
             ? folderName
             : $"{cleanParent}/{folderName}";
-        var nodeUri = $"vos://cadc.nrc.ca~arc/home/{fullPath}";
+        // Scope-aware node URI: a "projects/<group>/…" parent yields a vos://…~arc/projects/… URI,
+        // a home path yields the same vos://…~arc/home/… URI as before.
+        var nodeUri = _endpoints.VoSpaceNodeUri(fullPath);
         var url = _endpoints.StorageNodeUrl(fullPath);
 
         var xml = VoSpaceParser.BuildContainerNodeXml(nodeUri);

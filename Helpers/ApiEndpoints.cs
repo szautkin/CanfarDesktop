@@ -6,7 +6,32 @@ public class ApiEndpoints
     public string LoginBaseUrl { get; set; } = "https://ws-cadc.canfar.net/ac";
     public string SkahaBaseUrl { get; set; } = "https://ws-uv.canfar.net/skaha";
     public string AcBaseUrl { get; set; } = "https://ws-uv.canfar.net/ac";
-    public string StorageBaseUrl { get; set; } = "https://ws-uv.canfar.net/arc/nodes/home";
+
+    // ARC node/file service roots (scope-agnostic). A caller path selects the tree (see ScopeRootedPath):
+    // "projects/<group>/…" → the shared group space; anything else → the user's personal "home/" tree.
+    public string ArcNodesRoot { get; set; } = "https://ws-uv.canfar.net/arc/nodes";
+    public string ArcFilesRoot { get; set; } = "https://ws-uv.canfar.net/arc/files";
+
+    // Personal-tree bases (kept for back-compat + the service-health display); derived from the roots.
+    public string StorageBaseUrl => $"{ArcNodesRoot}/home";
+    public string StorageFilesBaseUrl => $"{ArcFilesRoot}/home";
+
+    /// <summary>
+    /// Resolve a caller path to its scope-rooted ARC path. Group spaces are addressed as
+    /// "projects/&lt;group&gt;/…" and pass through untouched; every other path is rooted under the
+    /// personal "home/" tree — the long-standing default, so existing home callers are byte-identical.
+    /// </summary>
+    internal static string ScopeRootedPath(string path)
+    {
+        var p = (path ?? string.Empty).TrimStart('/');
+        return p.StartsWith("projects/", StringComparison.OrdinalIgnoreCase)
+            || p.Equals("projects", StringComparison.OrdinalIgnoreCase)
+            ? p
+            : "home/" + p;
+    }
+
+    /// <summary>The "vos://cadc.nrc.ca~arc/…" node URI for a caller path, scope-rooted like the node URL.</summary>
+    public string VoSpaceNodeUri(string path) => $"vos://cadc.nrc.ca~arc/{ScopeRootedPath(path)}";
 
     // Auth
     public string LoginUrl => $"{LoginBaseUrl}/login";
@@ -26,18 +51,18 @@ public class ApiEndpoints
     public string StatsUrl => $"{SkahaBaseUrl}/v1/session?view=stats";
     public string RepositoryUrl => $"{SkahaBaseUrl}/v1/repository";
 
-    // Storage (VOSpace/ARC)
-    public string StorageUrl(string username) => $"{StorageBaseUrl}/{username}?limit=0";
-    public string StorageNodeUrl(string path) => $"{StorageBaseUrl}/{path}";
+    // Storage (VOSpace/ARC) — all scope-aware: a "projects/<group>/…" path hits the group tree,
+    // anything else the user's home tree (ScopeRootedPath keeps the home form byte-identical).
+    public string StorageUrl(string username) => $"{ArcNodesRoot}/{ScopeRootedPath(username)}?limit=0";
+    public string StorageNodeUrl(string path) => $"{ArcNodesRoot}/{ScopeRootedPath(path)}";
     public string StorageNodeListUrl(string path, int? limit = null, string? startUri = null)
     {
-        var url = $"{StorageBaseUrl}/{path}?detail=max";
+        var url = $"{ArcNodesRoot}/{ScopeRootedPath(path)}?detail=max";
         if (limit.HasValue) url += $"&limit={limit.Value}";
         if (startUri is not null) url += $"&uri={Uri.EscapeDataString(startUri)}";
         return url;
     }
-    public string StorageFilesBaseUrl { get; set; } = "https://ws-uv.canfar.net/arc/files/home";
-    public string StorageFilesUrl(string path) => $"{StorageFilesBaseUrl}/{path}";
+    public string StorageFilesUrl(string path) => $"{ArcFilesRoot}/{ScopeRootedPath(path)}";
 
     // CADC TAP / Search (public, no auth)
     public string TapBaseUrl { get; set; } = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus";

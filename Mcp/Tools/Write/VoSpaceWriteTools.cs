@@ -59,7 +59,7 @@ public sealed class CreateVoSpaceFolderTool : JsonWriteTool<CreateVoSpaceFolderT
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "create_vospace_folder",
         "Propose creating a new folder with the given name under a VOSpace/ARC parent path. Queues for the user to apply.",
-        """{"type":"object","properties":{"path":{"type":"string","description":"Parent VOSpace/ARC path"},"name":{"type":"string","description":"New folder name"}},"required":["path","name"],"additionalProperties":false}""");
+        """{"type":"object","properties":{"path":{"type":"string","description":"Parent VOSpace/ARC path: \"<username>/sub\" for your home, or \"projects/<group>/sub\" for a shared project"},"name":{"type":"string","description":"New folder name"}},"required":["path","name"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
     {
@@ -108,7 +108,7 @@ public sealed class UploadFileToVoSpaceTool : JsonWriteTool<UploadFileToVoSpaceT
         "Propose uploading a LOCAL file (any type, including binary) to a VOSpace/ARC destination path " +
         "(overwrites if it exists). Use this for real files; upload_text_to_vospace is only for small text " +
         "blobs. Queues for the user to apply.",
-        """{"type":"object","properties":{"localPath":{"type":"string","description":"Local filesystem path of the file to upload"},"vospacePath":{"type":"string","description":"Destination VOSpace/ARC file path"},"contentType":{"type":"string","description":"MIME type (optional)"}},"required":["localPath","vospacePath"],"additionalProperties":false}""");
+        """{"type":"object","properties":{"localPath":{"type":"string","description":"Local filesystem path of the file to upload"},"vospacePath":{"type":"string","description":"Destination VOSpace/ARC file path: \"<username>/…\" for your home, or \"projects/<group>/…\" for a shared project"},"contentType":{"type":"string","description":"MIME type (optional)"}},"required":["localPath","vospacePath"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
     {
