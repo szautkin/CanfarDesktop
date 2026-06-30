@@ -31,7 +31,9 @@ public sealed partial class AiGuidePage : Page
     // ── Launchpad / focus panel ──────────────────────────────────────────────
     private void OnCategoryTileClick(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is AiGuideCategoryGroup group)
+        // ItemsRepeater + an x:Bind template doesn't set DataContext reliably, so the tile binds the
+        // category to its Tag (the landing-view pattern) and we read it here.
+        if ((sender as FrameworkElement)?.Tag is AiGuideCategoryGroup group)
             ViewModel.OpenCategory(group);
     }
 

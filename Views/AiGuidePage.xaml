@@ -67,7 +67,7 @@
 
         <!-- One launchpad tile: icon + title + 2-line summary + override dot + tool count. -->
         <DataTemplate x:Key="TileTemplate" x:DataType="vm:AiGuideCategoryGroup">
-            <Button Click="OnCategoryTileClick" Padding="0" Height="116"
+            <Button Click="OnCategoryTileClick" Tag="{x:Bind}" Padding="0" Height="116"
                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                     HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                     CornerRadius="8" BorderThickness="1"
