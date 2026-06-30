@@ -10,6 +10,12 @@
     CloseButtonText="Close"
     DefaultButton="Close">
 
+    <ContentDialog.Resources>
+        <!-- The default ContentDialogMaxWidth (548) would clip the 640-wide NavigationView (the content
+             ScrollViewer doesn't scroll horizontally), hiding the right edge — widen the cap. -->
+        <x:Double x:Key="ContentDialogMaxWidth">680</x:Double>
+    </ContentDialog.Resources>
+
     <muxc:NavigationView x:Name="Nav" PaneDisplayMode="Left" OpenPaneLength="168"
                          IsSettingsVisible="False" IsBackButtonVisible="Collapsed"
                          IsPaneToggleButtonVisible="False"
