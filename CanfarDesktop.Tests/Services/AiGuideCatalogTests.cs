@@ -38,7 +38,7 @@ public class AiGuideCatalogTests
         "interrupt_kernel", "restart_kernel", "create_analysis_notebook",
         // Storage (VOSpace)
         "list_vospace_path", "read_vospace_file", "download_vospace_file", "get_storage_quota",
-        "upload_text_to_vospace", "upload_file_to_vospace", "create_vospace_folder", "delete_vospace_node",
+        "upload_text_to_vospace", "upload_file_to_vospace", "create_vospace_folder", "set_vospace_acl", "delete_vospace_node",
         // Sessions
         "list_sessions", "get_session", "list_session_types", "list_session_images", "list_recent_launches",
         "launch_session", "delete_session", "renew_session",

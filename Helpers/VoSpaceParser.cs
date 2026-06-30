@@ -151,4 +151,64 @@ public static class VoSpaceParser
             </vos:node>
             """;
     }
+
+    /// <summary>The xsi:type of the ROOT node element in a VOSpace node document (Container / Data /
+    /// Link), defaulting to Container. A setNode body must echo the node's existing type (it cannot
+    /// change it), so the ACL writer GETs the node and reuses this.</summary>
+    public static VoSpaceNodeType ParseRootNodeType(string xml)
+    {
+        try
+        {
+            var root = XDocument.Parse(xml).Root;
+            var xsiType = root?.Attribute(XNamespace.Get("http://www.w3.org/2001/XMLSchema-instance") + "type")?.Value ?? "";
+            return xsiType.Contains("ContainerNode") ? VoSpaceNodeType.Container
+                : xsiType.Contains("LinkNode") ? VoSpaceNodeType.LinkNode
+                : VoSpaceNodeType.DataNode;
+        }
+        catch { return VoSpaceNodeType.Container; }
+    }
+
+    /// <summary>
+    /// Build the VOSpace <c>setNode</c> body that sets a node's access-control list. Mirrors
+    /// <see cref="BuildContainerNodeXml"/> but fills the properties. Only a NON-NULL dimension is
+    /// emitted — setNode merges by property uri, so an omitted property is left untouched on the
+    /// server. Therefore <c>null</c> means "leave as-is" and a provided (even empty) value means
+    /// "REPLACE": pass an empty group list to revoke all groups (emits an empty property element), and
+    /// <paramref name="isPublic"/> = false to make the node non-public. <paramref name="nodeType"/> must
+    /// be the node's actual type (from <see cref="ParseRootNodeType"/>). Every injected value is escaped.
+    /// </summary>
+    public static string BuildSetAclNodeXml(string nodeUri, VoSpaceNodeType nodeType,
+        IReadOnlyList<string>? groupRead, IReadOnlyList<string>? groupWrite, bool? isPublic)
+    {
+        var escapedUri = System.Security.SecurityElement.Escape(nodeUri);
+        var type = nodeType switch
+        {
+            VoSpaceNodeType.Container => "vos:ContainerNode",
+            VoSpaceNodeType.LinkNode => "vos:LinkNode",
+            _ => "vos:DataNode",
+        };
+
+        var props = new System.Text.StringBuilder();
+        if (groupRead is not null) props.Append(AclProperty("ivo://ivoa.net/vospace/core#groupread", JoinGroups(groupRead)));
+        if (groupWrite is not null) props.Append(AclProperty("ivo://ivoa.net/vospace/core#groupwrite", JoinGroups(groupWrite)));
+        if (isPublic is bool pub) props.Append(AclProperty("ivo://ivoa.net/vospace/core#ispublic", pub ? "true" : "false"));
+
+        return $"""
+            <?xml version="1.0" encoding="UTF-8"?>
+            <vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      uri="{escapedUri}"
+                      xsi:type="{type}">
+              <vos:properties>{props}</vos:properties>
+            </vos:node>
+            """;
+    }
+
+    /// <summary>Space-join non-blank, trimmed group URIs (the cavern delimiter is a single space).</summary>
+    private static string JoinGroups(IReadOnlyList<string> groups) =>
+        string.Join(" ", groups.Where(g => !string.IsNullOrWhiteSpace(g)).Select(g => g.Trim()));
+
+    /// <summary>One escaped &lt;vos:property&gt; element; an empty <paramref name="value"/> clears the property.</summary>
+    private static string AclProperty(string uri, string value) =>
+        $"\n    <vos:property uri=\"{System.Security.SecurityElement.Escape(uri)}\">{System.Security.SecurityElement.Escape(value)}</vos:property>";
 }

@@ -133,6 +133,7 @@ public static class AiGuideCatalog
         ["download_vospace_file"] = "storage",
         ["vospace_mkdir"] = "storage",
         ["create_vospace_folder"] = "storage",
+        ["set_vospace_acl"] = "storage",
         ["delete_vospace_node"] = "storage",
         ["get_storage_quota"] = "storage",
         ["clear_user_site"] = "storage",

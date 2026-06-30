@@ -55,9 +55,64 @@ public class VoSpaceWriteToolsTests
         Assert.Equal(McpVerbClass.SemanticWrite, new UploadTextToVoSpaceTool().VerbClass);
         Assert.Equal(McpVerbClass.SemanticWrite, new UploadFileToVoSpaceTool().VerbClass);
         Assert.Equal(McpVerbClass.SemanticWrite, new CreateVoSpaceFolderTool().VerbClass);
+        Assert.Equal(McpVerbClass.SemanticWrite, new SetVoSpaceAclTool().VerbClass);
         Assert.Equal(McpVerbClass.Destructive, new DeleteVoSpaceNodeTool().VerbClass);
         Assert.Equal(McpVerbClass.ViewState,
             new DownloadVoSpaceFileTool((_, _) => Task.FromResult<Stream>(new MemoryStream())).VerbClass);
+    }
+
+    // ── set_vospace_acl (SCI-12-2 write side) ─────────────────────────────────
+
+    [Fact]
+    public async Task SetAcl_BuildsProposal_PreservesNullVsEmptyDistinction_AndExplicitSummary()
+    {
+        var (ctx, _) = Context();
+        // groupRead set, groupWrite OMITTED (null => leave unchanged), isPublic false.
+        var result = await new SetVoSpaceAclTool().InvokeAsync(
+            Args("""{"path":"projects/team/data","groupRead":["ivo://cadc.nrc.ca/gms?TeamA"],"isPublic":false}"""), ctx, default);
+        var proposed = Assert.IsType<ProposedResult>(result);
+        var payload = JsonSerializer.Deserialize<SetAclPayload>(proposed.Proposal.Payload, McpJson.Options)!;
+        Assert.Equal("projects/team/data", payload.Path);
+        Assert.Equal(new[] { "ivo://cadc.nrc.ca/gms?TeamA" }, payload.GroupRead);
+        Assert.Null(payload.GroupWrite);   // omitted => unchanged, NOT revoked
+        Assert.False(payload.IsPublic);
+        // The proposal the user reviews must spell out the resulting ACL.
+        Assert.Contains("read: ivo://cadc.nrc.ca/gms?TeamA", proposed.Proposal.Summary);
+        Assert.Contains("public: no", proposed.Proposal.Summary);
+    }
+
+    [Fact]
+    public async Task SetAcl_EmptyList_IsRevoke_NotNull()
+    {
+        var (ctx, _) = Context();
+        var result = await new SetVoSpaceAclTool().InvokeAsync(Args("""{"path":"home/u/x","groupRead":[]}"""), ctx, default);
+        var proposed = Assert.IsType<ProposedResult>(result);
+        var payload = JsonSerializer.Deserialize<SetAclPayload>(proposed.Proposal.Payload, McpJson.Options)!;
+        Assert.NotNull(payload.GroupRead);   // empty list (revoke), NOT null (unchanged)
+        Assert.Empty(payload.GroupRead!);
+        Assert.Contains("read: revoke all groups", proposed.Proposal.Summary);
+    }
+
+    [Fact]
+    public async Task SetAcl_NoDimensions_InvalidArgument()
+    {
+        var (ctx, store) = Context();
+        var result = await new SetVoSpaceAclTool().InvokeAsync(Args("""{"path":"home/u/x"}"""), ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
+        Assert.Empty(store.List());
+    }
+
+    [Fact]
+    public async Task SetAclApplier_DecodesAndInvokes()
+    {
+        SetAclPayload? seen = null;
+        var ap = new SetVoSpaceAclApplier(p => { seen = p; return Task.CompletedTask; });
+        await ap.ApplyAsync(Proposal("set_vospace_acl",
+            new SetAclPayload("home/u/x", new[] { "ivo://cadc.nrc.ca/gms?A" }, System.Array.Empty<string>(), true)));
+        Assert.Equal("home/u/x", seen!.Path);
+        Assert.Equal(new[] { "ivo://cadc.nrc.ca/gms?A" }, seen.GroupRead);
+        Assert.Empty(seen.GroupWrite!);
+        Assert.True(seen.IsPublic);
     }
 
     // ── upload_file_to_vospace ────────────────────────────────────────────────

@@ -135,6 +135,72 @@ public class VoSpaceParserTests
         Assert.Empty(node.GroupWrite);
     }
 
+    // ── setNode ACL body builder (SCI-12-2 write side) — the security-sensitive part ──
+
+    [Fact]
+    public void BuildSetAclNodeXml_AllDimensions_EmitsEscapedProperties()
+    {
+        var xml = VoSpaceParser.BuildSetAclNodeXml(
+            "vos://cadc.nrc.ca~arc/home/me/data", VoSpaceNodeType.Container,
+            new[] { "ivo://cadc.nrc.ca/gms?TeamA", "ivo://cadc.nrc.ca/gms?TeamB" },
+            new[] { "ivo://cadc.nrc.ca/gms?TeamA" },
+            false);
+
+        System.Xml.Linq.XDocument.Parse(xml); // well-formed
+        Assert.Contains("xsi:type=\"vos:ContainerNode\"", xml);
+        Assert.Contains("#groupread\">ivo://cadc.nrc.ca/gms?TeamA ivo://cadc.nrc.ca/gms?TeamB</vos:property>", xml); // space-joined
+        Assert.Contains("#groupwrite\">ivo://cadc.nrc.ca/gms?TeamA</vos:property>", xml);
+        Assert.Contains("#ispublic\">false</vos:property>", xml); // cavern uses #ispublic (true/false), not #publicread
+    }
+
+    [Fact]
+    public void BuildSetAclNodeXml_NullDimensions_AreOmitted()
+    {
+        // CRITICAL: a null dimension emits NO property, so setNode leaves it untouched on the server.
+        var xml = VoSpaceParser.BuildSetAclNodeXml("vos://cadc.nrc.ca~arc/home/me/x", VoSpaceNodeType.DataNode, null, null, true);
+        Assert.DoesNotContain("#groupread", xml);
+        Assert.DoesNotContain("#groupwrite", xml);
+        Assert.Contains("#ispublic\">true</vos:property>", xml);
+        Assert.Contains("xsi:type=\"vos:DataNode\"", xml); // echoes the node's real type
+    }
+
+    [Fact]
+    public void BuildSetAclNodeXml_EmptyGroupList_EmitsEmptyProperty_ToRevoke()
+    {
+        // CRITICAL: an empty (but non-null) list emits an empty property = revoke all — NOT omitted.
+        // This is the explicit "do not touch" (null) vs "revoke" (empty) distinction.
+        var xml = VoSpaceParser.BuildSetAclNodeXml("vos://cadc.nrc.ca~arc/home/me/x", VoSpaceNodeType.Container,
+            System.Array.Empty<string>(), null, null);
+        Assert.Contains("#groupread\"></vos:property>", xml);
+        Assert.DoesNotContain("#groupwrite", xml);
+        Assert.DoesNotContain("#ispublic", xml);
+    }
+
+    [Fact]
+    public void BuildSetAclNodeXml_EscapesValues()
+    {
+        // An odd/hostile group string must be XML-escaped, never break the document or inject elements.
+        var xml = VoSpaceParser.BuildSetAclNodeXml("vos://cadc.nrc.ca~arc/home/me/x", VoSpaceNodeType.Container,
+            new[] { "ivo://x/gms?A&B<C" }, null, null);
+        System.Xml.Linq.XDocument.Parse(xml); // still well-formed
+        Assert.Contains("A&amp;B&lt;C", xml);
+        Assert.DoesNotContain("A&B<C", xml);
+    }
+
+    [Theory]
+    [InlineData("vos:ContainerNode", VoSpaceNodeType.Container)]
+    [InlineData("vos:DataNode", VoSpaceNodeType.DataNode)]
+    [InlineData("vos:LinkNode", VoSpaceNodeType.LinkNode)]
+    public void ParseRootNodeType_ReadsXsiType(string xsiType, VoSpaceNodeType expected)
+    {
+        var xml = $"""<vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uri="vos://x" xsi:type="{xsiType}"/>""";
+        Assert.Equal(expected, VoSpaceParser.ParseRootNodeType(xml));
+    }
+
+    [Fact]
+    public void ParseRootNodeType_Garbage_DefaultsToContainer()
+        => Assert.Equal(VoSpaceNodeType.Container, VoSpaceParser.ParseRootNodeType("not xml at all <<<"));
+
     [Fact]
     public void ExtractPath_FullUri_ExtractsRelativePath()
     {

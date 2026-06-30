@@ -104,6 +104,36 @@ public class StorageService : IStorageService
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task SetNodeAclAsync(string remotePath, IReadOnlyList<string>? groupRead, IReadOnlyList<string>? groupWrite, bool? isPublic, CancellationToken cancellationToken = default)
+    {
+        var cleanPath = (remotePath ?? string.Empty).Trim('/');
+        if (cleanPath.Length == 0) throw new ArgumentException("remotePath is required", nameof(remotePath));
+
+        var nodeUrl = _endpoints.StorageNodeUrl(cleanPath);
+
+        // setNode echoes the node's existing type (it cannot change it), so GET the node first (detail=min
+        // — just the type, not a container's children) to send the correct ContainerNode/DataNode. This
+        // GET also confirms the node exists before we mutate its sharing.
+        VoSpaceNodeType nodeType;
+        using (var getReq = new HttpRequestMessage(HttpMethod.Get, nodeUrl + "?detail=min"))
+        {
+            getReq.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/xml"));
+            using var getResp = await _httpClient.SendAsync(getReq, cancellationToken);
+            getResp.EnsureSuccessStatusCode();
+            nodeType = VoSpaceParser.ParseRootNodeType(await getResp.Content.ReadAsStringAsync(cancellationToken));
+        }
+
+        var nodeUri = _endpoints.VoSpaceNodeUri(cleanPath);
+        var xml = VoSpaceParser.BuildSetAclNodeXml(nodeUri, nodeType, groupRead, groupWrite, isPublic);
+        using var content = new StringContent(xml, System.Text.Encoding.UTF8, "text/xml");
+
+        // setNode is an HTTP POST (UpdateNodeAction), NOT the PUT that CreateFolder uses (CreateNodeAction).
+        using var response = await _httpClient.PostAsync(nodeUrl, content, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            CanfarDesktop.Helpers.CrashLogger.Info($"[Storage] SETACL(node) POST {nodeUrl} -> {(int)response.StatusCode} {response.ReasonPhrase}");
+        response.EnsureSuccessStatusCode();
+    }
+
     private static StorageQuota? ParseVoSpaceXml(string xml)
     {
         try

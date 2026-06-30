@@ -213,6 +213,7 @@ public static class McpToolCatalog
             new UploadTextToVoSpaceTool(),
             new UploadFileToVoSpaceTool(),
             new CreateVoSpaceFolderTool(),
+            new SetVoSpaceAclTool(),
             new DeleteVoSpaceNodeTool(),
 
             // AI Guide management: let the agent re-tune its own tool surface — list/add/update/delete
@@ -292,6 +293,7 @@ public static class McpToolCatalog
                 await storage.UploadFileAsync(p.VospacePath, fs, p.ContentType);
             }),
             new CreateVoSpaceFolderApplier(p => storage.CreateFolderAsync(p.Path, p.Name)),
+            new SetVoSpaceAclApplier(p => storage.SetNodeAclAsync(p.Path, p.GroupRead, p.GroupWrite, p.IsPublic)),
             new DeleteVoSpaceNodeApplier(p => storage.DeleteNodeAsync(p.Path)),
 
             new DiscoverImagePackagesApplier(p => p.Force

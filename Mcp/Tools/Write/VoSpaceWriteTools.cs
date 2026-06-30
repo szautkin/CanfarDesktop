@@ -16,6 +16,9 @@ public sealed record UploadTextPayload(string Path, string Content, string? Cont
 public sealed record UploadFilePayload(string LocalPath, string VospacePath, string? ContentType);
 public sealed record CreateFolderPayload(string Path, string Name);
 public sealed record DeleteNodePayload(string Path);
+// null dimension = leave unchanged; provided (even empty) = replace. Preserves the "do not touch" vs
+// "revoke" distinction that VOSpace setNode's merge-by-property semantics require (see SetVoSpaceAclTool).
+public sealed record SetAclPayload(string Path, IReadOnlyList<string>? GroupRead, IReadOnlyList<string>? GroupWrite, bool? IsPublic);
 
 /// <summary><c>upload_text_to_vospace</c> — propose writing a text blob (script/config) to a VOSpace path. SemanticWrite.</summary>
 public sealed class UploadTextToVoSpaceTool : JsonWriteTool<UploadTextToVoSpaceTool.Args>
@@ -75,6 +78,50 @@ public sealed class CreateVoSpaceFolderTool : JsonWriteTool<CreateVoSpaceFolderT
     {
         public string? Path { get; init; }
         public string? Name { get; init; }
+    }
+}
+
+/// <summary><c>set_vospace_acl</c> — propose changing a node's sharing (group read/write + public). SemanticWrite.</summary>
+public sealed class SetVoSpaceAclTool : JsonWriteTool<SetVoSpaceAclTool.Args>
+{
+    public override McpVerbClass VerbClass => McpVerbClass.SemanticWrite;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "set_vospace_acl",
+        "Propose changing WHO can access a VOSpace/ARC node (its sharing). Each dimension is independent and " +
+        "REPLACES the whole list: OMIT a field to leave it unchanged, pass [] to revoke all groups in that " +
+        "dimension, or pass full GMS group URIs (ivo://cadc.nrc.ca/gms?Group) to set them. isPublic toggles " +
+        "world-readability. To ADD or REMOVE one group you must re-send the full desired list (read the " +
+        "current groups from list_vospace_path first). Queues a proposal showing the exact resulting ACL for " +
+        "the user to apply.",
+        """{"type":"object","properties":{"path":{"type":"string","description":"VOSpace/ARC node path: \"<username>/sub\" (home) or \"projects/<group>/sub\" (shared project)"},"groupRead":{"type":"array","items":{"type":"string"},"description":"Full GMS group URIs granted READ. OMIT = unchanged; [] = revoke all read groups. REPLACES the whole read list."},"groupWrite":{"type":"array","items":{"type":"string"},"description":"Full GMS group URIs granted WRITE. OMIT = unchanged; [] = revoke all write groups. REPLACES the whole write list."},"isPublic":{"type":"boolean","description":"true = world-readable, false = not public. OMIT to leave unchanged."}},"required":["path"],"additionalProperties":false}""");
+
+    protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var path = (args.Path ?? string.Empty).Trim();
+        if (path.Length == 0) throw new McpToolException(new InvalidArgument("path is required"));
+
+        // Build an explicit, complete summary of the resulting ACL — this is what the user reviews before
+        // applying a change that could expose data, so it must say exactly what each dimension becomes.
+        var parts = new List<string>();
+        if (args.GroupRead is not null)
+            parts.Add(args.GroupRead.Count == 0 ? "read: revoke all groups" : $"read: {string.Join(", ", args.GroupRead)}");
+        if (args.GroupWrite is not null)
+            parts.Add(args.GroupWrite.Count == 0 ? "write: revoke all groups" : $"write: {string.Join(", ", args.GroupWrite)}");
+        if (args.IsPublic is bool p) parts.Add($"public: {(p ? "yes (world-readable)" : "no")}");
+        if (parts.Count == 0)
+            throw new McpToolException(new InvalidArgument("specify at least one of groupRead, groupWrite, or isPublic to change"));
+
+        var payload = new SetAclPayload(path, args.GroupRead, args.GroupWrite, args.IsPublic);
+        return Task.FromResult(ProposalPlan.Encoding("set_vospace_acl", $"Set ACL on {path} → {string.Join("; ", parts)}", payload));
+    }
+
+    public sealed record Args
+    {
+        public string? Path { get; init; }
+        public IReadOnlyList<string>? GroupRead { get; init; }
+        public IReadOnlyList<string>? GroupWrite { get; init; }
+        public bool? IsPublic { get; init; }
     }
 }
 
@@ -231,4 +278,13 @@ public sealed class DeleteVoSpaceNodeApplier : IProposalApplier
     public string Kind => "delete_vospace_node";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
         => _delete(ProposalPayload.Decode<DeleteNodePayload>(proposal));
+}
+
+public sealed class SetVoSpaceAclApplier : IProposalApplier
+{
+    private readonly Func<SetAclPayload, Task> _set;
+    public SetVoSpaceAclApplier(Func<SetAclPayload, Task> set) => _set = set;
+    public string Kind => "set_vospace_acl";
+    public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
+        => _set(ProposalPayload.Decode<SetAclPayload>(proposal));
 }

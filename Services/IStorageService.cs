@@ -10,4 +10,11 @@ public interface IStorageService
     Task<Stream> DownloadFileAsync(string remotePath, CancellationToken cancellationToken = default);
     Task CreateFolderAsync(string remotePath, string folderName, CancellationToken cancellationToken = default);
     Task DeleteNodeAsync(string remotePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Set a node's access-control list (VOSpace setNode). Each dimension is independent: pass
+    /// <c>null</c> to leave it unchanged, an empty list to revoke all of that group dimension, or a
+    /// (full GMS-URI) list to REPLACE it; <paramref name="isPublic"/> = false makes the node non-public.
+    /// </summary>
+    Task SetNodeAclAsync(string remotePath, IReadOnlyList<string>? groupRead, IReadOnlyList<string>? groupWrite, bool? isPublic, CancellationToken cancellationToken = default);
 }

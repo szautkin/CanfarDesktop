@@ -42,6 +42,7 @@ public class ExportServiceTests
         public Task<List<VoSpaceNode>> ListNodesAsync(string path, int? limit = null, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<Stream> DownloadFileAsync(string remotePath, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task DeleteNodeAsync(string remotePath, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task SetNodeAclAsync(string remotePath, IReadOnlyList<string>? groupRead, IReadOnlyList<string>? groupWrite, bool? isPublic, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     private static string TempDir()
