@@ -20,6 +20,11 @@ public class VoSpaceNode
     public DateTime? LastModified { get; set; }
     public bool IsPublic { get; set; }
 
+    // Access control (SCI-12-2): the VOSpace #groupread / #groupwrite GMS group identifiers granting
+    // read / write to this node (raw "ivo://cadc.nrc.ca/gms?Group" URIs). Empty when none are set.
+    public IReadOnlyList<string> GroupRead { get; set; } = [];
+    public IReadOnlyList<string> GroupWrite { get; set; } = [];
+
     public bool IsContainer => Type == VoSpaceNodeType.Container;
 
     public string FormattedSize => SizeBytes switch

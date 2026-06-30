@@ -102,6 +102,40 @@ public class VoSpaceParserTests
     }
 
     [Fact]
+    public void ParseNodeList_ParsesGroupAclsAndPublicRead()
+    {
+        // SCI-12-2: surface sharing — #groupread / #groupwrite GMS groups + the standard #publicread.
+        const string xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      uri="vos://cadc.nrc.ca~arc/projects/team" xsi:type="vos:ContainerNode">
+              <vos:nodes>
+                <vos:node uri="vos://cadc.nrc.ca~arc/projects/team/shared.fits" xsi:type="vos:DataNode">
+                  <vos:properties>
+                    <vos:property uri="ivo://ivoa.net/vospace/core#publicread">true</vos:property>
+                    <vos:property uri="ivo://ivoa.net/vospace/core#groupread">ivo://cadc.nrc.ca/gms?TeamA ivo://cadc.nrc.ca/gms?TeamB</vos:property>
+                    <vos:property uri="ivo://ivoa.net/vospace/core#groupwrite">ivo://cadc.nrc.ca/gms?TeamA</vos:property>
+                  </vos:properties>
+                </vos:node>
+              </vos:nodes>
+            </vos:node>
+            """;
+        var node = Assert.Single(VoSpaceParser.ParseNodeList(xml));
+        Assert.True(node.IsPublic); // #publicread recognized, not only #ispublic
+        Assert.Equal(new[] { "ivo://cadc.nrc.ca/gms?TeamA", "ivo://cadc.nrc.ca/gms?TeamB" }, node.GroupRead);
+        Assert.Equal(new[] { "ivo://cadc.nrc.ca/gms?TeamA" }, node.GroupWrite);
+    }
+
+    [Fact]
+    public void ParseNodeList_NoAcls_EmptyGroupLists()
+    {
+        var node = Assert.Single(VoSpaceParser.ParseNodeList(SampleXml).Where(n => n.Name == "results.fits"));
+        Assert.Empty(node.GroupRead);
+        Assert.Empty(node.GroupWrite);
+    }
+
+    [Fact]
     public void ExtractPath_FullUri_ExtractsRelativePath()
     {
         Assert.Equal("folder/file.fits", VoSpaceParser.ExtractPath("vos://cadc.nrc.ca~arc/home/user/folder/file.fits"));

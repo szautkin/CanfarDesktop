@@ -86,13 +86,22 @@ public static class VoSpaceParser
                     node.LastModified = dt;
                 else if (propUri.EndsWith("#type"))
                     node.ContentType = value;
-                else if (propUri.EndsWith("#ispublic"))
+                else if (propUri.EndsWith("#ispublic") || propUri.EndsWith("#publicread"))
                     node.IsPublic = value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                else if (propUri.EndsWith("#groupread"))
+                    node.GroupRead = SplitGroups(value);
+                else if (propUri.EndsWith("#groupwrite"))
+                    node.GroupWrite = SplitGroups(value);
             }
         }
 
         return node;
     }
+
+    /// <summary>Whitespace-separated GMS group identifiers from a #groupread/#groupwrite property.</summary>
+    private static readonly char[] GroupSeparators = { ' ', '\t', '\n', '\r' };
+    private static IReadOnlyList<string> SplitGroups(string value) =>
+        string.IsNullOrWhiteSpace(value) ? [] : value.Split(GroupSeparators, StringSplitOptions.RemoveEmptyEntries);
 
     /// <summary>VOSpace roots that own a path: personal (<c>/home/&lt;user&gt;</c>) and group
     /// (<c>/projects/&lt;group&gt;</c>) trees on the ARC node service.</summary>

@@ -5,11 +5,15 @@ using CanfarDesktop.Models.Fits;
 
 namespace CanfarDesktop.Mcp.Tools.Read;
 
-/// <summary>Compact view of a VOSpace/ARC node for MCP output.</summary>
-public sealed record VoSpaceNodeSummary(string Name, string Path, string Type, long? SizeBytes, string? ContentType, DateTime? LastModified)
+/// <summary>Compact view of a VOSpace/ARC node for MCP output. ACL fields (SCI-12-2) surface sharing:
+/// <c>isPublic</c> = world-readable; <c>groupRead</c>/<c>groupWrite</c> = GMS groups granted access.</summary>
+public sealed record VoSpaceNodeSummary(
+    string Name, string Path, string Type, long? SizeBytes, string? ContentType, DateTime? LastModified,
+    bool IsPublic, IReadOnlyList<string> GroupRead, IReadOnlyList<string> GroupWrite)
 {
     public static VoSpaceNodeSummary From(VoSpaceNode n) =>
-        new(n.Name, n.Path, n.Type.ToString(), n.SizeBytes, n.ContentType, n.LastModified);
+        new(n.Name, n.Path, n.Type.ToString(), n.SizeBytes, n.ContentType, n.LastModified,
+            n.IsPublic, n.GroupRead, n.GroupWrite);
 }
 
 /// <summary><c>list_vospace_path</c> — children of a VOSpace/ARC container path.</summary>
