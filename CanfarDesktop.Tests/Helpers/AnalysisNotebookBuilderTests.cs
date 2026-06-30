@@ -42,6 +42,17 @@ public class AnalysisNotebookBuilderTests
     }
 
     [Fact]
+    public void Build_EmbedsWindowsPath_AsForwardSlashRawString()
+    {
+        // The local path is interpolated into Python source. A Windows "C:\Users\..." path with raw
+        // backslashes is a syntax error there (\U, \j escapes), so the builder must forward-slash it
+        // AND wrap it in a raw-string literal. Lock both — a regression on either breaks every notebook.
+        var loadCell = AnalysisNotebookBuilder.Build(Obs(), "image").Cells[1].SourceText;
+        Assert.Contains("path = r'C:/Users/me/Downloads/Verbinal/jw01.fits'", loadCell);
+        Assert.DoesNotContain("\\", loadCell); // no backslash survived into the Python source
+    }
+
+    [Fact]
     public void Build_CubeTemplate_UsesSpectralCube()
     {
         var all = string.Join("\n", AnalysisNotebookBuilder.Build(Obs(), "cube").Cells.Select(c => c.SourceText));
