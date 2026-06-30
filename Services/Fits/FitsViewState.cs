@@ -24,7 +24,8 @@ public sealed record FitsPixelResult(
     double Value,
     bool HasWcs,
     double Ra,             // degrees (0 if no WCS)
-    double Dec);
+    double Dec,
+    string? Unit = null);  // BUNIT (physical unit of Value), omitted when the FITS has no BUNIT
 
 /// <summary>Result of fits_goto_coordinate: whether the viewport was moved to the RA/Dec.</summary>
 public sealed record FitsGotoOutcome(bool Moved, double Ra, double Dec, string? Message);

@@ -12,4 +12,6 @@ public class FitsImageData
     public float Min { get; init; }
     public float Max { get; init; }
     public WcsInfo? Wcs { get; init; }
+    /// <summary>The BUNIT header value (physical unit of the pixel values), null when absent.</summary>
+    public string? Unit { get; init; }
 }

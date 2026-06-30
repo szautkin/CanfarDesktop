@@ -219,6 +219,7 @@ public static class FitsParser
             Min = min,
             Max = max,
             Wcs = WcsInfo.FromHeader(header),
+            Unit = header.GetString("BUNIT")?.Trim(),
         };
     }
 

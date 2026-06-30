@@ -92,6 +92,10 @@ public static class ResearchExportBuilder
             md.Append($"- **Coordinates:** RA {obs.RA}, Dec {obs.Dec}\n");
         if (!string.IsNullOrEmpty(obs.StartDate))
             md.Append($"- **Start date:** {obs.StartDate}\n");
+        if (!string.IsNullOrEmpty(obs.CalLevel))
+            md.Append($"- **Calibration level:** {obs.CalLevel}\n");
+        if (!string.IsNullOrEmpty(obs.DataRelease))
+            md.Append($"- **Data release:** {obs.DataRelease}\n");
         md.Append($"- **Downloaded:** {Iso(obs.DownloadedAt)}\n");
         if (note.Rating > 0)
             md.Append($"- **Quality:** {Stars(note.Rating)} ({QualityLabel(note.Rating)})\n");

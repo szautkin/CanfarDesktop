@@ -77,6 +77,9 @@ public sealed partial class CubeViewerPage
         }
         finally
         {
+            // Undo the export pull-back so the live view doesn't stay zoomed out after an export/playback
+            // (QA Minor-3: camera drifted az/el/dist with autoOrbit off). Restore from the ViewModel truth.
+            _renderer.CameraDistance = ViewModel.CameraDistance;
             _freezeRenderLoop = false;
         }
     }

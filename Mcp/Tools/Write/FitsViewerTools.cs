@@ -74,7 +74,8 @@ public sealed class ProbeFitsPixelTool : JsonReadTool<ProbeFitsPixelTool.Args, F
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "probe_fits_pixel",
         "Read the pixel value and sky coordinate (RA/Dec, if the FITS has WCS) at a 0-based display pixel " +
-        "(x, y) of the active FITS tab — (0,0) is the top-left. Returns null if no FITS is loaded or (x,y) is " +
+        "(x, y) of the active FITS tab — (0,0) is the top-left. The value carries its physical unit in " +
+        "`unit` (the FITS BUNIT) when the header has one. Returns null if no FITS is loaded or (x,y) is " +
         "out of range.",
         """{"type":"object","properties":{"x":{"type":"integer","minimum":0},"y":{"type":"integer","minimum":0}},"required":["x","y"],"additionalProperties":false}""");
 

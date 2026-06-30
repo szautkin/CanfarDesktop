@@ -17,6 +17,7 @@ public class DownloadedObservation
     public string Dec { get; set; } = string.Empty;
     public string StartDate { get; set; } = string.Empty;
     public string CalLevel { get; set; } = string.Empty;
+    public string DataRelease { get; set; } = string.Empty;
     public string LocalPath { get; set; } = string.Empty;
     public long? FileSize { get; set; }
     public DateTime DownloadedAt { get; set; } = DateTime.UtcNow;
@@ -59,6 +60,7 @@ public class DownloadedObservation
             Dec = SafeGet("dec(j20000)"),
             StartDate = SafeGet("startdate"),
             CalLevel = SafeGet("callev"),
+            DataRelease = SafeGet("datarelease"),
             LocalPath = localPath ?? string.Empty,
             ThumbnailURL = dataLink?.Thumbnails.FirstOrDefault(),
             PreviewURL = dataLink?.Previews.FirstOrDefault()

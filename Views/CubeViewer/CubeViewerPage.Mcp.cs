@@ -15,7 +15,10 @@ public sealed partial class CubeViewerPage
     /// <summary>A consistent snapshot of the loaded cube + display state.</summary>
     public CubeViewState GetCubeState()
     {
-        int nz = _meta?.Nz ?? _volume?.Nz ?? 0;
+        // Report the RENDERABLE channel count (a large cube is downsampled to fit the GPU cap), not the
+        // header NAXIS3 — so the reported nz matches the channel slider's max and the spectral axis maps
+        // 1:1 to the data planes the viewer scrubs (QA/SCI-4: header said 1936 but only ~242 render).
+        int nz = _volume?.Nz ?? _meta?.Nz ?? 0;
         string spec = (_meta is not null && _meta.Wcs.HasSpectral)
             ? (_meta.Wcs.SpecText(ViewModel.Channel) + " " + _meta.Wcs.SpecUnitDisplay()).Trim()
             : "";

@@ -74,6 +74,18 @@ public class DownloadedObservationTests
     }
 
     [Fact]
+    public void FromSearchResult_ExtractsDataReleaseAndCalLevel()
+    {
+        var row = new SearchResultRow { Values = { ["Data Release"] = "2025-06-01", ["Cal. Lev."] = "2" } };
+        string Header(string k) => k switch { "datarelease" => "Data Release", "callev" => "Cal. Lev.", _ => k };
+
+        var obs = DownloadedObservation.FromSearchResult(row, "/p", null, Header);
+
+        Assert.Equal("2025-06-01", obs.DataRelease); // now frozen into the export bundle for reproducibility
+        Assert.Equal("2", obs.CalLevel);
+    }
+
+    [Fact]
     public void FromSearchResult_NullDataLink_NoUrls()
     {
         var row = new SearchResultRow();

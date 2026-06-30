@@ -761,9 +761,9 @@ public sealed partial class FitsTabHost : UserControl
         if (img.Wcs is { IsValid: true } wcs)
         {
             var (ra, dec) = wcs.PixelToWorld(x + 1, fitsY + 1); // FITS pixels are 1-based
-            return new FitsPixelResult(x, y, value, true, ra, dec);
+            return new FitsPixelResult(x, y, value, true, ra, dec, img.Unit);
         }
-        return new FitsPixelResult(x, y, value, false, 0, 0);
+        return new FitsPixelResult(x, y, value, false, 0, 0, img.Unit);
     }
 
     /// <summary>Center the active viewport on an RA/Dec (degrees) and place the crosshair there.</summary>
