@@ -137,7 +137,13 @@ public sealed partial class CubeViewerPage
             axis[z] = hasSpec ? _meta!.Wcs.SpectralValue(z) : z;
             fl[z] = flux[z];
         }
+        var w = _meta?.Wcs;
         return new CubeSpectrumResult(x, y, axis, fl, _meta?.Bunit ?? "",
-            hasSpec ? _meta!.Wcs.SpecUnitDisplay() : "channel");
+            hasSpec ? w!.SpecUnitDisplay() : "channel",
+            SpectralFrame: string.IsNullOrEmpty(w?.SpectralFrame) ? null : w!.SpectralFrame,
+            RestFrequencyGHz: w?.RestFrequencyGHz,
+            BeamMajorArcsec: w?.BeamMajorDeg is double bmaj ? bmaj * 3600.0 : null,
+            BeamMinorArcsec: w?.BeamMinorDeg is double bmin ? bmin * 3600.0 : null,
+            BeamPaDeg: w?.BeamPaDeg);
     }
 }

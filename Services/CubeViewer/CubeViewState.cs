@@ -39,4 +39,10 @@ public sealed record CubeSpectrumResult(
     double[] SpectralAxis,  // spectral world value per channel (or channel index if no WCS)
     double[] Flux,          // physical flux per channel
     string FluxUnit,
-    string SpectralUnit);
+    string SpectralUnit,
+    // Spectral conventions — surfaced (not converted) so kinematics are done correctly downstream.
+    string? SpectralFrame = null,     // SPECSYS (LSRK/barycentric/topocentric) — REQUIRED to read a velocity axis
+    double? RestFrequencyGHz = null,  // for frequency↔velocity conversion at the line rest frequency
+    double? BeamMajorArcsec = null,   // synthesized beam (for K↔Jy/beam + flux integration)
+    double? BeamMinorArcsec = null,
+    double? BeamPaDeg = null);

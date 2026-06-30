@@ -30,6 +30,21 @@ public sealed class CubeWcs
     public double SpecCrval { get; init; }
     public double SpecCdelt { get; init; }
 
+    // ── Spectral conventions (mandatory metadata for line kinematics; surfaced, not converted) ──
+    /// <summary>Rest frequency in Hz (RESTFRQ/RESTFREQ) for frequency↔velocity conversion; null if absent.</summary>
+    public double? RestFrequencyHz { get; init; }
+    /// <summary>Spectral reference frame (SPECSYS — LSRK/BARYCENT/TOPOCENT/…); without it a velocity axis is unusable.</summary>
+    public string SpectralFrame { get; init; } = "";
+    /// <summary>Observer frame (SSYSOBS), when stated.</summary>
+    public string ObserverFrame { get; init; } = "";
+    /// <summary>Synthesized beam (degrees): major/minor axis + position angle (BMAJ/BMIN/BPA), for flux integration.</summary>
+    public double? BeamMajorDeg { get; init; }
+    public double? BeamMinorDeg { get; init; }
+    public double? BeamPaDeg { get; init; }
+
+    /// <summary>Rest frequency in GHz, or null.</summary>
+    public double? RestFrequencyGHz => RestFrequencyHz.HasValue ? RestFrequencyHz.Value / 1e9 : null;
+
     public bool HasSpatial => Spatial.IsValid;
     public bool HasSpectral => SpecCdelt != 0 && Nz > 1;
 
@@ -61,8 +76,17 @@ public sealed class CubeWcs
             SpecCrpix = h.GetDouble("CRPIX3", 1.0),
             SpecCrval = h.GetDouble("CRVAL3"),
             SpecCdelt = cdelt3,
+            RestFrequencyHz = ReadOptional(h, "RESTFRQ") ?? ReadOptional(h, "RESTFREQ"),
+            SpectralFrame = (h.GetString("SPECSYS") ?? "").Trim(),
+            ObserverFrame = (h.GetString("SSYSOBS") ?? "").Trim(),
+            BeamMajorDeg = ReadOptional(h, "BMAJ"),
+            BeamMinorDeg = ReadOptional(h, "BMIN"),
+            BeamPaDeg = ReadOptional(h, "BPA"),
         };
     }
+
+    /// <summary>A header keyword as a double, or null when the keyword is absent.</summary>
+    private static double? ReadOptional(FitsHeader h, string key) => h.Contains(key) ? h.GetDouble(key) : null;
 
     // ── Spatial endpoint formatting (1-based FITS pixel coords) ──
 

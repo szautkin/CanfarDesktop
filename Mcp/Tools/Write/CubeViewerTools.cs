@@ -174,7 +174,11 @@ public sealed class ProbeCubeSpectrumTool : JsonReadTool<ProbeCubeSpectrumTool.A
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "probe_cube_spectrum",
         "Extract the spectrum (flux per channel, with the spectral-axis world value per channel) at a " +
-        "0-based spatial pixel (x, y) of the loaded cube. Returns null if no cube is loaded or (x,y) is out of range.",
+        "0-based spatial pixel (x, y) of the loaded cube. Also returns the spectral conventions when the " +
+        "header has them — `spectralFrame` (SPECSYS, e.g. LSRK; REQUIRED to interpret velocities), " +
+        "`restFrequencyGHz` (for frequency↔velocity), and the synthesized beam (`beamMajorArcsec`/" +
+        "`beamMinorArcsec`/`beamPaDeg`, for K↔Jy/beam + flux integration). Returns null if no cube is " +
+        "loaded or (x,y) is out of range.",
         """{"type":"object","properties":{"x":{"type":"integer","minimum":0},"y":{"type":"integer","minimum":0}},"required":["x","y"],"additionalProperties":false}""");
 
     protected override Task<CubeSpectrumResult?> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
