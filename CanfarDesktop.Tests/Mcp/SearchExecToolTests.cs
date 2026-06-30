@@ -111,7 +111,7 @@ public class SearchExecToolTests
         var columns = ((JsonArray)data["columns"]!).Items.Select(Str).ToList();
         Assert.Equal(new[] { "observationID", "collection" }, columns);
         Assert.Equal(2, Int(data["returnedRows"]));
-        Assert.Equal(2, Int(data["totalRows"]));
+        Assert.False(((JsonBool)data["truncated"]!).Value); // 2 rows, well under the cap
 
         var firstRow = ((JsonArray)((JsonArray)data["rows"]!).Items[0]).Items.Select(Str).ToList();
         Assert.Equal(new[] { "obs0", "CFHT" }, firstRow);
@@ -182,14 +182,16 @@ public class SearchExecToolTests
 
         await tool.InvokeAsync(JsonValue.Parse("""{"adql":"SELECT 1","maxRows":99999}"""), Ctx, default);
 
-        Assert.Equal(SearchObservationsTool.MaxRowsCap, capturedMax);
-        Assert.Equal(1000, capturedMax);
+        // Rows are capped at 1000; the backend is asked for cap+1 (over-fetch one row to detect truncation).
+        Assert.Equal(SearchObservationsTool.MaxRowsCap + 1, capturedMax);
+        Assert.Equal(1001, capturedMax);
     }
 
     [Fact]
-    public async Task SearchObservations_TrimsReturnedRowsToCap_ButReportsTotal()
+    public async Task SearchObservations_TrimsToCap_AndFlagsTruncated()
     {
-        // Backend returns more rows than maxRows; output is capped but totalRows reflects the full set.
+        // Backend returns more than maxRows → output is capped AND truncated is set, so the caller knows
+        // the sample is incomplete (the silent-truncation trap a survey scientist would otherwise hit).
         var tool = new SearchObservationsTool(
             (_, _, _) => Task.FromResult(SampleResults(5)),
             (_, _, _) => Task.FromResult<ResolverResult?>(null));
@@ -197,7 +199,7 @@ public class SearchExecToolTests
         var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"adql":"SELECT 1","maxRows":3}"""), Ctx, default));
 
         Assert.Equal(3, Int(data["returnedRows"]));
-        Assert.Equal(5, Int(data["totalRows"]));
+        Assert.True(((JsonBool)data["truncated"]!).Value);
         Assert.Equal(3, ((JsonArray)data["rows"]!).Items.Count);
     }
 }

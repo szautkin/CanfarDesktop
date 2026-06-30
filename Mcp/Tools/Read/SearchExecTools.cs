@@ -77,9 +77,11 @@ public sealed class SearchObservationsTool : JsonReadTool<SearchObservationsTool
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "search_observations",
         "Search CADC observations. Provide either an explicit ADQL query, or a spatial cone " +
-        "(target name OR ra+dec in degrees, with an optional radius in degrees). Returns column names, " +
-        "a capped set of rows (max 1000), and the total row count. Pass the returned `publisher_id` " +
-        "column verbatim to get_observation_caom2, get_data_links, or download_observation.",
+        "(target name OR ra+dec in degrees, with an optional radius in degrees). Returns column names and " +
+        "a capped set of rows (max 1000). **If `truncated` is true, the result hit the row cap and MORE " +
+        "rows match** — your sample is INCOMPLETE; refine the query (tighter ADQL / smaller cone / add " +
+        "filters) or you'll silently work with a partial set. Pass the returned `publisher_id` column " +
+        "verbatim to get_observation_caom2, get_data_links, or download_observation.",
         """
         {"type":"object","properties":{
           "adql":{"type":"string","description":"Explicit ADQL query. If set, the spatial fields are ignored."},
@@ -95,16 +97,22 @@ public sealed class SearchObservationsTool : JsonReadTool<SearchObservationsTool
     {
         var maxRows = args.MaxRows is > 0 ? Math.Min(args.MaxRows.Value, MaxRowsCap) : MaxRowsCap;
 
-        var adql = await BuildAdqlAsync(args, maxRows, ct);
+        // Over-fetch ONE row past the cap so we can tell whether the result was truncated. TAP returns CSV
+        // (no VOTable OVERFLOW flag), and the previous totalRows = rows.Count silently reported the capped
+        // value as the "total" — a survey scientist would build a sample missing data they don't know is
+        // missing. If the backend gives back more than maxRows, MORE rows match and we set truncated=true.
+        var probe = maxRows + 1;
+        var adql = await BuildAdqlAsync(args, probe, ct);
 
-        var results = await _execute(adql, maxRows, ct);
+        var results = await _execute(adql, probe, ct);
 
+        var truncated = results.Rows.Count > maxRows;
         var rows = results.Rows
             .Take(maxRows)
             .Select(r => results.Columns.Select(col => r.Get(col)).ToArray() as IReadOnlyList<string>)
             .ToList();
 
-        return new Output(adql, results.Columns, rows.Count, results.TotalRows, rows);
+        return new Output(adql, results.Columns, rows.Count, truncated, rows);
     }
 
     private async Task<string> BuildAdqlAsync(Args args, int maxRows, CancellationToken ct)
@@ -170,12 +178,13 @@ public sealed class SearchObservationsTool : JsonReadTool<SearchObservationsTool
 
     /// <summary>
     /// Compact result: the ADQL actually run, the column names, the count of rows returned (after the
-    /// cap), the total rows the backend produced, and the row cells aligned to <see cref="Columns"/>.
+    /// cap), whether the result was truncated at the cap (more rows match — refine or page), and the row
+    /// cells aligned to <see cref="Columns"/>.
     /// </summary>
     public sealed record Output(
         string Adql,
         IReadOnlyList<string> Columns,
         int ReturnedRows,
-        int TotalRows,
+        bool Truncated,
         IReadOnlyList<IReadOnlyList<string>> Rows);
 }
