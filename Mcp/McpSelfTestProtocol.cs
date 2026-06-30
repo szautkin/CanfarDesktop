@@ -16,8 +16,9 @@ public sealed record McpSelfTestResult(bool Reachable, int? ToolCount, string? S
 /// </summary>
 public static class McpSelfTestProtocol
 {
-    public const string InitializeParams =
-        """{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"verbinal-selftest","version":"1.0"}}""";
+    public static readonly string InitializeParams =
+        "{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\""
+        + McpConstants.SelfTestClientName + "\",\"version\":\"1.0\"}}";
 
     /// <summary>A JSON-RPC request document (with an id) for the given method + raw params JSON.</summary>
     public static byte[] BuildRequest(int id, string method, string paramsJson) =>

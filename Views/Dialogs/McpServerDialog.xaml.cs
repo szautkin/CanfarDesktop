@@ -17,6 +17,7 @@ public sealed partial class McpServerDialog : ContentDialog
 {
     private readonly McpHost _host;
     private readonly McpSettingsService _settings;
+    private readonly McpClientApprovalStore _approval;
     // Target the config Claude Desktop actually reads (its Store container or a traditional install),
     // resolved on the real un-redirected AppData — never our own sandboxed copy.
     private readonly ClaudeConfigRepair _repair = new(ClaudeConfigLocator.Resolve());
@@ -28,6 +29,7 @@ public sealed partial class McpServerDialog : ContentDialog
         InitializeComponent();
         _host = App.Services.GetRequiredService<McpHost>();
         _settings = App.Services.GetRequiredService<McpSettingsService>();
+        _approval = App.Services.GetRequiredService<McpClientApprovalStore>();
         _bridgeCommand = McpBridgeLocator.Resolve();
 
         _suppressToggle = true;
@@ -35,11 +37,13 @@ public sealed partial class McpServerDialog : ContentDialog
         AutoApplyToggle.IsOn = _settings.AutoApplyEnabled;
         FollowActivityToggle.IsOn = _settings.FollowAgentActivityEnabled;
         ShowAiGuideToggle.IsOn = _settings.ShowAiGuideTile;
+        RequireApprovalToggle.IsOn = _approval.RequireApproval;
         _suppressToggle = false;
 
         RefreshStatus();
         InitConnectSection();
         LoadActivity();
+        LoadClients();
     }
 
     public static Task ShowAsync(XamlRoot root)
@@ -70,6 +74,43 @@ public sealed partial class McpServerDialog : ContentDialog
         var rows = _host.Activity.Recent(25).Select(ActivityRow.From).ToList();
         ActivityList.ItemsSource = rows;
         NoActivityText.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnRequireApprovalToggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressToggle) return;
+        _approval.RequireApproval = RequireApprovalToggle.IsOn;
+    }
+
+    private void LoadClients()
+    {
+        var rows = _approval.SeenClients().Select(c => ClientRow.From(c, _approval.IsApproved(c.ClientId))).ToList();
+        ClientsList.ItemsSource = rows;
+        NoClientsText.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnClientActionClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string clientId } || string.IsNullOrEmpty(clientId)) return;
+        if (_approval.IsApproved(clientId)) _approval.Revoke(clientId);
+        else _approval.Approve(clientId);
+        LoadClients();
+    }
+
+    /// <summary>Display row for one connected client.</summary>
+    public sealed class ClientRow
+    {
+        public string ClientId { get; init; } = string.Empty;
+        public string Subtitle { get; init; } = string.Empty;
+        public string ActionLabel { get; init; } = "Approve";
+
+        public static ClientRow From(McpSeenClient c, bool approved) => new()
+        {
+            ClientId = c.ClientId,
+            Subtitle = $"{c.ConnectCount} connection{(c.ConnectCount == 1 ? "" : "s")} · last {c.LastSeen.ToLocalTime():t}"
+                       + (approved ? " · approved" : ""),
+            ActionLabel = approved ? "Revoke" : "Approve",
+        };
     }
 
     /// <summary>Display row for one agent-activity entry.</summary>

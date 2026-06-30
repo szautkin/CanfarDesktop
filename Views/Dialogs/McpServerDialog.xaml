@@ -91,6 +91,34 @@
                 </Button>
             </Grid>
 
+            <TextBlock Text="Connected clients" Style="{StaticResource BodyStrongTextBlockStyle}" />
+            <ToggleSwitch x:Name="RequireApprovalToggle" Header="Require approval for new clients"
+                          OnContent="On" OffContent="Off" Toggled="OnRequireApprovalToggled" />
+            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       Text="When on, only approved clients may connect — others are refused until you approve them below. The connection identity is self-reported, so this is for visibility and revocation; the real boundary is that the server only listens on your private per-user pipe." />
+            <TextBlock x:Name="NoClientsText" Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="No clients have connected yet." />
+            <ItemsControl x:Name="ClientsList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="0,4" ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="{Binding ClientId}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Subtitle}" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="{Binding ActionLabel}" Tag="{Binding ClientId}"
+                                    Click="OnClientActionClick" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
             <TextBlock Text="Recent agent activity" Style="{StaticResource BodyStrongTextBlockStyle}" />
             <TextBlock x:Name="NoActivityText" Style="{StaticResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="No agent activity yet." />

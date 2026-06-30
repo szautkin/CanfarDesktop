@@ -172,6 +172,7 @@
     <Compile Include="..\Mcp\Transport\StreamTransport.cs" Link="Linked\Mcp\StreamTransport.cs" />
     <Compile Include="..\Mcp\Listener\McpPipeSddl.cs" Link="Linked\Mcp\McpPipeSddl.cs" />
     <Compile Include="..\Mcp\McpServerService.cs" Link="Linked\Mcp\McpServerService.cs" />
+    <Compile Include="..\Mcp\McpClientApprovalStore.cs" Link="Linked\Mcp\McpClientApprovalStore.cs" />
     <Compile Include="..\Mcp\Config\ClaudeConfigMerge.cs" Link="Linked\Mcp\ClaudeConfigMerge.cs" />
     <Compile Include="..\Mcp\Config\ClaudeConfigRepair.cs" Link="Linked\Mcp\ClaudeConfigRepair.cs" />
     <Compile Include="..\Helpers\PackagePaths.cs" Link="Linked\Mcp\PackagePaths.cs" />

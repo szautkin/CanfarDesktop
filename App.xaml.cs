@@ -211,6 +211,8 @@ public partial class App : Application
 
         // MCP server (in-app named-pipe MCP for Claude Desktop / claude mcp; opt-in, off by default)
         services.AddSingleton<CanfarDesktop.Mcp.McpSettingsService>();
+        // Per-client approval gate (records connecting clients; opt-in lockdown to an allow-list).
+        services.AddSingleton(_ => new CanfarDesktop.Mcp.McpClientApprovalStore(new CanfarDesktop.Mcp.LocalSettingsApprovalStorage()));
         services.AddSingleton<CanfarDesktop.Mcp.AppViewStateService>();
         // Auth'd, redirect-following client for server-side preview fetches (get_preview_image).
         services.AddHttpClient("McpPreviewFetch").AddHttpMessageHandler<AuthTokenHandler>();

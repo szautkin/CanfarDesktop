@@ -139,8 +139,12 @@ public sealed class McpHost : IAsyncDisposable
         // it — a packaged app's default AppData is sandboxed to its package container (PackagePaths).
         var sidecar = new McpSidecar(Path.Combine(PackagePaths.RealLocalAppData(), McpConstants.SidecarFolderName));
 
+        // The wired approval gate: records connecting clients and (when the user requires approval) admits
+        // only allow-listed ones. Shared across connections + the settings UI. Absent → allow-all fallback.
+        var approvalGate = _services.GetService<McpClientApprovalStore>();
+
         _listener = new McpListenerService(
-            () => new McpServerService(router, identity, proposals: proposals, budget: budget, aiGuide: aiGuideSnapshot),
+            () => new McpServerService(router, identity, gate: approvalGate, proposals: proposals, budget: budget, aiGuide: aiGuideSnapshot),
             sidecar: sidecar,
             log: CrashLogger.Info);
         _listener.Start(Guid.NewGuid());
