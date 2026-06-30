@@ -1015,6 +1015,11 @@ public sealed partial class MainWindow : Window
         await Views.Dialogs.ImageDiscoverySettingsDialog.ShowAsync(Content.XamlRoot);
     }
 
+    private async void OnAIComputeClick(object sender, RoutedEventArgs e)
+    {
+        await Views.Dialogs.AIComputeSettingsDialog.ShowAsync(Content.XamlRoot);
+    }
+
     #endregion
 
     #region About
