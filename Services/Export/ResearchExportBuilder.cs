@@ -96,6 +96,15 @@ public static class ResearchExportBuilder
             md.Append($"- **Calibration level:** {obs.CalLevel}\n");
         if (!string.IsNullOrEmpty(obs.DataRelease))
             md.Append($"- **Data release:** {obs.DataRelease}\n");
+        if (!string.IsNullOrEmpty(obs.ProposalId) || !string.IsNullOrEmpty(obs.ProposalTitle))
+        {
+            // CAOM2 has no per-observation DOI; the proposal is the citable handle (SCI-9-2).
+            var proposal = obs.ProposalId;
+            if (!string.IsNullOrEmpty(obs.ProposalTitle))
+                proposal = string.IsNullOrEmpty(proposal) ? obs.ProposalTitle : $"{proposal} — {obs.ProposalTitle}";
+            if (!string.IsNullOrEmpty(obs.ProposalPi)) proposal += $" (PI {obs.ProposalPi})";
+            md.Append($"- **Proposal (cite):** {proposal}\n");
+        }
         md.Append($"- **Downloaded:** {Iso(obs.DownloadedAt)}\n");
         if (note.Rating > 0)
             md.Append($"- **Quality:** {Stars(note.Rating)} ({QualityLabel(note.Rating)})\n");

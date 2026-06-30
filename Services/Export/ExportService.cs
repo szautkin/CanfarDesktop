@@ -216,9 +216,13 @@ public class ExportService
         sb.Append("originating collection/telescope of each observation. Each downloaded observation in the ");
         sb.Append("research module records its collection, instrument, calibration level, and data-release ");
         sb.Append("date — cite the collection's standard reference and include the retrieval date above.\n");
+        sb.Append("- **No per-observation DOI:** CADC's CAOM2 metadata does not assign a DOI or bibcode to ");
+        sb.Append("individual observations. The closest citable handle is the originating **proposal** ");
+        sb.Append("(id / PI / title), recorded per observation in `notes.md` where available. DOIs, when they ");
+        sb.Append("exist, are assigned at the collection level — see the CADC collection page below.\n");
         sb.Append("- **Reproducibility:** saved/recent searches keep the exact ADQL; re-running it against ");
-        sb.Append("CADC's TAP service reproduces the selection (note that name-resolver coordinates can drift ");
-        sb.Append("between services/epochs).\n");
+        sb.Append("CADC's TAP service reproduces the selection (name-resolver coordinates can drift between ");
+        sb.Append("services/epochs — `queries.md` freezes which resolver and epoch produced them).\n");
         sb.Append("- See https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/ for collection documentation and DOIs.\n\n");
 
         sb.Append("## Privacy note\n\n");

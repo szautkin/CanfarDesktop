@@ -348,6 +348,12 @@ public static class McpToolCatalog
         obs.ObservationID = caom2.ObservationID;
         obs.TargetName = caom2.Target?.Name ?? string.Empty;
         obs.Instrument = caom2.Instrument?.Name ?? string.Empty;
+        if (caom2.Proposal is { } prop)
+        {
+            obs.ProposalId = prop.Id ?? string.Empty;
+            obs.ProposalPi = prop.Pi ?? string.Empty;
+            obs.ProposalTitle = prop.Title ?? string.Empty;
+        }
 
         var plane = caom2.Planes.FirstOrDefault();
         if (plane is null) return;

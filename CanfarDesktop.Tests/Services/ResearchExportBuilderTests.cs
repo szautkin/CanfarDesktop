@@ -14,6 +14,7 @@ public class ResearchExportBuilderTests
         {
             PublisherID = "caom:CFHT/1", Collection = "CFHT", ObservationID = "1", TargetName = "M31",
             Instrument = "MegaCam", Filter = "r", RA = "10.6", Dec = "41.2", StartDate = "2020-01-01",
+            ProposalId = "20AC99", ProposalPi = "A. Smith", ProposalTitle = "M31 deep survey",
             DownloadedAt = DateTime.UtcNow,
         },
         new DownloadedObservation { PublisherID = "caom:CFHT/2", Collection = "CFHT", ObservationID = "2" },
@@ -47,6 +48,14 @@ public class ResearchExportBuilderTests
         Assert.Contains("(Excellent)", md);
         Assert.Contains("`calibration`", md);
         Assert.Contains("Great seeing.", md);
+    }
+
+    [Fact]
+    public void Build_NotesMarkdown_RendersProposalCitationHandle()
+    {
+        // SCI-9-2: CAOM2 has no per-observation DOI; the proposal is the citable handle we surface.
+        var md = ResearchExportBuilder.Build(SampleObs(), SampleNotes(), new ExportOptions(), Now).MarkdownFiles["notes.md"];
+        Assert.Contains("**Proposal (cite):** 20AC99 — M31 deep survey (PI A. Smith)", md);
     }
 
     [Fact]

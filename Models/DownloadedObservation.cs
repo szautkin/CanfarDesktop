@@ -18,6 +18,11 @@ public class DownloadedObservation
     public string StartDate { get; set; } = string.Empty;
     public string CalLevel { get; set; } = string.Empty;
     public string DataRelease { get; set; } = string.Empty;
+    // Citation handle (SCI-9-2): CADC/CAOM2 assigns no per-observation DOI/bibcode, so the originating
+    // proposal (id/PI/title) is the closest citable reference we can record.
+    public string ProposalId { get; set; } = string.Empty;
+    public string ProposalPi { get; set; } = string.Empty;
+    public string ProposalTitle { get; set; } = string.Empty;
     public string LocalPath { get; set; } = string.Empty;
     public long? FileSize { get; set; }
     public DateTime DownloadedAt { get; set; } = DateTime.UtcNow;
@@ -61,6 +66,9 @@ public class DownloadedObservation
             StartDate = SafeGet("startdate"),
             CalLevel = SafeGet("callev"),
             DataRelease = SafeGet("datarelease"),
+            ProposalId = SafeGet("proposalid"),
+            ProposalPi = SafeGet("piname"),
+            ProposalTitle = SafeGet("proposaltitle"),
             LocalPath = localPath ?? string.Empty,
             ThumbnailURL = dataLink?.Thumbnails.FirstOrDefault(),
             PreviewURL = dataLink?.Previews.FirstOrDefault()
