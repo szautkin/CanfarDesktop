@@ -35,7 +35,7 @@ public class AiGuideCatalogTests
         "list_notebooks", "get_notebook", "get_cell_output", "get_kernel_state", "open_notebook",
         "create_notebook", "save_notebook", "edit_cell", "add_cell", "delete_cell", "change_cell_type",
         "move_cell", "run_cell", "run_all_cells", "clear_cell_outputs", "start_kernel",
-        "interrupt_kernel", "restart_kernel",
+        "interrupt_kernel", "restart_kernel", "create_analysis_notebook",
         // Storage (VOSpace)
         "list_vospace_path", "read_vospace_file", "download_vospace_file", "get_storage_quota",
         "upload_text_to_vospace", "upload_file_to_vospace", "create_vospace_folder", "delete_vospace_node",

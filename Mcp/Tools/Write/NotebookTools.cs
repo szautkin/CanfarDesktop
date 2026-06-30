@@ -361,3 +361,37 @@ public sealed class RestartKernelTool : NotebookMutationTool<RestartKernelTool.A
 
     public sealed record Args { }
 }
+
+/// <summary>
+/// <c>create_analysis_notebook</c> — the search → notebook hand-off (SCI-10): open a ready-to-run
+/// notebook for a downloaded observation, seeded with metadata + an astropy load (path + WCS) + a
+/// template stub. ViewState (live); doesn't go through the NotebookCommand applier — it has its own
+/// host action that resolves the observation, writes the .ipynb, and opens it.
+/// </summary>
+public sealed class CreateAnalysisNotebookTool : JsonReadTool<CreateAnalysisNotebookTool.Args, NotebookState?>
+{
+    private readonly Func<string, string, Task<NotebookState?>> _create;
+    public CreateAnalysisNotebookTool(Func<string, string, Task<NotebookState?>> create) => _create = create;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "create_analysis_notebook",
+        "Open a ready-to-run analysis notebook for a DOWNLOADED observation (by its local id from " +
+        "list_downloaded_observations, or its publisher id). Seeds a metadata header + an astropy load " +
+        "cell (the local file path + WCS) + a template stub. template: image (zscale quick-look, the " +
+        "default) | photometry (aperture photometry with photutils) | cube (moment map + spectrum with " +
+        "spectral-cube). Returns the notebook state, or null if the observation isn't in Research " +
+        "(download_observation it first). The local kernel needs astropy (+ photutils/spectral-cube for " +
+        "the template). Live-applied (no proposal).",
+        """{"type":"object","properties":{"observationId":{"type":"string"},"template":{"type":"string","enum":["image","photometry","cube"]}},"required":["observationId"],"additionalProperties":false}""");
+
+    protected override Task<NotebookState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var id = (args.ObservationId ?? string.Empty).Trim();
+        if (id.Length == 0) throw new McpToolException(new InvalidArgument("observationId is required"));
+        return _create(id, (args.Template ?? "image").Trim());
+    }
+
+    public sealed record Args { public string? ObservationId { get; init; } public string? Template { get; init; } }
+}

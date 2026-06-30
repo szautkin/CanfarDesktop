@@ -121,6 +121,7 @@ public static class AiGuideCatalog
         ["start_kernel"] = "notebook",
         ["interrupt_kernel"] = "notebook",
         ["restart_kernel"] = "notebook",
+        ["create_analysis_notebook"] = "notebook",
         // Storage (VOSpace) — both macOS and Windows tool names
         ["list_vospace_path"] = "storage",
         ["get_vospace_node"] = "storage",

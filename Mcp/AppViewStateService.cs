@@ -221,6 +221,16 @@ public sealed class AppViewStateService
     public Task<IReadOnlyList<NotebookRef>> ListNotebooksAsync()
         => _notebookList?.Invoke() ?? Task.FromResult<IReadOnlyList<NotebookRef>>(Array.Empty<NotebookRef>());
 
+    // ── Analysis-notebook hand-off (resolve obs → seed + open a notebook) ────────────────────────
+
+    private volatile Func<string, string, Task<NotebookState?>>? _createAnalysisNotebook;
+
+    public void SetCreateAnalysisNotebookAction(Func<string, string, Task<NotebookState?>> create)
+        => _createAnalysisNotebook = create;
+
+    public Task<NotebookState?> CreateAnalysisNotebookAsync(string observationId, string template)
+        => _createAnalysisNotebook?.Invoke(observationId, template) ?? Task.FromResult<NotebookState?>(null);
+
     // ── Tab management (close the active viewer tab; count open tabs) ─────────────────────────────
 
     private volatile Func<string, Task<TabCloseOutcome>>? _closeTab;

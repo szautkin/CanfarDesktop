@@ -6,6 +6,7 @@ using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.HttpClients;
 using CanfarDesktop.Services.Notebook;
+using CanfarDesktop.Helpers.Notebook;
 using CanfarDesktop.Mcp.Tools.Write;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views;
@@ -90,6 +91,7 @@ public sealed partial class MainWindow : Window
         _viewState.SetNotebookActions(NotebookMutateActionAsync, GetNotebookActionAsync, GetCellOutputActionAsync,
                                       GetKernelStateActionAsync, ListNotebooksActionAsync);
         _viewState.SetTabActions(CloseTabActionAsync, ListOpenTabsActionAsync);
+        _viewState.SetCreateAnalysisNotebookAction(CreateAnalysisNotebookActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
     }
@@ -320,6 +322,25 @@ public sealed partial class MainWindow : Window
             _fitsHostVm?.Tabs.Count ?? 0,
             _cubeTabHost?.OpenTabCount ?? 0),
             new OpenTabsState(0, 0, 0));
+
+    // ── Analysis-notebook hand-off (SCI-10): resolve the downloaded observation, seed an .ipynb, open it ──
+    private Task<NotebookState?> CreateAnalysisNotebookActionAsync(string observationId, string template)
+        => OnUiAsync<NotebookState?>(async () =>
+        {
+            var store = App.Services.GetRequiredService<ObservationStore>();
+            var obs = store.Observations.FirstOrDefault(o => o.Id == observationId || o.PublisherID == observationId);
+            if (obs is null) return null; // not in Research — the agent must download_observation first
+
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Verbinal");
+            Directory.CreateDirectory(dir);
+            var stem = string.IsNullOrEmpty(obs.ObservationID) ? obs.PublisherID : obs.ObservationID;
+            var safe = string.Concat(("analysis-" + stem).Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+            var file = Path.Combine(dir, safe + ".ipynb");
+
+            await File.WriteAllTextAsync(file, NotebookParser.Serialize(AnalysisNotebookBuilder.Build(obs, template)));
+
+            return await OpenNotebookCoreAsync(file, createNew: false) is not null ? _notebookTabHost?.GetNotebookState() : null;
+        }, null);
 
     /// <summary>Map the current AppMode to the MCP mode name + title and publish it (UI thread).</summary>
     private void PublishViewMode()

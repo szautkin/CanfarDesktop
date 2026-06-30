@@ -184,6 +184,8 @@ public static class McpToolCatalog
             new StartKernelTool(cmd => viewState.NotebookMutateAsync(cmd)),
             new InterruptKernelTool(cmd => viewState.NotebookMutateAsync(cmd)),
             new RestartKernelTool(cmd => viewState.NotebookMutateAsync(cmd)),
+            // Search → notebook hand-off: open a pre-seeded analysis notebook for a downloaded observation.
+            new CreateAnalysisNotebookTool((id, tmpl) => viewState.CreateAnalysisNotebookAsync(id, tmpl)),
 
             // Tab management: close the active viewer tab / count open tabs (open_* tools accumulate them)
             new CloseActiveTabTool(kind => viewState.CloseTabAsync(kind)),

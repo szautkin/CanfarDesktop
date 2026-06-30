@@ -193,6 +193,7 @@
     <Compile Include="..\Models\Notebook\NotebookCell.cs" Link="Linked\Notebook\NotebookCell.cs" />
     <Compile Include="..\Models\Notebook\CellOutput.cs" Link="Linked\Notebook\CellOutput.cs" />
     <Compile Include="..\Helpers\Notebook\NotebookParser.cs" Link="Linked\Notebook\NotebookParser.cs" />
+    <Compile Include="..\Helpers\Notebook\AnalysisNotebookBuilder.cs" Link="Linked\Notebook\AnalysisNotebookBuilder.cs" />
     <Compile Include="..\Helpers\Notebook\AnsiParser.cs" Link="Linked\Notebook\AnsiParser.cs" />
     <Compile Include="..\Helpers\Notebook\PythonSyntaxHighlighter.cs" Link="Linked\Notebook\PythonSyntaxHighlighter.cs" />
     <Compile Include="..\Services\Notebook\IDirtyTracker.cs" Link="Linked\Notebook\IDirtyTracker.cs" />
