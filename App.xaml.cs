@@ -213,6 +213,13 @@ public partial class App : Application
         services.AddSingleton<CanfarDesktop.Mcp.McpSettingsService>();
         // Per-client approval gate (records connecting clients; opt-in lockdown to an allow-list).
         services.AddSingleton(_ => new CanfarDesktop.Mcp.McpClientApprovalStore(new CanfarDesktop.Mcp.LocalSettingsApprovalStorage()));
+        // AI Compute (run_code): settings + the file-drop exec service over a contributed Skaha session.
+        services.AddSingleton<CanfarDesktop.Services.AICompute.AIComputeSettingsService>();
+        services.AddSingleton(sp => new CanfarDesktop.Services.AICompute.AIComputeService(
+            sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeSettingsService>(),
+            sp.GetRequiredService<CanfarDesktop.Services.ISessionService>(),
+            sp.GetRequiredService<CanfarDesktop.Services.IStorageService>(),
+            sp.GetRequiredService<CanfarDesktop.Services.IAuthService>()));
         services.AddSingleton<CanfarDesktop.Mcp.AppViewStateService>();
         // Auth'd, redirect-following client for server-side preview fetches (get_preview_image).
         services.AddHttpClient("McpPreviewFetch").AddHttpMessageHandler<AuthTokenHandler>();

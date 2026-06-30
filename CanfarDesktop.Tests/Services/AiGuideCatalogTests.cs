@@ -46,6 +46,8 @@ public class AiGuideCatalogTests
         "list_headless_jobs", "get_headless_job_logs", "get_headless_job_events", "launch_headless_job",
         // Image Discovery
         "find_images_with_packages", "discover_image_packages",
+        // AI Compute
+        "run_code", "run_code_output", "start_compute", "stop_compute",
         // View & Navigation
         "navigate_to", "set_search_focus", "close_active_tab", "list_open_tabs",
         // Agent Control

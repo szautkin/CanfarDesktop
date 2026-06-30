@@ -50,6 +50,8 @@ public static class McpToolCatalog
         var viewState = sp.GetRequiredService<AppViewStateService>();
         var settings = sp.GetRequiredService<McpSettingsService>();
         var aiGuide = sp.GetRequiredService<AiGuideService>();
+        var aiComputeSettings = sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeSettingsService>();
+        var aiCompute = sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeService>();
         var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
         var previewFetcher = new McpPreviewFetcher(dataLink, httpFactory);
 
@@ -106,6 +108,14 @@ public static class McpToolCatalog
                 (query, minScore, limit) => discovery.SearchPartial(query, minScore, limit)),
             // discover_image_packages (write) — probe an image so find_images_with_packages can match it.
             new DiscoverImagePackagesTool(),
+
+            // AI Compute (Feature B): run agent code on a warm contributed session via the /arc file-drop.
+            // run_code/start_compute/stop_compute are Destructive (paid compute + arbitrary code) → always
+            // queue for approval. Disabled until an AI compute image is set in Settings ▸ AI compute.
+            new RunCodeTool(() => aiComputeSettings.Settings),
+            new RunCodeOutputTool((id, ct) => aiCompute.FetchOutAsync(id, ct)),
+            new StartComputeTool(() => aiComputeSettings.Settings),
+            new StopComputeTool(),
 
             // CAOM2 metadata + DataLink (download/preview URLs)
             new GetObservationCaom2Tool((id, ct) => caom2.GetByPublisherIdAsync(id, ct)),
@@ -239,6 +249,7 @@ public static class McpToolCatalog
         var discovery = sp.GetRequiredService<ImageDiscoveryCoordinator>();
         var aiGuide = sp.GetRequiredService<AiGuideService>();
         var caom2 = sp.GetRequiredService<ICAOM2Service>();
+        var aiCompute = sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeService>();
 
         return new IProposalApplier[]
         {
@@ -295,6 +306,11 @@ public static class McpToolCatalog
             new CreateVoSpaceFolderApplier(p => storage.CreateFolderAsync(p.Path, p.Name)),
             new SetVoSpaceAclApplier(p => storage.SetNodeAclAsync(p.Path, p.GroupRead, p.GroupWrite, p.IsPublic)),
             new DeleteVoSpaceNodeApplier(p => storage.DeleteNodeAsync(p.Path)),
+
+            // AI Compute: submit code / pre-warm / stop the contributed compute session.
+            new RunCodeApplier(req => aiCompute.SubmitAsync(req)),
+            new StartComputeApplier(() => aiCompute.EnsureSessionAsync()),
+            new StopComputeApplier(() => aiCompute.StopAsync()),
 
             new DiscoverImagePackagesApplier(p => p.Force
                 ? discovery.RediscoverAsync(p.Image)
