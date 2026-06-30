@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="CanfarDesktop.Views.Dialogs.AiConnectWizardDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Connect an AI agent"
+    CloseButtonText="Close"
+    DefaultButton="None">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="14" Width="480">
+
+            <TextBlock x:Name="StepHeader" Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="Step 1 of 4 · Enable" />
+
+            <!-- Step 1 — Enable -->
+            <StackPanel x:Name="EnablePanel" Spacing="12">
+                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="This starts a local MCP server so an AI agent (Claude Desktop or Claude Code) can use Verbinal's tools — observation search, downloaded research, Skaha sessions, VOSpace files, and more. It runs over a local, per-user named pipe: nothing is exposed to the network. Off by default; writes are gated by your autonomy settings." />
+                <ToggleSwitch x:Name="EnableToggle" Header="Allow external AI agents"
+                              OnContent="On" OffContent="Off" Toggled="OnEnableToggled" />
+                <Border CornerRadius="6" Padding="12,10"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="StatusText" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Stopped" />
+                        <TextBlock x:Name="PipeText" FontFamily="Consolas" FontSize="12"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   IsTextSelectionEnabled="True" TextWrapping="Wrap" Visibility="Collapsed" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Step 2 — Pick your client -->
+            <StackPanel x:Name="ClientPanel" Spacing="10" Visibility="Collapsed">
+                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="Which AI client do you want to connect? (Detected clients are labelled — you can still pick either.)" />
+                <RadioButton x:Name="DesktopRadio" Content="Claude Desktop" GroupName="Client" />
+                <RadioButton x:Name="CodeRadio" Content="Claude Code" GroupName="Client" />
+            </StackPanel>
+
+            <!-- Step 3 — Configure -->
+            <StackPanel x:Name="ConfigurePanel" Spacing="12" Visibility="Collapsed">
+                <TextBlock x:Name="ConfigIntro" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                <!-- Claude Desktop -->
+                <StackPanel x:Name="DesktopConfig" Spacing="8">
+                    <Button x:Name="AddToDesktopButton" Content="Add to Claude Desktop…"
+                            Click="OnAddToDesktopClick" Style="{StaticResource AccentButtonStyle}" />
+                </StackPanel>
+
+                <!-- Claude Code -->
+                <StackPanel x:Name="CodeConfig" Spacing="6" Visibility="Collapsed">
+                    <Grid ColumnSpacing="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ClaudeCodeBox" Grid.Column="0" IsReadOnly="True"
+                                 FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" />
+                        <Button x:Name="CopyCommandButton" Grid.Column="1" VerticalAlignment="Top"
+                                Click="OnCopyCommandClick" ToolTipService.ToolTip="Copy">
+                            <FontIcon Glyph="&#xE8C8;" FontSize="14" />
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Step 4 — Verify -->
+            <StackPanel x:Name="VerifyPanel" Spacing="12" Visibility="Collapsed">
+                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="Run a live self-test: Verbinal dials its own MCP server the same way your AI client will, and lists the available tools. Then fully quit and reopen your client to pick up the new connection." />
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button x:Name="SelfTestButton" Content="Run self-test" Click="OnSelfTestClick" />
+                    <ProgressRing x:Name="SelfTestProgress" IsActive="False" Visibility="Collapsed"
+                                  Width="20" Height="20" VerticalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
+
+            <InfoBar x:Name="ResultBar" IsOpen="False" IsClosable="True" />
+
+            <!-- Footer navigation -->
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button x:Name="BackButton" Content="Back" Click="OnBackClick" IsEnabled="False" />
+                <Button x:Name="NextButton" Content="Next" Click="OnNextClick" Style="{StaticResource AccentButtonStyle}" />
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>

@@ -59,6 +59,12 @@
                     <FontIcon Glyph="&#xE713;" FontSize="16" />
                     <Button.Flyout>
                         <MenuFlyout>
+                            <MenuFlyoutItem Text="Connect an AI agent…" Click="OnConnectAgentClick">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE99A;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutSeparator />
                             <MenuFlyoutItem Text="MCP server…" Click="OnMcpServerClick">
                                 <MenuFlyoutItem.Icon>
                                     <FontIcon Glyph="&#xE774;" />

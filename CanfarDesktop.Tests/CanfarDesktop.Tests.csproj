@@ -176,6 +176,8 @@
     <Compile Include="..\Mcp\Config\ClaudeConfigRepair.cs" Link="Linked\Mcp\ClaudeConfigRepair.cs" />
     <Compile Include="..\Helpers\PackagePaths.cs" Link="Linked\Mcp\PackagePaths.cs" />
     <Compile Include="..\Mcp\Config\ClaudeConfigLocator.cs" Link="Linked\Mcp\ClaudeConfigLocator.cs" />
+    <Compile Include="..\Mcp\Config\ClaudeClientDetection.cs" Link="Linked\Mcp\ClaudeClientDetection.cs" />
+    <Compile Include="..\Mcp\McpSelfTestProtocol.cs" Link="Linked\Mcp\McpSelfTestProtocol.cs" />
     <Compile Include="..\Mcp\Tools\Read\ResearchReadTools.cs" Link="Linked\Mcp\ResearchReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\SearchReadTools.cs" Link="Linked\Mcp\SearchReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\PlatformReadTools.cs" Link="Linked\Mcp\PlatformReadTools.cs" />

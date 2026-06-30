@@ -1000,6 +1000,11 @@ public sealed partial class MainWindow : Window
         await Views.Notebook.NotebookSettingsDialog.ShowAsync(Content.XamlRoot);
     }
 
+    private async void OnConnectAgentClick(object sender, RoutedEventArgs e)
+    {
+        await Views.Dialogs.AiConnectWizardDialog.ShowAsync(Content.XamlRoot);
+    }
+
     private async void OnMcpServerClick(object sender, RoutedEventArgs e)
     {
         await Views.Dialogs.McpServerDialog.ShowAsync(Content.XamlRoot);
