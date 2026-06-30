@@ -81,6 +81,7 @@
     <Compile Include="..\Helpers\ADQLBuilder.cs" Link="Linked\ADQLBuilder.cs" />
     <Compile Include="..\Models\SearchModels.cs" Link="Linked\SearchModels.cs" />
     <Compile Include="..\Models\DataLinkResult.cs" Link="Linked\DataLinkResult.cs" />
+    <Compile Include="..\Helpers\DataLinkArtifactSelector.cs" Link="Linked\DataLinkArtifactSelector.cs" />
     <Compile Include="..\Helpers\CellFormatter.cs" Link="Linked\CellFormatter.cs" />
     <Compile Include="..\Helpers\ColumnUnitCatalog.cs" Link="Linked\ColumnUnitCatalog.cs" />
     <Compile Include="..\Services\IColumnUnitStore.cs" Link="Linked\IColumnUnitStore.cs" />

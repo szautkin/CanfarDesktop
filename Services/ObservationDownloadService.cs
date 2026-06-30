@@ -1,3 +1,5 @@
+using CanfarDesktop.Helpers;
+
 namespace CanfarDesktop.Services;
 
 /// <summary>
@@ -18,14 +20,7 @@ public sealed class ObservationDownloadService
     public async Task<string> ResolveUrlAsync(string publisherId, int? artifactIndex = null, CancellationToken ct = default)
     {
         var links = await _dataLink.GetLinksAsync(publisherId, ct);
-        if (artifactIndex is int i)
-        {
-            if (i < 0 || i >= links.DirectFiles.Count)
-                throw new ArgumentOutOfRangeException(nameof(artifactIndex),
-                    $"artifactIndex {i} is out of range (0..{links.DirectFiles.Count - 1}); call list_observation_artifacts first");
-            return links.DirectFiles[i].Url;
-        }
-        return links.DirectFileUrl ?? _dataLink.GetDownloadUrl(publisherId);
+        return DataLinkArtifactSelector.SelectUrl(links, artifactIndex, _dataLink.GetDownloadUrl(publisherId));
     }
 
     /// <summary>

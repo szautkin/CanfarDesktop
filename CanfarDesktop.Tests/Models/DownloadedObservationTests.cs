@@ -86,6 +86,30 @@ public class DownloadedObservationTests
     }
 
     [Fact]
+    public void FromSearchResult_ExtractsProposalCitationHandle()
+    {
+        // SCI-9-2: the proposal (CADC's closest thing to a citable handle) must extract from the
+        // search row under the exact CleanKey-derived keys the model uses.
+        var row = new SearchResultRow
+        {
+            Values = { ["Proposal ID"] = "20AC99", ["PI Name"] = "A. Smith", ["Proposal Title"] = "M31 deep survey" }
+        };
+        string Header(string k) => k switch
+        {
+            "proposalid" => "Proposal ID",
+            "piname" => "PI Name",
+            "proposaltitle" => "Proposal Title",
+            _ => k,
+        };
+
+        var obs = DownloadedObservation.FromSearchResult(row, "/p", null, Header);
+
+        Assert.Equal("20AC99", obs.ProposalId);
+        Assert.Equal("A. Smith", obs.ProposalPi);
+        Assert.Equal("M31 deep survey", obs.ProposalTitle);
+    }
+
+    [Fact]
     public void FromSearchResult_NullDataLink_NoUrls()
     {
         var row = new SearchResultRow();
