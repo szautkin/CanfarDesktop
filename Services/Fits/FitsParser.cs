@@ -21,6 +21,9 @@ public static class FitsParser
         ArgumentNullException.ThrowIfNull(stream);
         var hdus = new List<FitsHdu>();
         var index = 0;
+        var sawCompressedImage = false;
+        string? compressionType = null;
+        var hasReadableImage = false;
 
         while (stream.Position < stream.Length)
         {
@@ -30,9 +33,22 @@ public static class FitsParser
             FitsImageData? imageData = null;
             var dataBytes = CalculateDataSize(header);
 
-            if (header.NAxis >= 2 && header.NAxis1 > 0 && header.NAxis2 > 0)
+            if (header.GetBool("ZIMAGE"))
+            {
+                // fpack/tile-compressed image: the pixels live in a compressed BINTABLE whose
+                // NAXIS1×NAXIS2 are row-bytes×rows (and satisfy the NAxis>=2 image test below).
+                // We cannot decompress it, so never read it as raw image data (that renders garbage) —
+                // record that we saw it and skip its data; surface a clear error after the scan if no
+                // plain image HDU exists.
+                sawCompressedImage = true;
+                compressionType ??= header.GetString("ZCMPTYPE");
+                if (dataBytes > 0)
+                    SkipBytes(stream, AlignToBlock(dataBytes));
+            }
+            else if (header.NAxis >= 2 && header.NAxis1 > 0 && header.NAxis2 > 0)
             {
                 imageData = ReadImageData(stream, header);
+                hasReadableImage = true;
             }
             else if (dataBytes > 0)
             {
@@ -46,6 +62,14 @@ public static class FitsParser
                 ImageData = imageData,
                 Index = index++,
             });
+        }
+
+        if (sawCompressedImage && !hasReadableImage)
+        {
+            var algo = string.IsNullOrEmpty(compressionType) ? "tile/Rice" : compressionType;
+            throw new InvalidDataException(
+                $"This FITS file is fpack-compressed (ZCMPTYPE='{algo}') and cannot be opened directly. " +
+                "Run 'funpack' to decompress it into a plain .fits, then open that file.");
         }
 
         return hdus;

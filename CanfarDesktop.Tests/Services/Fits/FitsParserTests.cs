@@ -41,6 +41,64 @@ public class FitsParserTests
     private static string FormatCard(string keyword, string value) =>
         $"{keyword,-8}= {value,-20}".PadRight(80)[..80];
 
+    /// <summary>Write one 2880-byte header block from the given cards (END is appended).</summary>
+    private static void WriteHeaderBlock(Stream ms, params string[] cards)
+    {
+        var all = cards.Append("END".PadRight(80));
+        var headerBytes = string.Join("", all.Select(c => c.PadRight(80)[..80]));
+        ms.Write(System.Text.Encoding.ASCII.GetBytes(headerBytes.PadRight(2880)));
+    }
+
+    /// <summary>Build an fpack/Rice file: empty primary HDU + a compressed BINTABLE image extension
+    /// (ZIMAGE=T, ZCMPTYPE='RICE_1'). This is exactly the shape a real `.fits.fz` has.</summary>
+    private static MemoryStream BuildFpackStream(bool withPlainPrimaryImage = false)
+    {
+        var ms = new MemoryStream();
+        if (withPlainPrimaryImage)
+        {
+            // A renderable primary image — the parser should still open this and NOT fail.
+            WriteHeaderBlock(ms, FormatCard("SIMPLE", "T"), FormatCard("BITPIX", "8"),
+                FormatCard("NAXIS", "2"), FormatCard("NAXIS1", "4"), FormatCard("NAXIS2", "3"),
+                FormatCard("EXTEND", "T"));
+            ms.Write(new byte[2880]); // 12 pixel bytes + padding
+        }
+        else
+        {
+            // The fpack hallmark: an empty primary HDU (NAXIS=0).
+            WriteHeaderBlock(ms, FormatCard("SIMPLE", "T"), FormatCard("BITPIX", "8"),
+                FormatCard("NAXIS", "0"), FormatCard("EXTEND", "T"));
+        }
+        // Rice-compressed image carried in a binary-table extension.
+        WriteHeaderBlock(ms, FormatCard("XTENSION", "'BINTABLE'"), FormatCard("BITPIX", "8"),
+            FormatCard("NAXIS", "2"), FormatCard("NAXIS1", "8"), FormatCard("NAXIS2", "4"),
+            FormatCard("PCOUNT", "0"), FormatCard("GCOUNT", "1"),
+            FormatCard("ZIMAGE", "T"), FormatCard("ZCMPTYPE", "'RICE_1'"));
+        ms.Write(new byte[2880]); // the BINTABLE's data block
+        ms.Position = 0;
+        return ms;
+    }
+
+    [Fact]
+    public void Parse_FpackCompressed_ThrowsActionableError()
+    {
+        // SCI-11: a `.fits.fz` (empty primary + Rice-compressed BINTABLE) must fail fast with a
+        // clear "run funpack" message — not silently render the compressed table as a garbage image.
+        using var stream = BuildFpackStream();
+        var ex = Assert.Throws<InvalidDataException>(() => FitsParser.Parse(stream));
+        Assert.Contains("funpack", ex.Message);
+        Assert.Contains("RICE_1", ex.Message);
+    }
+
+    [Fact]
+    public void Parse_PlainImageWithCompressedExtension_StillOpens()
+    {
+        // Guard: a real primary image alongside a compressed extension still opens (no false positive).
+        using var stream = BuildFpackStream(withPlainPrimaryImage: true);
+        var hdus = FitsParser.Parse(stream);
+        Assert.NotNull(hdus[0].ImageData);
+        Assert.Equal(4, hdus[0].ImageData!.Width);
+    }
+
     [Fact]
     public void ParseCard_SimpleKeyword()
     {
