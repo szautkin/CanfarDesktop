@@ -92,6 +92,26 @@ public class FitsViewerToolsTests
         Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(r).Reason);
     }
 
+    [Fact]
+    public async Task ProbeFitsPixel_PropagatesBunit()
+    {
+        // SCI-2: a pixel value is unusable without its physical unit — the BUNIT must reach the caller.
+        var tool = new ProbeFitsPixelTool((x, y) =>
+            Task.FromResult<FitsPixelResult?>(new(x, y, 1.23, true, 0, 0, "Jy/beam")));
+        var doc = Json(await tool.InvokeAsync(Args("""{"x":1,"y":2}"""), Ctx, default));
+        Assert.Equal("Jy/beam", doc.GetProperty("unit").GetString());
+    }
+
+    [Fact]
+    public async Task ProbeFitsPixel_NoBunit_OmitsUnit()
+    {
+        // A FITS with no BUNIT must not invent a unit — the field is omitted, not empty.
+        var tool = new ProbeFitsPixelTool((x, y) =>
+            Task.FromResult<FitsPixelResult?>(new(x, y, 1.23, true, 0, 0)));
+        var doc = Json(await tool.InvokeAsync(Args("""{"x":1,"y":2}"""), Ctx, default));
+        Assert.False(doc.TryGetProperty("unit", out _));
+    }
+
     // ── fits_goto_coordinate ──────────────────────────────────────────────────
 
     [Fact]
