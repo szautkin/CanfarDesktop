@@ -10,7 +10,7 @@ namespace CanfarDesktop.Mcp.Tools.Write;
 // injected host action (download orchestration / store removal lives host-side).
 // ─────────────────────────────────────────────────────────────────────────────
 
-public sealed record DownloadObservationPayload(string PublisherId);
+public sealed record DownloadObservationPayload(string PublisherId, int? ArtifactIndex = null);
 public sealed record DeleteDownloadedObservationPayload(string Id);
 
 /// <summary><c>download_observation</c> — propose downloading an observation's FITS into Research. SemanticWrite.</summary>
@@ -21,18 +21,22 @@ public sealed class DownloadObservationTool : JsonWriteTool<DownloadObservationT
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "download_observation",
         "Propose downloading a CADC observation's FITS file into the Research module by its publisher id " +
-        "(from search_observations). Proprietary/embargoed collections require the user to be signed in to " +
-        "CADC. Queues for the user to apply; after it applies it appears in list_downloaded_observations.",
-        """{"type":"object","properties":{"publisherId":{"type":"string"}},"required":["publisherId"],"additionalProperties":false}""");
+        "(from search_observations). Optional `artifactIndex` (from list_observation_artifacts) picks a " +
+        "SPECIFIC product — e.g. the science cube, a moment map, or the integrated spectrum — instead of " +
+        "the default first/primary artifact. Proprietary/embargoed collections require the user to be " +
+        "signed in to CADC. Queues for the user to apply; after it applies it appears in " +
+        "list_downloaded_observations.",
+        """{"type":"object","properties":{"publisherId":{"type":"string"},"artifactIndex":{"type":"integer","minimum":0}},"required":["publisherId"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
     {
         var pid = (args.PublisherId ?? string.Empty).Trim();
         if (pid.Length == 0) throw new McpToolException(new InvalidArgument("publisherId is required"));
-        return Task.FromResult(ProposalPlan.Encoding("download_observation", $"Download observation {pid}", new DownloadObservationPayload(pid)));
+        var summary = args.ArtifactIndex is int ai ? $"Download observation {pid} (artifact #{ai})" : $"Download observation {pid}";
+        return Task.FromResult(ProposalPlan.Encoding("download_observation", summary, new DownloadObservationPayload(pid, args.ArtifactIndex)));
     }
 
-    public sealed record Args { public string? PublisherId { get; init; } }
+    public sealed record Args { public string? PublisherId { get; init; } public int? ArtifactIndex { get; init; } }
 }
 
 /// <summary><c>delete_downloaded_observation</c> — propose removing a downloaded observation. Destructive.</summary>

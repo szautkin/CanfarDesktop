@@ -26,6 +26,19 @@ public class ObservationWriteToolsTests
         Assert.Equal("download_observation", proposal.Kind);
         var payload = JsonSerializer.Deserialize<DownloadObservationPayload>(proposal.Payload, McpJson.Options)!;
         Assert.Equal("ivo://cadc/X", payload.PublisherId);
+        Assert.Null(payload.ArtifactIndex); // default = primary artifact
+    }
+
+    [Fact]
+    public async Task DownloadObservation_WithArtifactIndex_PayloadCarriesIt()
+    {
+        var (ctx, _) = Context();
+        var result = await new DownloadObservationTool().InvokeAsync(
+            Args("""{"publisherId":"ivo://cadc/X","artifactIndex":3}"""), ctx, default);
+        var proposal = Assert.IsType<ProposedResult>(result).Proposal;
+        var payload = JsonSerializer.Deserialize<DownloadObservationPayload>(proposal.Payload, McpJson.Options)!;
+        Assert.Equal(3, payload.ArtifactIndex); // SCI-5: pick a specific DataLink artifact
+        Assert.Contains("artifact #3", proposal.Summary);
     }
 
     [Fact]

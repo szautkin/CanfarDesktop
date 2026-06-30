@@ -83,7 +83,10 @@ public sealed class GetDataLinksTool : JsonReadTool<GetDataLinksTool.Args, GetDa
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_data_links",
-        "Get the DataLink artifacts (download url, direct files, preview images, thumbnails) for one observation by its publisher id.",
+        "Get the DataLink artifacts (download url, direct files, preview images, thumbnails) for one " +
+        "observation by its publisher id. Each entry's 0-based position in `directFiles` is its " +
+        "`artifactIndex` for download_observation — use it to fetch a SPECIFIC product (e.g. the science " +
+        "cube, a moment map _mom0/1/2, or the integrated spectrum _spec) instead of the default first one.",
         """{"type":"object","properties":{"publisherId":{"type":"string","description":"Observation publisher id"}},"required":["publisherId"],"additionalProperties":false}""");
 
     protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)

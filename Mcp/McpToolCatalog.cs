@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
+using CanfarDesktop.Models.Caom2;
 using CanfarDesktop.Models.Fits;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.AiGuide;
@@ -234,6 +235,7 @@ public static class McpToolCatalog
         var storage = sp.GetRequiredService<IStorageService>();
         var discovery = sp.GetRequiredService<ImageDiscoveryCoordinator>();
         var aiGuide = sp.GetRequiredService<AiGuideService>();
+        var caom2 = sp.GetRequiredService<ICAOM2Service>();
 
         return new IProposalApplier[]
         {
@@ -272,7 +274,7 @@ public static class McpToolCatalog
             new DeleteSessionApplier(p => sessions.DeleteSessionAsync(p.Id)),
             new RenewSessionApplier(p => sessions.RenewSessionAsync(p.Id)),
 
-            new DownloadObservationApplier(p => DownloadObservationAsync(downloads, observations, p.PublisherId)),
+            new DownloadObservationApplier(p => DownloadObservationAsync(downloads, observations, caom2, p.PublisherId, p.ArtifactIndex)),
             new DeleteDownloadedObservationApplier(p =>
             {
                 var match = observations.Observations.FirstOrDefault(o => o.Id == p.Id || o.PublisherID == p.Id);
@@ -304,13 +306,15 @@ public static class McpToolCatalog
     }
 
     /// <summary>Resolve an observation's FITS URL, stream it to ~/Downloads/Verbinal, and register it in Research.</summary>
-    private static async Task DownloadObservationAsync(ObservationDownloadService downloads, ObservationStore store, string publisherId)
+    private static async Task DownloadObservationAsync(
+        ObservationDownloadService downloads, ObservationStore store, ICAOM2Service caom2,
+        string publisherId, int? artifactIndex)
     {
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Verbinal");
         Directory.CreateDirectory(dir);
         var localPath = Path.Combine(dir, SafeFileName(publisherId) + ".fits");
 
-        var url = await downloads.ResolveUrlAsync(publisherId);
+        var url = await downloads.ResolveUrlAsync(publisherId, artifactIndex);
         // Bounded below McpHost's apply backstop so a stuck download fails with its own error (and releases
         // the apply gate) rather than tripping the generic apply timeout.
         await downloads.DownloadToPathAsync(url, localPath, timeoutSeconds: 120);
@@ -318,7 +322,40 @@ public static class McpToolCatalog
         var observation = new DownloadedObservation { PublisherID = publisherId, LocalPath = localPath };
         var info = new FileInfo(localPath);
         if (info.Exists) observation.FileSize = info.Length;
+
+        // Populate research metadata from CAOM2 so an agent-downloaded record isn't bare (the UI fills
+        // these from the search row; the MCP path otherwise leaves collection/target/instrument empty).
+        // Best-effort + bounded: a metadata failure (embargo/timeout/parse) must not lose the download.
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var meta = await caom2.GetByPublisherIdAsync(publisherId, cts.Token);
+            if (meta.IsSuccess) PopulateFromCaom2(observation, meta.Observation);
+        }
+        catch { /* keep the downloaded file even if metadata is unavailable */ }
+
         store.Save(observation);
+    }
+
+    /// <summary>Fill the research-record metadata fields from a CAOM2 document (RA/Dec from the plane footprint centroid).</summary>
+    private static void PopulateFromCaom2(DownloadedObservation obs, CAOM2Observation? caom2)
+    {
+        if (caom2 is null) return;
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        obs.Collection = caom2.Collection;
+        obs.ObservationID = caom2.ObservationID;
+        obs.TargetName = caom2.Target?.Name ?? string.Empty;
+        obs.Instrument = caom2.Instrument?.Name ?? string.Empty;
+
+        var plane = caom2.Planes.FirstOrDefault();
+        if (plane is null) return;
+        if (plane.CalibrationLevel is int cl) obs.CalLevel = cl.ToString(inv);
+        if (plane.DataRelease is { } dr) obs.DataRelease = dr.ToString("yyyy-MM-dd", inv);
+        if (plane.Position?.Polygon is { Count: > 0 } poly)
+        {
+            obs.RA = poly.Average(v => v.Ra).ToString("F6", inv);
+            obs.Dec = poly.Average(v => v.Dec).ToString("F6", inv);
+        }
     }
 
     /// <summary>Assemble + zip a research bundle from the registered export modules; optionally upload it to VOSpace.</summary>
