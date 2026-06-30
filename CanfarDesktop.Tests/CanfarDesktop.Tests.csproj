@@ -151,6 +151,7 @@
     <Compile Include="..\Mcp\Tools\Write\TabTools.cs" Link="Linked\Mcp\TabTools.cs" />
     <!-- Cube Viewer MCP DTOs + tools (pure; no WinUI) -->
     <Compile Include="..\Services\CubeViewer\CubeViewState.cs" Link="Linked\CubeViewer\CubeViewState.cs" />
+    <Compile Include="..\Services\CubeViewer\CubeWcs.cs" Link="Linked\CubeViewer\CubeWcs.cs" />
     <Compile Include="..\Mcp\Tools\Write\CubeViewerTools.cs" Link="Linked\Mcp\CubeViewerTools.cs" />
     <!-- 2D FITS Viewer MCP DTOs + tools (pure; no WinUI) -->
     <Compile Include="..\Services\Fits\FitsViewState.cs" Link="Linked\Fits\FitsViewState.cs" />
