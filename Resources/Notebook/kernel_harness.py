@@ -301,14 +301,23 @@ def execute_code(code, exec_count):
         sys.stdout = captured_out
         sys.stderr = captured_err
 
-        # Try to get a displayable result from the last expression
+        # Try to get a displayable result from the last expression. Probe with an
+        # eval-compile; if the cell is statements (not an expression) that raises
+        # SyntaxError. Do the statement exec OUTSIDE the except block: running it
+        # inside would make Python chain the harness's own probe SyntaxError onto
+        # any real runtime error ("During handling of the above exception..."),
+        # polluting every multi-statement cell's traceback with a bogus SyntaxError.
         result = None
+        eval_compiled = None
         try:
-            # Try to compile as eval (single expression)
-            compiled = compile(code, "<cell>", "eval")
-            result = eval(compiled, _user_ns)
+            eval_compiled = compile(code, "<cell>", "eval")
         except SyntaxError:
-            # Not an expression — execute as statements
+            eval_compiled = None
+        if eval_compiled is not None:
+            result = eval(eval_compiled, _user_ns)
+        else:
+            # Statements — a genuine SyntaxError here (invalid code) propagates
+            # cleanly to the handler below as the real, only error.
             exec(compile(code, "<cell>", "exec"), _user_ns)
 
     except Exception as e:

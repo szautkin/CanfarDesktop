@@ -169,7 +169,7 @@ public sealed partial class NotebookTabHost : UserControl
             outs.Add(new NotebookOutputInfo(
                 o.OutputType,
                 ClipText(text, McpNotebookTextCap), text.Length > McpNotebookTextCap,
-                o.IsError, o.ErrorName,
+                o.IsError, o.ErrorType, // the exception type only ("ValueError"); the message is in the traceback
                 ClipText(tb, McpNotebookTextCap), tb.Length > McpNotebookTextCap,
                 o.HasImage, o.HasHtml));
         }

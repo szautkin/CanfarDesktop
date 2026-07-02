@@ -21,7 +21,8 @@ public partial class CellOutputViewModel : ObservableObject
     [ObservableProperty] private bool _hasHtml;
     [ObservableProperty] private string _htmlContent = string.Empty;
     [ObservableProperty] private bool _isError;
-    [ObservableProperty] private string _errorName = string.Empty;
+    [ObservableProperty] private string _errorName = string.Empty; // "Type: message" — UI error header
+    [ObservableProperty] private string _errorType = string.Empty; // just the type, e.g. "ValueError" — MCP
     [ObservableProperty] private string _traceback = string.Empty;
 
     public CellOutputViewModel(CellOutput model)
@@ -57,7 +58,8 @@ public partial class CellOutputViewModel : ObservableObject
 
             case "error":
                 IsError = true;
-                ErrorName = $"{_model.Ename}: {_model.Evalue}";
+                ErrorType = _model.Ename ?? string.Empty;         // just the type, e.g. "ValueError" (for MCP)
+                ErrorName = $"{_model.Ename}: {_model.Evalue}";    // type + message, for the UI error header
                 Traceback = _model.Traceback is not null
                     ? string.Join("\n", _model.Traceback)
                     : string.Empty;
