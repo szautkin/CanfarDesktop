@@ -16,15 +16,16 @@ public class AiGuideCatalogTests
         // Foundational
         "describe_app", "get_auth_state", "get_current_view", "get_service_health", "get_platform_load",
         // Search & Archive
-        "search_observations", "resolve_target", "get_observation_caom2", "get_data_links",
-        "get_preview_image", "list_recent_searches",
+        "search_observations", "vizier_cone_search", "resolve_target", "get_observation_caom2",
+        "get_data_links", "get_preview_image", "list_recent_searches",
         // Saved Queries
         "list_saved_queries", "get_saved_query", "save_query", "delete_saved_query",
         // Research & Notes
         "list_downloaded_observations", "get_downloaded_observation", "get_observation_notes",
         "update_observation_note", "bulk_update_observation_notes", "export_research_bundle",
         // Downloads
-        "download_observation", "delete_downloaded_observation",
+        "download_observation", "download_observations_bulk", "delete_downloaded_observation",
+        "clear_research_archive",
         // FITS Viewer
         "get_fits_header", "get_fits_wcs", "open_fits_file", "set_fits_view", "get_fits_view",
         "probe_fits_pixel", "fits_goto_coordinate", "list_fits_bookmarks", "save_fits_bookmark",
@@ -36,12 +37,13 @@ public class AiGuideCatalogTests
         "create_notebook", "save_notebook", "edit_cell", "add_cell", "delete_cell", "change_cell_type",
         "move_cell", "run_cell", "run_all_cells", "clear_cell_outputs", "start_kernel",
         "interrupt_kernel", "restart_kernel", "create_analysis_notebook",
-        // Storage (VOSpace)
-        "list_vospace_path", "read_vospace_file", "download_vospace_file", "get_storage_quota",
+        // Storage (VOSpace) — including the macOS-name aliases (G5 wire parity)
+        "list_vospace_path", "get_vospace_node", "read_vospace_file", "download_vospace_file", "get_storage_quota",
         "upload_text_to_vospace", "upload_file_to_vospace", "create_vospace_folder", "set_vospace_acl", "delete_vospace_node",
+        "upload_to_vospace", "download_from_vospace", "vospace_mkdir", "clear_user_site",
         // Sessions
         "list_sessions", "get_session", "list_session_types", "list_session_images", "list_recent_launches",
-        "launch_session", "delete_session", "renew_session",
+        "launch_session", "delete_session", "delete_sessions_bulk", "renew_session",
         // Headless / Batch
         "list_headless_jobs", "get_headless_job_logs", "get_headless_job_events", "launch_headless_job",
         // Image Discovery
@@ -51,7 +53,7 @@ public class AiGuideCatalogTests
         // View & Navigation
         "navigate_to", "set_search_focus", "close_active_tab", "list_open_tabs",
         // Agent Control
-        "list_pending_proposals", "get_proposal_state", "withdraw_proposal",
+        "list_pending_proposals", "get_proposal_state", "withdraw_proposal", "list_events",
         // AI Guide management
         "list_guide_tools", "set_tool_description", "clear_tool_description",
         "add_guide_tool", "update_guide_tool", "delete_guide_tool",

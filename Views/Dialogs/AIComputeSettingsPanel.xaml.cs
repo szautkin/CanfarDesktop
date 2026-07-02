@@ -47,6 +47,27 @@ public sealed partial class AIComputeSettingsPanel : UserControl
         RemoveSecretButton.Visibility = hasSecret ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>True when the UI holds edits that haven't been saved yet.</summary>
+    public bool IsDirty
+    {
+        get
+        {
+            var s = _service.Settings;
+            var hostShown = s.RegistryHost == Models.AICompute.AIComputeSettings.DefaultRegistryHost
+                ? string.Empty : s.RegistryHost;
+            return ImageBox.Text != s.Image
+                || ToInt(CoresBox.Value, s.Cores) != s.Cores
+                || ToInt(RamBox.Value, s.Ram) != s.Ram
+                || RegistryHostBox.Text != hostShown
+                || RegistryRepoBox.Text != s.RegistryRepository
+                || UsernameBox.Text != s.RegistryUsername
+                || SecretBox.Password.Length > 0;
+        }
+    }
+
+    /// <summary>Persist pending edits — the host Settings dialog flushes on close.</summary>
+    public void SaveNow() => OnSave(this, new RoutedEventArgs());
+
     private void OnSave(object sender, RoutedEventArgs e)
     {
         _service.SetImage(ImageBox.Text);

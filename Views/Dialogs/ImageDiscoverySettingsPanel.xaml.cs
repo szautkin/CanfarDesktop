@@ -65,6 +65,27 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
         ClearCacheButton.IsEnabled = count > 0;
     }
 
+    /// <summary>True when the UI holds edits that haven't been saved yet.</summary>
+    public bool IsDirty
+    {
+        get
+        {
+            var s = _service.Settings;
+            var imageShown = s.InspectorImage == ImageDiscoverySettings.DefaultInspectorImage
+                ? string.Empty : s.InspectorImage;
+            var hostShown = s.RegistryHost == ImageDiscoverySettings.DefaultRegistryHost
+                ? string.Empty : s.RegistryHost;
+            return InspectorImageBox.Text != imageShown
+                || RegistryHostBox.Text != hostShown
+                || RegistryRepoBox.Text != s.RegistryRepository
+                || UsernameBox.Text != s.Username
+                || SecretBox.Password.Length > 0;
+        }
+    }
+
+    /// <summary>Persist pending edits — the host Settings dialog flushes on close.</summary>
+    public void SaveNow() => OnSave(this, new RoutedEventArgs());
+
     private void OnSave(object sender, RoutedEventArgs e)
     {
         _service.SetInspectorImage(InspectorImageBox.Text);

@@ -102,26 +102,36 @@ public sealed class BulkUpdateObservationNotesTool : JsonWriteTool<BulkUpdateObs
 /// <summary>Applies an <c>update_observation_note</c> proposal via the injected store action.</summary>
 public sealed class UpdateObservationNoteApplier : IProposalApplier
 {
-    private readonly Func<UpdateObservationNotePayload, Task> _apply;
-    public UpdateObservationNoteApplier(Func<UpdateObservationNotePayload, Task> apply) => _apply = apply;
+    private readonly Func<UpdateObservationNotePayload, Models.AgentAttribution?, Task> _apply;
+
+    public UpdateObservationNoteApplier(Func<UpdateObservationNotePayload, Task> apply) : this((p, _) => apply(p)) { }
+
+    /// <summary>Attribution-aware overload: the stamp the written note should carry (null for user origin).</summary>
+    public UpdateObservationNoteApplier(Func<UpdateObservationNotePayload, Models.AgentAttribution?, Task> apply) => _apply = apply;
 
     public string Kind => "update_observation_note";
 
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
-        => _apply(ProposalPayload.Decode<UpdateObservationNotePayload>(proposal));
+        => _apply(ProposalPayload.Decode<UpdateObservationNotePayload>(proposal), Agents.AgentAttributionStamp.ForProposal(proposal));
 }
 
 /// <summary>Applies a <c>bulk_update_observation_notes</c> proposal (all items).</summary>
 public sealed class BulkUpdateObservationNotesApplier : IProposalApplier
 {
-    private readonly Func<IReadOnlyList<UpdateObservationNotePayload>, Task> _apply;
-    public BulkUpdateObservationNotesApplier(Func<IReadOnlyList<UpdateObservationNotePayload>, Task> apply) => _apply = apply;
+    private readonly Func<IReadOnlyList<UpdateObservationNotePayload>, Models.AgentAttribution?, Task> _apply;
+
+    public BulkUpdateObservationNotesApplier(Func<IReadOnlyList<UpdateObservationNotePayload>, Task> apply)
+        : this((p, _) => apply(p)) { }
+
+    /// <summary>Attribution-aware overload: the stamp every written note should carry (null for user origin).</summary>
+    public BulkUpdateObservationNotesApplier(Func<IReadOnlyList<UpdateObservationNotePayload>, Models.AgentAttribution?, Task> apply)
+        => _apply = apply;
 
     public string Kind => "bulk_update_observation_notes";
 
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
     {
         var payload = ProposalPayload.Decode<BulkUpdateObservationNotesPayload>(proposal);
-        return _apply(payload.Items);
+        return _apply(payload.Items, Agents.AgentAttributionStamp.ForProposal(proposal));
     }
 }

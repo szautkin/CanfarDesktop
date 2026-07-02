@@ -1,6 +1,6 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 
@@ -17,8 +17,8 @@ public partial class StorageBrowserViewModel : ObservableObject
     [ObservableProperty] private bool _hasError;
     [ObservableProperty] private VoSpaceNode? _selectedNode;
 
-    public ObservableCollection<VoSpaceNode> Nodes { get; } = [];
-    public ObservableCollection<string> BreadcrumbParts { get; } = [];
+    public BulkObservableCollection<VoSpaceNode> Nodes { get; } = [];
+    public BulkObservableCollection<string> BreadcrumbParts { get; } = [];
 
     public StorageBrowserViewModel(IStorageService storageService)
     {
@@ -144,10 +144,9 @@ public partial class StorageBrowserViewModel : ObservableObject
             var fullPath = string.IsNullOrEmpty(CurrentPath) ? _username : $"{_username}/{CurrentPath}";
             var nodes = await _storageService.ListNodesAsync(fullPath, limit: 500);
 
-            Nodes.Clear();
-            // Folders first, then files, alphabetically within each group
-            foreach (var n in nodes.OrderByDescending(n => n.IsContainer).ThenBy(n => n.Name))
-                Nodes.Add(n);
+            // Folders first, then files, alphabetically within each group.
+            // ReplaceAll raises a single Reset so the bound list rebuilds once.
+            Nodes.ReplaceAll(nodes.OrderByDescending(n => n.IsContainer).ThenBy(n => n.Name));
         }
         catch (Exception ex)
         {
@@ -162,13 +161,13 @@ public partial class StorageBrowserViewModel : ObservableObject
 
     private void UpdateBreadcrumbs()
     {
-        BreadcrumbParts.Clear();
-        BreadcrumbParts.Add("Home");
+        var parts = new List<string> { "Home" };
         if (!string.IsNullOrEmpty(CurrentPath))
         {
             foreach (var part in CurrentPath.Split('/'))
                 if (!string.IsNullOrWhiteSpace(part))
-                    BreadcrumbParts.Add(part);
+                    parts.Add(part);
         }
+        BreadcrumbParts.ReplaceAll(parts);
     }
 }

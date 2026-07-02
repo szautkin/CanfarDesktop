@@ -149,6 +149,8 @@
     <Compile Include="..\Mcp\Tools\Write\ViewStateWriteTools.cs" Link="Linked\Mcp\ViewStateWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\SavedQueryWriteTools.cs" Link="Linked\Mcp\SavedQueryWriteTools.cs" />
     <Compile Include="..\Mcp\Agents\AgentActivity.cs" Link="Linked\Mcp\AgentActivity.cs" />
+    <Compile Include="..\Models\AgentAttribution.cs" Link="Linked\AgentAttribution.cs" />
+    <Compile Include="..\Mcp\Agents\AgentAttribution.cs" Link="Linked\Mcp\AgentAttributionStamp.cs" />
     <Compile Include="..\Mcp\Tools\Write\ObservationNoteWriteTools.cs" Link="Linked\Mcp\ObservationNoteWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\SessionWriteTools.cs" Link="Linked\Mcp\SessionWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ObservationWriteTools.cs" Link="Linked\Mcp\ObservationWriteTools.cs" />
@@ -159,6 +161,10 @@
     <!-- Cube Viewer MCP DTOs + tools (pure; no WinUI) -->
     <Compile Include="..\Services\CubeViewer\CubeViewState.cs" Link="Linked\CubeViewer\CubeViewState.cs" />
     <Compile Include="..\Services\CubeViewer\CubeWcs.cs" Link="Linked\CubeViewer\CubeWcs.cs" />
+    <Compile Include="..\Services\CubeViewer\CubeColormaps.cs" Link="Linked\CubeViewer\CubeColormaps.cs" />
+    <Compile Include="..\Services\CubeViewer\CubeChannelProfile.cs" Link="Linked\CubeViewer\CubeChannelProfile.cs" />
+    <Compile Include="..\Services\CubeViewer\TransferFunctionModel.cs" Link="Linked\CubeViewer\TransferFunctionModel.cs" />
+    <Compile Include="..\Services\CubeViewer\RecentCubesService.cs" Link="Linked\CubeViewer\RecentCubesService.cs" />
     <Compile Include="..\Mcp\Tools\Write\CubeViewerTools.cs" Link="Linked\Mcp\CubeViewerTools.cs" />
     <!-- 2D FITS Viewer MCP DTOs + tools (pure; no WinUI) -->
     <Compile Include="..\Services\Fits\FitsViewState.cs" Link="Linked\Fits\FitsViewState.cs" />
@@ -184,7 +190,9 @@
     <Compile Include="..\Helpers\PackagePaths.cs" Link="Linked\Mcp\PackagePaths.cs" />
     <Compile Include="..\Mcp\Config\ClaudeConfigLocator.cs" Link="Linked\Mcp\ClaudeConfigLocator.cs" />
     <Compile Include="..\Mcp\Config\ClaudeClientDetection.cs" Link="Linked\Mcp\ClaudeClientDetection.cs" />
+    <Compile Include="..\Mcp\Config\McpBridgeLocator.cs" Link="Linked\Mcp\McpBridgeLocator.cs" />
     <Compile Include="..\Mcp\McpSelfTestProtocol.cs" Link="Linked\Mcp\McpSelfTestProtocol.cs" />
+    <Compile Include="..\Mcp\McpDiagnostics.cs" Link="Linked\Mcp\McpDiagnostics.cs" />
     <Compile Include="..\Mcp\Tools\Read\ResearchReadTools.cs" Link="Linked\Mcp\ResearchReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\SearchReadTools.cs" Link="Linked\Mcp\SearchReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\PlatformReadTools.cs" Link="Linked\Mcp\PlatformReadTools.cs" />
@@ -196,8 +204,13 @@
     <Compile Include="..\Mcp\Tools\Read\Caom2ReadTools.cs" Link="Linked\Mcp\Caom2ReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\CatalogJobReadTools.cs" Link="Linked\Mcp\CatalogJobReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\VoSpaceFitsReadTools.cs" Link="Linked\Mcp\VoSpaceFitsReadTools.cs" />
+    <Compile Include="..\Mcp\Tools\Read\ListEventsTool.cs" Link="Linked\Mcp\ListEventsTool.cs" />
+    <Compile Include="..\Mcp\Tools\Read\VizierConeSearchTool.cs" Link="Linked\Mcp\VizierConeSearchTool.cs" />
+    <Compile Include="..\Mcp\Tools\AliasedTool.cs" Link="Linked\Mcp\AliasedTool.cs" />
+    <Compile Include="..\Services\VizierService.cs" Link="Linked\VizierService.cs" />
     <Compile Include="..\Models\RecentLaunch.cs" Link="Linked\RecentLaunch.cs" />
     <Compile Include="..\Models\StorageQuota.cs" Link="Linked\StorageQuota.cs" />
+    <Compile Include="..\Helpers\BulkObservableCollection.cs" Link="Linked\BulkObservableCollection.cs" />
     <Compile Include="..\ViewModels\StorageBrowserViewModel.cs" Link="Linked\StorageBrowserViewModel.cs" />
     <!-- Notebook document core (Milestone 2) -->
     <Compile Include="..\Models\Notebook\NotebookDocument.cs" Link="Linked\Notebook\NotebookDocument.cs" />

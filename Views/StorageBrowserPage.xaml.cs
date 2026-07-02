@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.ViewModels;
 
@@ -15,16 +16,27 @@ public sealed partial class StorageBrowserPage : UserControl
     private string _sortColumn = "name";
     private bool _sortAscending = true;
 
+    // The ListView binds to this once; loads/sorts mutate it in place so the
+    // control never has its ItemsSource reassigned (which resets scroll and
+    // drops selection).
+    private readonly BulkObservableCollection<VoSpaceNode> _view = [];
+    private string? _lastLoadedPath;
+
     public StorageBrowserPage(StorageBrowserViewModel viewModel)
     {
         ViewModel = viewModel;
         InitializeComponent();
+        FileList.ItemsSource = _view;
+        PathBreadcrumb.ItemsSource = ViewModel.BreadcrumbParts;
 
         ViewModel.PropertyChanged += (_, e) => DispatcherQueue.TryEnqueue(() =>
         {
             if (e.PropertyName is nameof(ViewModel.IsLoading))
+            {
                 LoadingRing.IsActive = ViewModel.IsLoading;
-            else if (e.PropertyName is nameof(ViewModel.HasError))
+                UpdateEmptyState();
+            }
+            else if (e.PropertyName is nameof(ViewModel.HasError) or nameof(ViewModel.ErrorMessage))
             {
                 ErrorBar.IsOpen = ViewModel.HasError;
                 ErrorBar.Message = ViewModel.ErrorMessage;
@@ -33,15 +45,40 @@ public sealed partial class StorageBrowserPage : UserControl
 
         ViewModel.Nodes.CollectionChanged += (_, _) => DispatcherQueue.TryEnqueue(() =>
         {
-            ApplySort();
-            EmptyState.Visibility = ViewModel.Nodes.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            ItemCountText.Text = $"{ViewModel.Nodes.Count} items";
-        });
+            // Same path = refresh (after upload/delete/new-folder): keep the user's
+            // selection and scroll position. New path = navigation: start at the top.
+            var isRefresh = _lastLoadedPath == ViewModel.CurrentPath;
+            _lastLoadedPath = ViewModel.CurrentPath;
 
-        ViewModel.BreadcrumbParts.CollectionChanged += (_, _) => DispatcherQueue.TryEnqueue(() =>
-        {
-            PathBreadcrumb.ItemsSource = ViewModel.BreadcrumbParts.ToList();
+            var selectedName = (FileList.SelectedItem as VoSpaceNode)?.Name;
+            var scroll = isRefresh ? VisualTree.FindDescendant<ScrollViewer>(FileList)?.VerticalOffset : null;
+
+            _view.ReplaceAll(SortNodes(ViewModel.Nodes));
+            UpdateEmptyState();
+            ItemCountText.Text = $"{ViewModel.Nodes.Count} items";
+
+            if (isRefresh)
+            {
+                if (selectedName is not null)
+                    FileList.SelectedItem = _view.FirstOrDefault(n => n.Name == selectedName);
+                if (scroll is > 0)
+                    DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+                        VisualTree.FindDescendant<ScrollViewer>(FileList)?.ChangeView(null, scroll, null, disableAnimation: true));
+            }
+            else
+            {
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+                    VisualTree.FindDescendant<ScrollViewer>(FileList)?.ChangeView(null, 0, null, disableAnimation: true));
+            }
         });
+    }
+
+    private void UpdateEmptyState()
+    {
+        // Gate on IsLoading so navigating into a folder doesn't flash "empty"
+        // while the listing is still in flight.
+        EmptyState.Visibility = !ViewModel.IsLoading && ViewModel.Nodes.Count == 0
+            ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public async Task LoadAsync(string username)
@@ -52,23 +89,28 @@ public sealed partial class StorageBrowserPage : UserControl
 
     #region Sort
 
+    private IEnumerable<VoSpaceNode> SortNodes(IEnumerable<VoSpaceNode> nodes) => nodes
+        .OrderByDescending(n => n.IsContainer) // folders first always
+        .ThenBy(n => n, Comparer<VoSpaceNode>.Create((a, b) =>
+        {
+            var cmp = _sortColumn switch
+            {
+                "size" => (a.SizeBytes ?? 0).CompareTo(b.SizeBytes ?? 0),
+                "date" => (a.LastModified ?? DateTime.MinValue).CompareTo(b.LastModified ?? DateTime.MinValue),
+                _ => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase)
+            };
+            return _sortAscending ? cmp : -cmp;
+        }));
+
     private void ApplySort()
     {
-        var sorted = ViewModel.Nodes
-            .OrderByDescending(n => n.IsContainer) // folders first always
-            .ThenBy(n => n, Comparer<VoSpaceNode>.Create((a, b) =>
-            {
-                var cmp = _sortColumn switch
-                {
-                    "size" => (a.SizeBytes ?? 0).CompareTo(b.SizeBytes ?? 0),
-                    "date" => (a.LastModified ?? DateTime.MinValue).CompareTo(b.LastModified ?? DateTime.MinValue),
-                    _ => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase)
-                };
-                return _sortAscending ? cmp : -cmp;
-            }))
-            .ToList();
-
-        FileList.ItemsSource = sorted;
+        // In-place reorder (Move) keeps the ListView's selection and containers alive.
+        var sorted = SortNodes(_view).ToList();
+        for (var target = 0; target < sorted.Count; target++)
+        {
+            var current = _view.IndexOf(sorted[target]);
+            if (current != target) _view.Move(current, target);
+        }
     }
 
     private void OnSortByName(object s, RoutedEventArgs e) => ToggleSort("name");
@@ -123,23 +165,45 @@ public sealed partial class StorageBrowserPage : UserControl
 
     #region Actions
 
+    // Guards the toolbar's async void handlers: a second click while a dialog or
+    // transfer is in flight would otherwise open a second ContentDialog (throws)
+    // or start an overlapping operation.
+    private bool _actionBusy;
+
+    private void ReportError(string message)
+    {
+        ViewModel.ErrorMessage = message;
+        ViewModel.HasError = true;
+    }
+
     private async void OnNewFolder(object sender, RoutedEventArgs e)
     {
-        var input = new TextBox { PlaceholderText = "Folder name" };
-        var dialog = new ContentDialog
+        if (_actionBusy) return;
+        _actionBusy = true;
+        try
         {
-            Title = "New Folder",
-            Content = input,
-            PrimaryButtonText = "Create",
-            CloseButtonText = "Cancel",
-            XamlRoot = XamlRoot
-        };
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(input.Text))
-            await ViewModel.CreateFolderCommand.ExecuteAsync(input.Text.Trim());
+            var input = new TextBox { PlaceholderText = "Folder name" };
+            var dialog = new ContentDialog
+            {
+                Title = "New Folder",
+                Content = input,
+                PrimaryButtonText = "Create",
+                CloseButtonText = "Cancel",
+                XamlRoot = XamlRoot
+            };
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(input.Text))
+                await ViewModel.CreateFolderCommand.ExecuteAsync(input.Text.Trim());
+        }
+        finally
+        {
+            _actionBusy = false;
+        }
     }
 
     private async void OnUpload(object sender, RoutedEventArgs e)
     {
+        if (_actionBusy) return;
+        _actionBusy = true;
         try
         {
             var hWnd = nint.Zero;
@@ -168,6 +232,11 @@ public sealed partial class StorageBrowserPage : UserControl
             TransferRing.IsActive = false;
             TransferText.Text = "";
             System.Diagnostics.Debug.WriteLine($"Upload error: {ex.Message}");
+            ReportError($"Upload failed: {ex.Message}");
+        }
+        finally
+        {
+            _actionBusy = false;
         }
     }
 
@@ -228,7 +297,8 @@ public sealed partial class StorageBrowserPage : UserControl
     private async void OnDownload(object sender, RoutedEventArgs e)
     {
         if (ViewModel.SelectedNode is null || ViewModel.SelectedNode.IsContainer) return;
-
+        if (_actionBusy) return;
+        _actionBusy = true;
         try
         {
             var hWnd = nint.Zero;
@@ -263,26 +333,39 @@ public sealed partial class StorageBrowserPage : UserControl
             TransferRing.IsActive = false;
             TransferText.Text = "";
             System.Diagnostics.Debug.WriteLine($"Download error: {ex.Message}");
+            ReportError($"Download failed: {ex.Message}");
+        }
+        finally
+        {
+            _actionBusy = false;
         }
     }
 
     private async void OnDelete(object sender, RoutedEventArgs e)
     {
         if (ViewModel.SelectedNode is null) return;
-
-        var dialog = new ContentDialog
+        if (_actionBusy) return;
+        _actionBusy = true;
+        try
         {
-            Title = "Delete",
-            Content = ViewModel.SelectedNode.IsContainer
-                ? $"Delete folder \"{ViewModel.SelectedNode.Name}\"? (Must be empty)"
-                : $"Delete \"{ViewModel.SelectedNode.Name}\"?",
-            PrimaryButtonText = "Delete",
-            CloseButtonText = "Cancel",
-            XamlRoot = XamlRoot
-        };
+            var dialog = new ContentDialog
+            {
+                Title = "Delete",
+                Content = ViewModel.SelectedNode.IsContainer
+                    ? $"Delete folder \"{ViewModel.SelectedNode.Name}\"? (Must be empty)"
+                    : $"Delete \"{ViewModel.SelectedNode.Name}\"?",
+                PrimaryButtonText = "Delete",
+                CloseButtonText = "Cancel",
+                XamlRoot = XamlRoot
+            };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-            await ViewModel.DeleteSelectedCommand.ExecuteAsync(null);
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+                await ViewModel.DeleteSelectedCommand.ExecuteAsync(null);
+        }
+        finally
+        {
+            _actionBusy = false;
+        }
     }
 
     private void OnCopyPath(object sender, RoutedEventArgs e)
@@ -336,6 +419,7 @@ public sealed partial class StorageBrowserPage : UserControl
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Drop upload error: {ex.Message}");
+                    ReportError($"Upload of {file.Name} failed: {ex.Message}");
                 }
             }
         }

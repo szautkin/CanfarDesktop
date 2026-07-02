@@ -170,6 +170,81 @@ public class VoSpaceFitsToolTests
         Assert.IsType<UpstreamTimeout>(Fail(result));
     }
 
+    // ---- get_vospace_node -----------------------------------------------------------------
+
+    [Fact]
+    public async Task GetVoSpaceNode_ListsTheParentAndReturnsTheMatchingLeaf()
+    {
+        (string Path, int? Limit) captured = default;
+        var tool = new GetVoSpaceNodeTool((req, _) =>
+        {
+            captured = req;
+            return Task.FromResult(new List<VoSpaceNode>
+            {
+                new() { Name = "other.txt", Path = "/u/other.txt", Type = VoSpaceNodeType.DataNode },
+                new() { Name = "image.fits", Path = "/u/image.fits", Type = VoSpaceNodeType.DataNode, SizeBytes = 4096, IsPublic = true },
+            });
+        });
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"path":"/u/image.fits"}"""), Ctx, default));
+
+        Assert.Equal("u", captured.Path);        // the parent listing, not the leaf
+        Assert.Equal(10_000, captured.Limit);    // far above macOS's 500 — avoids false not-found in big folders
+        Assert.Equal("image.fits", ((JsonString)data["name"]!).Value);
+        Assert.Equal("/u/image.fits", ((JsonString)data["path"]!).Value);
+        Assert.Equal("DataNode", ((JsonString)data["type"]!).Value);
+        Assert.Equal(4096, ((JsonInt)data["sizeBytes"]!).Value);
+        Assert.True(((JsonBool)data["isPublic"]!).Value);
+    }
+
+    [Fact]
+    public async Task GetVoSpaceNode_TopLevelNode_ListsTheRoot()
+    {
+        (string Path, int? Limit) captured = default;
+        var tool = new GetVoSpaceNodeTool((req, _) =>
+        {
+            captured = req;
+            return Task.FromResult(new List<VoSpaceNode> { new() { Name = "szautkin", Path = "/szautkin", Type = VoSpaceNodeType.Container } });
+        });
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"path":"/szautkin"}"""), Ctx, default));
+
+        Assert.Equal("/", captured.Path);
+        Assert.Equal("szautkin", ((JsonString)data["name"]!).Value);
+    }
+
+    [Theory]
+    [InlineData("""{"path":""}""")]
+    [InlineData("""{"path":"/"}""")]
+    [InlineData("""{"path":"  //  "}""")]
+    public async Task GetVoSpaceNode_RootPath_InvalidArgument(string args)
+    {
+        var tool = new GetVoSpaceNodeTool((_, _) => Task.FromResult(new List<VoSpaceNode>()));
+        var result = await tool.InvokeAsync(JsonValue.Parse(args), Ctx, default);
+        Assert.IsType<InvalidArgument>(Fail(result));
+    }
+
+    [Fact]
+    public async Task GetVoSpaceNode_AbsentLeaf_UnknownTarget()
+    {
+        var tool = new GetVoSpaceNodeTool((_, _) => Task.FromResult(new List<VoSpaceNode>
+        {
+            new() { Name = "present.txt", Path = "/u/present.txt", Type = VoSpaceNodeType.DataNode },
+        }));
+        var result = await tool.InvokeAsync(JsonValue.Parse("""{"path":"/u/absent.txt"}"""), Ctx, default);
+        var reason = Assert.IsType<UnknownTarget>(Fail(result));
+        Assert.Contains("vospace_node /u/absent.txt", reason.Description);
+    }
+
+    [Fact]
+    public async Task GetVoSpaceNode_AuthFailure_MapsToAuthRequired()
+    {
+        var tool = new GetVoSpaceNodeTool((_, _) =>
+            throw new HttpRequestException("denied", null, HttpStatusCode.Forbidden));
+        var result = await tool.InvokeAsync(JsonValue.Parse("""{"path":"/private/x"}"""), Ctx, default);
+        Assert.IsType<AuthRequired>(Fail(result));
+    }
+
     // ---- get_fits_header ------------------------------------------------------------------
 
     private static FitsHeader HeaderWithWcs()

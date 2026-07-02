@@ -8,7 +8,8 @@ namespace CanfarDesktop.Views.Dialogs;
 
 /// <summary>
 /// The unified Settings window: a NavigationView consolidating the previously-scattered settings. General
-/// (theme + defaults, wiring the app's <see cref="ISettingsService"/>) and About are embedded; the
+/// (theme + API base URL), Portal (session-launch defaults; both wire the app's
+/// <see cref="ISettingsService"/>) and About are embedded; the
 /// specialized surfaces (AI agent / Image discovery / AI compute / Notebook) open from here — they stay
 /// their own dialogs because WinUI allows only one ContentDialog at a time, so a launcher closes this one
 /// first.
@@ -22,9 +23,21 @@ public sealed partial class SettingsDialog : ContentDialog
     {
         InitializeComponent();
         _settings = App.Services.GetRequiredService<ISettingsService>();
-        VersionText.Text = $"Version {AppVersion()}";
+        VersionText.Text = Loc.F("About_Version", AppVersion());
         PopulateGeneral();
+        PopulatePortal();
         Nav.SelectedItem = Nav.MenuItems.Count > 0 ? Nav.MenuItems[0] : null; // General
+
+        // Flush pending edits when the dialog closes (Escape or the close button
+        // would otherwise silently discard General text that hasn't lost focus yet
+        // and unsaved edits in the Save-button panels).
+        Closing += (_, _) =>
+        {
+            SaveGeneral();
+            SavePortal();
+            if (ComputeSettingsPanel.IsDirty) ComputeSettingsPanel.SaveNow();
+            if (DiscoverySettingsPanel.IsDirty) DiscoverySettingsPanel.SaveNow();
+        };
     }
 
     public static Task ShowAsync(XamlRoot root)
@@ -34,10 +47,20 @@ public sealed partial class SettingsDialog : ContentDialog
     {
         _loading = true;
         SelectByTag(ThemeCombo, _settings.Theme);
+        SelectByTag(LanguageCombo, _settings.Language);
+        ApiBaseUrlBox.Text = _settings.ApiBaseUrl;
+        _loading = false;
+    }
+
+    private void PopulatePortal()
+    {
+        _loading = true;
         SelectByTag(SessionTypeCombo, _settings.DefaultSessionType);
+        SelectByTag(ResourcePresetCombo, _settings.DefaultResourceType);
         CoresBox.Value = _settings.DefaultCores;
         RamBox.Value = _settings.DefaultRam;
-        ApiBaseUrlBox.Text = _settings.ApiBaseUrl;
+        GpusBox.Value = _settings.DefaultGpus;
+        UpdateFixedResourceVisibility();
         _loading = false;
     }
 
@@ -47,6 +70,7 @@ public sealed partial class SettingsDialog : ContentDialog
     {
         var tag = (args.SelectedItem as NavigationViewItem)?.Tag as string ?? "general";
         GeneralPanel.Visibility = Vis(tag == "general");
+        PortalPanel.Visibility = Vis(tag == "portal");
         AgentPanel.Visibility = Vis(tag == "agent");
         DiscoveryPanel.Visibility = Vis(tag == "discovery");
         ComputePanel.Visibility = Vis(tag == "compute");
@@ -66,20 +90,74 @@ public sealed partial class SettingsDialog : ContentDialog
         ThemeApplier.Apply(XamlRoot?.Content as FrameworkElement, _settings.Theme);
     }
 
-    private void OnGeneralChanged(object sender, RoutedEventArgs e)
+    private void OnGeneralChanged(object sender, RoutedEventArgs e) => SaveGeneral();
+
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loading) return;
-        _settings.DefaultSessionType = SelectedTag(SessionTypeCombo) ?? _settings.DefaultSessionType;
+        SaveGeneral();
+        ApplyLanguageOverride(_settings.Language);
+    }
+
+    private void SaveGeneral()
+    {
+        if (_loading) return;
         _settings.ApiBaseUrl = string.IsNullOrWhiteSpace(ApiBaseUrlBox.Text) ? _settings.ApiBaseUrl : ApiBaseUrlBox.Text.Trim();
+        _settings.Language = SelectedTag(LanguageCombo) ?? _settings.Language;
         _settings.Save();
     }
 
-    private void OnGeneralNumberChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
+    /// <summary>
+    /// Persist the override with Windows too, so the next launch starts in the chosen language even
+    /// before App reads the setting. Loaded UI keeps its current language until restart (macOS parity).
+    /// </summary>
+    private static void ApplyLanguageOverride(string language)
+    {
+        try
+        {
+            Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride =
+                language switch { "en" => "en-US", "fr" => "fr-FR", _ => "" };
+        }
+        catch { /* unpackaged run — override unavailable; App applies the setting next launch */ }
+    }
+
+    // ── Portal persistence (auto-save; macOS Portal settings tab parity) ──
+
+    private void OnPortalChanged(object sender, RoutedEventArgs e) => SavePortal();
+
+    private void OnPortalNumberChanged(NumberBox sender, NumberBoxValueChangedEventArgs args) => SavePortal();
+
+    private void OnResourcePresetChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateFixedResourceVisibility();
+        SavePortal();
+    }
+
+    // Cores/RAM/GPUs only apply to the "fixed" preset (macOS shows the value pickers only then).
+    private void UpdateFixedResourceVisibility()
+        => FixedResourcePanel.Visibility = Vis(SelectedTag(ResourcePresetCombo) == "fixed");
+
+    private void SavePortal()
     {
         if (_loading) return;
+        _settings.DefaultSessionType = SelectedTag(SessionTypeCombo) ?? _settings.DefaultSessionType;
+        _settings.DefaultResourceType = SelectedTag(ResourcePresetCombo) ?? _settings.DefaultResourceType;
         if (!double.IsNaN(CoresBox.Value)) _settings.DefaultCores = (int)CoresBox.Value;
         if (!double.IsNaN(RamBox.Value)) _settings.DefaultRam = (int)RamBox.Value;
+        if (!double.IsNaN(GpusBox.Value)) _settings.DefaultGpus = (int)GpusBox.Value;
         _settings.Save();
+    }
+
+    private void OnClearPortalDefaults(object sender, RoutedEventArgs e)
+    {
+        // macOS "Clear All Defaults": back to the built-in launch-form defaults.
+        _settings.DefaultSessionType = "notebook";
+        _settings.DefaultResourceType = "none";
+        _settings.DefaultCores = 2;
+        _settings.DefaultRam = 8;
+        _settings.DefaultGpus = 0;
+        _settings.Save();
+        PopulatePortal();
     }
 
     // ── launchers (close this dialog first — only one ContentDialog may be open) ──

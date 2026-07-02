@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
+using CanfarDesktop.Services.CubeViewer;
 using static CanfarDesktop.Views.WindowHelper;
 
 namespace CanfarDesktop.Views.CubeViewer;
@@ -15,6 +16,9 @@ namespace CanfarDesktop.Views.CubeViewer;
 /// </summary>
 public sealed partial class CubeTabHost : UserControl
 {
+    // Recently opened cubes, persisted across sessions and surfaced in the empty state.
+    private readonly RecentCubesService _recents = new();
+
     public CubeTabHost()
     {
         InitializeComponent();
@@ -48,6 +52,8 @@ public sealed partial class CubeTabHost : UserControl
         {
             var st = page.GetCubeState();
             tab.Header = !string.IsNullOrEmpty(st.Object) ? st.Object : st.Name;
+            // Every successful open (picker, empty-state, recents, MCP) lands here — record it once.
+            _recents.AddOrUpdate(filePath, tab.Header as string);
         }
         return page;
     }
@@ -95,5 +101,44 @@ public sealed partial class CubeTabHost : UserControl
     }
 
     private void UpdateEmptyState()
-        => EmptyState.Visibility = TabViewControl.TabItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    {
+        bool empty = TabViewControl.TabItems.Count == 0;
+        EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+        if (empty) RefreshRecents();
+    }
+
+    /// <summary>Rebuild the empty-state recents list (a handful of entries — rebuilding is cheap).</summary>
+    private void RefreshRecents()
+    {
+        RecentsList.Items.Clear();
+        var entries = _recents.Entries;
+        RecentsPanel.Visibility = entries.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var entry in entries)
+        {
+            var btn = new HyperlinkButton
+            {
+                Content = entry.Name,
+                Tag = entry.Path,
+                Padding = new Thickness(8, 2, 8, 2),
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
+            ToolTipService.SetToolTip(btn, entry.Path);
+            btn.Click += OnRecentClick;
+            RecentsList.Items.Add(btn);
+        }
+    }
+
+    private async void OnRecentClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string path) return;
+        // A file deleted since it was recorded silently drops out of the list instead of
+        // opening a tab that can only fail.
+        if (!File.Exists(path))
+        {
+            _recents.Remove(path);
+            RefreshRecents();
+            return;
+        }
+        await AddTabForFileAsync(path);
+    }
 }

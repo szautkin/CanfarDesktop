@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="CanfarDesktop.Views.Controls.AgentBadge"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Visibility="Collapsed">
+
+    <Button x:Name="BadgeButton" Padding="2" Background="Transparent" BorderThickness="0"
+            VerticalAlignment="Center">
+        <FontIcon Glyph="&#xE99A;" FontSize="12"
+                  Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+        <Button.Flyout>
+            <Flyout Placement="Top">
+                <StackPanel Spacing="8" MinWidth="300" MaxWidth="380">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE99A;" FontSize="14"
+                                  Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                        <TextBlock Text="Created by AI agent" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    </StackPanel>
+                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    <Grid ColumnSpacing="10" RowSpacing="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Agent" Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" x:Name="AgentText" FontFamily="Consolas"
+                                   FontSize="12" IsTextSelectionEnabled="True" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="1" Text="Client" Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="ClientText" FontFamily="Consolas"
+                                   FontSize="12" IsTextSelectionEnabled="True" />
+                        <TextBlock Grid.Row="2" Text="Applied" Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" x:Name="AppliedText" FontSize="12"
+                                   IsTextSelectionEnabled="True" />
+                        <TextBlock Grid.Row="3" Text="From proposal" Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" x:Name="ProposalText" FontFamily="Consolas"
+                                   FontSize="12" IsTextSelectionEnabled="True" />
+                    </Grid>
+                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    <TextBlock Text="Summary" Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Name="SummaryText" FontSize="12" TextWrapping="Wrap"
+                               IsTextSelectionEnabled="True" />
+                </StackPanel>
+            </Flyout>
+        </Button.Flyout>
+    </Button>
+</UserControl>

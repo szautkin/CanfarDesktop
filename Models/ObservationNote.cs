@@ -12,6 +12,9 @@ public record ObservationNote
     public IReadOnlyList<string> Tags { get; init; } = [];
     public DateTimeOffset UpdatedUtc { get; init; }
 
+    /// <summary>Provenance stamp when the note was written by an MCP agent; null = user-authored.</summary>
+    public AgentAttribution? AgentAttribution { get; init; }
+
     /// <summary>True when there is nothing worth persisting (blank note, unrated, no tags).</summary>
     public bool IsEmpty => string.IsNullOrWhiteSpace(Note) && Rating == 0 && Tags.Count == 0;
 }

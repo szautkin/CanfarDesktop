@@ -3,6 +3,7 @@ namespace CanfarDesktop.ViewModels;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 using Microsoft.UI.Dispatching;
@@ -22,7 +23,7 @@ public partial class LocalFileBrowserViewModel : ObservableObject
     [ObservableProperty] private bool _sortByDate;
 
     public ObservableCollection<LocalFileNode> RootNodes { get; } = [];
-    public ObservableCollection<BreadcrumbSegment> Breadcrumbs { get; } = [];
+    public BulkObservableCollection<BreadcrumbSegment> Breadcrumbs { get; } = [];
 
     public event Action<string>? FileOpenRequested;
     public event Action? PickFolderRequested;
@@ -47,18 +48,42 @@ public partial class LocalFileBrowserViewModel : ObservableObject
     [RelayCommand]
     public void RefreshRoot()
     {
-        RootNodes.Clear();
-        if (string.IsNullOrEmpty(RootPath) || !Directory.Exists(RootPath)) return;
+        if (string.IsNullOrEmpty(RootPath) || !Directory.Exists(RootPath))
+        {
+            RootNodes.Clear();
+            return;
+        }
 
         var children = _fileService.GetChildren(RootPath, ShowHidden);
         var filtered = ApplyFilter(children);
         var sorted = ApplySort(filtered);
 
-        foreach (var child in sorted)
-            RootNodes.Add(child);
+        // Reconcile by path instead of Clear+rebuild: surviving nodes keep their
+        // instance, so the TreeView preserves their expansion and selection when a
+        // watcher event or filter change refreshes the listing.
+        var wanted = sorted.Select(n => n.FullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        for (var i = RootNodes.Count - 1; i >= 0; i--)
+            if (!wanted.Contains(RootNodes[i].FullPath)) RootNodes.RemoveAt(i);
+
+        for (var i = 0; i < sorted.Count; i++)
+        {
+            var existing = -1;
+            for (var j = 0; j < RootNodes.Count; j++)
+                if (string.Equals(RootNodes[j].FullPath, sorted[i].FullPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    existing = j;
+                    break;
+                }
+
+            if (existing < 0) RootNodes.Insert(Math.Min(i, RootNodes.Count), sorted[i]);
+            else if (existing != i) RootNodes.Move(existing, i);
+        }
 
         _fileService.WatchDirectory(RootPath);
     }
+
+    private LocalFileNode? FindRootNode(string fullPath) =>
+        RootNodes.FirstOrDefault(n => string.Equals(n.FullPath, fullPath, StringComparison.OrdinalIgnoreCase));
 
     public List<LocalFileNode> LoadChildren(LocalFileNode parent)
     {
@@ -94,7 +119,13 @@ public partial class LocalFileBrowserViewModel : ObservableObject
         while (Directory.Exists(Path.Combine(parent, name)))
             name = $"New Folder ({counter++})";
 
-        try { _fileService.CreateFolder(parent, name); }
+        try
+        {
+            _fileService.CreateFolder(parent, name);
+            // Show and select the new folder right away instead of waiting on the watcher.
+            RefreshRoot();
+            SelectedNode = FindRootNode(Path.Combine(parent, name)) ?? SelectedNode;
+        }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"CreateFolder failed: {ex.Message}"); }
     }
 
@@ -109,7 +140,12 @@ public partial class LocalFileBrowserViewModel : ObservableObject
         while (File.Exists(Path.Combine(parent, name)))
             name = $"untitled ({counter++}).ipynb";
 
-        try { _fileService.CreateFile(parent, name); }
+        try
+        {
+            _fileService.CreateFile(parent, name);
+            RefreshRoot();
+            SelectedNode = FindRootNode(Path.Combine(parent, name)) ?? SelectedNode;
+        }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"CreateFile failed: {ex.Message}"); }
     }
 
@@ -124,7 +160,11 @@ public partial class LocalFileBrowserViewModel : ObservableObject
     public void RenameSelected(string newName)
     {
         if (SelectedNode is null || string.IsNullOrWhiteSpace(newName)) return;
+        var parent = Path.GetDirectoryName(SelectedNode.FullPath);
         _fileService.Rename(SelectedNode.FullPath, newName);
+        RefreshRoot();
+        if (parent is not null)
+            SelectedNode = FindRootNode(Path.Combine(parent, newName)) ?? SelectedNode;
     }
 
     [RelayCommand]
@@ -137,18 +177,21 @@ public partial class LocalFileBrowserViewModel : ObservableObject
 
     private void RebuildBreadcrumbs()
     {
-        Breadcrumbs.Clear();
-        if (string.IsNullOrEmpty(RootPath)) return;
-
-        var parts = RootPath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-        var accumulated = "";
-        for (var i = 0; i < parts.Length; i++)
+        var segments = new List<BreadcrumbSegment>();
+        if (!string.IsNullOrEmpty(RootPath))
         {
-            accumulated = i == 0
-                ? (OperatingSystem.IsWindows() ? parts[0] + "\\" : "/" + parts[0])
-                : Path.Combine(accumulated, parts[i]);
-            Breadcrumbs.Add(new BreadcrumbSegment(parts[i], accumulated));
+            var parts = RootPath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var accumulated = "";
+            for (var i = 0; i < parts.Length; i++)
+            {
+                accumulated = i == 0
+                    ? (OperatingSystem.IsWindows() ? parts[0] + "\\" : "/" + parts[0])
+                    : Path.Combine(accumulated, parts[i]);
+                segments.Add(new BreadcrumbSegment(parts[i], accumulated));
+            }
         }
+        // Single Reset → the panel's scroll-to-end runs once per navigation.
+        Breadcrumbs.ReplaceAll(segments);
     }
 
     [RelayCommand]

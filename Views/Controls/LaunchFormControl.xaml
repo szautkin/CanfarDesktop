@@ -305,6 +305,128 @@
                         </StackPanel>
                     </ScrollViewer>
                 </PivotItem>
+
+                <!-- Headless batch jobs — the write surface for new jobs; the Batch Jobs
+                     panel is the read surface for already-running ones. -->
+                <PivotItem Header="Headless">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
+                        <StackPanel Spacing="12">
+                            <!-- Job Name -->
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Job Name" Style="{StaticResource BodyTextBlockStyle}" />
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" PlaceholderText="e.g. nightly-reduction"
+                                             Text="{x:Bind ViewModel.HeadlessSessionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Button Grid.Column="1" VerticalAlignment="Bottom" Click="OnGenerateHeadlessNameClick"
+                                            ToolTipService.ToolTip="Generate Name">
+                                        <FontIcon Glyph="&#xE8EE;" FontSize="14" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- No headless images hint -->
+                            <InfoBar x:Name="NoHeadlessImagesBar" Severity="Warning" IsClosable="False"
+                                     Title="No headless images"
+                                     Message="No headless images available for this account. Contact CADC support if you expect to see batch images here." />
+
+                            <!-- Project -->
+                            <StackPanel Spacing="2" x:Name="HeadlessProjectSection">
+                                <TextBlock Text="Project" Style="{StaticResource BodyTextBlockStyle}" />
+                                <ComboBox HorizontalAlignment="Stretch"
+                                          ItemsSource="{x:Bind ViewModel.HeadlessProjects}"
+                                          SelectedItem="{x:Bind ViewModel.HeadlessSelectedProject, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <!-- Image -->
+                            <StackPanel Spacing="2" x:Name="HeadlessImageSection">
+                                <TextBlock Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" />
+                                <ComboBox HorizontalAlignment="Stretch"
+                                          ItemsSource="{x:Bind ViewModel.HeadlessImages}"
+                                          SelectedItem="{x:Bind ViewModel.HeadlessSelectedImage, Mode=TwoWay}"
+                                          DisplayMemberPath="Label" />
+                            </StackPanel>
+
+                            <!-- Command (required) -->
+                            <StackPanel Spacing="2">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="Command" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <Button x:Name="HlCmdHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
+                                            Background="Transparent" BorderThickness="0" Click="OnHelpClick">
+                                        <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
+                                    </Button>
+                                    <TeachingTip x:Name="HlCmdTip" Target="{x:Bind HlCmdHelpBtn}"
+                                                 Title="Command"
+                                                 Subtitle="The command the container runs. Required." />
+                                </StackPanel>
+                                <TextBox PlaceholderText="e.g. python /arc/home/me/reduce.py"
+                                         Text="{x:Bind ViewModel.HeadlessCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+
+                            <!-- Arguments -->
+                            <StackPanel Spacing="2">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="Arguments" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <Button x:Name="HlArgsHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
+                                            Background="Transparent" BorderThickness="0" Click="OnHelpClick">
+                                        <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
+                                    </Button>
+                                    <TeachingTip x:Name="HlArgsTip" Target="{x:Bind HlArgsHelpBtn}"
+                                                 Title="Arguments"
+                                                 Subtitle="Single string of additional arguments. Skaha treats this as one parameter and splits it server-side." />
+                                </StackPanel>
+                                <TextBox PlaceholderText="optional, space-separated"
+                                         Text="{x:Bind ViewModel.HeadlessArgs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+
+                            <!-- Replicas -->
+                            <StackPanel Spacing="2">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="Replicas" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <Button x:Name="HlReplicasHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
+                                            Background="Transparent" BorderThickness="0" Click="OnHelpClick">
+                                        <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
+                                    </Button>
+                                    <TeachingTip x:Name="HlReplicasTip" Target="{x:Bind HlReplicasHelpBtn}"
+                                                 Title="Replicas"
+                                                 Subtitle="Number of parallel container replicas. REPLICA_ID and REPLICA_COUNT are auto-injected as env vars." />
+                                </StackPanel>
+                                <NumberBox Minimum="1" Maximum="20" SpinButtonPlacementMode="Compact"
+                                           HorizontalAlignment="Left" MinWidth="140"
+                                           Value="{x:Bind ViewModel.HeadlessReplicas, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <!-- Resource Type -->
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" />
+                                <RadioButtons SelectedIndex="0" SelectionChanged="OnHeadlessResourceTypeChanged">
+                                    <RadioButton Content="Flexible (platform-managed)" Tag="flexible" />
+                                    <RadioButton Content="Fixed" Tag="fixed" />
+                                </RadioButtons>
+                            </StackPanel>
+
+                            <!-- Resource options (visible when Fixed) -->
+                            <local:ResourceSelectorPanel x:Name="HeadlessResourcePanel" Visibility="Collapsed" />
+
+                            <!-- Error -->
+                            <InfoBar IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                                     Severity="Error" Title="Error"
+                                     Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+
+                            <!-- Launch button -->
+                            <Button Style="{StaticResource AccentButtonStyle}"
+                                    Click="OnHeadlessLaunchClick" x:Name="HeadlessLaunchButton">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE768;" FontSize="14" />
+                                    <TextBlock x:Name="HeadlessLaunchLabel" Text="Launch Job" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </PivotItem>
             </Pivot>
         </Grid>
     </Border>

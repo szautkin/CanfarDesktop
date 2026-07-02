@@ -225,7 +225,7 @@
             </StackPanel>
 
             <!-- detail body -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Grid.Row="1" x:Name="DetailScroll" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="10">
                     <!-- OS / kernel -->
                     <StackPanel Spacing="1" Visibility="{Binding Detail.HasManifest, Converter={StaticResource BoolToVis}}">
@@ -262,7 +262,8 @@
                                             <Run Text=" (" /><Run Text="{Binding Count}" /><Run Text=")" />
                                         </TextBlock>
                                     </Expander.Header>
-                                    <ListView ItemsSource="{Binding Packages}" SelectionMode="None" MaxHeight="280">
+                                    <ListView ItemsSource="{Binding Packages}" SelectionMode="None" MaxHeight="280"
+                                              Loaded="OnPackageListLoaded">
                                         <ListView.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid ColumnSpacing="8">

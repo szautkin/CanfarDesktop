@@ -50,8 +50,24 @@ public sealed partial class ResearchPage : UserControl
 
     public void RefreshList()
     {
+        // Re-entering Research must not wipe the user's selection and scroll when
+        // nothing changed — only reassign the list when the observation set differs.
+        // Compare INSTANCES, not ids: a re-download replaces the record with a new
+        // instance under the same PublisherID, and keeping the stale one would show
+        // old fields and break Delete (which matches on the record's internal Id).
+        var before = (FileList.ItemsSource as IEnumerable<DownloadedObservation>)?.ToList();
+        var selectedId = (FileList.SelectedItem as DownloadedObservation)?.PublisherID;
+
         ViewModel.Refresh();
-        FileList.ItemsSource = ViewModel.FilteredObservations;
+        var fresh = ViewModel.FilteredObservations;
+
+        if (before is null || before.Count != fresh.Count
+            || !before.Zip(fresh).All(pair => ReferenceEquals(pair.First, pair.Second)))
+        {
+            FileList.ItemsSource = fresh;
+            if (selectedId is not null)
+                FileList.SelectedItem = fresh.FirstOrDefault(o => o.PublisherID == selectedId);
+        }
         CountText.Text = $"({ViewModel.ObservationCount})";
     }
 
@@ -300,13 +316,24 @@ public sealed partial class ResearchPage : UserControl
         _suppressNoteEvents = true;
         _noteEditId = obs.PublisherID;
 
+        var saved = _noteStore.Get(obs.PublisherID);
+
         var header = new TextBlock
         {
             Text = "Research Notes",
             Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var headerRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
             Margin = new Thickness(0, 8, 0, 0),
         };
-        DetailContent.Children.Add(header);
+        headerRow.Children.Add(header);
+        // Wand badge when the current note text was written by an agent.
+        headerRow.Children.Add(new Controls.AgentBadge { Attribution = saved?.AgentAttribution });
+        DetailContent.Children.Add(headerRow);
 
         _ratingControl = new RatingControl { IsClearEnabled = true, Caption = "rating" };
         _ratingControl.ValueChanged += (_, _) => OnNoteEdited();
@@ -331,7 +358,6 @@ public sealed partial class ResearchPage : UserControl
         _tagsBox.TextChanged += (_, _) => OnNoteEdited();
         DetailContent.Children.Add(_tagsBox);
 
-        var saved = string.IsNullOrEmpty(obs.PublisherID) ? null : _noteStore.Get(obs.PublisherID);
         _noteBox.Text = saved?.Note ?? string.Empty;
         _ratingControl.Value = saved is { Rating: > 0 } ? saved.Rating : -1; // -1 = unrated placeholder
         _tagsBox.Text = saved is { Tags.Count: > 0 } ? string.Join(", ", saved.Tags) : string.Empty;

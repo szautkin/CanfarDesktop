@@ -16,6 +16,12 @@ public sealed partial class CodeCellControl : UserControl
     public CodeCellControl()
     {
         InitializeComponent();
+        // Focusable so clicking a cell moves keyboard focus into the cell list —
+        // command-mode shortcuts only fire while focus is inside it.
+        IsTabStop = true;
+        // Anchor scrolling so output growing in cells above the viewport doesn't
+        // push the content the user is reading.
+        CanBeScrollAnchor = true;
         DataContextChanged += OnDataContextChanged;
         Unloaded += (_, _) => DetachViewModel();
         ApplySettings();
@@ -97,11 +103,17 @@ public sealed partial class CodeCellControl : UserControl
     private void OnCellPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         _viewModel?.RequestSelection();
+        // Enter command mode: put keyboard focus on the cell (the editor grabs it
+        // instead when the click lands on the source view).
+        Focus(FocusState.Programmatic);
     }
 
     private void OnSyntaxViewTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+        => EnterEditMode();
+
+    /// <summary>Enter edit mode — show the TextBox, hide the syntax view, focus the editor.</summary>
+    public void EnterEditMode()
     {
-        // Enter edit mode — show TextBox, hide syntax view
         if (_viewModel is null) return;
         SyntaxView.Visibility = Visibility.Collapsed;
         SourceEditor.Visibility = Visibility.Visible;
@@ -251,14 +263,38 @@ public sealed partial class CodeCellControl : UserControl
             : "Output";
     }
 
+    // Number of Outputs already rendered into OutputStack — lets streaming
+    // executions append only the new lines instead of rebuilding every output
+    // per line (O(n²) + visible flicker).
+    private int _renderedCount;
+
     private void OnOutputsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        DispatcherQueue.TryEnqueue(RenderOutputs);
+        if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add)
+            DispatcherQueue.TryEnqueue(AppendPendingOutputs);
+        else
+            DispatcherQueue.TryEnqueue(RenderOutputs);
+    }
+
+    private void AppendPendingOutputs()
+    {
+        if (_viewModel is null) return;
+        if (_renderedCount > _viewModel.Outputs.Count)
+        {
+            // Collection shrank under us (clear raced an append) — full rebuild.
+            RenderOutputs();
+            return;
+        }
+
+        OutputArea.Visibility = _viewModel.Outputs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        while (_renderedCount < _viewModel.Outputs.Count)
+            AddOutputElement(_viewModel.Outputs[_renderedCount++]);
     }
 
     private void RenderOutputs()
     {
         OutputStack.Children.Clear();
+        _renderedCount = 0;
 
         if (_viewModel is null || _viewModel.Outputs.Count == 0)
         {
@@ -267,18 +303,20 @@ public sealed partial class CodeCellControl : UserControl
         }
 
         OutputArea.Visibility = Visibility.Visible;
+        while (_renderedCount < _viewModel.Outputs.Count)
+            AddOutputElement(_viewModel.Outputs[_renderedCount++]);
+    }
 
-        foreach (var output in _viewModel.Outputs)
-        {
-            if (output.IsError)
-                OutputStack.Children.Add(BuildErrorOutput(output));
-            else if (output.HasImage)
-                OutputStack.Children.Add(BuildImageOutput(output));
-            else if (output.HasHtml)
-                BuildHtmlOutput(output);
-            else if (!string.IsNullOrEmpty(output.TextContent))
-                OutputStack.Children.Add(BuildTextOutput(output));
-        }
+    private void AddOutputElement(CellOutputViewModel output)
+    {
+        if (output.IsError)
+            OutputStack.Children.Add(BuildErrorOutput(output));
+        else if (output.HasImage)
+            OutputStack.Children.Add(BuildImageOutput(output));
+        else if (output.HasHtml)
+            BuildHtmlOutput(output);
+        else if (!string.IsNullOrEmpty(output.TextContent))
+            OutputStack.Children.Add(BuildTextOutput(output));
     }
 
     private static UIElement BuildTextOutput(CellOutputViewModel output)

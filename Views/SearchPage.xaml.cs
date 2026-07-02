@@ -98,6 +98,8 @@ public sealed partial class SearchPage : Page
 
     private async void OnSearchClick(object sender, RoutedEventArgs e)
     {
+        if (ViewModel.IsSearching) return; // Ctrl+Enter or a second click while a query runs
+        SearchButton.IsEnabled = false;
         try
         {
             SyncDataTrainToViewModel();
@@ -105,13 +107,17 @@ public sealed partial class SearchPage : Page
             if (ViewModel.Results is not null)
             {
                 RowsPerPageCombo.SelectedItem = ViewModel.RowsPerPage;
-                RenderResultsPage();
+                RenderResultsPage(resetScroll: true);
                 MainPivot.SelectedIndex = 1;
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Search error: {ex}");
+        }
+        finally
+        {
+            SearchButton.IsEnabled = true;
         }
     }
 
@@ -124,19 +130,25 @@ public sealed partial class SearchPage : Page
 
     private async void OnExecuteAdqlClick(object sender, RoutedEventArgs e)
     {
+        if (ViewModel.IsSearching) return;
+        ExecuteAdqlButton.IsEnabled = false;
         try
         {
             await ViewModel.ExecuteAdqlCommand.ExecuteAsync(null);
             if (ViewModel.Results is not null)
             {
                 RowsPerPageCombo.SelectedItem = ViewModel.RowsPerPage;
-                RenderResultsPage();
+                RenderResultsPage(resetScroll: true);
                 MainPivot.SelectedIndex = 1;
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"ADQL execute error: {ex}");
+        }
+        finally
+        {
+            ExecuteAdqlButton.IsEnabled = true;
         }
     }
 
@@ -171,14 +183,22 @@ public sealed partial class SearchPage : Page
 
     private static void SyncTrainList(ListView list, HashSet<string> available, HashSet<string> selected)
     {
+        // Reassigning ItemsSource resets the list's scroll position and flashes the
+        // items, so keep the existing source whenever the available set is unchanged.
         var sorted = available.OrderBy(v => v).ToList();
-        list.ItemsSource = sorted;
-
-        // Restore selections
-        foreach (var value in selected)
+        if (list.ItemsSource is not List<string> current || !current.SequenceEqual(sorted))
         {
-            var idx = sorted.IndexOf(value);
-            if (idx >= 0) list.SelectedItems.Add(sorted[idx]);
+            list.ItemsSource = sorted; // clears SelectedItems
+            current = sorted;
+        }
+
+        // Reconcile selection in place (facet lists are small).
+        foreach (var value in current)
+        {
+            var shouldBe = selected.Contains(value);
+            var isSelected = list.SelectedItems.Contains(value);
+            if (shouldBe && !isSelected) list.SelectedItems.Add(value);
+            else if (!shouldBe && isSelected) list.SelectedItems.Remove(value);
         }
     }
 
@@ -279,6 +299,7 @@ public sealed partial class SearchPage : Page
     private async void OnRunSavedQuery(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: SavedQuery query }) return;
+        if (ViewModel.IsSearching) return;
         try
         {
             // Show progress
@@ -293,7 +314,7 @@ public sealed partial class SearchPage : Page
             if (ViewModel.Results is not null)
             {
                 RowsPerPageCombo.SelectedItem = ViewModel.RowsPerPage;
-                RenderResultsPage();
+                RenderResultsPage(resetScroll: true);
                 MainPivot.SelectedIndex = 1;
             }
         }
@@ -314,8 +335,14 @@ public sealed partial class SearchPage : Page
 
     #region Results table
 
-    private void RenderResultsPage(bool rebuildHeader = true)
+    private void RenderResultsPage(bool rebuildHeader = true, bool resetScroll = false)
     {
+        // Rebuilding ResultsPanel loses the ScrollViewer's place; keep the user's
+        // offsets for in-place refinements (filters, sort, units) and only reset
+        // the vertical position when a genuinely new result set arrives.
+        var restoreH = DataScroll.HorizontalOffset;
+        var restoreV = resetScroll ? 0 : DataScroll.VerticalOffset;
+
         if (rebuildHeader)
         {
             DisposeFilterTimers();
@@ -374,6 +401,13 @@ public sealed partial class SearchPage : Page
         }
 
         UpdatePaginationUI();
+
+        if (resetScroll || restoreH > 0 || restoreV > 0)
+        {
+            // Low priority so the restored offsets clamp against the freshly laid-out content.
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+                () => DataScroll.ChangeView(restoreH, restoreV, null, disableAnimation: true));
+        }
     }
 
     private void OnDataScrollViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
@@ -476,7 +510,13 @@ public sealed partial class SearchPage : Page
                     Tag = "action" // marks as action cell — prevents row detail
                 };
                 var capturedRow = row;
-                dlBtn.Click += async (_, _) => await DownloadFileAsync(capturedPubId, capturedRow);
+                dlBtn.Click += async (s, _) =>
+                {
+                    var btn = (Button)s;
+                    btn.IsEnabled = false; // one download per row at a time
+                    try { await DownloadFileAsync(capturedPubId, capturedRow); }
+                    finally { btn.IsEnabled = true; }
+                };
                 sp.Children.Add(dlBtn);
             }
             else if (!isHeader && key == "preview" && !string.IsNullOrEmpty(publisherID))
@@ -727,11 +767,11 @@ public sealed partial class SearchPage : Page
             : "";
     }
 
-    // Pagination handlers
-    private void OnFirstPage(object s, RoutedEventArgs e) { ViewModel.GoToFirstPage(); RenderResultsPage(rebuildHeader: false); }
-    private void OnPrevPage(object s, RoutedEventArgs e) { ViewModel.GoToPreviousPage(); RenderResultsPage(rebuildHeader: false); }
-    private void OnNextPage(object s, RoutedEventArgs e) { ViewModel.GoToNextPage(); RenderResultsPage(rebuildHeader: false); }
-    private void OnLastPage(object s, RoutedEventArgs e) { ViewModel.GoToLastPage(); RenderResultsPage(rebuildHeader: false); }
+    // Pagination handlers — new page starts at the top, horizontal position kept.
+    private void OnFirstPage(object s, RoutedEventArgs e) { ViewModel.GoToFirstPage(); RenderResultsPage(rebuildHeader: false, resetScroll: true); }
+    private void OnPrevPage(object s, RoutedEventArgs e) { ViewModel.GoToPreviousPage(); RenderResultsPage(rebuildHeader: false, resetScroll: true); }
+    private void OnNextPage(object s, RoutedEventArgs e) { ViewModel.GoToNextPage(); RenderResultsPage(rebuildHeader: false, resetScroll: true); }
+    private void OnLastPage(object s, RoutedEventArgs e) { ViewModel.GoToLastPage(); RenderResultsPage(rebuildHeader: false, resetScroll: true); }
 
     private void OnRowsPerPageChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -739,7 +779,7 @@ public sealed partial class SearchPage : Page
         {
             ViewModel.RowsPerPage = rpp;
             ViewModel.CurrentPage = 1;
-            RenderResultsPage(rebuildHeader: false);
+            RenderResultsPage(rebuildHeader: false, resetScroll: true);
         }
     }
 
@@ -754,6 +794,32 @@ public sealed partial class SearchPage : Page
     #endregion
 
     #region Download + Preview
+
+    // The download InfoBar is shared by all download/save operations; the sequence
+    // number makes sure a finished operation's delayed reset can't hide the bar
+    // while a newer operation is still using it.
+    private int _downloadOpSeq;
+
+    private void ScheduleDownloadBarReset(int seq, int delayMs = 3000)
+    {
+        _ = Task.Delay(delayMs).ContinueWith(_ => DispatcherQueue.TryEnqueue(() =>
+        {
+            if (seq != _downloadOpSeq) return;
+            DownloadInfoBar.IsOpen = false;
+            DownloadProgressBar.Visibility = Visibility.Visible;
+        }));
+    }
+
+    private void ShowDownloadError(string title, string message)
+    {
+        var seq = ++_downloadOpSeq;
+        DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Error;
+        DownloadInfoBar.Title = title;
+        DownloadProgressBar.Visibility = Visibility.Collapsed;
+        DownloadProgressText.Text = message;
+        DownloadInfoBar.IsOpen = true;
+        ScheduleDownloadBarReset(seq, 8000);
+    }
 
     /// <summary>
     /// Download image from URL with retry and timeout. Returns null on failure.
@@ -780,20 +846,18 @@ public sealed partial class SearchPage : Page
                 dataLink, k => ViewModel.GetColumnHeader(k));
             _observationStore.Save(obs);
 
+            var seq = ++_downloadOpSeq;
             DownloadInfoBar.IsOpen = true;
             DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
             DownloadInfoBar.Title = "Saved to Research";
             DownloadProgressBar.Visibility = Visibility.Collapsed;
             DownloadProgressText.Text = obs.TargetName ?? publisherID;
-            _ = Task.Delay(3000).ContinueWith(_ => DispatcherQueue.TryEnqueue(() =>
-            {
-                DownloadInfoBar.IsOpen = false;
-                DownloadProgressBar.Visibility = Visibility.Visible;
-            }));
+            ScheduleDownloadBarReset(seq);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Save to research error: {ex.Message}");
+            ShowDownloadError("Save to Research failed", ex.Message);
         }
     }
 
@@ -839,10 +903,13 @@ public sealed partial class SearchPage : Page
             if (file is null) return;
 
             // Download with progress tracking (the atomic .tmp-swap stream lives in ObservationDownloadService).
+            var seq = ++_downloadOpSeq;
             try
             {
                 DownloadInfoBar.IsOpen = true;
+                DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
                 DownloadInfoBar.Title = $"Downloading {Path.GetFileName(file.Path)}...";
+                DownloadProgressBar.Visibility = Visibility.Visible;
                 DownloadProgressBar.IsIndeterminate = true;
                 DownloadProgressText.Text = "";
 
@@ -865,15 +932,11 @@ public sealed partial class SearchPage : Page
                 DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
                 DownloadInfoBar.Title = $"Downloaded {Path.GetFileName(file.Path)}";
                 DownloadProgressBar.Visibility = Visibility.Collapsed;
-                _ = Task.Delay(3000).ContinueWith(_ => DispatcherQueue.TryEnqueue(() =>
-                {
-                    DownloadInfoBar.IsOpen = false;
-                    DownloadProgressBar.Visibility = Visibility.Visible;
-                }));
+                ScheduleDownloadBarReset(seq);
             }
             catch
             {
-                DownloadInfoBar.IsOpen = false;
+                if (seq == _downloadOpSeq) DownloadInfoBar.IsOpen = false;
                 throw; // ObservationDownloadService already removed the partial .tmp
             }
 
@@ -899,6 +962,7 @@ public sealed partial class SearchPage : Page
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Download error: {ex.Message}");
+            ShowDownloadError("Download failed", ex.Message);
         }
     }
 
@@ -1057,6 +1121,7 @@ public sealed partial class SearchPage : Page
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Export failed: {ex.Message}");
+            ShowDownloadError($"{formatLabel} export failed", ex.Message);
         }
     }
 

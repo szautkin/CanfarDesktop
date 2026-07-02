@@ -205,6 +205,110 @@ public class VoSpaceWriteToolsTests
         Assert.Equal("/gone", deleted);
     }
 
+    // ── clear_user_site ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ClearUserSite_BuildsDestructiveProposal_WithVerbatimSummary()
+    {
+        var (ctx, _) = Context();
+        var tool = new ClearUserSiteTool();
+        Assert.Equal(McpVerbClass.Destructive, tool.VerbClass);
+
+        var result = await tool.InvokeAsync(Args("{}"), ctx, default);
+        var proposal = Assert.IsType<ProposedResult>(result).Proposal;
+        Assert.Equal("clear_user_site", proposal.Kind);
+        Assert.Equal("Wipe user-site Python packages from VOSpace (~/.local/lib/python3.*/site-packages)", proposal.Summary);
+    }
+
+    [Fact]
+    public async Task ClearUserSiteApplier_DeletesSitePackagesForEveryPythonDir_OnlyPythonDirs()
+    {
+        string? listedPath = null;
+        var deleted = new List<string>();
+        var ap = new ClearUserSiteApplier(
+            () => "szautkin",
+            (path, _) =>
+            {
+                listedPath = path;
+                return Task.FromResult(new List<CanfarDesktop.Models.VoSpaceNode>
+                {
+                    new() { Name = "python3.11" },
+                    new() { Name = "python3.12" },
+                    new() { Name = "R" }, // non-python dirs are left alone
+                });
+            },
+            (path, _) => { deleted.Add(path); return Task.CompletedTask; });
+
+        await ap.ApplyAsync(Proposal("clear_user_site", new ClearUserSitePayload()));
+
+        Assert.Equal("szautkin/.local/lib", listedPath);
+        Assert.Equal(new[]
+        {
+            "szautkin/.local/lib/python3.11/site-packages",
+            "szautkin/.local/lib/python3.12/site-packages",
+        }, deleted);
+    }
+
+    [Fact]
+    public async Task ClearUserSiteApplier_MissingLocalLib_IsSuccess()
+    {
+        var deletes = 0;
+        var ap = new ClearUserSiteApplier(
+            () => "u",
+            (_, _) => throw new HttpRequestException("404", null, System.Net.HttpStatusCode.NotFound), // no .local/lib
+            (_, _) => { deletes++; return Task.CompletedTask; });
+
+        await ap.ApplyAsync(Proposal("clear_user_site", new ClearUserSitePayload())); // must not throw
+        Assert.Equal(0, deletes);
+    }
+
+    [Fact]
+    public async Task ClearUserSiteApplier_NonNotFoundListFailure_Propagates()
+    {
+        // Auth expiry / 503 / timeouts must NOT be reported as a successful destructive apply.
+        var ap = new ClearUserSiteApplier(
+            () => "u",
+            (_, _) => throw new HttpRequestException("503", null, System.Net.HttpStatusCode.ServiceUnavailable),
+            (_, _) => Task.CompletedTask);
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => ap.ApplyAsync(Proposal("clear_user_site", new ClearUserSitePayload())));
+    }
+
+    [Fact]
+    public async Task ClearUserSiteApplier_PerDirDeleteFailures_AreBestEffort()
+    {
+        var attempted = new List<string>();
+        var ap = new ClearUserSiteApplier(
+            () => "u",
+            (_, _) => Task.FromResult(new List<CanfarDesktop.Models.VoSpaceNode>
+            {
+                new() { Name = "python3.10" },
+                new() { Name = "python3.11" },
+            }),
+            (path, _) =>
+            {
+                attempted.Add(path);
+                throw new HttpRequestException("404"); // missing site-packages under this version
+            });
+
+        await ap.ApplyAsync(Proposal("clear_user_site", new ClearUserSitePayload())); // must not throw
+        Assert.Equal(2, attempted.Count); // every python dir is still attempted
+    }
+
+    [Fact]
+    public async Task ClearUserSiteApplier_NotAuthenticated_Throws()
+    {
+        var ap = new ClearUserSiteApplier(
+            () => "  ",
+            (_, _) => Task.FromResult(new List<CanfarDesktop.Models.VoSpaceNode>()),
+            (_, _) => Task.CompletedTask);
+
+        var ex = await Assert.ThrowsAsync<ProposalApplyException>(
+            () => ap.ApplyAsync(Proposal("clear_user_site", new ClearUserSitePayload())));
+        Assert.Contains("not authenticated", ex.Message);
+    }
+
     private static PendingProposal Proposal<T>(string kind, T payload)
         => PendingProposal.Create("t", kind, "s", JsonSerializer.SerializeToUtf8Bytes(payload, McpJson.Options), OperationOrigin.External("c1"));
 

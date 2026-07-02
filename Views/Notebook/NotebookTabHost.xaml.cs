@@ -39,7 +39,10 @@ public sealed partial class NotebookTabHost : UserControl
             if (ActiveVM is null) return;
             var newIndex = ActiveVM.SelectedCellIndex + delta;
             if (newIndex >= 0 && newIndex < ActiveVM.Cells.Count)
+            {
                 ActiveVM.SelectCell(newIndex);
+                ActivePage?.BringCellIntoView(newIndex);
+            }
         };
         CodeCellControl.NavigateRequested += _navigateHandler;
         Unloaded += (_, _) => CodeCellControl.NavigateRequested -= _navigateHandler;
@@ -446,7 +449,24 @@ public sealed partial class NotebookTabHost : UserControl
     private void OnMoveCellDown(object s, RoutedEventArgs e) => ActiveVM?.MoveCellDownCommand.Execute(null);
     private void OnDeleteCell(object s, RoutedEventArgs e) => ActiveVM?.DeleteSelectedCellCommand.Execute(null);
     private void OnClearAllOutputs(object s, RoutedEventArgs e) => ActiveVM?.ClearAllOutputsCommand.Execute(null);
-    private async void OnSettings(object s, RoutedEventArgs e) => await NotebookSettingsDialog.ShowAsync(XamlRoot);
+    // Guards ContentDialog collisions: a second ShowAsync while one is open throws.
+    private bool _dialogOpen;
+
+    private async void OnSettings(object s, RoutedEventArgs e)
+    {
+        if (_dialogOpen) return;
+        _dialogOpen = true;
+        try { await NotebookSettingsDialog.ShowAsync(XamlRoot); }
+        finally { _dialogOpen = false; }
+    }
+
+    private async void ShowShortcutHelp()
+    {
+        if (_dialogOpen) return;
+        _dialogOpen = true;
+        try { await ShortcutReferenceDialog.ShowAsync(XamlRoot); }
+        finally { _dialogOpen = false; }
+    }
     private async void OnRunCell(object s, RoutedEventArgs e) { if (ActiveVM is not null) await ActiveVM.RunSelectedCellCommand.ExecuteAsync(null); }
     private async void OnRunAll(object s, RoutedEventArgs e) { if (ActiveVM is not null) await ActiveVM.RunAllCellsCommand.ExecuteAsync(null); }
     private async void OnInterrupt(object s, RoutedEventArgs e) { if (ActiveVM is not null) await ActiveVM.InterruptKernelCommand.ExecuteAsync(null); }
@@ -463,11 +483,27 @@ public sealed partial class NotebookTabHost : UserControl
 
     #region Keyboard shortcuts (tab-level)
 
+    private NotebookPage? ActivePage => (TabViewControl.SelectedItem as TabViewItem)?.Content as NotebookPage;
+
     /// <summary>
-    /// True when a TextBox has focus (edit mode). False = command mode.
-    /// In command mode, single keys trigger cell commands (A/B/DD/Y/M/Escape/arrows).
+    /// Command-mode keys must only fire while keyboard focus is inside the cell
+    /// list. Inferring command mode from "focus is not a TextBox" made destructive
+    /// shortcuts (D,D delete, M convert) fire right after clicking a toolbar
+    /// button or while focus was orphaned.
     /// </summary>
-    private bool IsEditMode => XamlRoot is not null && FocusManager.GetFocusedElement(XamlRoot) is TextBox;
+    private bool IsFocusInCellArea()
+    {
+        if (XamlRoot is null) return false;
+        if (FocusManager.GetFocusedElement(XamlRoot) is not DependencyObject focused) return false;
+        if (focused is TextBox) return false; // edit mode
+
+        for (DependencyObject? current = focused; current is not null;
+             current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is NotebookPage) return true;
+        }
+        return false;
+    }
 
     // For double-key commands (DD, II, 00)
     private Windows.System.VirtualKey _lastCommandKey;
@@ -480,8 +516,8 @@ public sealed partial class NotebookTabHost : UserControl
         var shift = InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
                         .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
-        // Command-mode shortcuts (when no TextBox has focus)
-        if (!IsEditMode && !ctrl && !shift && ActiveVM is not null)
+        // Command-mode shortcuts (only while focus is inside the cell list)
+        if (IsFocusInCellArea() && !ctrl && !shift && ActiveVM is not null)
         {
             if (HandleCommandModeKey(e.Key))
             {
@@ -550,19 +586,27 @@ public sealed partial class NotebookTabHost : UserControl
             // Navigation
             case Windows.System.VirtualKey.Up or Windows.System.VirtualKey.K:
                 if (vm.SelectedCellIndex > 0)
+                {
                     vm.SelectCell(vm.SelectedCellIndex - 1);
+                    ActivePage?.BringCellIntoView(vm.SelectedCellIndex);
+                }
                 return true;
 
             case Windows.System.VirtualKey.Down or Windows.System.VirtualKey.J:
                 if (vm.SelectedCellIndex < vm.Cells.Count - 1)
+                {
                     vm.SelectCell(vm.SelectedCellIndex + 1);
+                    ActivePage?.BringCellIntoView(vm.SelectedCellIndex);
+                }
                 return true;
 
             // Enter edit mode
             case Windows.System.VirtualKey.Enter:
                 if (vm.SelectedCell is ViewModels.Notebook.MarkdownCellViewModel md)
                     md.EnterEditMode();
-                // For code cells, focus the TextBox (handled by cell control)
+                // Focus the cell's editor once the view-mode switch has applied.
+                var editIndex = vm.SelectedCellIndex;
+                DispatcherQueue.TryEnqueue(() => ActivePage?.EnterCellEditMode(editIndex));
                 return true;
 
             // Cell operations
@@ -639,7 +683,7 @@ public sealed partial class NotebookTabHost : UserControl
 
             // Help (H key in command mode)
             case Windows.System.VirtualKey.H:
-                _ = ShortcutReferenceDialog.ShowAsync(XamlRoot);
+                ShowShortcutHelp();
                 return true;
 
             default:

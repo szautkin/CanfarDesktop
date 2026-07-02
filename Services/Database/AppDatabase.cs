@@ -9,7 +9,7 @@ namespace CanfarDesktop.Services.Database;
 /// </summary>
 public sealed class AppDatabase : IDisposable
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
     private const string DbFileName = "verbinal.db";
 
     private readonly SqliteConnection _connection;
@@ -81,6 +81,13 @@ public sealed class AppDatabase : IDisposable
             cmd.CommandText = SchemaV2;
             cmd.ExecuteNonQuery();
         }
+        if (version < 3)
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = SchemaV3;
+            cmd.ExecuteNonQuery();
+        }
         using var bump = connection.CreateCommand();
         bump.Transaction = tx;
         bump.CommandText = $"PRAGMA user_version={CurrentSchemaVersion};";
@@ -145,6 +152,13 @@ public sealed class AppDatabase : IDisposable
             deletedAt          TEXT,
             lastWriterDeviceID TEXT
         );
+        """;
+
+    // v3: per-entity agent attribution — the provenance stamp (JSON) an applier leaves on notes an
+    // MCP agent wrote, surfaced as the wand badge. Mirrors the macOS agentAttribution column
+    // (device-local, excluded from export).
+    private const string SchemaV3 = """
+        ALTER TABLE notes ADD COLUMN agentAttribution TEXT;
         """;
 
     private static string? ResolveDefaultPath()

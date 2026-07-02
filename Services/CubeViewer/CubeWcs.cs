@@ -112,6 +112,23 @@ public sealed class CubeWcs
         return Galactic ? FormatDeg(dec) : FormatDecShort(dec);
     }
 
+    /// <summary>
+    /// Formatted sky position at an exact 0-based spatial pixel (x, y) — the slice hover readout.
+    /// Null when the cube has no valid spatial WCS (the caller falls back to pixel coordinates).
+    /// </summary>
+    public (string Lon, string Lat)? SkyTextAt(double pixX0, double pixY0)
+    {
+        if (!HasSpatial) return null;
+        var (lon, lat) = Spatial.PixelToWorld(pixX0 + 1, pixY0 + 1);
+        if (Galactic)
+        {
+            // Galactic/CAR longitude from the linear WCS path is not wrapped; fold into [0,360).
+            lon = ((lon % 360.0) + 360.0) % 360.0;
+            return (FormatDeg(lon), FormatDeg(lat));
+        }
+        return (FormatRaShort(lon), FormatDecShort(lat));
+    }
+
     // ── Spectral axis ──
 
     /// <summary>Human axis name for the spectral axis ("FREQUENCY", "VELOCITY", …).</summary>
@@ -257,15 +274,26 @@ public sealed class CubeMetadata
 
     public string DimensionsText => $"{Nx} × {Ny} × {Nz}";
 
-    public string RangeText
-    {
-        get
-        {
-            string F(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
-            var unit = string.IsNullOrEmpty(Bunit) ? "" : " " + Bunit;
-            return $"{F(DataMin)} … {F(DataMax)}{unit}";
-        }
-    }
+    public string RangeText => $"{F(DataMin)} … {F(DataMax)}{UnitSuffix}";
+
+    /// <summary>Display-cut range (the p0.5…p99.5 normalization window) — the info panel's RANGE
+    /// row, matching the macOS panel where the true extremes live on the MIN/MAX row.</summary>
+    public string CutRangeText => $"{F(NormLo)} … {F(NormHi)}{UnitSuffix}";
+
+    /// <summary>True full-cube extremes as "min / max" (unit is on the RANGE row already).</summary>
+    public string MinMaxText => $"{F(DataMin)} / {F(DataMax)}";
+
+    public string MedianText => F(Median);
+
+    /// <summary>True when the GPU volume was strided below the native dimensions.</summary>
+    public bool IsDownsampled => RenderNx != Nx || RenderNy != Ny || RenderNz != Nz;
+
+    /// <summary>How the in-memory volume relates to the file (the macOS panel's Mode row).</summary>
+    public string ModeText => IsDownsampled ? "Downsampled to GPU cap" : "Resident (full)";
 
     public string NanText => (NanFraction * 100.0).ToString("0.0", CultureInfo.InvariantCulture) + "%";
+
+    private string UnitSuffix => string.IsNullOrEmpty(Bunit) ? "" : " " + Bunit;
+
+    private static string F(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
 }

@@ -142,4 +142,70 @@ public class CubeWcsTests
         Assert.Equal("GLON", w.LonName);
         Assert.Equal("GLAT", w.LatName);
     }
+
+    // ── SkyTextAt (the slice hover readout's exact-pixel sky formatting) ──
+
+    /// <summary>An equatorial TAN WCS with the reference pixel at FITS (1,1).</summary>
+    private static CubeWcs EquatorialWcs(double crval1, double crval2) => new()
+    {
+        Nx = 100, Ny = 100, Nz = 10,
+        Spatial = new WcsInfo
+        {
+            CrPix1 = 1, CrPix2 = 1, CrVal1 = crval1, CrVal2 = crval2,
+            Cd1_1 = -0.001, Cd2_2 = 0.001,
+            CType1 = "RA---TAN", CType2 = "DEC--TAN",
+        },
+    };
+
+    [Fact]
+    public void SkyTextAt_ReferencePixel_FormatsCrval()
+    {
+        // 0-based (0,0) is FITS pixel (1,1) = the reference pixel, so the readout is CRVAL exactly.
+        var sky = EquatorialWcs(180.0, -30.0).SkyTextAt(0, 0);
+
+        Assert.NotNull(sky);
+        Assert.Equal("12:00:00", sky!.Value.Lon);   // 180° = 12h
+        Assert.Equal("−30:00:00", sky.Value.Lat);
+    }
+
+    [Fact]
+    public void SkyTextAt_OffsetPixel_FollowsTheCdMatrix()
+    {
+        // +10 px in X at Dec 0 is −0.01° of RA = −2.4s of time: 12:00:00 → 11:59:58 (rounded).
+        var sky = EquatorialWcs(180.0, 0.0).SkyTextAt(10, 0);
+
+        Assert.NotNull(sky);
+        Assert.Equal("11:59:58", sky!.Value.Lon);
+    }
+
+    [Fact]
+    public void SkyTextAt_GalacticLongitude_WrapsInto0To360()
+    {
+        // Linear (CAR) galactic WCS with a negative CRVAL1: the readout must fold into [0,360).
+        var w = new CubeWcs
+        {
+            Nx = 100, Ny = 100, Nz = 10,
+            Galactic = true,
+            Spatial = new WcsInfo
+            {
+                CrPix1 = 1, CrPix2 = 1, CrVal1 = -10.0, CrVal2 = 5.0,
+                Cd1_1 = 1.0, Cd2_2 = 1.0,
+                CType1 = "GLON-CAR", CType2 = "GLAT-CAR",
+            },
+        };
+
+        var sky = w.SkyTextAt(0, 0);
+
+        Assert.NotNull(sky);
+        Assert.Equal("350.000°", sky!.Value.Lon);
+        Assert.Equal("5.000°", sky.Value.Lat);
+    }
+
+    [Fact]
+    public void SkyTextAt_NoSpatialWcs_ReturnsNull()
+    {
+        var w = new CubeWcs { Nx = 4, Ny = 4, Nz = 4 }; // default WcsInfo is invalid (all-zero CD)
+
+        Assert.Null(w.SkyTextAt(1, 1));
+    }
 }

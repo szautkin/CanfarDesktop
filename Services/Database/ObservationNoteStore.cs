@@ -23,7 +23,7 @@ public class ObservationNoteStore
         lock (_gate)
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = "SELECT note, rating, tags, updatedUtc FROM notes WHERE publisherID = $id AND deleted = 0;";
+            cmd.CommandText = "SELECT note, rating, tags, updatedUtc, agentAttribution FROM notes WHERE publisherID = $id AND deleted = 0;";
             cmd.Parameters.AddWithValue("$id", publisherID);
             using var r = cmd.ExecuteReader();
             if (!r.Read()) return null;
@@ -34,6 +34,7 @@ public class ObservationNoteStore
                 Rating = r.GetInt32(1),
                 Tags = SplitTags(r.GetString(2)),
                 UpdatedUtc = ParseUtc(r.GetString(3)),
+                AgentAttribution = ParseAttribution(r.IsDBNull(4) ? null : r.GetString(4)),
             };
         }
     }
@@ -51,17 +52,19 @@ public class ObservationNoteStore
 
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
-                INSERT INTO notes (publisherID, note, rating, tags, updatedUtc, deleted)
-                VALUES ($id, $note, $rating, $tags, $updated, 0)
+                INSERT INTO notes (publisherID, note, rating, tags, updatedUtc, deleted, agentAttribution)
+                VALUES ($id, $note, $rating, $tags, $updated, 0, $attribution)
                 ON CONFLICT(publisherID) DO UPDATE SET
                     note = excluded.note, rating = excluded.rating, tags = excluded.tags,
-                    updatedUtc = excluded.updatedUtc, deleted = 0;
+                    updatedUtc = excluded.updatedUtc, deleted = 0,
+                    agentAttribution = excluded.agentAttribution;
                 """;
             cmd.Parameters.AddWithValue("$id", note.PublisherID);
             cmd.Parameters.AddWithValue("$note", note.Note);
             cmd.Parameters.AddWithValue("$rating", note.Rating);
             cmd.Parameters.AddWithValue("$tags", JoinTags(note.Tags));
             cmd.Parameters.AddWithValue("$updated", FormatUtc(note.UpdatedUtc));
+            cmd.Parameters.AddWithValue("$attribution", (object?)FormatAttribution(note.AgentAttribution) ?? DBNull.Value);
             cmd.ExecuteNonQuery();
         }
     }
@@ -106,7 +109,7 @@ public class ObservationNoteStore
         lock (_gate)
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = "SELECT publisherID, note, rating, tags, updatedUtc FROM notes WHERE deleted = 0;";
+            cmd.CommandText = "SELECT publisherID, note, rating, tags, updatedUtc, agentAttribution FROM notes WHERE deleted = 0;";
             using var r = cmd.ExecuteReader();
             var list = new List<ObservationNote>();
             while (r.Read())
@@ -117,9 +120,20 @@ public class ObservationNoteStore
                     Rating = r.GetInt32(2),
                     Tags = SplitTags(r.GetString(3)),
                     UpdatedUtc = ParseUtc(r.GetString(4)),
+                    AgentAttribution = ParseAttribution(r.IsDBNull(5) ? null : r.GetString(5)),
                 });
             return list;
         }
+    }
+
+    private static string? FormatAttribution(AgentAttribution? attribution)
+        => attribution is null ? null : System.Text.Json.JsonSerializer.Serialize(attribution);
+
+    private static AgentAttribution? ParseAttribution(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return null;
+        try { return System.Text.Json.JsonSerializer.Deserialize<AgentAttribution>(json); }
+        catch { return null; } // a corrupt stamp must never block loading the note
     }
 
     private void DeleteHard(string publisherID)

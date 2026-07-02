@@ -62,6 +62,56 @@ public sealed class ListVoSpacePathTool : JsonReadTool<ListVoSpacePathTool.Args,
     public sealed record Output(string Path, int Count, IReadOnlyList<VoSpaceNodeSummary> Nodes);
 }
 
+/// <summary>
+/// <c>get_vospace_node</c> — metadata for one VOSpace/ARC node by absolute path. Implemented as a
+/// list-of-parent + filter (same as macOS) so no service method exists just for one tool; returns
+/// the same node shape <c>list_vospace_path</c> uses.
+/// </summary>
+public sealed class GetVoSpaceNodeTool : JsonReadTool<GetVoSpaceNodeTool.Args, VoSpaceNodeSummary>
+{
+    // Deliberately far above macOS's 500: the parent listing is names-only, and a node past the cap
+    // would otherwise resolve as a false "not found" (worst on top-level paths, whose parent is the
+    // root listing of every user's home).
+    private const int ParentListLimit = 10_000;
+
+    private readonly Func<(string Path, int? Limit), CancellationToken, Task<List<VoSpaceNode>>> _list;
+
+    public GetVoSpaceNodeTool(Func<(string Path, int? Limit), CancellationToken, Task<List<VoSpaceNode>>> list) => _list = list;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "get_vospace_node",
+        "Fetch metadata for one VOSpace node by absolute path.",
+        """{"type":"object","required":["path"],"properties":{"path":{"type":"string"}},"additionalProperties":false}""");
+
+    protected override async Task<VoSpaceNodeSummary> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var trimmed = (args.Path ?? string.Empty).Trim().Trim('/');
+        if (trimmed.Length == 0)
+            throw new McpToolException(new InvalidArgument("path cannot be root for get_vospace_node"));
+
+        var lastSlash = trimmed.LastIndexOf('/');
+        var parent = lastSlash >= 0 ? trimmed[..lastSlash] : string.Empty;
+        var leaf = lastSlash >= 0 ? trimmed[(lastSlash + 1)..] : trimmed;
+
+        List<VoSpaceNode> nodes;
+        try
+        {
+            // A top-level node's parent is the root listing ("/" = every user's home).
+            nodes = await _list((parent.Length == 0 ? "/" : parent, ParentListLimit), ct);
+        }
+        catch (HttpRequestException ex) when (ListVoSpacePathTool.IsAuthFailure(ex))
+        {
+            throw new McpToolException(new AuthRequired());
+        }
+
+        var match = nodes.FirstOrDefault(n => n.Name == leaf)
+            ?? throw new McpToolException(new UnknownTarget($"vospace_node {args.Path}"));
+        return VoSpaceNodeSummary.From(match);
+    }
+
+    public sealed record Args { public string Path { get; init; } = string.Empty; }
+}
+
 /// <summary><c>read_vospace_file</c> — a bounded slice of a VOSpace/ARC file as text or base64.</summary>
 public sealed class ReadVoSpaceFileTool : JsonReadTool<ReadVoSpaceFileTool.Args, ReadVoSpaceFileTool.Output>
 {

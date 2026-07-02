@@ -44,7 +44,19 @@ public sealed partial class ObservationDetailPage : UserControl
         HeaderObsId.Text = string.IsNullOrEmpty(_observationID) ? "Observation" : _observationID;
         HeaderCollection.Text = _collection;
         HeaderChips.Children.Clear();
+        ResetViewState();
         await ReloadAsync();
+    }
+
+    /// <summary>
+    /// The page is a cached singleton, so without this a new observation opens on
+    /// whatever Pivot tab and scroll offset the previous one was left at.
+    /// </summary>
+    private void ResetViewState()
+    {
+        DetailPivot.SelectedIndex = 0;
+        foreach (var panel in new FrameworkElement[] { OverviewPanel, CoveragePanel, FilesPanel, ProvenancePanel, RawPanel })
+            (panel.Parent as ScrollViewer)?.ChangeView(null, 0, null, disableAnimation: true);
     }
 
     private async Task ReloadAsync()

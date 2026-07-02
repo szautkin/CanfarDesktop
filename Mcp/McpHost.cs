@@ -35,9 +35,53 @@ public sealed class McpHost : IAsyncDisposable
     private static readonly TimeSpan ApplyTimeout = TimeSpan.FromSeconds(150);
 
     private McpListenerService? _listener;
+    private InMemoryProposalStore? _proposals;
+    private ProposalApplierRegistry? _registry;
 
     /// <summary>Newest-first feed of agent writes (for the review-after UI under auto-apply).</summary>
     public AgentActivityLog Activity { get; } = new();
+
+    /// <summary>Token-cursor proposal-lifecycle event buffer backing the <c>list_events</c> tool.</summary>
+    public AgentEventLog EventLog { get; } = new();
+
+    /// <summary>Raised whenever the pending-proposal set changes (any thread).</summary>
+    public event Action? ProposalsChanged;
+
+    /// <summary>Raised after the server starts or stops (for the title-bar entry point).</summary>
+    public event Action? RunningChanged;
+
+    /// <summary>Pending agent proposals awaiting review, FIFO (empty when the server never started).</summary>
+    public IReadOnlyList<PendingProposal> PendingProposals => _proposals?.List() ?? [];
+
+    /// <summary>Pending count without materializing a snapshot (for the title-bar badge).</summary>
+    public int PendingProposalCount => _proposals?.PendingCount ?? 0;
+
+    /// <summary>
+    /// User-initiated apply from the proposal strip. Runs the same gated applier path as auto-apply and
+    /// records the outcome in the activity feed. Throws <see cref="ProposalApplyException"/> on failure.
+    /// </summary>
+    public Task ApplyProposalAsync(Guid proposalId) => ApplyProposalCoreAsync(proposalId, autoApplied: false);
+
+    /// <summary>Ids whose applier is currently running — rejects are refused for these so a
+    /// "Rejected" entry can't be recorded for a write that is about to land anyway.</summary>
+    private readonly HashSet<Guid> _applying = new();
+    private readonly object _applyingGate = new();
+
+    /// <summary>User-initiated reject from the proposal strip. Returns false when the proposal is no
+    /// longer pending or its apply is already in flight (the write can't be stopped midway).</summary>
+    public bool RejectProposal(Guid proposalId)
+    {
+        var store = _proposals;
+        if (store is null) return false;
+        lock (_applyingGate)
+        {
+            if (_applying.Contains(proposalId)) return false;
+        }
+        var proposal = store.Get(proposalId);
+        if (proposal is null || !store.MarkRejected(proposalId)) return false;
+        Activity.Append(AgentActivityEntry.Rejected(proposal, DateTimeOffset.UtcNow));
+        return true;
+    }
 
     public McpHost(IServiceProvider services, McpSettingsService settings, string appVersion)
     {
@@ -62,64 +106,25 @@ public sealed class McpHost : IAsyncDisposable
     {
         if (_listener is not null) return;
 
-        var tools = McpToolCatalog.Build(_services, _appVersion);
+        var tools = McpToolCatalog.Build(_services, _appVersion, EventLog);
         var identity = new ServerIdentity(ServerName, _appVersion);
 
         // Shared write-surface state across connections.
         var proposals = new InMemoryProposalStore();
+        proposals.Changed += () => ProposalsChanged?.Invoke();
+        proposals.EventOccurred += e => EventLog.Append(e.Kind, e.Proposal, DateTimeOffset.UtcNow);
+        _proposals = proposals;
         var budget = new ProposalBudget();
 
         // Appliers bound to the real stores + the auto-apply hook (gated by the user's autonomy toggle).
         var registry = new ProposalApplierRegistry();
         registry.Register(McpToolCatalog.BuildAppliers(_services));
+        _registry = registry;
         var autoApply = new AutoApplyHook(
             // Destructive writes (deletes, etc.) NEVER auto-apply — they always queue for explicit
             // approval, even with auto-apply on. Auto-apply only fast-paths reversible SemanticWrite.
             (verb, proposal) => Task.FromResult(AutoApplyPolicy.ShouldAutoApply(_settings.AutoApplyEnabled, verb)),
-            async proposalId =>
-            {
-                var proposal = proposals.Get(proposalId)
-                    ?? throw ProposalApplyException.BackendError("proposal no longer pending");
-                var applier = registry.ApplierFor(proposal.Kind)
-                    ?? throw ProposalApplyException.NoApplierForKind(proposal.Kind);
-
-                if (!await _applyGate.WaitAsync(ApplyGateWait))
-                    throw ProposalApplyException.BackendError(
-                        "the apply queue is busy (another write is still applying); try again shortly");
-
-                var applyCts = new CancellationTokenSource(ApplyTimeout);
-                var applyTask = applier.ApplyAsync(proposal, applyCts.Token);
-                using (var delayCts = new CancellationTokenSource())
-                {
-                    var completed = await Task.WhenAny(applyTask, Task.Delay(ApplyTimeout, delayCts.Token));
-                    delayCts.Cancel(); // stop the timer regardless of which finished first
-
-                    if (completed != applyTask)
-                    {
-                        // The apply blew the backstop. Cancel it and hold the gate until it actually
-                        // unwinds, so the next apply can't race the same store; report a typed timeout now.
-                        applyCts.Cancel();
-                        _ = applyTask.ContinueWith(
-                            _ => { applyCts.Dispose(); _applyGate.Release(); }, TaskScheduler.Default);
-                        throw ProposalApplyException.BackendError(
-                            $"apply timed out after {ApplyTimeout.TotalSeconds:0}s");
-                    }
-                }
-
-                try
-                {
-                    await applyTask; // surface the applier's own success / failure
-                    proposals.MarkApplied(proposalId);
-                }
-                finally
-                {
-                    applyCts.Dispose();
-                    _applyGate.Release();
-                }
-
-                Activity.Append(AgentActivityEntry.Applied(proposal, autoApplied: true, DateTimeOffset.UtcNow));
-                FollowActivity(proposal.Kind);
-            });
+            proposalId => ApplyProposalCoreAsync(proposalId, autoApplied: true));
 
         // onAgentActivity makes the app follow the agent's reads (navigate to the module it's working in);
         // writes follow on the apply path (FollowActivity). Both gated by FollowAgentActivityEnabled.
@@ -151,6 +156,78 @@ public sealed class McpHost : IAsyncDisposable
             log: CrashLogger.Info);
         _listener.Start(Guid.NewGuid());
         CrashLogger.Info($"MCP host started; pipe={_listener.PipeName}");
+        RunningChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// The single gated apply path shared by auto-apply and the user's proposal strip: resolve the
+    /// applier, serialize on the apply gate with the timeout backstop, mark applied, record activity.
+    /// </summary>
+    private async Task ApplyProposalCoreAsync(Guid proposalId, bool autoApplied)
+    {
+        var proposals = _proposals ?? throw ProposalApplyException.BackendError("the MCP server has not started");
+        var proposal = proposals.Get(proposalId)
+            ?? throw ProposalApplyException.BackendError("proposal no longer pending");
+        var applier = _registry?.ApplierFor(proposal.Kind)
+            ?? throw ProposalApplyException.NoApplierForKind(proposal.Kind);
+
+        if (!await _applyGate.WaitAsync(ApplyGateWait))
+            throw ProposalApplyException.BackendError(
+                "the apply queue is busy (another write is still applying); try again shortly");
+
+        // Re-check under the gate: a user Apply click can queue behind an auto-apply of the SAME
+        // proposal (or a reject) — running the applier again would duplicate the write.
+        if (proposals.Get(proposalId) is null)
+        {
+            _applyGate.Release();
+            throw ProposalApplyException.BackendError("proposal no longer pending (already applied or rejected)");
+        }
+        lock (_applyingGate) _applying.Add(proposalId);
+
+        var applyCts = new CancellationTokenSource(ApplyTimeout);
+        var applyTask = applier.ApplyAsync(proposal, applyCts.Token);
+        using (var delayCts = new CancellationTokenSource())
+        {
+            var completed = await Task.WhenAny(applyTask, Task.Delay(ApplyTimeout, delayCts.Token));
+            delayCts.Cancel(); // stop the timer regardless of which finished first
+
+            if (completed != applyTask)
+            {
+                // The apply blew the backstop. Cancel it and hold the gate until it actually
+                // unwinds, so the next apply can't race the same store; report a typed timeout now.
+                applyCts.Cancel();
+                _ = applyTask.ContinueWith(
+                    _ =>
+                    {
+                        applyCts.Dispose();
+                        lock (_applyingGate) _applying.Remove(proposalId);
+                        _applyGate.Release();
+                    }, TaskScheduler.Default);
+                throw ProposalApplyException.BackendError(
+                    $"apply timed out after {ApplyTimeout.TotalSeconds:0}s");
+            }
+        }
+
+        bool applied;
+        try
+        {
+            await applyTask; // surface the applier's own success / failure
+            applied = proposals.MarkApplied(proposalId);
+        }
+        finally
+        {
+            applyCts.Dispose();
+            lock (_applyingGate) _applying.Remove(proposalId);
+            _applyGate.Release();
+        }
+
+        // MarkApplied returns false when the proposal resolved some other way while the applier
+        // ran — don't record a second, contradictory activity entry for it.
+        if (applied)
+        {
+            Activity.Append(AgentActivityEntry.Applied(proposal, autoApplied, DateTimeOffset.UtcNow));
+            FollowActivity(proposal.Kind);
+        }
     }
 
     /// <summary>After an applied write, send the user to the relevant view (when follow-activity is on).</summary>
@@ -217,6 +294,7 @@ public sealed class McpHost : IAsyncDisposable
         await _listener.DisposeAsync();
         _listener = null;
         CrashLogger.Info("MCP host stopped");
+        RunningChanged?.Invoke();
     }
 
     /// <summary>Persist the enable toggle and start/stop the server to match.</summary>

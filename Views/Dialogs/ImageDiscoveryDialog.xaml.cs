@@ -47,4 +47,29 @@ public sealed partial class ImageDiscoveryDialog : ContentDialog
         data.SetText(detail.Json);
         Clipboard.SetContent(data);
     }
+
+    // The per-ecosystem package lists stay virtualized (they can hold thousands of
+    // dpkg rows), so they keep their own ScrollViewer. Forward the mouse wheel to
+    // the detail pane whenever an inner list can't scroll further, so hovering a
+    // package list doesn't trap the wheel.
+    private void OnPackageListLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ListView list || Equals(list.Tag, "wheelHooked")) return;
+        list.Tag = "wheelHooked";
+        list.AddHandler(PointerWheelChangedEvent,
+            new Microsoft.UI.Xaml.Input.PointerEventHandler(OnPackageListWheel), handledEventsToo: true);
+    }
+
+    private void OnPackageListWheel(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is not ListView list) return;
+        var inner = Helpers.VisualTree.FindDescendant<ScrollViewer>(list);
+        if (inner is null) return;
+
+        var delta = e.GetCurrentPoint(list).Properties.MouseWheelDelta;
+        var atTop = inner.VerticalOffset <= 0.5;
+        var atBottom = inner.VerticalOffset >= inner.ScrollableHeight - 0.5;
+        if ((delta > 0 && atTop) || (delta < 0 && atBottom))
+            DetailScroll.ChangeView(null, DetailScroll.VerticalOffset - delta, null);
+    }
 }

@@ -69,15 +69,19 @@ public sealed class DeleteSavedQueryTool : JsonWriteTool<DeleteSavedQueryTool.Ar
 /// <summary>Applies a <c>save_query</c> proposal by decoding its payload and invoking the host save action.</summary>
 public sealed class SaveQueryApplier : IProposalApplier
 {
-    private readonly Func<SaveQueryPayload, Task> _save;
-    public SaveQueryApplier(Func<SaveQueryPayload, Task> save) => _save = save;
+    private readonly Func<SaveQueryPayload, Models.AgentAttribution?, Task> _save;
+
+    public SaveQueryApplier(Func<SaveQueryPayload, Task> save) : this((p, _) => save(p)) { }
+
+    /// <summary>Attribution-aware overload: the stamp the saved entity should carry (null for user origin).</summary>
+    public SaveQueryApplier(Func<SaveQueryPayload, Models.AgentAttribution?, Task> save) => _save = save;
 
     public string Kind => "save_query";
 
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
     {
         var payload = Decode(proposal.Payload);
-        return _save(payload);
+        return _save(payload, Agents.AgentAttributionStamp.ForProposal(proposal));
     }
 
     private static SaveQueryPayload Decode(byte[] payload)

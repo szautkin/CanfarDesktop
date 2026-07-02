@@ -208,12 +208,17 @@ public sealed partial class CanfarImagesControl : UserControl
 
     private void ReSort()
     {
+        // In-place Move (instead of Clear+re-add) keeps the ListView's scroll
+        // position when an Inspect result re-orders the list.
         var sorted = _rows
             .OrderBy(r => StatusOrder(r.Status))
             .ThenBy(r => r.ImageId, StringComparer.Ordinal)
             .ToList();
-        _rows.Clear();
-        foreach (var row in sorted) _rows.Add(row);
+        for (var target = 0; target < sorted.Count; target++)
+        {
+            var current = _rows.IndexOf(sorted[target]);
+            if (current != target) _rows.Move(current, target);
+        }
     }
 
     private static int StatusOrder(ImageDiscoveryStatus s) => s switch

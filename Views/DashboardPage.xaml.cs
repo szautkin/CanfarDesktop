@@ -65,6 +65,7 @@ public sealed partial class DashboardPage : Page
         _sessionList.SessionRenewRequested += OnSessionRenew;
         _sessionList.SessionEventsRequested += OnSessionEvents;
         _launchForm.LaunchRequested += OnLaunchRequested;
+        _launchForm.HeadlessLaunchRequested += OnHeadlessLaunchRequested;
         _recentLaunches.RelaunchRequested += OnRelaunchRequested;
         _canfarImages.UseImageRequested += OnUseImageRequested;
 
@@ -163,6 +164,25 @@ public sealed partial class DashboardPage : Page
                 await _sessionLaunchVm.LaunchCommand.ExecuteAsync(null);
                 return _sessionLaunchVm.LaunchSuccess;
             });
+    }
+
+    private async void OnHeadlessLaunchRequested(object? sender, EventArgs e)
+    {
+        var replicas = Math.Clamp(_sessionLaunchVm.HeadlessReplicas, 1, 20);
+        await ShowLaunchDialogAsync(
+            title: replicas > 1 ? $"Launch {replicas} Replicas" : "Launch Batch Job",
+            name: _sessionLaunchVm.HeadlessSessionName,
+            imageLabel: _sessionLaunchVm.HeadlessSelectedImage?.Label ?? "",
+            resourceType: _sessionLaunchVm.HeadlessResourceType,
+            cores: _sessionLaunchVm.Cores,
+            ram: _sessionLaunchVm.Ram,
+            gpus: _sessionLaunchVm.Gpus,
+            launchFunc: async () =>
+            {
+                await _sessionLaunchVm.LaunchHeadlessCommand.ExecuteAsync(null);
+                return _sessionLaunchVm.LaunchSuccess;
+            });
+        await _batchJobs.LoadAsync(); // headless jobs surface in the Batch Jobs panel, not Active Sessions
     }
 
     private void OnUseImageRequested(object? sender, string imageId)

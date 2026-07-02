@@ -24,9 +24,38 @@ public partial class App : Application
     public App()
     {
         CrashLogger.Initialize();
+        ApplyLanguageOverride(); // must run before any window/XAML resources are created
         InitializeComponent();
         UnhandledException += OnUnhandledException;
         Services = ConfigureServices();
+    }
+
+    /// <summary>
+    /// Applies the saved Language setting ("system" | "en" | "fr") before the window exists so MRT Core
+    /// resolves Strings/&lt;locale&gt;/Resources.resw in the chosen language. Reads LocalSettings directly —
+    /// the DI container (and SettingsService) isn't built yet. "" restores the Windows display language.
+    /// Also aligns CurrentUICulture so culture-keyed code paths (e.g. the French Terms of Use) follow.
+    /// </summary>
+    private static void ApplyLanguageOverride()
+    {
+        try
+        {
+            var value = Windows.Storage.ApplicationData.Current.LocalSettings.Values["Language"] as string;
+            var tag = value switch { "en" => "en-US", "fr" => "fr-FR", _ => "" };
+            Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = tag;
+            if (tag.Length > 0)
+            {
+                var culture = new System.Globalization.CultureInfo(tag);
+                System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+                System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
+                System.Globalization.CultureInfo.CurrentCulture = culture;
+                System.Globalization.CultureInfo.CurrentUICulture = culture;
+            }
+        }
+        catch
+        {
+            // Unpackaged/dev run — ApplicationData or the language override is unavailable; use system language.
+        }
     }
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
@@ -133,17 +162,26 @@ public partial class App : Application
         // Shared auth token (singleton — all HttpClients read from this)
         services.AddSingleton<AuthTokenProvider>();
         services.AddTransient<AuthTokenHandler>();
+        // Transient retry (GET/HEAD only): registered BEFORE the auth handler — first-added is
+        // OUTERMOST in Microsoft.Extensions.Http — so every retry attempt re-enters
+        // AuthTokenHandler and picks up the current bearer token.
+        services.AddTransient<TransientRetryHandler>();
 
         // HttpClients — all use AuthTokenHandler to inject Bearer token
         services.AddHttpClient<IAuthService, AuthService>()
+            .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
         services.AddHttpClient<ISessionService, SessionService>()
+            .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
         services.AddHttpClient<IImageService, ImageService>()
+            .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
         services.AddHttpClient<IPlatformService, PlatformService>()
+            .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
         services.AddHttpClient<IStorageService, StorageService>()
+            .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
 
         // Local file browser
@@ -171,7 +209,8 @@ public partial class App : Application
 
         // Search (TAP is public, no auth needed)
         services.AddHttpClient<ITAPService, TAPService>(client =>
-            client.Timeout = TimeSpan.FromMinutes(5));
+            client.Timeout = TimeSpan.FromMinutes(5))
+            .AddHttpMessageHandler<TransientRetryHandler>();
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddSingleton<IColumnUnitStore, LocalSettingsColumnUnitStore>(); // per-column display units
         services.AddHttpClient<DataLinkService>();

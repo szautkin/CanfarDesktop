@@ -603,10 +603,24 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
     {
         if (SelectedCell is not CodeCellViewModel codeCell) return;
 
+        // Re-running a cell that's already executing must not wipe its streaming
+        // output or report a spurious kernel error — it's a no-op.
+        if (codeCell.IsExecuting) return;
+
         if (KernelState == KernelState.Dead)
         {
             NotebookLogger.Info("Kernel is dead — starting new kernel for execution");
             await StartKernelAsync();
+        }
+
+        if (KernelState is KernelState.Busy or KernelState.Starting)
+        {
+            // Don't wipe the cell's existing output (that's the re-run-while-executing case), but
+            // leave visible per-cell evidence — Run All would otherwise skip cells silently when a
+            // concurrent execution or a still-starting kernel holds the state.
+            StatusMessage = "Kernel is busy — wait for the current cell (or Interrupt with I,I)";
+            AppendCellError(codeCell, "Skipped", "Kernel was busy/starting — run this cell again.");
+            return;
         }
 
         if (KernelState != KernelState.Idle && KernelState != KernelState.Error)
@@ -654,6 +668,21 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Append an error output WITHOUT clearing what's already there (skip markers).</summary>
+    private static void AppendCellError(CodeCellViewModel cell, string errorName, string errorMessage)
+    {
+        var errorOutput = new CellOutput
+        {
+            OutputType = "error",
+            Ename = errorName,
+            Evalue = errorMessage,
+            Traceback = [errorMessage]
+        };
+        cell.Outputs.Add(new CellOutputViewModel(errorOutput));
+        cell.Model.Outputs ??= [];
+        cell.Model.Outputs.Add(errorOutput);
+    }
+
     private static void ShowCellError(CodeCellViewModel cell, string errorName, string errorMessage)
     {
         cell.ClearOutputs();
@@ -682,18 +711,29 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
         }
     }
 
+    private bool _runAllInProgress;
+
     [RelayCommand]
     public async Task RunAllCellsAsync()
     {
-        if (KernelState == KernelState.Dead)
-            await StartKernelAsync();
-
-        for (var i = 0; i < Cells.Count; i++)
+        if (_runAllInProgress) return; // a second Run-All would interleave with the first
+        _runAllInProgress = true;
+        try
         {
-            if (Cells[i] is not CodeCellViewModel) continue;
-            SelectCell(i);
-            await RunSelectedCellAsync();
-            if (KernelState == KernelState.Dead) break; // kernel died
+            if (KernelState == KernelState.Dead)
+                await StartKernelAsync();
+
+            for (var i = 0; i < Cells.Count; i++)
+            {
+                if (Cells[i] is not CodeCellViewModel) continue;
+                SelectCell(i);
+                await RunSelectedCellAsync();
+                if (KernelState == KernelState.Dead) break; // kernel died
+            }
+        }
+        finally
+        {
+            _runAllInProgress = false;
         }
     }
 

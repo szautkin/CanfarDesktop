@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using CanfarDesktop.Mcp.Tools.Proposals;
+using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Mcp.Tools.Write;
 
@@ -145,6 +146,36 @@ public sealed class DeleteVoSpaceNodeTool : JsonWriteTool<DeleteVoSpaceNodeTool.
     public sealed record Args { public string? Path { get; init; } }
 }
 
+public sealed record ClearUserSitePayload();
+
+/// <summary>
+/// <c>clear_user_site</c> — propose wiping <c>~/.local/lib/python3.*/site-packages</c> in VOSpace.
+/// Closes the "pip install --user poisons subsequent jobs" recurring friction: a single user-site
+/// install can replace numpy with an incompatible major version, breaking every later headless run
+/// until the user-site is cleared. Doesn't touch ~/.local/bin, ~/.local/share, or container-image
+/// envs. Destructive. 1-to-1 with macOS.
+/// </summary>
+public sealed class ClearUserSiteTool : JsonWriteTool<EmptyArgs>
+{
+    public override McpVerbClass VerbClass => McpVerbClass.Destructive;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "clear_user_site",
+        "Wipe the user's ~/.local/lib/python3.*/site-packages directories in VOSpace. Use when " +
+        "`pip install --user` has poisoned subsequent jobs with incompatible package versions (typical " +
+        "symptom: `numpy` got upgraded across a major version boundary and pandas/erfa/scipy now error " +
+        "out). Doesn't touch ~/.local/bin or ~/.local/share. Doesn't touch system-site or conda envs " +
+        "(those live inside the container image, not in VOSpace). Queues for the user to apply (a " +
+        "destructive change).",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override Task<ProposalPlan> PlanAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
+        => Task.FromResult(ProposalPlan.Encoding(
+            "clear_user_site",
+            "Wipe user-site Python packages from VOSpace (~/.local/lib/python3.*/site-packages)",
+            new ClearUserSitePayload()));
+}
+
 /// <summary><c>upload_file_to_vospace</c> — propose uploading a local file (binary OK) to a VOSpace path. SemanticWrite.</summary>
 public sealed class UploadFileToVoSpaceTool : JsonWriteTool<UploadFileToVoSpaceTool.Args>
 {
@@ -278,6 +309,64 @@ public sealed class DeleteVoSpaceNodeApplier : IProposalApplier
     public string Kind => "delete_vospace_node";
     public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
         => _delete(ProposalPayload.Decode<DeleteNodePayload>(proposal));
+}
+
+/// <summary>
+/// Applies <c>clear_user_site</c>: lists <c>&lt;username&gt;/.local/lib</c>, then deletes the
+/// <c>site-packages</c> subtree under every <c>python*</c> dir (VOSpace deletes are recursive
+/// server-side, so one delete per python version cleans the whole subtree). A missing
+/// <c>.local/lib</c> is the success case — there's nothing to clear; per-dir failures are
+/// best-effort skips. Mirrors the macOS ClearUserSiteApplier.
+/// </summary>
+public sealed class ClearUserSiteApplier : IProposalApplier
+{
+    private readonly Func<string?> _username;
+    private readonly Func<string, CancellationToken, Task<List<VoSpaceNode>>> _list;
+    private readonly Func<string, CancellationToken, Task> _delete;
+
+    public ClearUserSiteApplier(
+        Func<string?> username,
+        Func<string, CancellationToken, Task<List<VoSpaceNode>>> list,
+        Func<string, CancellationToken, Task> delete)
+    {
+        _username = username;
+        _list = list;
+        _delete = delete;
+    }
+
+    public string Kind => "clear_user_site";
+
+    public async Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
+    {
+        var username = (_username() ?? string.Empty).Trim();
+        if (username.Length == 0) throw ProposalApplyException.BackendError("not authenticated");
+
+        List<VoSpaceNode> pythonDirs;
+        try
+        {
+            pythonDirs = await _list($"{username}/.local/lib", cancellationToken);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // No `.local/lib` at all is the success case — there's nothing to clear and the user's
+            // problem (if any) is somewhere else. Any OTHER failure (auth expiry, 503, timeout)
+            // must propagate — swallowing it would report this destructive apply as successful
+            // when nothing was inspected or deleted.
+            return;
+        }
+
+        foreach (var dir in pythonDirs.Where(d => d.Name.StartsWith("python", StringComparison.Ordinal)))
+        {
+            try
+            {
+                await _delete($"{username}/.local/lib/{dir.Name}/site-packages", cancellationToken);
+            }
+            catch
+            {
+                // Best-effort: a missing site-packages under a given python version is fine, just skip it.
+            }
+        }
+    }
 }
 
 public sealed class SetVoSpaceAclApplier : IProposalApplier

@@ -16,7 +16,15 @@ namespace CanfarDesktop.Views.Dialogs;
 /// </summary>
 public sealed partial class AiConnectWizardDialog : ContentDialog
 {
-    private static readonly string[] StepTitles = { "Enable", "Pick your client", "Configure", "Verify" };
+    // Instance, not static: Loc.T at type-init would freeze the titles for the process lifetime,
+    // outliving a mid-session language override.
+    private readonly string[] StepTitles =
+    {
+        Helpers.Loc.T("Wizard_StepEnable"),
+        Helpers.Loc.T("Wizard_StepClient"),
+        Helpers.Loc.T("Wizard_StepConfigure"),
+        Helpers.Loc.T("Wizard_StepVerify"),
+    };
 
     private readonly McpHost _host;
     // Target the config Claude Desktop actually reads (Store container or traditional install), on the
@@ -33,8 +41,8 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
         _bridgeCommand = McpBridgeLocator.Resolve();
 
         var clients = ClaudeClientDetection.Detect();
-        DesktopRadio.Content = clients.DesktopInstalled ? "Claude Desktop (detected)" : "Claude Desktop";
-        CodeRadio.Content = clients.CodeInstalled ? "Claude Code (detected)" : "Claude Code";
+        DesktopRadio.Content = Helpers.Loc.T(clients.DesktopInstalled ? "Wizard_ClaudeDesktopDetected" : "Wizard_ClaudeDesktop");
+        CodeRadio.Content = Helpers.Loc.T(clients.CodeInstalled ? "Wizard_ClaudeCodeDetected" : "Wizard_ClaudeCode");
         // Default the selection to the detected client; prefer Desktop on a tie / nothing detected.
         if (clients.CodeInstalled && !clients.DesktopInstalled) CodeRadio.IsChecked = true;
         else DesktopRadio.IsChecked = true;
@@ -47,7 +55,18 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
             ClaudeCodeBox.Text = ClaudeConfigMerge.ClaudeCodeAddCommand(_bridgeCommand);
 
         RefreshStatus();
-        ShowStep(0);
+
+        // Resume where the user left off: skip Enable when the server is already
+        // on, and jump straight to Verify when the client config already
+        // references the bridge.
+        if (_host.IsRunning)
+        {
+            ShowStep(_repair.IsBridgeRegistered() ? 3 : 1);
+        }
+        else
+        {
+            ShowStep(0);
+        }
     }
 
     public static Task ShowAsync(XamlRoot root)
@@ -58,7 +77,7 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
     private void ShowStep(int step)
     {
         _step = Math.Clamp(step, 0, StepTitles.Length - 1);
-        StepHeader.Text = $"Step {_step + 1} of {StepTitles.Length} · {StepTitles[_step]}";
+        StepHeader.Text = Helpers.Loc.F("Wizard_StepHeader", _step + 1, StepTitles.Length, StepTitles[_step]);
 
         EnablePanel.Visibility = Vis(_step == 0);
         ClientPanel.Visibility = Vis(_step == 1);
@@ -68,19 +87,31 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
         if (_step == 2) UpdateConfigurePanel();
 
         BackButton.IsEnabled = _step > 0;
-        NextButton.Content = _step == StepTitles.Length - 1 ? "Done" : "Next";
+        NextButton.Content = Helpers.Loc.T(_step == StepTitles.Length - 1 ? "Wizard_Done" : "Wizard_Next");
         ResultBar.IsOpen = false;
     }
 
     private void OnBackClick(object sender, RoutedEventArgs e) => ShowStep(_step - 1);
 
-    private void OnNextClick(object sender, RoutedEventArgs e)
+    // The last enable/disable request, so Next can await it instead of reading
+    // IsRunning while the toggle is still being applied.
+    private Task _pendingEnable = Task.CompletedTask;
+
+    private async void OnNextClick(object sender, RoutedEventArgs e)
     {
         // Gate the first step on the server actually being on — the rest of the flow needs it.
-        if (_step == 0 && !_host.IsRunning)
+        if (_step == 0)
         {
-            ShowResult(InfoBarSeverity.Warning, "Turn on “Allow external AI agents” to continue.");
-            return;
+            NextButton.IsEnabled = false;
+            try { await _pendingEnable; }
+            catch { /* surfaced by the toggle handler */ }
+            finally { NextButton.IsEnabled = true; }
+
+            if (!_host.IsRunning)
+            {
+                ShowResult(InfoBarSeverity.Warning, Helpers.Loc.T("Wizard_TurnOnToContinue"));
+                return;
+            }
         }
         if (_step == StepTitles.Length - 1) { Hide(); return; }
         ShowStep(_step + 1);
@@ -89,20 +120,23 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
     private async void OnEnableToggled(object sender, RoutedEventArgs e)
     {
         if (_suppressToggle) return;
+        var pending = _host.SetEnabledAsync(EnableToggle.IsOn);
+        _pendingEnable = pending;
         try
         {
-            await _host.SetEnabledAsync(EnableToggle.IsOn);
+            await pending;
         }
         catch (Exception ex)
         {
-            ShowResult(InfoBarSeverity.Error, $"Couldn't {(EnableToggle.IsOn ? "start" : "stop")} the server: {ex.Message}");
+            ShowResult(InfoBarSeverity.Error,
+                Helpers.Loc.F(EnableToggle.IsOn ? "Wizard_CouldntStart" : "Wizard_CouldntStop", ex.Message));
         }
         RefreshStatus();
     }
 
     private void RefreshStatus()
     {
-        StatusText.Text = _host.IsRunning ? "Running" : "Stopped";
+        StatusText.Text = Helpers.Loc.T(_host.IsRunning ? "Wizard_Running" : "Wizard_Stopped");
         if (_host.IsRunning)
         {
             PipeText.Text = $"pipe: {_host.PipeName}";
@@ -123,15 +157,15 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
 
         if (_bridgeCommand is null)
         {
-            ConfigIntro.Text = "The MCP bridge (CanfarDesktop.McpBridge.exe) wasn't found. Build the bridge project, then reopen this wizard.";
+            ConfigIntro.Text = Helpers.Loc.T("Wizard_BridgeMissing");
             AddToDesktopButton.IsEnabled = false;
             CopyCommandButton.IsEnabled = false;
             return;
         }
 
         ConfigIntro.Text = DesktopChosen
-            ? $"Add Verbinal to Claude Desktop's config:\n{_repair.ConfigPath}\nYour other MCP servers are preserved and a .bak is kept. Restart Claude Desktop afterwards."
-            : "Run this in a terminal to register Verbinal with Claude Code, then restart the CLI.";
+            ? Helpers.Loc.F("Wizard_DesktopIntro", _repair.ConfigPath)
+            : Helpers.Loc.T("Wizard_CodeIntro");
     }
 
     private void OnAddToDesktopClick(object sender, RoutedEventArgs e)
@@ -140,11 +174,11 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
         try
         {
             _repair.Apply(_bridgeCommand);
-            ShowResult(InfoBarSeverity.Success, "Added to Claude Desktop. Restart it, then run the self-test on the next step.");
+            ShowResult(InfoBarSeverity.Success, Helpers.Loc.T("Wizard_AddedToDesktop"));
         }
         catch (Exception ex)
         {
-            ShowResult(InfoBarSeverity.Error, $"Couldn't write the config: {ex.Message}");
+            ShowResult(InfoBarSeverity.Error, Helpers.Loc.F("Wizard_ConfigWriteFailed", ex.Message));
         }
     }
 
@@ -153,7 +187,7 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
         var data = new DataPackage();
         data.SetText(ClaudeCodeBox.Text);
         Clipboard.SetContent(data);
-        ShowResult(InfoBarSeverity.Informational, "Command copied.");
+        ShowResult(InfoBarSeverity.Informational, Helpers.Loc.T("Wizard_CommandCopied"));
     }
 
     private async void OnSelfTestClick(object sender, RoutedEventArgs e)
@@ -166,13 +200,14 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
             var result = await McpSelfTest.RunAsync();
             if (result.Reachable)
             {
-                var tools = result.ToolCount is int n ? $" {n} tool{(n == 1 ? "" : "s")} available." : "";
-                ShowResult(InfoBarSeverity.Success,
-                    $"Connected to the MCP server.{tools} Fully quit and reopen your AI client to finish.");
+                var tools = result.ToolCount is int n
+                    ? Helpers.Loc.F(n == 1 ? "Wizard_ToolsOne" : "Wizard_ToolsMany", n)
+                    : "";
+                ShowResult(InfoBarSeverity.Success, Helpers.Loc.F("Wizard_Connected", tools));
             }
             else
             {
-                ShowResult(InfoBarSeverity.Error, result.Error ?? "Couldn't reach the MCP server.");
+                ShowResult(InfoBarSeverity.Error, result.Error ?? Helpers.Loc.T("Wizard_Unreachable"));
             }
         }
         finally

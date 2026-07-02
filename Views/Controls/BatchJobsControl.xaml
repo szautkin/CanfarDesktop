@@ -20,7 +20,7 @@
                                 VerticalAlignment="Center">
                         <ProgressRing IsActive="True" Width="14" Height="14" />
                         <TextBlock x:Name="CountdownText" Style="{StaticResource CaptionTextBlockStyle}"
-                                   VerticalAlignment="Center" />
+                                   MinWidth="28" VerticalAlignment="Center" />
                     </StackPanel>
                 </StackPanel>
                 <Button Grid.Column="1" Click="OnRefreshClick" ToolTipService.ToolTip="Refresh">

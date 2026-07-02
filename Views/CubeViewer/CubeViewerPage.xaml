@@ -31,10 +31,49 @@
         <Canvas x:Name="ExportHost" IsHitTestVisible="False" />
 
         <!-- 2D slice (single channel at native resolution), shown in Slice mode.
-             Click to probe the spectrum at a spaxel. -->
-        <Image x:Name="SliceImage" Stretch="Uniform" Visibility="Collapsed"
-               Margin="60,72,264,96"
-               PointerPressed="OnSlicePointerPressed" />
+             Click to probe the spectrum at a spaxel; wheel-zoom toward the cursor, drag to pan,
+             double-tap to reset. Hovering shows a floating value + WCS readout chip. The viewport
+             (not the Image) takes pointer input so the letterbox area still hit-tests, and it is
+             clipped so the zoomed slice never spills over the surrounding panels. -->
+        <Grid x:Name="SliceViewport" Visibility="Collapsed" Background="Transparent"
+              Margin="60,72,264,96"
+              SizeChanged="OnSliceViewportSizeChanged"
+              PointerPressed="OnSlicePointerPressed"
+              PointerMoved="OnSlicePointerMoved"
+              PointerReleased="OnSlicePointerReleased"
+              PointerExited="OnSlicePointerExited"
+              PointerWheelChanged="OnSlicePointerWheel"
+              DoubleTapped="OnSliceDoubleTapped">
+            <Image x:Name="SliceImage" Stretch="Uniform">
+                <Image.RenderTransform>
+                    <CompositeTransform x:Name="SliceTransform" />
+                </Image.RenderTransform>
+            </Image>
+            <!-- Floating cursor readout (sky + spectral + value), positioned near the pointer -->
+            <Canvas IsHitTestVisible="False">
+                <Border x:Name="CursorChip" Visibility="Collapsed"
+                        CornerRadius="6" Padding="8,5"
+                        Background="#E0101622" BorderBrush="#50BFD8FF" BorderThickness="1">
+                    <StackPanel Spacing="1">
+                        <TextBlock x:Name="CursorChipLon" Foreground="#FFE0E0E0" FontFamily="Consolas" FontSize="11" />
+                        <TextBlock x:Name="CursorChipLat" Foreground="#FFE0E0E0" FontFamily="Consolas" FontSize="11" />
+                        <TextBlock x:Name="CursorChipSpec" Foreground="#90BFD8FF" FontFamily="Consolas" FontSize="11" />
+                        <TextBlock x:Name="CursorChipValue" Foreground="#FFFFA53C" FontFamily="Consolas" FontSize="11" />
+                    </StackPanel>
+                </Border>
+            </Canvas>
+        </Grid>
+
+        <!-- Slice coordinate bar: persistent sky/value/spectral readout for the hovered spaxel.
+             Top-center (under the mode toggle) — the bottom band is taken by the scrubber +
+             spectrum probe, unlike macOS where the bar sits below the image. -->
+        <Border x:Name="SliceCoordBar" Visibility="Collapsed" IsHitTestVisible="False"
+                HorizontalAlignment="Center" VerticalAlignment="Top"
+                Margin="0,64,0,0" Padding="12,4" CornerRadius="6"
+                Background="#C0101622" BorderBrush="#40FFFFFF" BorderThickness="1">
+            <TextBlock x:Name="SliceCoordText" Foreground="#A0E0E0E0" FontFamily="Consolas"
+                       Style="{StaticResource CaptionTextBlockStyle}" />
+        </Border>
 
         <!-- View-mode toggle (top center) -->
         <Border x:Name="ViewModeBar" HorizontalAlignment="Center" VerticalAlignment="Top"
@@ -91,6 +130,9 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="DIMENSIONS"
@@ -111,10 +153,28 @@
                                Foreground="#FFE0E0E0" FontFamily="Consolas" TextTrimming="CharacterEllipsis"
                                Style="{StaticResource CaptionTextBlockStyle}" />
 
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="NaN"
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="MIN / MAX"
                                Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
-                    <TextBlock x:Name="InfoNan" Grid.Row="3" Grid.Column="1"
+                    <TextBlock x:Name="InfoMinMax" Grid.Row="3" Grid.Column="1"
+                               Foreground="#FFE0E0E0" FontFamily="Consolas" TextTrimming="CharacterEllipsis"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="MEDIAN"
+                               Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
+                    <TextBlock x:Name="InfoMedian" Grid.Row="4" Grid.Column="1"
                                Foreground="#FFE0E0E0" FontFamily="Consolas"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="NaN"
+                               Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
+                    <TextBlock x:Name="InfoNan" Grid.Row="5" Grid.Column="1"
+                               Foreground="#FFE0E0E0" FontFamily="Consolas"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="MODE"
+                               Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
+                    <TextBlock x:Name="InfoMode" Grid.Row="6" Grid.Column="1"
+                               Foreground="#FFE0E0E0" FontFamily="Consolas" TextTrimming="CharacterEllipsis"
                                Style="{StaticResource CaptionTextBlockStyle}" />
                 </Grid>
             </StackPanel>
@@ -248,6 +308,25 @@
                                   Foreground="#FFE0E0E0"
                                   Toggled="OnSlicePlaneToggled" />
 
+                    <!-- Opacity transfer-function editor: drag points, click to add, right-click
+                         to remove (endpoints are pinned in value). Feeds the renderer's alpha ramp. -->
+                    <StackPanel Spacing="2">
+                        <Grid>
+                            <TextBlock Text="Opacity curve" Foreground="#FFE0E0E0" VerticalAlignment="Center"
+                                       Style="{StaticResource CaptionTextBlockStyle}" />
+                            <Button Content="Reset" Padding="6,1" FontSize="11" HorizontalAlignment="Right"
+                                    Click="OnTransferReset" />
+                        </Grid>
+                        <Canvas x:Name="TransferCanvas" Height="120" Background="#30000000"
+                                SizeChanged="OnTransferCanvasSizeChanged"
+                                PointerPressed="OnTransferPointerPressed"
+                                PointerMoved="OnTransferPointerMoved"
+                                PointerReleased="OnTransferPointerReleased"
+                                RightTapped="OnTransferRightTapped" />
+                        <TextBlock Text="Drag points · click adds · right-click removes"
+                                   Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
+                    </StackPanel>
+
                     <Button Content="Reset view" HorizontalAlignment="Stretch"
                             Click="OnResetView" />
                 </StackPanel>
@@ -321,8 +400,12 @@
                         ToolTipService.ToolTip="Play / Pause (Space)">
                     <FontIcon x:Name="PlayIcon" Glyph="&#xE768;" FontSize="16" />
                 </Button>
-                <Slider x:Name="ChannelSlider" Width="340" Minimum="0" Maximum="0"
-                        StepFrequency="1" ValueChanged="OnChannelChanged" VerticalAlignment="Center" />
+                <StackPanel VerticalAlignment="Center">
+                    <!-- Cube-mean per-channel waveform backdrop (the macOS ChannelScrubber) -->
+                    <Canvas x:Name="WaveformCanvas" Width="340" Height="20" IsHitTestVisible="False" />
+                    <Slider x:Name="ChannelSlider" Width="340" Minimum="0" Maximum="0"
+                            StepFrequency="1" ValueChanged="OnChannelChanged" VerticalAlignment="Center" />
+                </StackPanel>
                 <TextBlock x:Name="ChannelLabel" VerticalAlignment="Center" MinWidth="180"
                            Foreground="#FFE0E0E0" FontFamily="Consolas"
                            Style="{StaticResource CaptionTextBlockStyle}" />

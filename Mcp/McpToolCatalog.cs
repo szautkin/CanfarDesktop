@@ -31,7 +31,7 @@ namespace CanfarDesktop.Mcp;
 /// </summary>
 public static class McpToolCatalog
 {
-    public static IReadOnlyList<IMcpTool> Build(IServiceProvider sp, string appVersion)
+    public static IReadOnlyList<IMcpTool> Build(IServiceProvider sp, string appVersion, AgentEventLog? eventLog = null)
     {
         var auth = sp.GetRequiredService<IAuthService>();
         var observations = sp.GetRequiredService<ObservationStore>();
@@ -54,8 +54,15 @@ public static class McpToolCatalog
         var aiCompute = sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeService>();
         var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
         var previewFetcher = new McpPreviewFetcher(dataLink, httpFactory);
+        // VizieR is public (no auth) — a plain client is deliberate.
+        var vizier = new VizierService(httpFactory.CreateClient());
 
-        return new IMcpTool[]
+        // Built once and exposed under BOTH the Windows name and its macOS alias (G5 wire parity).
+        var uploadFileToVoSpace = new UploadFileToVoSpaceTool();
+        var downloadVoSpaceFile = new DownloadVoSpaceFileTool((path, ct) => storage.DownloadFileAsync(path, ct));
+        var createVoSpaceFolder = new CreateVoSpaceFolderTool();
+
+        var tools = new List<IMcpTool>
         {
             // Foundational
             new DescribeAppTool(appVersion),
@@ -76,6 +83,8 @@ public static class McpToolCatalog
                 (adql, max, ct) => tap.ExecuteQueryAsync(adql, max, ct),
                 (target, service, ct) => tap.ResolveTargetAsync(target, service, ct)),
             new ResolveTargetTool((target, service, ct) => tap.ResolveTargetAsync(target, service, ct)),
+            new VizierConeSearchTool((req, ct) => vizier.ConeSearchAsync(
+                req.Catalogue, req.RaDeg, req.DecDeg, req.RadiusDeg, req.RaColumn, req.DecColumn, req.MaxRec, ct)),
 
             // Skaha sessions / headless jobs
             new ListSessionsTool(async ct => (IReadOnlyList<Session>)await sessions.GetSessionsAsync(ct)),
@@ -123,8 +132,9 @@ public static class McpToolCatalog
 
             // VOSpace/ARC storage (read) + local FITS introspection
             new ListVoSpacePathTool((req, ct) => storage.ListNodesAsync(req.Path, req.Limit, ct)),
+            new GetVoSpaceNodeTool((req, ct) => storage.ListNodesAsync(req.Path, req.Limit, ct)),
             new ReadVoSpaceFileTool((path, ct) => storage.DownloadFileAsync(path, ct)),
-            new DownloadVoSpaceFileTool((path, ct) => storage.DownloadFileAsync(path, ct)),
+            downloadVoSpaceFile,
             new GetStorageQuotaTool(ct => storage.GetQuotaAsync(auth.CurrentUsername ?? string.Empty, ct)),
             new GetFitsHeaderTool(ParseFitsHeadersAsync),
             new GetFitsWcsTool(ParseFitsHeadersAsync),
@@ -211,20 +221,48 @@ public static class McpToolCatalog
             new LaunchSessionTool(),
             new LaunchHeadlessJobTool(),
             new DeleteSessionTool(),
+            new DeleteSessionsBulkTool(),
             new RenewSessionTool(),
 
             // Research: download / remove observations + export a Claude-friendly bundle
             new DownloadObservationTool(),
+            new DownloadObservationsBulkTool(),
             new DeleteDownloadedObservationTool(),
+            new ClearResearchArchiveTool(),
             new ExportResearchBundleTool((dest, notes, hist, files, upload, ct) =>
                 ExportResearchBundleAsync(sp, appVersion, dest, notes, hist, files, upload)),
 
             // VOSpace/ARC storage writes
             new UploadTextToVoSpaceTool(),
-            new UploadFileToVoSpaceTool(),
-            new CreateVoSpaceFolderTool(),
+            uploadFileToVoSpace,
+            createVoSpaceFolder,
             new SetVoSpaceAclTool(),
             new DeleteVoSpaceNodeTool(),
+            new ClearUserSiteTool(),
+
+            // macOS-name aliases (G5 wire parity): same schema/dispatch as the Windows tool they
+            // wrap, described with the macOS wording so agents written against Verbinal-macOS work.
+            new AliasedTool(
+                "upload_to_vospace",
+                "Upload a downloaded observation's local file to a VOSpace path. Use `upload_text_to_vospace` " +
+                "instead if your source is in-conversation text (script, config, JSON) rather than a downloaded " +
+                "file. Synchronous with a 150s applier deadline; a stuck transfer surfaces as `backendError` " +
+                "with the deadline named, not a silent hang. For files > ~100 MB on slow links: the underlying " +
+                "transfer can outlast the MCP transport timeout — on `Request timed out`, re-poll " +
+                "`list_vospace_path` after 30–60s, the bytes are often there.",
+                uploadFileToVoSpace),
+            new AliasedTool(
+                "download_from_vospace",
+                "Download a VOSpace file to the user's Downloads folder. Synchronous with a 150s applier " +
+                "deadline; a stuck transfer surfaces as `backendError` with the deadline named, not a silent " +
+                "hang. For files > ~100 MB on slow links: the underlying transfer can outlast the MCP transport " +
+                "timeout — on `Request timed out` re-check the Downloads folder before retrying, the bytes are " +
+                "often there.",
+                downloadVoSpaceFile),
+            new AliasedTool(
+                "vospace_mkdir",
+                "Create a folder under a VOSpace path.",
+                createVoSpaceFolder),
 
             // AI Guide management: let the agent re-tune its own tool surface — list/add/update/delete
             // guide tools + override/reset another tool's description (the MCP server reads these live).
@@ -235,11 +273,19 @@ public static class McpToolCatalog
             new UpdateGuideToolTool(),
             new DeleteGuideToolTool(),
         };
+
+        // list_events needs the host's proposal-lifecycle event buffer; hosts that don't wire one
+        // (pure catalog consumers like AiGuideToolInventory) simply don't expose the tool.
+        if (eventLog is not null)
+            tools.Add(new ListEventsTool(eventLog));
+
+        return tools;
     }
 
     /// <summary>Build the proposal appliers bound to the live stores (registered by the host).</summary>
     public static IReadOnlyList<IProposalApplier> BuildAppliers(IServiceProvider sp)
     {
+        var auth = sp.GetRequiredService<IAuthService>();
         var searchStore = sp.GetRequiredService<ISearchStoreService>();
         var noteStore = sp.GetRequiredService<ObservationNoteStore>();
         var sessions = sp.GetRequiredService<ISessionService>();
@@ -253,9 +299,13 @@ public static class McpToolCatalog
 
         return new IProposalApplier[]
         {
-            new SaveQueryApplier(payload =>
+            new SaveQueryApplier((payload, attribution) =>
             {
-                searchStore.SaveQuery(new SavedQuery { Name = payload.Name, Adql = payload.Adql, SavedAt = DateTime.UtcNow });
+                searchStore.SaveQuery(new SavedQuery
+                {
+                    Name = payload.Name, Adql = payload.Adql, SavedAt = DateTime.UtcNow,
+                    AgentAttribution = attribution,
+                });
                 return Task.CompletedTask;
             }),
             new DeleteSavedQueryApplier(payload =>
@@ -263,14 +313,14 @@ public static class McpToolCatalog
                 searchStore.DeleteQuery(payload.Name);
                 return Task.CompletedTask;
             }),
-            new UpdateObservationNoteApplier(payload =>
+            new UpdateObservationNoteApplier((payload, attribution) =>
             {
-                ApplyNote(noteStore, payload);
+                ApplyNote(noteStore, payload, attribution);
                 return Task.CompletedTask;
             }),
-            new BulkUpdateObservationNotesApplier(items =>
+            new BulkUpdateObservationNotesApplier((items, attribution) =>
             {
-                foreach (var payload in items) ApplyNote(noteStore, payload);
+                foreach (var payload in items) ApplyNote(noteStore, payload, attribution);
                 return Task.CompletedTask;
             }),
 
@@ -283,18 +333,27 @@ public static class McpToolCatalog
             {
                 Type = "headless", Image = p.Image, Name = SessionName(p.Name, "headless"),
                 Cores = p.Cores ?? 2, Ram = p.Ram ?? 8, Gpus = p.Gpus ?? 0,
-                Args = p.Args, Replicas = p.Replicas ?? 1,
+                Cmd = p.Cmd, Args = p.Args, Replicas = p.Replicas ?? 1,
             })),
             new DeleteSessionApplier(p => sessions.DeleteSessionAsync(p.Id)),
+            new DeleteSessionsBulkApplier(id => sessions.DeleteSessionAsync(id)),
             new RenewSessionApplier(p => sessions.RenewSessionAsync(p.Id)),
 
-            new DownloadObservationApplier(p => DownloadObservationAsync(downloads, observations, caom2, p.PublisherId, p.ArtifactIndex)),
+            new DownloadObservationApplier((p, attribution) =>
+                DownloadObservationAsync(downloads, observations, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
+            new DownloadObservationsBulkApplier((p, attribution) =>
+                DownloadObservationAsync(downloads, observations, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
             new DeleteDownloadedObservationApplier(p =>
             {
                 var match = observations.Observations.FirstOrDefault(o => o.Id == p.Id || o.PublisherID == p.Id);
                 if (match is not null) observations.Remove(match);
                 return Task.CompletedTask;
             }),
+            new ClearResearchArchiveApplier(
+                () => observations.Observations,
+                o => observations.Remove(o),
+                publisherId => noteStore.Delete(publisherId),
+                path => { if (File.Exists(path)) File.Delete(path); }),
 
             new UploadTextToVoSpaceApplier(p =>
                 storage.UploadFileAsync(p.Path, new MemoryStream(Encoding.UTF8.GetBytes(p.Content)), p.ContentType ?? "text/plain")),
@@ -306,6 +365,10 @@ public static class McpToolCatalog
             new CreateVoSpaceFolderApplier(p => storage.CreateFolderAsync(p.Path, p.Name)),
             new SetVoSpaceAclApplier(p => storage.SetNodeAclAsync(p.Path, p.GroupRead, p.GroupWrite, p.IsPublic)),
             new DeleteVoSpaceNodeApplier(p => storage.DeleteNodeAsync(p.Path)),
+            new ClearUserSiteApplier(
+                () => auth.CurrentUsername,
+                (path, ct) => storage.ListNodesAsync(path, null, ct),
+                (path, ct) => storage.DeleteNodeAsync(path, ct)),
 
             // AI Compute: submit code / pre-warm / stop the contributed compute session.
             new RunCodeApplier(req => aiCompute.SubmitAsync(req)),
@@ -328,7 +391,7 @@ public static class McpToolCatalog
     /// <summary>Resolve an observation's FITS URL, stream it to ~/Downloads/Verbinal, and register it in Research.</summary>
     private static async Task DownloadObservationAsync(
         ObservationDownloadService downloads, ObservationStore store, ICAOM2Service caom2,
-        string publisherId, int? artifactIndex)
+        string publisherId, int? artifactIndex, AgentAttribution? attribution = null)
     {
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Verbinal");
         Directory.CreateDirectory(dir);
@@ -339,7 +402,10 @@ public static class McpToolCatalog
         // the apply gate) rather than tripping the generic apply timeout.
         await downloads.DownloadToPathAsync(url, localPath, timeoutSeconds: 120);
 
-        var observation = new DownloadedObservation { PublisherID = publisherId, LocalPath = localPath };
+        var observation = new DownloadedObservation
+        {
+            PublisherID = publisherId, LocalPath = localPath, AgentAttribution = attribution,
+        };
         var info = new FileInfo(localPath);
         if (info.Exists) observation.FileSize = info.Length;
 
@@ -464,8 +530,12 @@ public static class McpToolCatalog
     private static string SessionName(string? name, string type)
         => string.IsNullOrWhiteSpace(name) ? $"{type}-agent-{Guid.NewGuid().ToString("N")[..6]}" : name.Trim();
 
-    private static void ApplyNote(ObservationNoteStore store, UpdateObservationNotePayload payload)
-        => store.Upsert(ObservationNoteMerge.Apply(store.Get(payload.PublisherId), payload, DateTimeOffset.UtcNow));
+    private static void ApplyNote(ObservationNoteStore store, UpdateObservationNotePayload payload,
+        AgentAttribution? attribution)
+    {
+        var merged = ObservationNoteMerge.Apply(store.Get(payload.PublisherId), payload, DateTimeOffset.UtcNow);
+        store.Upsert(merged with { AgentAttribution = attribution ?? merged.AgentAttribution });
+    }
 
     /// <summary>Open a local FITS file and parse its per-HDU headers (the static parser is stream-based).</summary>
     private static Task<List<FitsHeader>> ParseFitsHeadersAsync(string localPath)

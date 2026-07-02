@@ -9,6 +9,7 @@ public sealed partial class LaunchFormControl : UserControl
     public SessionLaunchViewModel ViewModel { get; }
 
     public event EventHandler? LaunchRequested;
+    public event EventHandler? HeadlessLaunchRequested;
 
     public LaunchFormControl(SessionLaunchViewModel viewModel)
     {
@@ -23,7 +24,20 @@ public sealed partial class LaunchFormControl : UserControl
                     var canLaunch = !ViewModel.IsLaunching && !ViewModel.IsAtSessionLimit;
                     LaunchButton.IsEnabled = canLaunch;
                     AdvancedLaunchButton.IsEnabled = canLaunch;
+                    // Headless jobs aren't bound by the interactive-session cap.
+                    HeadlessLaunchButton.IsEnabled = !ViewModel.IsLaunching;
                 });
+            }
+            else if (e.PropertyName is nameof(ViewModel.HasHeadlessImages))
+            {
+                DispatcherQueue.TryEnqueue(UpdateHeadlessAvailability);
+            }
+            else if (e.PropertyName is nameof(ViewModel.HeadlessReplicas))
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                    HeadlessLaunchLabel.Text = ViewModel.HeadlessReplicas > 1
+                        ? $"Launch {ViewModel.HeadlessReplicas} Replicas"
+                        : "Launch Job");
             }
             else if (e.PropertyName == nameof(ViewModel.IsLoading))
             {
@@ -46,6 +60,42 @@ public sealed partial class LaunchFormControl : UserControl
     private void OnGenerateNameClick(object sender, RoutedEventArgs e)
     {
         ViewModel.GenerateSessionName();
+    }
+
+    private void OnGenerateHeadlessNameClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.GenerateHeadlessSessionName();
+    }
+
+    private void UpdateHeadlessAvailability()
+    {
+        var hasImages = ViewModel.HasHeadlessImages;
+        NoHeadlessImagesBar.IsOpen = !hasImages;
+        NoHeadlessImagesBar.Visibility = hasImages ? Visibility.Collapsed : Visibility.Visible;
+        HeadlessProjectSection.Visibility = hasImages ? Visibility.Visible : Visibility.Collapsed;
+        HeadlessImageSection.Visibility = hasImages ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnHeadlessResourceTypeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is RadioButtons rb && rb.SelectedItem is RadioButton selected)
+        {
+            // Writes the headless-only flag: this fires when the Pivot first realizes the tab, and
+            // writing the shared ResourceType here would silently flip the Standard tab's launches
+            // to flexible while its radios still display Fixed.
+            var tag = selected.Tag?.ToString() ?? "flexible";
+            ViewModel.HeadlessResourceType = tag;
+            HeadlessResourcePanel.Visibility = tag == "fixed" ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private void OnHeadlessLaunchClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Cores = HeadlessResourcePanel.Cores;
+        ViewModel.Ram = HeadlessResourcePanel.Ram;
+        ViewModel.Gpus = HeadlessResourcePanel.Gpus;
+
+        HeadlessLaunchRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnResourceTypeChanged(object sender, SelectionChangedEventArgs e)
@@ -108,6 +158,9 @@ public sealed partial class LaunchFormControl : UserControl
             nameof(AdvAuthHelpBtn) => AdvAuthTip,
             nameof(AdvNameHelpBtn) => AdvNameTip,
             nameof(AdvResTypeHelpBtn) => AdvResTypeTip,
+            nameof(HlCmdHelpBtn) => HlCmdTip,
+            nameof(HlArgsHelpBtn) => HlArgsTip,
+            nameof(HlReplicasHelpBtn) => HlReplicasTip,
             _ => null
         };
 
@@ -129,5 +182,7 @@ public sealed partial class LaunchFormControl : UserControl
 
         StdResourcePanel.Configure(coreOpts, ViewModel.Cores, ramOpts, ViewModel.Ram, gpuOpts);
         AdvResourcePanel.Configure(coreOpts, ViewModel.Cores, ramOpts, ViewModel.Ram, gpuOpts);
+        HeadlessResourcePanel.Configure(coreOpts, ViewModel.Cores, ramOpts, ViewModel.Ram, gpuOpts);
+        UpdateHeadlessAvailability();
     }
 }

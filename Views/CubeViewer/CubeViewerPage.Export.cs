@@ -246,6 +246,7 @@ public sealed partial class CubeViewerPage
             var w = _meta.Wcs;
             d.Dims = _meta.DimensionsText;
             d.NanText = _meta.NanText;
+            d.ModeText = _meta.ModeText; // truthful Resident/Downsampled, not the hardcoded default
             d.AxisRanges.Add((w.LonName, $"{w.LonText(0)} … {w.LonText(Math.Max(0, w.Nx - 1))}"));
             d.AxisRanges.Add((w.LatName, $"{w.LatText(0)} … {w.LatText(Math.Max(0, w.Ny - 1))}"));
             if (w.Nz > 1)

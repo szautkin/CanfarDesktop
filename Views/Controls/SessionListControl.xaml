@@ -35,7 +35,7 @@
                         <TextBlock Text="Auto-refreshing" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <TextBlock x:Name="CountdownText" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                   MinWidth="28" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
                 </StackPanel>
                 <Button Grid.Column="1" Click="OnRefreshClick" ToolTipService.ToolTip="Refresh">

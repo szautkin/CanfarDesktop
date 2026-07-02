@@ -131,19 +131,48 @@ public partial class ImageDiscoveryViewModel : ObservableObject
 
     private void BuildSections()
     {
-        FilterSections.Clear();
+        // Reuse existing section/value VMs wherever the (category, value) survives:
+        // the flattened FilterItems list is reconciled by reference, so recreating
+        // everything after each probe would reset the left pane's scroll position.
+        var byCategory = FilterSections.ToDictionary(s => s.Category);
+        var ordered = new List<FacetSectionViewModel>();
         foreach (var (category, title) in SectionOrder)
         {
             var values = CandidateValues(category);
             if (values.Count == 0) continue;
 
-            var section = new FacetSectionViewModel(title, category);
-            foreach (var value in values)
-                section.Values.Add(new FacetValueViewModel(value, category, SetFor(category).Contains(value), OnFacetToggled));
+            if (!byCategory.TryGetValue(category, out var section))
+                section = new FacetSectionViewModel(title, category);
+            ReconcileSectionValues(section, values, category);
             section.CountBadge = section.Values.Count;
-            FilterSections.Add(section);
+            ordered.Add(section);
+        }
+
+        if (!FilterSections.SequenceEqual(ordered))
+        {
+            FilterSections.Clear();
+            foreach (var s in ordered) FilterSections.Add(s);
         }
         ApplyPackageSearch();
+    }
+
+    /// <summary>Rebuild a section's value list, keeping the VM instances of surviving values.</summary>
+    private void ReconcileSectionValues(FacetSectionViewModel section, IReadOnlyList<string> values,
+        PackageQuery.Category category)
+    {
+        var existing = new Dictionary<string, FacetValueViewModel>(StringComparer.Ordinal);
+        foreach (var v in section.Values) existing[v.Value] = v;
+
+        var selected = SetFor(category);
+        var fresh = values
+            .Select(v => existing.TryGetValue(v, out var vm)
+                ? vm
+                : new FacetValueViewModel(v, category, selected.Contains(v), OnFacetToggled))
+            .ToList();
+
+        if (section.Values.SequenceEqual(fresh)) return;
+        section.Values.Clear();
+        foreach (var vm in fresh) section.Values.Add(vm);
     }
 
     /// <summary>The full candidate value list for a category (OS version scoped to selected families).</summary>
@@ -201,9 +230,7 @@ public partial class ImageDiscoveryViewModel : ObservableObject
         }
         if (section is null) return; // none existed and none to show
 
-        section.Values.Clear();
-        foreach (var v in values)
-            section.Values.Add(new FacetValueViewModel(v, PackageQuery.Category.OsVersion, Query.OsVersions.Contains(v), OnFacetToggled));
+        ReconcileSectionValues(section, values, PackageQuery.Category.OsVersion);
         section.CountBadge = section.Values.Count;
         if (values.Count == 0) FilterSections.Remove(section);
 
@@ -317,9 +344,39 @@ public partial class ImageDiscoveryViewModel : ObservableObject
             matched.Add(img);
         }
 
-        FilteredGroups.Clear();
-        foreach (var (project, images) in ImageParser.GroupByProject(matched))
-            FilteredGroups.Add(new ImageRowGroup(project, images.Select(i => _rowsById[i.Id])));
+        // Reconcile the grouped list in place and re-assert the selected row, so a
+        // filter keystroke or checkbox toggle doesn't scroll the pane to the top or
+        // grey out "Use this image" mid-pick.
+        var selected = SelectedRow;
+        var fresh = ImageParser.GroupByProject(matched)
+            .Select(g => (g.Project, Rows: g.Images.Select(i => _rowsById[i.Id]).ToList()))
+            .ToList();
+
+        var freshProjects = fresh.Select(f => f.Project).ToHashSet(StringComparer.Ordinal);
+        for (var i = FilteredGroups.Count - 1; i >= 0; i--)
+            if (!freshProjects.Contains(FilteredGroups[i].Project)) FilteredGroups.RemoveAt(i);
+
+        for (var i = 0; i < fresh.Count; i++)
+        {
+            var (project, rows) = fresh[i];
+            var existing = -1;
+            for (var j = 0; j < FilteredGroups.Count; j++)
+                if (FilteredGroups[j].Project == project) { existing = j; break; }
+
+            if (existing < 0)
+            {
+                FilteredGroups.Insert(Math.Min(i, FilteredGroups.Count), new ImageRowGroup(project, rows));
+            }
+            else
+            {
+                if (existing != i) FilteredGroups.Move(existing, i);
+                if (!FilteredGroups[i].Images.SequenceEqual(rows))
+                    FilteredGroups[i] = new ImageRowGroup(project, rows);
+            }
+        }
+
+        if (selected is not null && matched.Any(m => m.Id == selected.Id))
+            SelectedRow = selected;
 
         IsEmptyResult = matched.Count == 0;
     }
@@ -349,13 +406,27 @@ public partial class ImageDiscoveryViewModel : ObservableObject
     /// <summary>Reflatten <see cref="FilterSections"/> (visible rows only) into <see cref="FilterItems"/>.</summary>
     private void RebuildFilterItems()
     {
-        FilterItems.Clear();
+        var desired = new List<object>();
         foreach (var section in FilterSections)
         {
             var visible = section.Values.Where(v => v.IsVisible).ToList();
             if (visible.Count == 0) continue;
-            FilterItems.Add(section);
-            foreach (var v in visible) FilterItems.Add(v);
+            desired.Add(section);
+            foreach (var v in visible) desired.Add(v);
+        }
+
+        // Diff instead of Clear+rebuild so the ListView keeps its scroll position
+        // while the user types in the package search box or toggles filters.
+        var desiredSet = new HashSet<object>(desired);
+        for (var i = FilterItems.Count - 1; i >= 0; i--)
+            if (!desiredSet.Contains(FilterItems[i])) FilterItems.RemoveAt(i);
+
+        for (var i = 0; i < desired.Count; i++)
+        {
+            if (i < FilterItems.Count && ReferenceEquals(FilterItems[i], desired[i])) continue;
+            var idx = FilterItems.IndexOf(desired[i]);
+            if (idx < 0) FilterItems.Insert(Math.Min(i, FilterItems.Count), desired[i]);
+            else FilterItems.Move(idx, i);
         }
     }
 

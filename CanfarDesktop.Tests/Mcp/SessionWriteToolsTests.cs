@@ -111,4 +111,70 @@ public class SessionWriteToolsTests
         await applier.ApplyAsync(Proposal("delete_session", new DeleteSessionPayload("sess-1")));
         Assert.Equal("sess-1", id);
     }
+
+    // ── delete_sessions_bulk ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DeleteSessionsBulk_BuildsDestructiveProposal_TrimmedDedupedIds()
+    {
+        var (ctx, _) = Context();
+        var tool = new DeleteSessionsBulkTool();
+        Assert.Equal(McpVerbClass.Destructive, tool.VerbClass);
+
+        var result = await tool.InvokeAsync(
+            Args("""{"ids":[" s1 ","s2","s1","   ","s3"]}"""), ctx, default);
+
+        var proposal = Assert.IsType<ProposedResult>(result).Proposal;
+        Assert.Equal("delete_sessions_bulk", proposal.Kind);
+        Assert.Equal("Terminate 3 sessions", proposal.Summary);
+        var payload = JsonSerializer.Deserialize<DeleteSessionsBulkPayload>(proposal.Payload, McpJson.Options)!;
+        Assert.Equal(new[] { "s1", "s2", "s3" }, payload.Ids);
+    }
+
+    [Fact]
+    public async Task DeleteSessionsBulk_SingleId_SingularSummary()
+    {
+        var (ctx, _) = Context();
+        var result = await new DeleteSessionsBulkTool().InvokeAsync(Args("""{"ids":["s1"]}"""), ctx, default);
+        Assert.Equal("Terminate 1 session", Assert.IsType<ProposedResult>(result).Proposal.Summary);
+    }
+
+    [Theory]
+    [InlineData("""{"ids":[]}""")]
+    [InlineData("""{}""")]
+    [InlineData("""{"ids":["  ","  "]}""")] // blanks only → empty after cleaning
+    public async Task DeleteSessionsBulk_EmptyIds_InvalidArgument(string argsJson)
+    {
+        var (ctx, store) = Context();
+        var result = await new DeleteSessionsBulkTool().InvokeAsync(Args(argsJson), ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
+        Assert.Empty(store.List());
+    }
+
+    [Fact]
+    public async Task DeleteSessionsBulk_OverFiftyUniqueIds_InvalidArgument()
+    {
+        var (ctx, store) = Context();
+        var ids = string.Join(",", Enumerable.Range(0, 51).Select(i => $"\"s{i}\""));
+        var result = await new DeleteSessionsBulkTool().InvokeAsync(Args($$"""{"ids":[{{ids}}]}"""), ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
+        Assert.Empty(store.List());
+    }
+
+    [Fact]
+    public async Task DeleteSessionsBulkApplier_AttemptsEveryId_EvenWhenSomeFail()
+    {
+        var attempted = new List<string>();
+        var applier = new DeleteSessionsBulkApplier(id =>
+        {
+            attempted.Add(id);
+            return id == "s2" ? throw new HttpRequestException("already gone") : Task.CompletedTask;
+        });
+        Assert.Equal("delete_sessions_bulk", applier.Kind);
+
+        // Partial-success semantics: the already-gone s2 must not block s3.
+        await applier.ApplyAsync(Proposal("delete_sessions_bulk", new DeleteSessionsBulkPayload(new[] { "s1", "s2", "s3" })));
+
+        Assert.Equal(new[] { "s1", "s2", "s3" }, attempted);
+    }
 }

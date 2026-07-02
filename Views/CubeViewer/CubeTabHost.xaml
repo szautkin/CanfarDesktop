@@ -29,6 +29,14 @@
                     <TextBlock Text="Open cube…" />
                 </StackPanel>
             </Button>
+
+            <!-- Recently opened cubes (persisted; entries built in code from RecentCubesService) -->
+            <StackPanel x:Name="RecentsPanel" Visibility="Collapsed" Spacing="2" Margin="0,10,0,0">
+                <TextBlock Text="Recent cubes" HorizontalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Style="{StaticResource CaptionTextBlockStyle}" />
+                <ItemsControl x:Name="RecentsList" HorizontalAlignment="Center" />
+            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>

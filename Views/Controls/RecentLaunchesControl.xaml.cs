@@ -17,24 +17,38 @@ public sealed partial class RecentLaunchesControl : UserControl
 
     public event EventHandler<RecentLaunch>? RelaunchRequested;
 
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _filterDebounce;
+
     public RecentLaunchesControl(IRecentLaunchService service)
     {
         _service = service;
         InitializeComponent();
+
+        // Rebuilding every card per keystroke lags and resets the list scroll;
+        // wait for a short typing pause instead.
+        _filterDebounce = DispatcherQueue.CreateTimer();
+        _filterDebounce.Interval = TimeSpan.FromMilliseconds(200);
+        _filterDebounce.IsRepeating = false;
+        _filterDebounce.Tick += (_, _) => ApplyFilter();
+
         Refresh();
     }
 
     public void Refresh()
     {
+        // Keep the user's filter text — Refresh() also runs after every completed
+        // launch, and silently clearing a filter they typed loses their place.
         _allLaunches = _service.Load();
-        FilterBox.Text = string.Empty;
         ApplyFilter();
     }
 
     private void OnFilterChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
-            ApplyFilter();
+        {
+            _filterDebounce.Stop();
+            _filterDebounce.Start();
+        }
     }
 
     private void ApplyFilter()
@@ -269,6 +283,7 @@ public sealed partial class RecentLaunchesControl : UserControl
     private void OnClearClick(object sender, RoutedEventArgs e)
     {
         _service.Clear();
+        FilterBox.Text = string.Empty; // explicit clear-all is the one place the filter resets
         Refresh();
     }
 }

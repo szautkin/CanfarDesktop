@@ -71,24 +71,18 @@ public sealed partial class AiGuidePage : Page
     private void OnToolRowExpanding(Expander sender, ExpanderExpandingEventArgs args)
         => sender.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
-            if (FindDescendant<TextBox>(sender) is { } box)
+            if (Helpers.VisualTree.FindDescendant<TextBox>(sender) is { } box)
             {
+                // Keep the deliberate focus, but suppress the automatic
+                // scroll-into-view it triggers — expanding a row near the bottom
+                // of the page yanked the whole list.
+                void Suppress(UIElement s, BringIntoViewRequestedEventArgs a) => a.Handled = true;
+                box.BringIntoViewRequested += Suppress;
                 box.Focus(FocusState.Programmatic);
                 box.SelectionStart = box.Text?.Length ?? 0;
+                box.BringIntoViewRequested -= Suppress;
             }
         });
-
-    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
-    {
-        var count = VisualTreeHelper.GetChildrenCount(root);
-        for (var i = 0; i < count; i++)
-        {
-            var child = VisualTreeHelper.GetChild(root, i);
-            if (child is T hit) return hit;
-            if (FindDescendant<T>(child) is { } deep) return deep;
-        }
-        return null;
-    }
 
     // ── My guide tools ───────────────────────────────────────────────────────
     private async void OnAddGuideClick(object sender, RoutedEventArgs e)

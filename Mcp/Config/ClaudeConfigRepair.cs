@@ -26,6 +26,17 @@ public sealed class ClaudeConfigRepair
         catch { return null; }
     }
 
+    /// <summary>
+    /// Whether the config already references the Verbinal bridge. The single owner of this heuristic —
+    /// the wizard's resume logic and the diagnostics panel must agree, and this class knows what
+    /// <see cref="Apply"/> writes.
+    /// </summary>
+    public bool IsBridgeRegistered() => ContainsBridgeReference(ReadExisting());
+
+    /// <summary>The raw heuristic over config text (for callers that read the config themselves).</summary>
+    public static bool ContainsBridgeReference(string? configText)
+        => configText?.Contains("McpBridge", StringComparison.OrdinalIgnoreCase) == true;
+
     /// <summary>The merged config that <see cref="Apply"/> would write — for a confirmation preview.</summary>
     public string Preview(string command) => ClaudeConfigMerge.MergedRoot(ReadExisting(), command);
 

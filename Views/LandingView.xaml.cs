@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
@@ -15,6 +16,7 @@ public sealed partial class LandingView : UserControl
     public event EventHandler? FitsViewerRequested;
     public event EventHandler? CubeViewerRequested;
     public event EventHandler? AiGuideRequested;
+    public event EventHandler? AiAssistantRequested;
 
     public string StatusMessage
     {
@@ -22,23 +24,49 @@ public sealed partial class LandingView : UserControl
         set => StatusText.Text = value;
     }
 
-    public class TileData
+    public class TileData : INotifyPropertyChanged
     {
         public string Title { get; set; } = "";
         public string Glyph { get; set; } = "";
         public string Subtitle { get; set; } = "";
         public string Key { get; set; } = "";
+        public bool RequiresAuth { get; set; }
+
+        // Auth-gated lock state. Mutated by SetAuthenticated after the tiles are
+        // realized, so the derived visual properties must raise change notifications.
+        private bool _isLocked;
+        public bool IsLocked
+        {
+            get => _isLocked;
+            set
+            {
+                if (_isLocked == value) return;
+                _isLocked = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LockVisibility)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TileOpacity)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ToolTip)));
+            }
+        }
+
+        public Visibility LockVisibility => _isLocked ? Visibility.Visible : Visibility.Collapsed;
+        public double TileOpacity => _isLocked ? 0.7 : 1.0;
+        public string ToolTip => _isLocked ? Helpers.Loc.T("Landing_SignInToAccess") : Subtitle;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
     }
 
     public List<TileData> Tiles { get; } =
     [
-        new() { Title = "Portal", Glyph = "\uE7F4", Subtitle = "Manage sessions & data", Key = "portal" },
-        new() { Title = "Search", Glyph = "\uE721", Subtitle = "Explore the CADC archive", Key = "search" },
-        new() { Title = "Research", Glyph = "\uE8B7", Subtitle = "Downloaded observations", Key = "research" },
-        new() { Title = "Storage", Glyph = "\uEDA2", Subtitle = "Browse VOSpace files", Key = "storage" },
-        new() { Title = "Notebook", Glyph = "\uE70B", Subtitle = "Open & run .ipynb files", Key = "notebook" },
-        new() { Title = "FITS Viewer", Glyph = "\uE7B8", Subtitle = "View astronomical images", Key = "fits" },
-        new() { Title = "Cube Viewer", Glyph = "\uE809", Subtitle = "3D volume ray-marcher", Key = "cube" },
+        // Portal + Storage need the CADC token: locked (badge + dim + tooltip) until
+        // sign-in. Tapping still fires the event: MainWindow shows the login dialog
+        // and continues to the chosen destination on success.
+        new() { Title = Helpers.Loc.T("Tile_Portal_Title"), Glyph = "\uE7F4", Subtitle = Helpers.Loc.T("Tile_Portal_Subtitle"), Key = "portal", RequiresAuth = true, IsLocked = true },
+        new() { Title = Helpers.Loc.T("Tile_Search_Title"), Glyph = "\uE721", Subtitle = Helpers.Loc.T("Tile_Search_Subtitle"), Key = "search" },
+        new() { Title = Helpers.Loc.T("Tile_Research_Title"), Glyph = "\uE8B7", Subtitle = Helpers.Loc.T("Tile_Research_Subtitle"), Key = "research" },
+        new() { Title = Helpers.Loc.T("Tile_Storage_Title"), Glyph = "\uEDA2", Subtitle = Helpers.Loc.T("Tile_Storage_Subtitle"), Key = "storage", RequiresAuth = true, IsLocked = true },
+        new() { Title = Helpers.Loc.T("Tile_Notebook_Title"), Glyph = "\uE70B", Subtitle = Helpers.Loc.T("Tile_Notebook_Subtitle"), Key = "notebook" },
+        new() { Title = Helpers.Loc.T("Tile_Fits_Title"), Glyph = "\uE7B8", Subtitle = Helpers.Loc.T("Tile_Fits_Subtitle"), Key = "fits" },
+        new() { Title = Helpers.Loc.T("Tile_Cube_Title"), Glyph = "\uE809", Subtitle = Helpers.Loc.T("Tile_Cube_Subtitle"), Key = "cube" },
     ];
 
     public LandingView()
@@ -48,9 +76,32 @@ public sealed partial class LandingView : UserControl
         // The AI Guide tile is opt-in (hidden by default; toggle in Settings ▸ MCP server). The saved
         // overrides + guide tools stay active regardless — this only controls the launchpad shortcut.
         if (ReadShowAiGuideTile())
-            Tiles.Add(new() { Title = "AI Guide", Glyph = "", Subtitle = "Tune the agent's tools", Key = "aiGuide" });
+            Tiles.Add(new() { Title = Helpers.Loc.T("Tile_AiGuide_Title"), Glyph = "", Subtitle = Helpers.Loc.T("Tile_AiGuide_Subtitle"), Key = "aiGuide" });
+
+        // AI Assistant — newcomer entry point to the connect wizard; always shown (macOS parity).
+        Tiles.Add(new() { Title = Helpers.Loc.T("Tile_AiAssistant_Title"), Glyph = "", Subtitle = Helpers.Loc.T("Tile_AiAssistant_Subtitle"), Key = "aiAssistant" });
 
         TilesRepeater.ItemsSource = Tiles;
+
+        // Subtle hover scale on each tile (reduce-motion aware) — the landing's share of the app
+        // motion vocabulary, matching the macOS tile hover. Tracked in a set because Tag carries
+        // the tile key for OnTileClicked and ElementPrepared can re-fire for the same element.
+        var hooked = new HashSet<Microsoft.UI.Xaml.UIElement>();
+        TilesRepeater.ElementPrepared += (_, args) =>
+        {
+            if (args.Element is Microsoft.UI.Xaml.FrameworkElement tile && hooked.Add(tile))
+                Helpers.AppMotion.AttachHoverScale(tile);
+        };
+    }
+
+    /// <summary>Locks/unlocks the auth-gated tiles (Portal, Storage). Called by MainWindow on auth changes.</summary>
+    public void SetAuthenticated(bool authenticated)
+    {
+        foreach (var tile in Tiles)
+        {
+            if (tile.RequiresAuth)
+                tile.IsLocked = !authenticated;
+        }
     }
 
     private static bool ReadShowAiGuideTile()
@@ -78,6 +129,7 @@ public sealed partial class LandingView : UserControl
                 case "fits": FitsViewerRequested?.Invoke(this, EventArgs.Empty); break;
                 case "cube": CubeViewerRequested?.Invoke(this, EventArgs.Empty); break;
                 case "aiGuide": AiGuideRequested?.Invoke(this, EventArgs.Empty); break;
+                case "aiAssistant": AiAssistantRequested?.Invoke(this, EventArgs.Empty); break;
             }
         }
     }

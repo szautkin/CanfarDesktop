@@ -103,6 +103,16 @@ public sealed partial class BatchJobsDialog : ContentDialog
         {
             await _sessionService.DeleteSessionAsync(sessionId);
         }
+        Reopen();
+    }
+
+    // Child dialogs require hiding this one (single-ContentDialog rule); bring
+    // the user back to the Batch Jobs list afterwards instead of stranding them
+    // at the main window.
+    private void Reopen()
+    {
+        try { _ = ShowAsync(); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Batch jobs reopen failed: {ex.Message}"); }
     }
 
     private async void ShowEventsDialog(string sessionId)
@@ -129,6 +139,7 @@ public sealed partial class BatchJobsDialog : ContentDialog
         };
         dialog.Resources["ContentDialogMinWidth"] = 600.0;
         await dialog.ShowAsync();
+        Reopen();
     }
 
     private async void ShowLogsDialog(string sessionId)
@@ -155,6 +166,7 @@ public sealed partial class BatchJobsDialog : ContentDialog
         };
         dialog.Resources["ContentDialogMinWidth"] = 600.0;
         await dialog.ShowAsync();
+        Reopen();
     }
 
     private static string ParseImageLabel(string imageId)

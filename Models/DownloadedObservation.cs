@@ -29,6 +29,9 @@ public class DownloadedObservation
     public string? ThumbnailURL { get; set; }
     public string? PreviewURL { get; set; }
 
+    /// <summary>Provenance stamp when the download was initiated by an MCP agent; null = user-authored.</summary>
+    public AgentAttribution? AgentAttribution { get; set; }
+
     public bool FileExists => !string.IsNullOrWhiteSpace(LocalPath) && File.Exists(LocalPath);
     public string Filename => string.IsNullOrEmpty(LocalPath) ? "" : Path.GetFileName(LocalPath);
 

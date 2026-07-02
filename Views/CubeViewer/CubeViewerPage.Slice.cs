@@ -65,7 +65,8 @@ public sealed partial class CubeViewerPage
         RenderPanel.Visibility = showVol;
         OverlayCanvas.Visibility = showVol;
         VolumeSection.Visibility = showVol;
-        SliceImage.Visibility = showSlice;
+        SliceViewport.Visibility = showSlice;
+        SliceCoordBar.Visibility = slice && _volume is not null ? Visibility.Visible : Visibility.Collapsed;
         // The channel scrubber + playback live in BOTH modes when the cube has channels: in slice
         // mode it shows the 2D plane, in volume mode it drives the slice-plane marker.
         SliceBar.Visibility = (_volume?.Nz ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed;
@@ -117,6 +118,11 @@ public sealed partial class CubeViewerPage
         _probeX = _probeY = -1;
         SpectrumPanel.Visibility = Visibility.Collapsed;
         SliceBar.Visibility = nz > 1 ? Visibility.Visible : Visibility.Collapsed;
+
+        // Zoom/pan + hover readout are per-cube state; the waveform backdrop is drawn once per cube.
+        ResetSliceView();
+        ClearCursorReadout();
+        DrawChannelWaveform();
 
         EnsureSliceBitmap();
         UpdateChannelLabel();
@@ -216,6 +222,28 @@ public sealed partial class CubeViewerPage
 
     // ── Channel scrubber + playback ────────────────────────────────────────────
 
+    // NaN-aware per-channel means (computed off-thread at load), drawn as the scrubber waveform.
+    private float[]? _channelProfile;
+
+    /// <summary>Draw the cube-mean waveform backdrop above the channel slider (once per cube —
+    /// the canvas is fixed-size, so no resize redraw is needed).</summary>
+    private void DrawChannelWaveform()
+    {
+        WaveformCanvas.Children.Clear();
+        var prof = _channelProfile;
+        double w = WaveformCanvas.Width, h = WaveformCanvas.Height;
+        if (prof is null || prof.Length < 2 || w <= 0 || h <= 0) return;
+
+        var heights = CubeChannelProfile.NormalizedHeights(prof);
+        var poly = new Polygon { Fill = ArgbBrush(0x50, 0x9F, 0xC4, 0xE8) }; // box-edge blue, translucent
+        var pts = new PointCollection { new Point(0, h) };
+        for (int i = 0; i < heights.Length; i++)
+            pts.Add(new Point(w * i / (heights.Length - 1), h * (1 - heights[i])));
+        pts.Add(new Point(w, h));
+        poly.Points = pts;
+        WaveformCanvas.Children.Add(poly);
+    }
+
     private void OnChannelChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_suppressChannel) return;
@@ -297,10 +325,11 @@ public sealed partial class CubeViewerPage
 
     // ── Spectrum probe ─────────────────────────────────────────────────────────
 
-    private void OnSlicePointerPressed(object sender, PointerRoutedEventArgs e)
+    /// <summary>Probe the spectrum at a viewport position (a clean click — pans don't probe).</summary>
+    private void ProbeSpectrumAt(Point viewportPos)
     {
         if (_volume is null) return;
-        var px = MapToPixel(e.GetCurrentPoint(SliceImage).Position);
+        var px = MapToPixel(viewportPos);
         if (px is null) return;
         _probeX = px.Value.x;
         _probeY = px.Value.y;
@@ -314,18 +343,25 @@ public sealed partial class CubeViewerPage
         DrawSpectrum();
     }
 
-    /// <summary>Map a pointer position on the (Uniform-fit) slice image to a 0-based display pixel (x,y).</summary>
+    /// <summary>
+    /// Map a pointer position on the slice viewport to a 0-based display pixel (x,y): first undo
+    /// the zoom/pan transform (which scales around the viewport center), then invert the Uniform
+    /// aspect-fit. The macOS fitLocation + imagePixel pair, in one place.
+    /// </summary>
     private (int x, int y)? MapToPixel(Point p)
     {
         if (_volume is null) return null;
-        double aw = SliceImage.ActualWidth, ah = SliceImage.ActualHeight;
+        double aw = SliceViewport.ActualWidth, ah = SliceViewport.ActualHeight;
         int nx = _sliceDispNx > 0 ? _sliceDispNx : _volume.Nx;
         int ny = _sliceDispNy > 0 ? _sliceDispNy : _volume.Ny;
         if (aw <= 0 || ah <= 0) return null;
+        double cx = aw / 2, cy = ah / 2;
+        double fx = cx + (p.X - _slicePanX - cx) / _sliceZoom;
+        double fy = cy + (p.Y - _slicePanY - cy) / _sliceZoom;
         double scale = Math.Min(aw / nx, ah / ny);
         double ox = (aw - nx * scale) / 2, oy = (ah - ny * scale) / 2;
-        int x = (int)Math.Floor((p.X - ox) / scale);
-        int y = (int)Math.Floor((p.Y - oy) / scale);
+        int x = (int)Math.Floor((fx - ox) / scale);
+        int y = (int)Math.Floor((fy - oy) / scale);
         if (x < 0 || y < 0 || x >= nx || y >= ny) return null;
         return (x, y);
     }

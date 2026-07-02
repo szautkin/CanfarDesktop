@@ -137,6 +137,9 @@ public class SavedQuery
     public string Name { get; set; } = string.Empty;
     public string Adql { get; set; } = string.Empty;
     public DateTime SavedAt { get; set; }
+
+    /// <summary>Provenance stamp when the query was saved by an MCP agent; null = user-authored.</summary>
+    public AgentAttribution? AgentAttribution { get; set; }
 }
 
 /// <summary>

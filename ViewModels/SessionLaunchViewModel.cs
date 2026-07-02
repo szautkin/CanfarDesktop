@@ -143,6 +143,7 @@ public partial class SessionLaunchViewModel : ObservableObject
             }
 
             UpdateProjects();
+            UpdateHeadlessProjects();
             GenerateSessionName();
         }
         catch (Exception ex)
@@ -370,6 +371,145 @@ public partial class SessionLaunchViewModel : ObservableObject
         }
     }
 
+    // ── Headless launch (the "Headless" tab; macOS HeadlessLaunchTabView parity) ──
+    // Separate project/image state so configuring a batch job never disturbs the
+    // Standard tab's selections; images are scoped to type=headless.
+
+    [ObservableProperty] private string _headlessSessionName = string.Empty;
+    [ObservableProperty] private string _headlessSelectedProject = string.Empty;
+    [ObservableProperty] private ParsedImage? _headlessSelectedImage;
+    [ObservableProperty] private string _headlessCommand = string.Empty;
+    [ObservableProperty] private string _headlessArgs = string.Empty;
+    [ObservableProperty] private int _headlessReplicas = 1;
+    // Own resource-type flag: the tab's RadioButtons must not clobber the shared ResourceType the
+    // Standard/Advanced tabs read (their radios wouldn't reflect the change).
+    [ObservableProperty] private string _headlessResourceType = "flexible";
+
+    public ObservableCollection<string> HeadlessProjects { get; } = [];
+    public ObservableCollection<ParsedImage> HeadlessImages { get; } = [];
+
+    /// <summary>False when the account's catalogue has no type=headless images (shows a hint instead).</summary>
+    public bool HasHeadlessImages => HeadlessProjects.Count > 0;
+
+    private void UpdateHeadlessProjects()
+    {
+        HeadlessProjects.Clear();
+        if (_imagesByTypeAndProject.TryGetValue("headless", out var projects))
+            foreach (var project in projects.Keys.OrderBy(p => p))
+                HeadlessProjects.Add(project);
+        OnPropertyChanged(nameof(HasHeadlessImages));
+        if (HeadlessProjects.Count > 0)
+            HeadlessSelectedProject = HeadlessProjects[0];
+        if (string.IsNullOrEmpty(HeadlessSessionName))
+            GenerateHeadlessSessionName();
+    }
+
+    partial void OnHeadlessSelectedProjectChanged(string value)
+    {
+        if (!string.IsNullOrEmpty(value)) UpdateHeadlessImages();
+    }
+
+    private void UpdateHeadlessImages()
+    {
+        HeadlessImages.Clear();
+        if (!string.IsNullOrEmpty(HeadlessSelectedProject)
+            && _imagesByTypeAndProject.TryGetValue("headless", out var projects)
+            && projects.TryGetValue(HeadlessSelectedProject, out var images))
+        {
+            foreach (var img in images) HeadlessImages.Add(img);
+        }
+        HeadlessSelectedImage = HeadlessImages.FirstOrDefault();
+    }
+
+    public void GenerateHeadlessSessionName()
+    {
+        var count = _sessionCounter?.Invoke("headless") ?? 0;
+        HeadlessSessionName = $"headless{count + 1}";
+    }
+
+    [RelayCommand]
+    private async Task LaunchHeadlessAsync()
+    {
+        if (HeadlessSelectedImage is null)
+        {
+            ErrorMessage = "Please select a container image.";
+            HasError = true;
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(HeadlessCommand))
+        {
+            ErrorMessage = "Please provide the command the container should run.";
+            HasError = true;
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(HeadlessSessionName))
+            GenerateHeadlessSessionName();
+
+        IsLaunching = true;
+        LaunchStatus = "Submitting job...";
+        HasError = false;
+
+        try
+        {
+            var replicas = Math.Clamp(HeadlessReplicas, 1, 20);
+            var launchParams = new SessionLaunchParams
+            {
+                Type = "headless",
+                Name = HeadlessSessionName,
+                Image = HeadlessSelectedImage.Id,
+                Cmd = HeadlessCommand.Trim(),
+                Args = string.IsNullOrWhiteSpace(HeadlessArgs) ? null : HeadlessArgs.Trim(),
+                Replicas = replicas,
+                Cores = HeadlessResourceType == "fixed" ? Cores : 0,
+                Ram = HeadlessResourceType == "fixed" ? Ram : 0,
+                Gpus = HeadlessResourceType == "fixed" ? Gpus : 0,
+            };
+
+            var recentLaunch = new Models.RecentLaunch
+            {
+                Name = HeadlessSessionName,
+                Type = "headless",
+                Image = HeadlessSelectedImage.Id,
+                ImageLabel = HeadlessSelectedImage.Label,
+                Project = HeadlessSelectedProject,
+                ResourceType = HeadlessResourceType,
+                Cores = Cores,
+                Ram = Ram,
+                Gpus = Gpus,
+                Cmd = HeadlessCommand.Trim(),
+                Args = string.IsNullOrWhiteSpace(HeadlessArgs) ? null : HeadlessArgs.Trim(),
+                Replicas = replicas,
+                LaunchedAt = DateTime.Now,
+            };
+
+            var ids = await _sessionService.LaunchHeadlessAsync(launchParams);
+            if (ids.Count > 0)
+            {
+                LaunchStatus = ids.Count > 1
+                    ? $"Launched {ids.Count} replicas."
+                    : "Job launched successfully!";
+                LaunchSuccess = true;
+                _recentLaunchService.Save(recentLaunch);
+                GenerateHeadlessSessionName();
+            }
+            else
+            {
+                LaunchStatus = "Failed to launch job.";
+                HasError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            LaunchStatus = "Launch failed.";
+            HasError = true;
+        }
+        finally
+        {
+            IsLaunching = false;
+        }
+    }
+
     public void SetSessionCounter(Func<string, int> counter)
     {
         _sessionCounter = counter;
@@ -397,12 +537,16 @@ public partial class SessionLaunchViewModel : ObservableObject
 
     public async Task<bool> RelaunchAsync(Models.RecentLaunch launch)
     {
-        UpdateSessionLimit();
-        if (IsAtSessionLimit)
+        // Headless jobs aren't bound by the interactive-session cap (matches the launch tab).
+        if (launch.Type != "headless")
         {
-            ErrorMessage = SessionLimitMessage;
-            HasError = true;
-            return false;
+            UpdateSessionLimit();
+            if (IsAtSessionLimit)
+            {
+                ErrorMessage = SessionLimitMessage;
+                HasError = true;
+                return false;
+            }
         }
 
         IsLaunching = true;
@@ -419,7 +563,10 @@ public partial class SessionLaunchViewModel : ObservableObject
                 Image = launch.Image,
                 Cores = launch.ResourceType == "fixed" ? launch.Cores : 0,
                 Ram = launch.ResourceType == "fixed" ? launch.Ram : 0,
-                Gpus = launch.ResourceType == "fixed" ? launch.Gpus : 0
+                Gpus = launch.ResourceType == "fixed" ? launch.Gpus : 0,
+                Cmd = launch.Cmd,
+                Args = launch.Args,
+                Replicas = Math.Max(1, launch.Replicas),
             };
 
             var recentEntry = new Models.RecentLaunch
@@ -433,13 +580,22 @@ public partial class SessionLaunchViewModel : ObservableObject
                 Cores = launch.Cores,
                 Ram = launch.Ram,
                 Gpus = launch.Gpus,
+                Cmd = launch.Cmd,
+                Args = launch.Args,
+                Replicas = launch.Replicas,
                 LaunchedAt = DateTime.Now
             };
 
-            var sessionId = await _sessionService.LaunchSessionAsync(launchParams);
-            if (sessionId is not null)
+            // Batch jobs relaunch through the headless endpoint with their saved command line;
+            // routing them through the interactive call would drop cmd/args and mis-count them
+            // against the interactive session cap.
+            var launched = launch.Type == "headless"
+                ? (await _sessionService.LaunchHeadlessAsync(launchParams)).Count > 0
+                : await _sessionService.LaunchSessionAsync(launchParams) is not null;
+
+            if (launched)
             {
-                LaunchStatus = "Session launched successfully!";
+                LaunchStatus = launch.Type == "headless" ? "Job launched successfully!" : "Session launched successfully!";
                 LaunchSuccess = true;
                 _recentLaunchService.Save(recentEntry);
                 return true;

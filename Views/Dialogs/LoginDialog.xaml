@@ -3,6 +3,7 @@
     x:Class="CanfarDesktop.Views.Dialogs.LoginDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Uid="LoginDialog"
     Title="Login to Verbinal"
     PrimaryButtonText="Login"
     CloseButtonText="Cancel"
@@ -12,15 +13,15 @@
     <StackPanel Spacing="16" MinWidth="350">
         <ProgressBar x:Name="LoginProgress" IsIndeterminate="True" Visibility="Collapsed" />
 
-        <TextBox x:Name="UsernameBox" Header="Username"
+        <TextBox x:Name="UsernameBox" x:Uid="Login_UsernameBox" Header="Username"
                  PlaceholderText="CADC username" />
 
-        <PasswordBox x:Name="PasswordBox" Header="Password"
+        <PasswordBox x:Name="PasswordBox" x:Uid="Login_PasswordBox" Header="Password"
                      PlaceholderText="Password" />
 
-        <CheckBox x:Name="RememberMeBox" Content="Remember me" IsChecked="True" />
+        <CheckBox x:Name="RememberMeBox" x:Uid="Login_RememberMeBox" Content="Remember me" IsChecked="True" />
 
-        <InfoBar x:Name="ErrorBar" IsOpen="False"
+        <InfoBar x:Name="ErrorBar" x:Uid="Login_ErrorBar" IsOpen="False"
                  Severity="Error" Title="Login Failed" />
     </StackPanel>
 </ContentDialog>

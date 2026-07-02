@@ -6,6 +6,7 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:dialogs="using:CanfarDesktop.Views.Dialogs"
     xmlns:notebook="using:CanfarDesktop.Views.Notebook"
+    x:Uid="SettingsDialog"
     Title="Settings"
     CloseButtonText="Close"
     DefaultButton="Close">
@@ -22,22 +23,25 @@
                          SelectionChanged="OnNavSelectionChanged"
                          Width="640" Height="460">
         <muxc:NavigationView.MenuItems>
-            <muxc:NavigationViewItem Content="General" Tag="general">
+            <muxc:NavigationViewItem x:Uid="Settings_NavGeneral" Content="General" Tag="general">
                 <muxc:NavigationViewItem.Icon><SymbolIcon Symbol="Setting" /></muxc:NavigationViewItem.Icon>
             </muxc:NavigationViewItem>
-            <muxc:NavigationViewItem Content="AI agent" Tag="agent">
+            <muxc:NavigationViewItem x:Uid="Settings_NavPortal" Content="Portal" Tag="portal">
+                <muxc:NavigationViewItem.Icon><SymbolIcon Symbol="Play" /></muxc:NavigationViewItem.Icon>
+            </muxc:NavigationViewItem>
+            <muxc:NavigationViewItem x:Uid="Settings_NavAgent" Content="AI agent" Tag="agent">
                 <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE99A;" /></muxc:NavigationViewItem.Icon>
             </muxc:NavigationViewItem>
-            <muxc:NavigationViewItem Content="Image discovery" Tag="discovery">
+            <muxc:NavigationViewItem x:Uid="Settings_NavDiscovery" Content="Image discovery" Tag="discovery">
                 <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE71D;" /></muxc:NavigationViewItem.Icon>
             </muxc:NavigationViewItem>
-            <muxc:NavigationViewItem Content="AI compute" Tag="compute">
+            <muxc:NavigationViewItem x:Uid="Settings_NavCompute" Content="AI compute" Tag="compute">
                 <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE753;" /></muxc:NavigationViewItem.Icon>
             </muxc:NavigationViewItem>
-            <muxc:NavigationViewItem Content="Notebook" Tag="notebook">
+            <muxc:NavigationViewItem x:Uid="Settings_NavNotebook" Content="Notebook" Tag="notebook">
                 <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE7C3;" /></muxc:NavigationViewItem.Icon>
             </muxc:NavigationViewItem>
-            <muxc:NavigationViewItem Content="About" Tag="about">
+            <muxc:NavigationViewItem x:Uid="Settings_NavAbout" Content="About" Tag="about">
                 <muxc:NavigationViewItem.Icon><SymbolIcon Symbol="Help" /></muxc:NavigationViewItem.Icon>
             </muxc:NavigationViewItem>
         </muxc:NavigationView.MenuItems>
@@ -46,57 +50,94 @@
             <Grid>
                 <!-- General -->
                 <StackPanel x:Name="GeneralPanel" Spacing="14">
-                    <TextBlock Text="General" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <ComboBox x:Name="ThemeCombo" Header="Theme" Width="220" SelectionChanged="OnThemeChanged">
-                        <ComboBoxItem Content="System" Tag="System" />
-                        <ComboBoxItem Content="Light" Tag="Light" />
-                        <ComboBoxItem Content="Dark" Tag="Dark" />
+                    <TextBlock x:Uid="Settings_GeneralHeader" Text="General" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <ComboBox x:Name="ThemeCombo" x:Uid="Settings_ThemeCombo" Header="Theme" Width="220" SelectionChanged="OnThemeChanged">
+                        <ComboBoxItem x:Uid="Settings_ThemeSystem" Content="System" Tag="System" />
+                        <ComboBoxItem x:Uid="Settings_ThemeLight" Content="Light" Tag="Light" />
+                        <ComboBoxItem x:Uid="Settings_ThemeDark" Content="Dark" Tag="Dark" />
                     </ComboBox>
 
-                    <TextBlock Text="Defaults" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    <ComboBox x:Name="SessionTypeCombo" Header="Default session type" Width="220" SelectionChanged="OnGeneralChanged">
+                    <!-- Language / Langue: applied at next launch via ApplicationLanguages.PrimaryLanguageOverride
+                         (macOS behaves the same way — the override is read at startup). -->
+                    <ComboBox x:Name="LanguageCombo" x:Uid="Settings_LanguageCombo" Header="Language" Width="220" SelectionChanged="OnLanguageChanged">
+                        <ComboBoxItem x:Uid="Settings_LanguageSystem" Content="System default" Tag="system" />
+                        <ComboBoxItem x:Uid="Settings_LanguageEnglish" Content="English" Tag="en" />
+                        <ComboBoxItem x:Uid="Settings_LanguageFrench" Content="Français" Tag="fr" />
+                    </ComboBox>
+                    <TextBlock x:Uid="Settings_LanguageCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               Text="Verbinal needs to restart to apply the new language." />
+
+                    <TextBlock x:Uid="Settings_AdvancedHeader" Text="Advanced" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBox x:Name="ApiBaseUrlBox" x:Uid="Settings_ApiBaseUrlBox" Header="CADC API base URL" Width="360"
+                             PlaceholderText="https://ws-cadc.canfar.net" LostFocus="OnGeneralChanged" />
+                    <TextBlock x:Uid="Settings_AutoSaveCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               Text="Changes are saved automatically." />
+                </StackPanel>
+
+                <!-- Portal (session-launch defaults; macOS Portal settings tab parity) -->
+                <StackPanel x:Name="PortalPanel" Spacing="14" Visibility="Collapsed">
+                    <TextBlock x:Uid="Settings_PortalHeader" Text="Portal" Style="{StaticResource SubtitleTextBlockStyle}" />
+
+                    <TextBlock x:Uid="Settings_DefaultsHeader" Text="Defaults" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <ComboBox x:Name="SessionTypeCombo" x:Uid="Settings_SessionTypeCombo" Header="Default session type" Width="220" SelectionChanged="OnPortalChanged">
                         <ComboBoxItem Content="notebook" Tag="notebook" />
                         <ComboBoxItem Content="desktop" Tag="desktop" />
                         <ComboBoxItem Content="carta" Tag="carta" />
                         <ComboBoxItem Content="contributed" Tag="contributed" />
+                        <ComboBoxItem Content="firefly" Tag="firefly" />
                     </ComboBox>
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <muxc:NumberBox x:Name="CoresBox" Header="Default cores" Minimum="1" Maximum="64"
-                                        SpinButtonPlacementMode="Inline" Width="130" ValueChanged="OnGeneralNumberChanged" />
-                        <muxc:NumberBox x:Name="RamBox" Header="Default RAM (GB)" Minimum="1" Maximum="256"
-                                        SpinButtonPlacementMode="Inline" Width="130" ValueChanged="OnGeneralNumberChanged" />
-                    </StackPanel>
+                    <TextBlock x:Uid="Settings_SessionTypeCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               Text="Applied whenever you open the Portal launch form." />
 
-                    <TextBlock Text="Advanced" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    <TextBox x:Name="ApiBaseUrlBox" Header="CADC API base URL" Width="360"
-                             PlaceholderText="https://ws-cadc.canfar.net" LostFocus="OnGeneralChanged" />
-                    <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                    <TextBlock x:Uid="Settings_ResourceDefaultsHeader" Text="Resource defaults" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <ComboBox x:Name="ResourcePresetCombo" x:Uid="Settings_ResourcePresetCombo" Header="Preset" Width="220" SelectionChanged="OnResourcePresetChanged">
+                        <ComboBoxItem x:Uid="Settings_PresetNone" Content="None" Tag="none" />
+                        <ComboBoxItem x:Uid="Settings_PresetFlexible" Content="Flexible" Tag="flexible" />
+                        <ComboBoxItem x:Uid="Settings_PresetFixed" Content="Fixed" Tag="fixed" />
+                    </ComboBox>
+                    <StackPanel x:Name="FixedResourcePanel" Orientation="Horizontal" Spacing="12" Visibility="Collapsed">
+                        <muxc:NumberBox x:Name="CoresBox" x:Uid="Settings_CoresBox" Header="Cores" Minimum="1" Maximum="64"
+                                        SpinButtonPlacementMode="Inline" Width="130" ValueChanged="OnPortalNumberChanged" />
+                        <muxc:NumberBox x:Name="RamBox" x:Uid="Settings_RamBox" Header="RAM (GB)" Minimum="1" Maximum="256"
+                                        SpinButtonPlacementMode="Inline" Width="130" ValueChanged="OnPortalNumberChanged" />
+                        <muxc:NumberBox x:Name="GpusBox" x:Uid="Settings_GpusBox" Header="GPUs" Minimum="0" Maximum="16"
+                                        SpinButtonPlacementMode="Inline" Width="130" ValueChanged="OnPortalNumberChanged" />
+                    </StackPanel>
+                    <TextBlock x:Uid="Settings_ResourceCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               Text="Optional. When a preset is set, the launch form starts with these resource settings." />
+
+                    <Button x:Uid="Settings_ClearDefaultsButton" Content="Clear all defaults" Click="OnClearPortalDefaults" HorizontalAlignment="Left" />
+                    <TextBlock x:Uid="Settings_AutoSaveCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                Text="Changes are saved automatically." />
                 </StackPanel>
 
                 <!-- AI agent (embedded MCP panel + the guided wizard) -->
                 <StackPanel x:Name="AgentPanel" Spacing="12" Visibility="Collapsed">
-                    <TextBlock Text="AI agent" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <Button Content="Connect an AI agent (guided)…" Click="OnOpenWizard" Style="{StaticResource AccentButtonStyle}" />
+                    <TextBlock x:Uid="Settings_AgentHeader" Text="AI agent" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <Button x:Uid="Settings_ConnectWizardButton" Content="Connect an AI agent (guided)…" Click="OnOpenWizard" Style="{StaticResource AccentButtonStyle}" />
                     <dialogs:McpServerSettingsPanel />
                 </StackPanel>
 
                 <!-- Image discovery (embedded) -->
                 <StackPanel x:Name="DiscoveryPanel" Spacing="12" Visibility="Collapsed">
-                    <TextBlock Text="Image discovery" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <dialogs:ImageDiscoverySettingsPanel Width="440" />
+                    <TextBlock x:Uid="Settings_DiscoveryHeader" Text="Image discovery" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <dialogs:ImageDiscoverySettingsPanel x:Name="DiscoverySettingsPanel" Width="440" />
                 </StackPanel>
 
                 <!-- AI compute (embedded) -->
                 <StackPanel x:Name="ComputePanel" Spacing="12" Visibility="Collapsed">
-                    <TextBlock Text="AI compute" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <dialogs:AIComputeSettingsPanel Width="440" />
+                    <TextBlock x:Uid="Settings_ComputeHeader" Text="AI compute" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <dialogs:AIComputeSettingsPanel x:Name="ComputeSettingsPanel" Width="440" />
                 </StackPanel>
 
                 <!-- Notebook (embedded) -->
                 <StackPanel x:Name="NotebookPanel" Spacing="12" Visibility="Collapsed">
-                    <TextBlock Text="Notebook" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock x:Uid="Settings_NotebookHeader" Text="Notebook" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <notebook:NotebookSettingsPanel />
                 </StackPanel>
 
@@ -108,7 +149,7 @@
                     <TextBlock Text="Verbinal" Style="{StaticResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
                     <TextBlock x:Name="VersionText" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                    <TextBlock TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360" Margin="0,8,0,0"
+                    <TextBlock x:Uid="Settings_AboutBody" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360" Margin="0,8,0,0"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                Text="A native Windows client for the Canadian Astronomy Data Centre and CANFAR Science Platform — search, view, compute, and storage." />
                 </StackPanel>

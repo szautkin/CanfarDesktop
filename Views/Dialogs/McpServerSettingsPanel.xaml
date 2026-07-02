@@ -138,5 +138,38 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
+        <Expander Header="Diagnostics" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+            <StackPanel Spacing="8">
+                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="Check every link in the chain — server, listener, bridge exe, Claude clients, and the Claude Desktop config — with a one-click fix where one exists." />
+                <Button x:Name="RunDiagnosticsButton" Content="Run diagnostics" Click="OnRunDiagnosticsClick" />
+                <ItemsControl x:Name="DiagnosticsList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Padding="0,4" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Grid.Column="0" Glyph="{Binding Glyph}" FontSize="14" VerticalAlignment="Top"
+                                          Foreground="{Binding GlyphBrush}" />
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Message}" Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                               IsTextSelectionEnabled="True" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button Grid.Column="2" Content="{Binding FixLabel}" Tag="{Binding FixId}"
+                                        Visibility="{Binding FixVisibility}" Click="OnDiagnosticFixClick"
+                                        VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Expander>
+
     </StackPanel>
 </UserControl>

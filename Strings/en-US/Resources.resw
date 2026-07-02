@@ -1,0 +1,583 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Verbinal string resources (en-US). Keys follow "x:Uid.Property" for XAML-bound strings
+    (attached properties use the [using:...] escape) and plain "Area_Name" for Loc.T lookups
+    from code-behind. Keep en-US and fr-FR key sets identical.
+  -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="MainWindow_BackButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="MainWindow_BackButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Go back</value>
+  </data>
+  <data name="MainWindow_HomeButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="MainWindow_HomeButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Go to home</value>
+  </data>
+  <data name="MainWindow_ExplorerButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Explorer (Ctrl+B)</value>
+  </data>
+  <data name="MainWindow_ExplorerButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Toggle file explorer</value>
+  </data>
+  <data name="MainWindow_SettingsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="MainWindow_SettingsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="MainWindow_AboutButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="MainWindow_AboutButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>About Verbinal</value>
+  </data>
+  <data name="MainWindow_ProposalsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Agent proposals</value>
+  </data>
+  <data name="MainWindow_ProposalsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Agent proposals</value>
+  </data>
+  <data name="MainWindow_LoginButton.Content" xml:space="preserve">
+    <value>Login</value>
+  </data>
+  <data name="MainWindow_LogoutMenuItem.Text" xml:space="preserve">
+    <value>Logout</value>
+  </data>
+  <data name="MainWindow_AgentActivityIndicator.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Agent activity</value>
+  </data>
+  <data name="MainWindow_AgentActivityText.Text" xml:space="preserve">
+    <value>Agent is working…</value>
+  </data>
+  <data name="MainWindow_TermsDeclineButton.Content" xml:space="preserve">
+    <value>Decline &amp; Exit</value>
+  </data>
+  <data name="MainWindow_TermsAcceptButton.Content" xml:space="preserve">
+    <value>Accept</value>
+  </data>
+  <data name="MainWindow_Title" xml:space="preserve">
+    <value>Verbinal - a CANFAR Science Portal</value>
+  </data>
+  <data name="MainWindow_OfflineHint" xml:space="preserve">
+    <value>Offline — check your network connection</value>
+  </data>
+  <data name="MainWindow_AgentWorking" xml:space="preserve">
+    <value>Agent is working…</value>
+  </data>
+  <data name="MainWindow_AgentWorkingModule" xml:space="preserve">
+    <value>Agent is working — {0}</value>
+  </data>
+  <data name="Module_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Module_Portal" xml:space="preserve">
+    <value>Portal</value>
+  </data>
+  <data name="Module_Storage" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="Module_Research" xml:space="preserve">
+    <value>Research</value>
+  </data>
+  <data name="Module_FitsViewer" xml:space="preserve">
+    <value>FITS Viewer</value>
+  </data>
+  <data name="Module_Notebook" xml:space="preserve">
+    <value>Notebook</value>
+  </data>
+  <data name="Module_App" xml:space="preserve">
+    <value>the app</value>
+  </data>
+  <data name="MainWindow_SessionExpired" xml:space="preserve">
+    <value>Session expired. Please log in again.</value>
+  </data>
+  <data name="MainWindow_LoginError" xml:space="preserve">
+    <value>Login error: {0}</value>
+  </data>
+  <data name="MainWindow_StartupError" xml:space="preserve">
+    <value>Startup error: {0}</value>
+  </data>
+  <data name="MainWindow_NotebookError" xml:space="preserve">
+    <value>Notebook error: {0}</value>
+  </data>
+  <data name="MainWindow_CubeViewerError" xml:space="preserve">
+    <value>Cube viewer error: {0}</value>
+  </data>
+  <data name="MainWindow_FitsViewerError" xml:space="preserve">
+    <value>FITS viewer error: {0}</value>
+  </data>
+  <data name="MainWindow_AccountOptions" xml:space="preserve">
+    <value>{0} — account options</value>
+  </data>
+  <data name="About_Title" xml:space="preserve">
+    <value>About Verbinal</value>
+  </data>
+  <data name="About_Subtitle" xml:space="preserve">
+    <value>A CANFAR Science Portal Companion</value>
+  </data>
+  <data name="About_Version" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="About_VisitLink" xml:space="preserve">
+    <value>Visit canfar.net</value>
+  </data>
+  <data name="About_TermsOfUse" xml:space="preserve">
+    <value>Terms of Use</value>
+  </data>
+  <data name="Landing_Subtitle.Text" xml:space="preserve">
+    <value>A CANFAR Science Portal Companion</value>
+  </data>
+  <data name="Tile_Portal_Title" xml:space="preserve">
+    <value>Portal</value>
+  </data>
+  <data name="Tile_Portal_Subtitle" xml:space="preserve">
+    <value>Manage sessions &amp; data</value>
+  </data>
+  <data name="Tile_Search_Title" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Tile_Search_Subtitle" xml:space="preserve">
+    <value>Explore the CADC archive</value>
+  </data>
+  <data name="Tile_Research_Title" xml:space="preserve">
+    <value>Research</value>
+  </data>
+  <data name="Tile_Research_Subtitle" xml:space="preserve">
+    <value>Downloaded observations</value>
+  </data>
+  <data name="Tile_Storage_Title" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="Tile_Storage_Subtitle" xml:space="preserve">
+    <value>Browse VOSpace files</value>
+  </data>
+  <data name="Tile_Notebook_Title" xml:space="preserve">
+    <value>Notebook</value>
+  </data>
+  <data name="Tile_Notebook_Subtitle" xml:space="preserve">
+    <value>Open &amp; run .ipynb files</value>
+  </data>
+  <data name="Tile_Fits_Title" xml:space="preserve">
+    <value>FITS Viewer</value>
+  </data>
+  <data name="Tile_Fits_Subtitle" xml:space="preserve">
+    <value>View astronomical images</value>
+  </data>
+  <data name="Tile_Cube_Title" xml:space="preserve">
+    <value>Cube Viewer</value>
+  </data>
+  <data name="Tile_Cube_Subtitle" xml:space="preserve">
+    <value>3D volume ray-marcher</value>
+  </data>
+  <data name="Tile_AiGuide_Title" xml:space="preserve">
+    <value>AI Guide</value>
+  </data>
+  <data name="Tile_AiGuide_Subtitle" xml:space="preserve">
+    <value>Tune the agent's tools</value>
+  </data>
+  <data name="Tile_AiAssistant_Title" xml:space="preserve">
+    <value>AI Assistant</value>
+  </data>
+  <data name="Tile_AiAssistant_Subtitle" xml:space="preserve">
+    <value>Connect Claude to drive Verbinal</value>
+  </data>
+  <data name="Landing_SignInToAccess" xml:space="preserve">
+    <value>Sign in to access</value>
+  </data>
+  <data name="SettingsDialog.Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="SettingsDialog.CloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Settings_NavGeneral.Content" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Settings_NavPortal.Content" xml:space="preserve">
+    <value>Portal</value>
+  </data>
+  <data name="Settings_NavAgent.Content" xml:space="preserve">
+    <value>AI agent</value>
+  </data>
+  <data name="Settings_NavDiscovery.Content" xml:space="preserve">
+    <value>Image discovery</value>
+  </data>
+  <data name="Settings_NavCompute.Content" xml:space="preserve">
+    <value>AI compute</value>
+  </data>
+  <data name="Settings_NavNotebook.Content" xml:space="preserve">
+    <value>Notebook</value>
+  </data>
+  <data name="Settings_NavAbout.Content" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Settings_GeneralHeader.Text" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Settings_ThemeCombo.Header" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Settings_ThemeSystem.Content" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Settings_ThemeLight.Content" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Settings_ThemeDark.Content" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Settings_LanguageCombo.Header" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_LanguageSystem.Content" xml:space="preserve">
+    <value>System default</value>
+  </data>
+  <data name="Settings_LanguageEnglish.Content" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Settings_LanguageFrench.Content" xml:space="preserve">
+    <value>Français</value>
+  </data>
+  <data name="Settings_LanguageCaption.Text" xml:space="preserve">
+    <value>Verbinal needs to restart to apply the new language.</value>
+  </data>
+  <data name="Settings_AdvancedHeader.Text" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
+  <data name="Settings_ApiBaseUrlBox.Header" xml:space="preserve">
+    <value>CADC API base URL</value>
+  </data>
+  <data name="Settings_AutoSaveCaption.Text" xml:space="preserve">
+    <value>Changes are saved automatically.</value>
+  </data>
+  <data name="Settings_PortalHeader.Text" xml:space="preserve">
+    <value>Portal</value>
+  </data>
+  <data name="Settings_DefaultsHeader.Text" xml:space="preserve">
+    <value>Defaults</value>
+  </data>
+  <data name="Settings_SessionTypeCombo.Header" xml:space="preserve">
+    <value>Default session type</value>
+  </data>
+  <data name="Settings_SessionTypeCaption.Text" xml:space="preserve">
+    <value>Applied whenever you open the Portal launch form.</value>
+  </data>
+  <data name="Settings_ResourceDefaultsHeader.Text" xml:space="preserve">
+    <value>Resource defaults</value>
+  </data>
+  <data name="Settings_ResourcePresetCombo.Header" xml:space="preserve">
+    <value>Preset</value>
+  </data>
+  <data name="Settings_PresetNone.Content" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Settings_PresetFlexible.Content" xml:space="preserve">
+    <value>Flexible</value>
+  </data>
+  <data name="Settings_PresetFixed.Content" xml:space="preserve">
+    <value>Fixed</value>
+  </data>
+  <data name="Settings_CoresBox.Header" xml:space="preserve">
+    <value>Cores</value>
+  </data>
+  <data name="Settings_RamBox.Header" xml:space="preserve">
+    <value>RAM (GB)</value>
+  </data>
+  <data name="Settings_GpusBox.Header" xml:space="preserve">
+    <value>GPUs</value>
+  </data>
+  <data name="Settings_ResourceCaption.Text" xml:space="preserve">
+    <value>Optional. When a preset is set, the launch form starts with these resource settings.</value>
+  </data>
+  <data name="Settings_ClearDefaultsButton.Content" xml:space="preserve">
+    <value>Clear all defaults</value>
+  </data>
+  <data name="Settings_AgentHeader.Text" xml:space="preserve">
+    <value>AI agent</value>
+  </data>
+  <data name="Settings_ConnectWizardButton.Content" xml:space="preserve">
+    <value>Connect an AI agent (guided)…</value>
+  </data>
+  <data name="Settings_DiscoveryHeader.Text" xml:space="preserve">
+    <value>Image discovery</value>
+  </data>
+  <data name="Settings_ComputeHeader.Text" xml:space="preserve">
+    <value>AI compute</value>
+  </data>
+  <data name="Settings_NotebookHeader.Text" xml:space="preserve">
+    <value>Notebook</value>
+  </data>
+  <data name="Settings_AboutBody.Text" xml:space="preserve">
+    <value>A native Windows client for the Canadian Astronomy Data Centre and CANFAR Science Platform — search, view, compute, and storage.</value>
+  </data>
+  <data name="WelcomeDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Set up the AI assistant</value>
+  </data>
+  <data name="WelcomeDialog.CloseButtonText" xml:space="preserve">
+    <value>Explore on my own</value>
+  </data>
+  <data name="Welcome_Title.Text" xml:space="preserve">
+    <value>Welcome to Verbinal</value>
+  </data>
+  <data name="Welcome_Subtitle.Text" xml:space="preserve">
+    <value>Your native companion for the CANFAR Science Platform.</value>
+  </data>
+  <data name="Welcome_SearchTitle.Text" xml:space="preserve">
+    <value>Search &amp; Research</value>
+  </data>
+  <data name="Welcome_SearchBody.Text" xml:space="preserve">
+    <value>Explore the CADC archive and organize your downloaded observations.</value>
+  </data>
+  <data name="Welcome_StorageTitle.Text" xml:space="preserve">
+    <value>Storage &amp; FITS</value>
+  </data>
+  <data name="Welcome_StorageBody.Text" xml:space="preserve">
+    <value>Browse VOSpace and view astronomical images, hardware-accelerated.</value>
+  </data>
+  <data name="Welcome_NotebookTitle.Text" xml:space="preserve">
+    <value>Notebook</value>
+  </data>
+  <data name="Welcome_NotebookBody.Text" xml:space="preserve">
+    <value>Edit and run Jupyter notebooks natively, with local or session kernels.</value>
+  </data>
+  <data name="Welcome_CubeTitle.Text" xml:space="preserve">
+    <value>Cube Viewer</value>
+  </data>
+  <data name="Welcome_CubeBody.Text" xml:space="preserve">
+    <value>Fly through FITS cubes in 3D with a Direct3D volume renderer.</value>
+  </data>
+  <data name="Welcome_DiscoveryTitle.Text" xml:space="preserve">
+    <value>Image Discovery</value>
+  </data>
+  <data name="Welcome_DiscoveryBody.Text" xml:space="preserve">
+    <value>See exactly what's inside a session image before you launch it.</value>
+  </data>
+  <data name="Welcome_AssistantTitle.Text" xml:space="preserve">
+    <value>AI assistant</value>
+  </data>
+  <data name="Welcome_AssistantBody.Text" xml:space="preserve">
+    <value>Connect Claude Desktop or Claude Code (~80 tools) to drive Verbinal for you.</value>
+  </data>
+  <data name="LoginDialog.Title" xml:space="preserve">
+    <value>Login to Verbinal</value>
+  </data>
+  <data name="LoginDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Login</value>
+  </data>
+  <data name="LoginDialog.CloseButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Login_UsernameBox.Header" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="Login_UsernameBox.PlaceholderText" xml:space="preserve">
+    <value>CADC username</value>
+  </data>
+  <data name="Login_PasswordBox.Header" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Login_PasswordBox.PlaceholderText" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Login_RememberMeBox.Content" xml:space="preserve">
+    <value>Remember me</value>
+  </data>
+  <data name="Login_ErrorBar.Title" xml:space="preserve">
+    <value>Login Failed</value>
+  </data>
+  <data name="AgentProposalsDialog.CloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Proposals_Header.Text" xml:space="preserve">
+    <value>Agent Proposals</value>
+  </data>
+  <data name="Proposals_HeaderCaption.Text" xml:space="preserve">
+    <value>Review and apply changes proposed by AI agents.</value>
+  </data>
+  <data name="Proposals_PendingTab.Header" xml:space="preserve">
+    <value>Pending</value>
+  </data>
+  <data name="Proposals_HistoryTab.Header" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="Proposals_PendingEmpty.Text" xml:space="preserve">
+    <value>No pending proposals.</value>
+  </data>
+  <data name="Proposals_RejectButton.Content" xml:space="preserve">
+    <value>Reject</value>
+  </data>
+  <data name="Proposals_ApplyButton.Content" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="Proposals_HistoryEmpty.Text" xml:space="preserve">
+    <value>No agent activity yet.</value>
+  </data>
+  <data name="Proposals_HistoryEmptyCaption.Text" xml:space="preserve">
+    <value>Applied proposals, rejections, and live UI ops appear here.</value>
+  </data>
+  <data name="Proposals_FooterHint.Text" xml:space="preserve">
+    <value>Apply runs the underlying operation; Reject discards.</value>
+  </data>
+  <data name="Proposals_PendingTabLabel" xml:space="preserve">
+    <value>Pending</value>
+  </data>
+  <data name="Proposals_PendingCountTab" xml:space="preserve">
+    <value>Pending ({0})</value>
+  </data>
+  <data name="Proposals_HistoryTabLabel" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="Proposals_HistoryCountTab" xml:space="preserve">
+    <value>History ({0})</value>
+  </data>
+  <data name="Proposals_PendingCount" xml:space="preserve">
+    <value>{0} pending</value>
+  </data>
+  <data name="Proposals_ApplyFailed" xml:space="preserve">
+    <value>Apply failed: {0}</value>
+  </data>
+  <data name="Proposals_NoLongerPending" xml:space="preserve">
+    <value>This proposal is no longer pending.</value>
+  </data>
+  <data name="AiConnectWizardDialog.Title" xml:space="preserve">
+    <value>Connect an AI agent</value>
+  </data>
+  <data name="AiConnectWizardDialog.CloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Wizard_EnableIntro.Text" xml:space="preserve">
+    <value>This starts a local MCP server so an AI agent (Claude Desktop or Claude Code) can use Verbinal's tools — observation search, downloaded research, Skaha sessions, VOSpace files, and more. It runs over a local, per-user named pipe: nothing is exposed to the network. Off by default; writes are gated by your autonomy settings.</value>
+  </data>
+  <data name="Wizard_EnableToggle.Header" xml:space="preserve">
+    <value>Allow external AI agents</value>
+  </data>
+  <data name="Wizard_EnableToggle.OnContent" xml:space="preserve">
+    <value>On</value>
+  </data>
+  <data name="Wizard_EnableToggle.OffContent" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="Wizard_StatusText.Text" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="Wizard_ClientIntro.Text" xml:space="preserve">
+    <value>Which AI client do you want to connect? (Detected clients are labelled — you can still pick either.)</value>
+  </data>
+  <data name="Wizard_AddToDesktopButton.Content" xml:space="preserve">
+    <value>Add to Claude Desktop…</value>
+  </data>
+  <data name="Wizard_CopyCommandButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Wizard_VerifyIntro.Text" xml:space="preserve">
+    <value>Run a live self-test: Verbinal dials its own MCP server the same way your AI client will, and lists the available tools. Then fully quit and reopen your client to pick up the new connection.</value>
+  </data>
+  <data name="Wizard_SelfTestButton.Content" xml:space="preserve">
+    <value>Run self-test</value>
+  </data>
+  <data name="Wizard_BackButton.Content" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Wizard_NextButton.Content" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="Wizard_StepEnable" xml:space="preserve">
+    <value>Enable</value>
+  </data>
+  <data name="Wizard_StepClient" xml:space="preserve">
+    <value>Pick your client</value>
+  </data>
+  <data name="Wizard_StepConfigure" xml:space="preserve">
+    <value>Configure</value>
+  </data>
+  <data name="Wizard_StepVerify" xml:space="preserve">
+    <value>Verify</value>
+  </data>
+  <data name="Wizard_StepHeader" xml:space="preserve">
+    <value>Step {0} of {1} · {2}</value>
+  </data>
+  <data name="Wizard_Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Wizard_Next" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="Wizard_TurnOnToContinue" xml:space="preserve">
+    <value>Turn on “Allow external AI agents” to continue.</value>
+  </data>
+  <data name="Wizard_CouldntStart" xml:space="preserve">
+    <value>Couldn't start the server: {0}</value>
+  </data>
+  <data name="Wizard_CouldntStop" xml:space="preserve">
+    <value>Couldn't stop the server: {0}</value>
+  </data>
+  <data name="Wizard_Running" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="Wizard_Stopped" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="Wizard_ClaudeDesktop" xml:space="preserve">
+    <value>Claude Desktop</value>
+  </data>
+  <data name="Wizard_ClaudeDesktopDetected" xml:space="preserve">
+    <value>Claude Desktop (detected)</value>
+  </data>
+  <data name="Wizard_ClaudeCode" xml:space="preserve">
+    <value>Claude Code</value>
+  </data>
+  <data name="Wizard_ClaudeCodeDetected" xml:space="preserve">
+    <value>Claude Code (detected)</value>
+  </data>
+  <data name="Wizard_BridgeMissing" xml:space="preserve">
+    <value>The MCP bridge (CanfarDesktop.McpBridge.exe) wasn't found. Build the bridge project, then reopen this wizard.</value>
+  </data>
+  <data name="Wizard_DesktopIntro" xml:space="preserve">
+    <value>Add Verbinal to Claude Desktop's config:
+{0}
+Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop afterwards.</value>
+  </data>
+  <data name="Wizard_CodeIntro" xml:space="preserve">
+    <value>Run this in a terminal to register Verbinal with Claude Code, then restart the CLI.</value>
+  </data>
+  <data name="Wizard_AddedToDesktop" xml:space="preserve">
+    <value>Added to Claude Desktop. Restart it, then run the self-test on the next step.</value>
+  </data>
+  <data name="Wizard_ConfigWriteFailed" xml:space="preserve">
+    <value>Couldn't write the config: {0}</value>
+  </data>
+  <data name="Wizard_CommandCopied" xml:space="preserve">
+    <value>Command copied.</value>
+  </data>
+  <data name="Wizard_ToolsOne" xml:space="preserve">
+    <value> {0} tool available.</value>
+  </data>
+  <data name="Wizard_ToolsMany" xml:space="preserve">
+    <value> {0} tools available.</value>
+  </data>
+  <data name="Wizard_Connected" xml:space="preserve">
+    <value>Connected to the MCP server.{0} Fully quit and reopen your AI client to finish.</value>
+  </data>
+  <data name="Wizard_Unreachable" xml:space="preserve">
+    <value>Couldn't reach the MCP server.</value>
+  </data>
+</root>

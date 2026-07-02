@@ -13,6 +13,8 @@ public sealed partial class LoginDialog : ContentDialog
         ViewModel = viewModel;
         InitializeComponent();
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        // ContentDialog defaults focus to the primary button; start typing instead.
+        Opened += (_, _) => UsernameBox.Focus(FocusState.Programmatic);
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

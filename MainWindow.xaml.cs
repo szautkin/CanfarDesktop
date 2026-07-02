@@ -7,6 +7,7 @@ using CanfarDesktop.Services;
 using CanfarDesktop.Services.HttpClients;
 using CanfarDesktop.Services.Notebook;
 using CanfarDesktop.Helpers.Notebook;
+using CanfarDesktop.Mcp;
 using CanfarDesktop.Mcp.Tools.Write;
 using CanfarDesktop.ViewModels;
 using CanfarDesktop.Views;
@@ -49,7 +50,9 @@ public sealed partial class MainWindow : Window
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
         var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
         appWindow.SetIcon("Assets/Verbinal.ico");
-        appWindow.Title = "Verbinal - a CANFAR Science Portal";
+        // Loc.T returns the key when no resources.pri is present (unpackaged dev run) — keep the English title then.
+        var locTitle = Loc.T("MainWindow_Title");
+        appWindow.Title = locTitle == "MainWindow_Title" ? "Verbinal - a CANFAR Science Portal" : locTitle;
 
         _viewModel = App.Services.GetRequiredService<MainViewModel>();
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -70,13 +73,85 @@ public sealed partial class MainWindow : Window
         _landingView.FitsViewerRequested += (_, _) => OpenFitsViewer();
         _landingView.CubeViewerRequested += (_, _) => OpenCubeViewer();
         _landingView.AiGuideRequested += (_, _) => OpenAiGuidePage();
+        _landingView.AiAssistantRequested += OnAiAssistantRequested;
         LandingContainer.Child = _landingView;
 
         Activated += OnWindowActivated;
 
         InitViewStateTracking();
+        InitProposalsEntryPoint();
+        InitNetworkMonitor();
 
         ShowTermsGateIfNeeded();
+        _ = ShowWelcomeIfNeededAsync(); // no-op while the terms gate is up (re-fired by OnTermsAccept)
+    }
+
+    // ── Connectivity (offline hint in the status area) ──
+
+    private NetworkMonitor? _network;
+    private bool _showingOffline;
+
+    private void InitNetworkMonitor()
+    {
+        _network = new NetworkMonitor();
+        _network.StatusChanged += () => DispatcherQueue.TryEnqueue(UpdateOfflineHint);
+        UpdateOfflineHint();
+    }
+
+    private void UpdateOfflineHint()
+    {
+        if (_network is null) return;
+        if (!_network.IsOnline)
+        {
+            _showingOffline = true;
+            StatusText.Text = Loc.T("MainWindow_OfflineHint");
+        }
+        else if (_showingOffline)
+        {
+            _showingOffline = false;
+            StatusText.Text = _viewModel.StatusMessage;
+        }
+    }
+
+    /// <summary>Status-area setter that respects the offline hint's ownership while disconnected —
+    /// without this, any auth/status PropertyChanged would silently clobber the hint.</summary>
+    private void SetStatus(string text)
+    {
+        if (_showingOffline) return;
+        StatusText.Text = text;
+    }
+
+    // ── Agent proposals (title-bar entry to the proposal strip) ──
+
+    private McpHost? _mcpHost;
+    private bool _proposalsDialogOpen;
+
+    private void InitProposalsEntryPoint()
+    {
+        try { _mcpHost = App.Services.GetRequiredService<McpHost>(); }
+        catch { return; } // MCP not registered (tests/dev slice) — leave the button hidden
+
+        _mcpHost.ProposalsChanged += () => DispatcherQueue.TryEnqueue(UpdateProposalsButton);
+        _mcpHost.RunningChanged += () => DispatcherQueue.TryEnqueue(UpdateProposalsButton);
+        UpdateProposalsButton();
+    }
+
+    private void UpdateProposalsButton()
+    {
+        if (_mcpHost is null) return;
+        ProposalsButton.Visibility = _mcpHost.IsRunning ? Visibility.Visible : Visibility.Collapsed;
+        var pending = _mcpHost.PendingProposalCount; // count-only: no snapshot per store event
+        ProposalsBadge.Visibility = pending > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ProposalsBadge.Value = pending;
+    }
+
+    private async void OnProposalsClick(object sender, RoutedEventArgs e)
+    {
+        if (_mcpHost is null || _proposalsDialogOpen) return;
+        _proposalsDialogOpen = true;
+        try { await AgentProposalsDialog.ShowAsync(Content.XamlRoot, _mcpHost); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Proposals dialog error: {ex.Message}"); }
+        finally { _proposalsDialogOpen = false; }
     }
 
     private CanfarDesktop.Mcp.AppViewStateService? _viewState;
@@ -383,8 +458,8 @@ public sealed partial class MainWindow : Window
         DispatcherQueue.TryEnqueue(() =>
         {
             AgentActivityText.Text = signal.Module is { } module
-                ? $"Agent is working — {TitleForModule(module)}"
-                : "Agent is working…";
+                ? Loc.F("MainWindow_AgentWorkingModule", TitleForModule(module))
+                : Loc.T("MainWindow_AgentWorking");
             AgentActivityIndicator.Visibility = Visibility.Visible;
 
             _agentActivityTimer ??= CreateAgentActivityTimer();
@@ -406,13 +481,13 @@ public sealed partial class MainWindow : Window
 
     private static string TitleForModule(string mode) => mode switch
     {
-        "search" => "Search",
-        "portal" => "Portal",
-        "storage" => "Storage",
-        "research" => "Research",
-        "fitsViewer" => "FITS Viewer",
-        "notebook" => "Notebook",
-        _ => "the app",
+        "search" => Loc.T("Module_Search"),
+        "portal" => Loc.T("Module_Portal"),
+        "storage" => Loc.T("Module_Storage"),
+        "research" => Loc.T("Module_Research"),
+        "fitsViewer" => Loc.T("Module_FitsViewer"),
+        "notebook" => Loc.T("Module_Notebook"),
+        _ => Loc.T("Module_App"),
     };
 
     #region File Browser Panel
@@ -493,17 +568,17 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            AuthProgress.IsActive = true;
+            SetAuthProgress(true);
             await _viewModel.InitializeAsync();
-            AuthProgress.IsActive = false;
+            SetAuthProgress(false);
             UpdateAuthUI();
             _landingView.StatusMessage = _viewModel.StatusMessage;
             // Stay on Landing — user chooses where to go
         }
         catch (Exception ex)
         {
-            AuthProgress.IsActive = false;
-            StatusText.Text = $"Startup error: {ex.Message}";
+            SetAuthProgress(false);
+            StatusText.Text = Loc.F("MainWindow_StartupError", ex.Message);
         }
     }
 
@@ -515,6 +590,28 @@ public sealed partial class MainWindow : Window
     {
         if (_currentMode != mode)
             _navigationStack.Push(_currentMode);
+        ApplyMode(mode);
+    }
+
+    private Border ContainerFor(AppMode mode) => mode switch
+    {
+        AppMode.Portal => PortalContainer,
+        AppMode.Search => SearchContainer,
+        AppMode.Research => ResearchContainer,
+        AppMode.Storage => StorageContainer,
+        AppMode.Notebook => NotebookContainer,
+        AppMode.FitsViewer => FitsViewerContainer,
+        AppMode.ObservationDetail => ObsDetailContainer,
+        AppMode.CubeViewer => CubeViewerContainer,
+        AppMode.AiGuide => AiGuideContainer,
+        _ => LandingContainer,
+    };
+
+    /// <summary>Shared visibility swap for forward, back, and home navigation.</summary>
+    private void ApplyMode(AppMode mode)
+    {
+        var target = ContainerFor(mode);
+        var appearing = target.Visibility == Visibility.Collapsed;
 
         _currentMode = mode;
         LandingContainer.Visibility = mode == AppMode.Landing ? Visibility.Visible : Visibility.Collapsed;
@@ -530,6 +627,29 @@ public sealed partial class MainWindow : Window
 
         BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         PublishViewMode();
+
+        if (appearing)
+        {
+            AnimateIn(target);
+            FocusShownView(target);
+        }
+    }
+
+    /// <summary>Short fade so view changes don't read as an abrupt hard cut (reduce-motion aware).</summary>
+    private static void AnimateIn(UIElement element) => AppMotion.FadeIn(element);
+
+    /// <summary>
+    /// The previously focused element just collapsed with the old view, orphaning
+    /// keyboard focus on the window; move it into the newly shown view so Tab and
+    /// arrow keys keep working.
+    /// </summary>
+    private void FocusShownView(DependencyObject container)
+    {
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (Microsoft.UI.Xaml.Input.FocusManager.FindFirstFocusableElement(container) is { } target)
+                _ = Microsoft.UI.Xaml.Input.FocusManager.TryFocusAsync(target, FocusState.Programmatic);
+        });
     }
 
     private void OnToggleFilePanel(object sender, RoutedEventArgs e) => ToggleFilePanel();
@@ -537,23 +657,7 @@ public sealed partial class MainWindow : Window
     private void OnBackClick(object sender, RoutedEventArgs e)
     {
         if (_navigationStack.Count > 0)
-        {
-            var previous = _navigationStack.Pop();
-            _currentMode = previous; // set directly to avoid re-pushing
-            LandingContainer.Visibility = previous == AppMode.Landing ? Visibility.Visible : Visibility.Collapsed;
-            PortalContainer.Visibility = previous == AppMode.Portal ? Visibility.Visible : Visibility.Collapsed;
-            SearchContainer.Visibility = previous == AppMode.Search ? Visibility.Visible : Visibility.Collapsed;
-            ResearchContainer.Visibility = previous == AppMode.Research ? Visibility.Visible : Visibility.Collapsed;
-            StorageContainer.Visibility = previous == AppMode.Storage ? Visibility.Visible : Visibility.Collapsed;
-            NotebookContainer.Visibility = previous == AppMode.Notebook ? Visibility.Visible : Visibility.Collapsed;
-            FitsViewerContainer.Visibility = previous == AppMode.FitsViewer ? Visibility.Visible : Visibility.Collapsed;
-            ObsDetailContainer.Visibility = previous == AppMode.ObservationDetail ? Visibility.Visible : Visibility.Collapsed;
-            CubeViewerContainer.Visibility = previous == AppMode.CubeViewer ? Visibility.Visible : Visibility.Collapsed;
-            AiGuideContainer.Visibility = previous == AppMode.AiGuide ? Visibility.Visible : Visibility.Collapsed;
-
-            BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            PublishViewMode();
-        }
+            ApplyMode(_navigationStack.Pop());
     }
 
     private void OnHomeClick(object sender, RoutedEventArgs e) => GoHome();
@@ -561,19 +665,7 @@ public sealed partial class MainWindow : Window
     private void GoHome()
     {
         _navigationStack.Clear();
-        _currentMode = AppMode.Landing; // set directly to avoid re-pushing
-        LandingContainer.Visibility = Visibility.Visible;
-        PortalContainer.Visibility = Visibility.Collapsed;
-        SearchContainer.Visibility = Visibility.Collapsed;
-        ResearchContainer.Visibility = Visibility.Collapsed;
-        StorageContainer.Visibility = Visibility.Collapsed;
-        NotebookContainer.Visibility = Visibility.Collapsed;
-        FitsViewerContainer.Visibility = Visibility.Collapsed;
-        ObsDetailContainer.Visibility = Visibility.Collapsed;
-        CubeViewerContainer.Visibility = Visibility.Collapsed;
-        AiGuideContainer.Visibility = Visibility.Collapsed;
-        BackButton.Visibility = Visibility.Collapsed;
-        PublishViewMode();
+        ApplyMode(AppMode.Landing);
     }
 
     private async void OnPortalRequested(object? sender, EventArgs e)
@@ -697,7 +789,7 @@ public sealed partial class MainWindow : Window
     public async void OpenNotebook(string? filePath = null)
     {
         try { await OpenNotebookCoreAsync(filePath, createNew: false); }
-        catch (Exception ex) { StatusText.Text = $"Notebook error: {ex.Message}"; }
+        catch (Exception ex) { StatusText.Text = Loc.F("MainWindow_NotebookError", ex.Message); }
     }
 
     /// <summary>Ensure the notebook host exists, open <paramref name="filePath"/> (or a new tab if
@@ -708,7 +800,8 @@ public sealed partial class MainWindow : Window
         {
             var hostVm = App.Services.GetRequiredService<ViewModels.Notebook.NotebookTabHostViewModel>();
             _notebookTabHost = new NotebookTabHost(hostVm);
-            _notebookTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
+            // GoHome (not NavigateTo) so the empty host doesn't stay on the back stack.
+            _notebookTabHost.AllTabsClosed += GoHome;
             NotebookContainer.Child = _notebookTabHost;
             await _notebookTabHost.CheckRecoveryAsync();
         }
@@ -812,14 +905,14 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = $"Cube viewer error: {ex.Message}";
+            StatusText.Text = Loc.F("MainWindow_CubeViewerError", ex.Message);
         }
     }
 
     public async void OpenFitsViewer(string? filePath = null)
     {
         try { await OpenFitsViewerAsync(filePath); }
-        catch (Exception ex) { StatusText.Text = $"FITS viewer error: {ex.Message}"; }
+        catch (Exception ex) { StatusText.Text = Loc.F("MainWindow_FitsViewerError", ex.Message); }
     }
 
     /// <summary>
@@ -834,7 +927,8 @@ public sealed partial class MainWindow : Window
             var hostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
             _fitsTabHost = new Views.FitsViewer.FitsTabHost(hostVm);
             _fitsTabHost.SearchAtPositionRequested += OnSearchAtFitsPosition;
-            _fitsTabHost.AllTabsClosed += () => NavigateTo(AppMode.Landing);
+            // GoHome (not NavigateTo) so the empty host doesn't stay on the back stack.
+            _fitsTabHost.AllTabsClosed += GoHome;
             FitsViewerContainer.Child = _fitsTabHost;
         }
 
@@ -885,9 +979,15 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    // Guards the single-ContentDialog constraint: double-clicking a login-gated
+    // tile (or the Login button) would otherwise open two dialogs and throw.
+    private bool _loginDialogOpen;
+
     /// <summary>Show login dialog. Returns true if login succeeded.</summary>
     private async Task<bool> ShowLoginDialogAsync()
     {
+        if (_loginDialogOpen) return false;
+        _loginDialogOpen = true;
         LoginViewModel? loginVm = null;
         try
         {
@@ -901,11 +1001,12 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = $"Login error: {ex.Message}";
+            StatusText.Text = Loc.F("MainWindow_LoginError", ex.Message);
             return false;
         }
         finally
         {
+            _loginDialogOpen = false;
             if (loginVm is not null)
                 loginVm.LoginSucceeded -= OnLoginSucceeded;
         }
@@ -919,7 +1020,8 @@ public sealed partial class MainWindow : Window
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (e.PropertyName is "IsAuthenticated" or "Username" or "StatusMessage")
+            // UserInfo arrives after IsAuthenticated on startup restore — refresh the identity menu when it lands.
+            if (e.PropertyName is "IsAuthenticated" or "Username" or "StatusMessage" or "UserInfo")
             {
                 UpdateAuthUI();
                 _landingView.StatusMessage = _viewModel.StatusMessage;
@@ -927,9 +1029,18 @@ public sealed partial class MainWindow : Window
         });
     }
 
+    // Collapse the ring when idle — an inactive ProgressRing still occupies its
+    // 20px slot, leaving a permanent dead gap in the title bar.
+    private void SetAuthProgress(bool active)
+    {
+        AuthProgress.IsActive = active;
+        AuthProgress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void UpdateAuthUI()
     {
-        StatusText.Text = _viewModel.StatusMessage;
+        SetStatus(_viewModel.StatusMessage);
+        _landingView.SetAuthenticated(_viewModel.IsAuthenticated);
 
         if (_viewModel.IsAuthenticated)
         {
@@ -937,7 +1048,15 @@ public sealed partial class MainWindow : Window
             UserButton.Visibility = Visibility.Visible;
             UserButton.Content = _viewModel.Username;
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
-                UserButton, $"{_viewModel.Username} — account options");
+                UserButton, Loc.F("MainWindow_AccountOptions", _viewModel.Username));
+
+            var info = _viewModel.UserInfo;
+            var displayName = string.Join(" ",
+                new[] { info?.FirstName, info?.LastName }.Where(s => !string.IsNullOrWhiteSpace(s)));
+            UserNameMenuItem.Text = string.IsNullOrWhiteSpace(displayName) ? _viewModel.Username : displayName;
+            UserEmailMenuItem.Text = info?.Email ?? "";
+            UserEmailMenuItem.Visibility =
+                string.IsNullOrWhiteSpace(info?.Email) ? Visibility.Collapsed : Visibility.Visible;
         }
         else
         {
@@ -991,7 +1110,7 @@ public sealed partial class MainWindow : Window
             _dashboardPage = null;
             PortalContainer.Child = null;
             NavigateTo(AppMode.Landing);
-            _landingView.StatusMessage = "Session expired. Please log in again.";
+            _landingView.StatusMessage = Loc.T("MainWindow_SessionExpired");
         });
     }
 
@@ -1007,6 +1126,19 @@ public sealed partial class MainWindow : Window
     private async void OnConnectAgentClick(object sender, RoutedEventArgs e)
     {
         await Views.Dialogs.AiConnectWizardDialog.ShowAsync(Content.XamlRoot);
+    }
+
+    private bool _wizardOpen;
+
+    // Landing "AI Assistant" tile — same wizard as OnConnectAgentClick, guarded
+    // because only one ContentDialog may be open per XamlRoot.
+    private async void OnAiAssistantRequested(object? sender, EventArgs e)
+    {
+        if (_wizardOpen) return;
+        _wizardOpen = true;
+        try { await Views.Dialogs.AiConnectWizardDialog.ShowAsync(Content.XamlRoot); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Connect wizard error: {ex.Message}"); }
+        finally { _wizardOpen = false; }
     }
 
     private async void OnMcpServerClick(object sender, RoutedEventArgs e)
@@ -1050,7 +1182,7 @@ public sealed partial class MainWindow : Window
 
         var subtitle = new TextBlock
         {
-            Text = "A CANFAR Science Portal Companion",
+            Text = Loc.T("About_Subtitle"),
             Style = (Style)Application.Current.Resources["BodyTextBlockStyle"],
             HorizontalAlignment = HorizontalAlignment.Center,
             Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
@@ -1058,7 +1190,7 @@ public sealed partial class MainWindow : Window
 
         var version = new TextBlock
         {
-            Text = $"Version {GetAppVersion()}",
+            Text = Loc.F("About_Version", GetAppVersion()),
             Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
             HorizontalAlignment = HorizontalAlignment.Center,
             Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"]
@@ -1074,14 +1206,14 @@ public sealed partial class MainWindow : Window
 
         var link = new HyperlinkButton
         {
-            Content = "Visit canfar.net",
+            Content = Loc.T("About_VisitLink"),
             NavigateUri = new Uri("https://www.canfar.net"),
             HorizontalAlignment = HorizontalAlignment.Center
         };
 
         var termsLink = new HyperlinkButton
         {
-            Content = "Terms of Use",
+            Content = Loc.T("About_TermsOfUse"),
             HorizontalAlignment = HorizontalAlignment.Center
         };
 
@@ -1096,9 +1228,9 @@ public sealed partial class MainWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = "About Verbinal",
+            Title = Loc.T("About_Title"),
             Content = panel,
-            CloseButtonText = "Close",
+            CloseButtonText = Loc.T("Common_Close"),
             XamlRoot = Content.XamlRoot
         };
 
@@ -1135,12 +1267,61 @@ public sealed partial class MainWindow : Window
         TermsTitle.Text = LegalTerms.Title(french);
         TermsBody.Text = LegalTerms.Body(french);
         TermsGateOverlay.Visibility = Visibility.Visible;
+
+        // The overlay is opaque, so hiding the rows underneath changes nothing
+        // visually — but it removes their controls from the Tab order. Without
+        // this, Tab could reach (and Enter could activate) Login/Settings/tiles
+        // behind the gate before the terms were accepted.
+        TitleBarRow.Visibility = Visibility.Collapsed;
+        ContentRow.Visibility = Visibility.Collapsed;
+        DispatcherQueue.TryEnqueue(() => TermsAcceptButton.Focus(FocusState.Programmatic));
     }
 
     private void OnTermsAccept(object sender, RoutedEventArgs e)
     {
         _legal.Accept();
         TermsGateOverlay.Visibility = Visibility.Collapsed;
+        TitleBarRow.Visibility = Visibility.Visible;
+        ContentRow.Visibility = Visibility.Visible;
+        _ = ShowWelcomeIfNeededAsync();
+    }
+
+    private bool _welcomeDialogOpen;
+
+    /// <summary>
+    /// First-run Welcome card (macOS WelcomeSheet parity): shown once Terms are accepted and the
+    /// current Welcome version hasn't been seen. The constructor-path call runs before the window
+    /// content joins the visual tree (XamlRoot is null), so it waits for the first Activated.
+    /// The seen-version stamp is written only after a successful presentation, so a collision with
+    /// another ContentDialog just defers the card to the next launch.
+    /// </summary>
+    private async Task ShowWelcomeIfNeededAsync()
+    {
+        if (_welcomeDialogOpen) return;
+        if (!_legal.HasAcceptedCurrent) return;
+        if (WelcomePreferences.SeenVersion >= WelcomePreferences.CurrentVersion) return;
+
+        if (Content?.XamlRoot is null)
+        {
+            var tcs = new TaskCompletionSource();
+            void OnActivatedOnce(object s, WindowActivatedEventArgs e) { Activated -= OnActivatedOnce; tcs.TrySetResult(); }
+            Activated += OnActivatedOnce;
+            await tcs.Task;
+            if (Content?.XamlRoot is null) return;
+        }
+
+        bool setUpAssistant;
+        _welcomeDialogOpen = true;
+        try { setUpAssistant = await WelcomeDialog.ShowAsync(Content.XamlRoot); }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Welcome dialog error: {ex.Message}");
+            return;
+        }
+        finally { _welcomeDialogOpen = false; }
+
+        WelcomePreferences.MarkSeen();
+        if (setUpAssistant) OnAiAssistantRequested(this, EventArgs.Empty);
     }
 
     private void OnTermsDecline(object sender, RoutedEventArgs e)
@@ -1168,7 +1349,7 @@ public sealed partial class MainWindow : Window
         {
             Title = LegalTerms.Title(french),
             Content = scroll,
-            CloseButtonText = "Close",
+            CloseButtonText = Loc.T("Common_Close"),
             XamlRoot = Content.XamlRoot
         };
         await dialog.ShowAsync();

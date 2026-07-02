@@ -16,7 +16,7 @@
         </Grid.RowDefinitions>
 
         <!-- Title bar -->
-        <Grid Grid.Row="0" Padding="16,8" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}">
+        <Grid x:Name="TitleBarRow" Grid.Row="0" Padding="16,8" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -25,7 +25,7 @@
 
             <!-- Left: branding + home -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Button x:Name="BackButton" Click="OnBackClick" ToolTipService.ToolTip="Back"
+                <Button x:Name="BackButton" x:Uid="MainWindow_BackButton" Click="OnBackClick" ToolTipService.ToolTip="Back"
                         Padding="6,4" Background="Transparent" BorderThickness="0"
                         Visibility="Collapsed"
                         AutomationProperties.Name="Go back">
@@ -33,12 +33,12 @@
                 </Button>
                 <Image Source="Assets/Verbinal_icon.png" Height="28" />
                 <TextBlock Text="Verbinal" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
-                <Button Click="OnHomeClick" ToolTipService.ToolTip="Home" Padding="6,4"
+                <Button x:Uid="MainWindow_HomeButton" Click="OnHomeClick" ToolTipService.ToolTip="Home" Padding="6,4"
                         Background="Transparent" BorderThickness="0"
                         AutomationProperties.Name="Go to home">
                     <FontIcon Glyph="&#xE80F;" FontSize="16" />
                 </Button>
-                <Button Click="OnToggleFilePanel" ToolTipService.ToolTip="Explorer (Ctrl+B)" Padding="6,4"
+                <Button x:Uid="MainWindow_ExplorerButton" Click="OnToggleFilePanel" ToolTipService.ToolTip="Explorer (Ctrl+B)" Padding="6,4"
                         Background="Transparent" BorderThickness="0"
                         AutomationProperties.Name="Toggle file explorer">
                     <FontIcon Glyph="&#xED25;" FontSize="16" />
@@ -53,23 +53,39 @@
 
             <!-- Right: auth area -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Button ToolTipService.ToolTip="Settings" Padding="6,4"
+                <Button x:Uid="MainWindow_SettingsButton" ToolTipService.ToolTip="Settings" Padding="6,4"
                         Background="Transparent" BorderThickness="0"
                         AutomationProperties.Name="Settings" Click="OnOpenSettingsClick">
                     <FontIcon Glyph="&#xE713;" FontSize="16" />
                 </Button>
-                <Button Click="OnAboutClick" ToolTipService.ToolTip="About" Padding="6,4"
+                <Button x:Uid="MainWindow_AboutButton" Click="OnAboutClick" ToolTipService.ToolTip="About" Padding="6,4"
                         Background="Transparent" BorderThickness="0"
                         AutomationProperties.Name="About Verbinal">
                     <FontIcon Glyph="&#xE946;" FontSize="16" />
                 </Button>
-                <ProgressRing x:Name="AuthProgress" IsActive="False" Width="20" Height="20" />
-                <Button x:Name="LoginButton" Content="Login" Click="OnLoginClick"
+                <!-- Agent proposals (visible while the MCP server runs; badge = pending count) -->
+                <Button x:Name="ProposalsButton" x:Uid="MainWindow_ProposalsButton" Click="OnProposalsClick" Padding="6,4"
+                        Background="Transparent" BorderThickness="0" Visibility="Collapsed"
+                        ToolTipService.ToolTip="Agent proposals"
+                        AutomationProperties.Name="Agent proposals">
+                    <Grid>
+                        <FontIcon Glyph="&#xE99A;" FontSize="16" />
+                        <InfoBadge x:Name="ProposalsBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                   Margin="0,-6,-8,0" Visibility="Collapsed" />
+                    </Grid>
+                </Button>
+                <ProgressRing x:Name="AuthProgress" IsActive="False" Width="20" Height="20"
+                              Visibility="Collapsed" />
+                <Button x:Name="LoginButton" x:Uid="MainWindow_LoginButton" Content="Login" Click="OnLoginClick"
                         Style="{StaticResource AccentButtonStyle}" />
                 <DropDownButton x:Name="UserButton" Visibility="Collapsed">
                     <DropDownButton.Flyout>
                         <MenuFlyout>
-                            <MenuFlyoutItem Text="Logout" Click="OnLogoutClick">
+                            <!-- Non-interactive identity header (display name + email), populated in UpdateAuthUI -->
+                            <MenuFlyoutItem x:Name="UserNameMenuItem" IsEnabled="False" />
+                            <MenuFlyoutItem x:Name="UserEmailMenuItem" IsEnabled="False" Visibility="Collapsed" />
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem x:Uid="MainWindow_LogoutMenuItem" Text="Logout" Click="OnLogoutClick">
                                 <MenuFlyoutItem.Icon>
                                     <FontIcon Glyph="&#xE7E8;" />
                                 </MenuFlyoutItem.Icon>
@@ -81,7 +97,7 @@
         </Grid>
 
         <!-- Content: file browser panel + main content area -->
-        <Grid Grid.Row="1">
+        <Grid x:Name="ContentRow" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="FilePanelColumn" Width="0" MinWidth="0" />
                 <ColumnDefinition Width="*" />
@@ -107,7 +123,7 @@
 
         <!-- Transient "agent is working" indicator: pulses while an MCP agent invokes tools and
              auto-hides ~2.5s after activity stops. Floats over the content; non-interactive. -->
-        <Border x:Name="AgentActivityIndicator" Grid.Row="1"
+        <Border x:Name="AgentActivityIndicator" x:Uid="MainWindow_AgentActivityIndicator" Grid.Row="1"
                 HorizontalAlignment="Center" VerticalAlignment="Top"
                 Margin="0,12,0,0" Padding="12,6"
                 Background="{ThemeResource AccentFillColorDefaultBrush}"
@@ -117,7 +133,7 @@
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <ProgressRing IsActive="True" Width="16" Height="16"
                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
-                <TextBlock x:Name="AgentActivityText" Text="Agent is working&#x2026;"
+                <TextBlock x:Name="AgentActivityText" x:Uid="MainWindow_AgentActivityText" Text="Agent is working&#x2026;"
                            VerticalAlignment="Center"
                            Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
                            Style="{StaticResource CaptionTextBlockStyle}" />
@@ -150,9 +166,9 @@
                     </ScrollViewer>
                     <StackPanel Grid.Row="2" Orientation="Horizontal"
                                 HorizontalAlignment="Right" Spacing="8">
-                        <Button x:Name="TermsDeclineButton" Content="Decline &amp; Exit"
+                        <Button x:Name="TermsDeclineButton" x:Uid="MainWindow_TermsDeclineButton" Content="Decline &amp; Exit"
                                 Click="OnTermsDecline" />
-                        <Button x:Name="TermsAcceptButton" Content="Accept"
+                        <Button x:Name="TermsAcceptButton" x:Uid="MainWindow_TermsAcceptButton" Content="Accept"
                                 Style="{StaticResource AccentButtonStyle}"
                                 Click="OnTermsAccept" />
                     </StackPanel>

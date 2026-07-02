@@ -16,6 +16,8 @@ public sealed partial class LocalFileBrowserPanel : UserControl
 
     public event Action<string>? FileOpenRequested;
 
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _filterDebounce;
+
     public LocalFileBrowserPanel(LocalFileBrowserViewModel viewModel)
     {
         ViewModel = viewModel;
@@ -25,6 +27,13 @@ public sealed partial class LocalFileBrowserPanel : UserControl
         ViewModel.PickFolderRequested += async () => await PickFolderAsync();
 
         FileTree.ItemsSource = ViewModel.RootNodes;
+
+        // Refreshing the tree on every keystroke lags and loses the user's place;
+        // wait for a typing pause instead.
+        _filterDebounce = DispatcherQueue.CreateTimer();
+        _filterDebounce.Interval = TimeSpan.FromMilliseconds(250);
+        _filterDebounce.IsRepeating = false;
+        _filterDebounce.Tick += (_, _) => ViewModel.RefreshRootCommand.Execute(null);
 
         ViewModel.Breadcrumbs.CollectionChanged += (_, _) =>
             // Wait one layout pass so the ItemsRepeater has measured the new items.
@@ -109,7 +118,8 @@ public sealed partial class LocalFileBrowserPanel : UserControl
         switch (e.Key)
         {
             case Windows.System.VirtualKey.Delete:
-                ViewModel.DeleteSelectedCommand.Execute(null);
+                // Same confirmation as the context-menu path — Delete is destructive.
+                _ = ConfirmAndDeleteAsync(ViewModel.SelectedNode);
                 e.Handled = true;
                 break;
 
@@ -138,7 +148,6 @@ public sealed partial class LocalFileBrowserPanel : UserControl
     private async void StartRename(LocalFileNode node)
     {
         var input = new TextBox { Text = node.Name };
-        input.SelectAll();
         var dialog = new ContentDialog
         {
             Title = "Rename",
@@ -146,6 +155,12 @@ public sealed partial class LocalFileBrowserPanel : UserControl
             PrimaryButtonText = "Rename",
             CloseButtonText = "Cancel",
             XamlRoot = XamlRoot,
+        };
+        // Focus/SelectAll only work once the box is in the visual tree.
+        dialog.Opened += (_, _) =>
+        {
+            input.Focus(FocusState.Programmatic);
+            input.SelectAll();
         };
 
         if (await dialog.ShowAsync() == ContentDialogResult.Primary
@@ -185,7 +200,8 @@ public sealed partial class LocalFileBrowserPanel : UserControl
     private void OnFilterChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs e)
     {
         ViewModel.FilterText = sender.Text;
-        ViewModel.RefreshRootCommand.Execute(null);
+        _filterDebounce.Stop();
+        _filterDebounce.Start();
     }
 
     // ── Context menu ─────────────────────────────────────────────────────────
@@ -233,7 +249,11 @@ public sealed partial class LocalFileBrowserPanel : UserControl
     private async void OnDeleteItem(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuFlyoutItem { DataContext: LocalFileNode node }) return;
+        await ConfirmAndDeleteAsync(node);
+    }
 
+    private async Task ConfirmAndDeleteAsync(LocalFileNode node)
+    {
         var dialog = new ContentDialog
         {
             Title = "Delete",

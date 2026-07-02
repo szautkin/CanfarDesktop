@@ -166,13 +166,15 @@ public sealed partial class CubeViewerPage : UserControl
             {
                 var v = FitsCubeReader.Read(path, progress);
                 var src = NativeSliceSource.TryOpen(path); // null for compressed/tar/oversize → down-sampled
-                return (Volume: v, Source: src);
+                // Scrubber waveform: per-channel means over the down-sampled volume (cheap, but keep it off-thread).
+                var prof = CubeChannelProfile.Compute(v.Data, v.Nx, v.Ny, v.Nz);
+                return (Volume: v, Source: src, Profile: prof);
             });
             if (_closed) { loaded.Source?.Dispose(); HideLoading(); return false; }
 
             UpdateLoadingUI(new CubeLoadProgress(3, 0.95, "")); // uploading to GPU
             SetViewMode(CubeViewMode.Volume);
-            ApplyVolume(loaded.Volume, $"{loaded.Volume.Name} · {loaded.Volume.Nx}×{loaded.Volume.Ny}×{loaded.Volume.Nz}", loaded.Source);
+            ApplyVolume(loaded.Volume, $"{loaded.Volume.Name} · {loaded.Volume.Nx}×{loaded.Volume.Ny}×{loaded.Volume.Nz}", loaded.Source, loaded.Profile);
             UpdateLoadingUI(new CubeLoadProgress(4, 1.0, ""));  // all steps done
             HideLoading();
             return true;
@@ -186,7 +188,8 @@ public sealed partial class CubeViewerPage : UserControl
     }
 
     /// <summary>Upload a decoded volume to the renderer + slice view and refresh the UI.</summary>
-    private void ApplyVolume(VolumeData volume, string note, NativeSliceSource? nativeSource = null)
+    private void ApplyVolume(VolumeData volume, string note, NativeSliceSource? nativeSource = null,
+        float[]? channelProfile = null)
     {
         _renderer.SetVolume(volume);
         _meta = volume.Meta;
@@ -196,6 +199,7 @@ public sealed partial class CubeViewerPage : UserControl
         _volNy = volume.Ny;
         _nativeSource?.Dispose(); // release any prior cube's file handle before adopting this one's
         _nativeSource = nativeSource;
+        _channelProfile = channelProfile; // before InitSliceForVolume, which draws the waveform
         InitSliceForVolume();
         ViewModel.VolumeName = note;
         PopulateInfoPanel(_meta);
@@ -227,8 +231,12 @@ public sealed partial class CubeViewerPage : UserControl
         InfoUnit.Visibility = hasUnit ? Visibility.Visible : Visibility.Collapsed;
         InfoUnit.Text = meta.Bunit;
 
-        InfoRange.Text = meta.RangeText;
+        // RANGE = the display cut, MIN/MAX = true extremes — matching the macOS info panel.
+        InfoRange.Text = meta.CutRangeText;
+        InfoMinMax.Text = meta.MinMaxText;
+        InfoMedian.Text = meta.MedianText;
         InfoNan.Text = meta.NanText;
+        InfoMode.Text = meta.ModeText;
         InfoPanel.Visibility = Visibility.Visible;
     }
 
@@ -453,6 +461,7 @@ public sealed partial class CubeViewerPage : UserControl
         _lastPointer = pt.Position;
         RenderPanel.CapturePointer(e.Pointer);
         // Any manual interaction cancels auto-orbit drift, matching the macOS UX.
+        if (AutoOrbitToggle.IsOn) AutoOrbitToggle.IsOn = false;
         e.Handled = true;
     }
 

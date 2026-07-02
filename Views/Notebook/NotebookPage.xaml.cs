@@ -38,7 +38,17 @@ public sealed partial class NotebookPage : UserControl
         ViewModel.Cells.CollectionChanged += (_, _) => DispatcherQueue.TryEnqueue(() =>
         {
             CellCountLabel.Text = $"{ViewModel.Cells.Count} cells";
+            if (!_initialCellFocusDone && ViewModel.Cells.Count > 0)
+            {
+                _initialCellFocusDone = true;
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, FocusSelectedCellIfIdle);
+            }
         });
+
+        // Command-mode keys only fire while focus is inside the cell list — give focus a home when
+        // the page (re)attaches so keyboard-only users aren't dead until they click a cell.
+        Loaded += (_, _) => DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, FocusSelectedCellIfIdle);
 
         // Wire cell selection (track handlers for proper unsubscribe)
         WireCellSelection(ViewModel.Cells);
@@ -57,6 +67,44 @@ public sealed partial class NotebookPage : UserControl
         StatusLabel.Text = ViewModel.StatusMessage;
         CellCountLabel.Text = $"{ViewModel.Cells.Count} cells";
         UpdateKernelIndicator(ViewModel.KernelState);
+    }
+
+    private bool _initialCellFocusDone;
+
+    /// <summary>Focus the selected cell unless the user is already typing in an editor.</summary>
+    private void FocusSelectedCellIfIdle()
+    {
+        if (ViewModel.Cells.Count == 0) return;
+        if (XamlRoot is not null
+            && Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) is TextBox)
+            return;
+
+        var index = Math.Clamp(ViewModel.SelectedCellIndex, 0, ViewModel.Cells.Count - 1);
+        if (CellList.GetOrCreateElement(index) is Control cell)
+            cell.Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>Scroll the cell at the given index into view (command-mode navigation).</summary>
+    public void BringCellIntoView(int index)
+    {
+        if (index < 0 || index >= ViewModel.Cells.Count) return;
+        var element = CellList.GetOrCreateElement(index);
+        element?.StartBringIntoView(new BringIntoViewOptions { VerticalAlignmentRatio = 0.5 });
+    }
+
+    /// <summary>Focus the source editor of the cell at the given index (Enter in command mode).</summary>
+    public void EnterCellEditMode(int index)
+    {
+        if (index < 0 || index >= ViewModel.Cells.Count) return;
+        switch (CellList.TryGetElement(index))
+        {
+            case CodeCellControl code:
+                code.EnterEditMode();
+                break;
+            case MarkdownCellControl md:
+                md.FocusEditor();
+                break;
+        }
     }
 
     private void UpdateKernelIndicator(KernelState state)

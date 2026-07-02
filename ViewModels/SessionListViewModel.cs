@@ -53,9 +53,28 @@ public partial class SessionListViewModel : ObservableObject
         {
             var allSessions = await _sessionService.GetSessionsAsync();
 
-            Sessions.Clear();
-            foreach (var session in allSessions.Where(s => !IsHeadless(s)))
-                Sessions.Add(session);
+            // Diff by session id instead of Clear+Add: the bound card list updates
+            // existing cards in place, so a poll tick doesn't flicker or drop the
+            // hover/scroll state of cards the user is interacting with.
+            var fresh = allSessions.Where(s => !IsHeadless(s)).ToList();
+            var freshIds = fresh.Select(f => f.Id).ToHashSet();
+            for (var i = Sessions.Count - 1; i >= 0; i--)
+                if (!freshIds.Contains(Sessions[i].Id)) Sessions.RemoveAt(i);
+
+            for (var i = 0; i < fresh.Count; i++)
+            {
+                var existing = -1;
+                for (var j = 0; j < Sessions.Count; j++)
+                    if (Sessions[j].Id == fresh[i].Id) { existing = j; break; }
+
+                if (existing < 0)
+                    Sessions.Insert(Math.Min(i, Sessions.Count), fresh[i]);
+                else
+                {
+                    if (existing != i) Sessions.Move(existing, i);
+                    Sessions[i] = fresh[i]; // refresh payload (status, expiry, URLs)
+                }
+            }
 
             SessionsRefreshed?.Invoke(this, EventArgs.Empty);
 

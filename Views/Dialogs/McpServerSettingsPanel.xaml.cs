@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 using CanfarDesktop.Mcp;
 using CanfarDesktop.Mcp.Agents;
@@ -211,6 +213,110 @@ public sealed partial class McpServerSettingsPanel : UserControl
                        + (approved ? " · approved" : ""),
             ActionLabel = approved ? "Revoke" : "Approve",
         };
+    }
+
+    // ── Diagnostics ──
+
+    private McpDiagnosticsRunner? _diagnostics;
+
+    private McpDiagnosticsRunner Diagnostics => _diagnostics ??= new McpDiagnosticsRunner
+    {
+        ServerEnabled = () => _settings.Enabled,
+        ListenerRunning = () => _host.IsRunning,
+        PipeName = () => _host.PipeName,
+        SelfTest = McpSelfTest.RunAsync,
+        BridgePath = () => _bridgeCommand,
+        DetectClients = ClaudeClientDetection.Detect,
+        ReadClaudeConfig = _repair.ReadExisting,
+        ClaudeConfigPath = _repair.ConfigPath,
+        EnableServerAsync = () => _host.SetEnabledAsync(true),
+        RestartServerAsync = async () =>
+        {
+            await _host.SetEnabledAsync(false);
+            await _host.SetEnabledAsync(true);
+        },
+        ApplyConfigRepair = _repair.Apply,
+        RevealBridge = path => Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"")
+        {
+            UseShellExecute = true,
+        }),
+    };
+
+    private async void OnRunDiagnosticsClick(object sender, RoutedEventArgs e) => await RunDiagnosticsAsync();
+
+    private async Task RunDiagnosticsAsync()
+    {
+        RunDiagnosticsButton.IsEnabled = false;
+        DiagnosticsList.ItemsSource = new[]
+        {
+            DiagnosticRow.From(new McpDiagnosticCheck(
+                "running", "Running diagnostics", McpDiagnosticStatus.Running, "Checking the MCP server…")),
+        };
+        try
+        {
+            var checks = await Diagnostics.RunAsync();
+            DiagnosticsList.ItemsSource = checks.Select(DiagnosticRow.From).ToList();
+        }
+        finally
+        {
+            RunDiagnosticsButton.IsEnabled = true;
+        }
+        // A restart/enable fix may have changed the server state shown above.
+        _suppressToggle = true;
+        EnableToggle.IsOn = _host.IsRunning;
+        _suppressToggle = false;
+        RefreshStatus();
+    }
+
+    private async void OnDiagnosticFixClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string fixId } || string.IsNullOrEmpty(fixId)) return;
+        try
+        {
+            await Diagnostics.ApplyFixAsync(fixId);
+        }
+        catch (Exception ex)
+        {
+            ShowResult(InfoBarSeverity.Error, $"Fix failed: {ex.Message}");
+        }
+        if (fixId != McpDiagnosticFix.RevealBridge) await RunDiagnosticsAsync();
+    }
+
+    /// <summary>Display row for one diagnostic check.</summary>
+    public sealed class DiagnosticRow
+    {
+        public string Glyph { get; init; } = string.Empty;
+        public Brush? GlyphBrush { get; init; }
+        public string Title { get; init; } = string.Empty;
+        public string Message { get; init; } = string.Empty;
+        public string? FixId { get; init; }
+        public string FixLabel { get; init; } = string.Empty;
+        public Visibility FixVisibility => FixId is null ? Visibility.Collapsed : Visibility.Visible;
+
+        public static DiagnosticRow From(McpDiagnosticCheck c) => new()
+        {
+            Glyph = char.ConvertFromUtf32(c.Status switch
+            {
+                McpDiagnosticStatus.Pass => 0xE73E,
+                McpDiagnosticStatus.Warn => 0xE7BA,
+                McpDiagnosticStatus.Fail => 0xE711,
+                _ => 0xE895,
+            }),
+            GlyphBrush = ThemeBrush(c.Status switch
+            {
+                McpDiagnosticStatus.Pass => "SystemFillColorSuccessBrush",
+                McpDiagnosticStatus.Warn => "SystemFillColorCautionBrush",
+                McpDiagnosticStatus.Fail => "SystemFillColorCriticalBrush",
+                _ => "TextFillColorSecondaryBrush",
+            }),
+            Title = c.Title,
+            Message = c.Message,
+            FixId = c.FixId,
+            FixLabel = c.FixId is null ? string.Empty : McpDiagnosticFix.Title(c.FixId),
+        };
+
+        private static Brush? ThemeBrush(string key)
+            => Application.Current.Resources.TryGetValue(key, out var value) ? value as Brush : null;
     }
 
     private void ShowResult(InfoBarSeverity severity, string message)

@@ -16,6 +16,10 @@ public sealed partial class MarkdownCellControl : UserControl
     public MarkdownCellControl()
     {
         InitializeComponent();
+        // Focusable so clicking a cell moves keyboard focus into the cell list —
+        // command-mode shortcuts only fire while focus is inside it.
+        IsTabStop = true;
+        CanBeScrollAnchor = true;
         DataContextChanged += OnDataContextChanged;
         Unloaded += (_, _) => DetachViewModel();
 
@@ -86,9 +90,14 @@ public sealed partial class MarkdownCellControl : UserControl
             _suppressTextChanged = true;
             SourceEditor.Text = _viewModel.Source ?? "";
             _suppressTextChanged = false;
-            SourceEditor.Focus(FocusState.Programmatic);
+            // No Focus() here: this also runs when a recycled container re-binds a
+            // cell that was left unrendered, and stealing focus mid-scroll jumps
+            // the caret. User-initiated edit paths call FocusEditor explicitly.
         }
     }
+
+    /// <summary>Focus the source editor (user-initiated edit entry).</summary>
+    public void FocusEditor() => SourceEditor.Focus(FocusState.Programmatic);
 
     private void RenderMarkdown()
     {
@@ -130,11 +139,14 @@ public sealed partial class MarkdownCellControl : UserControl
     private void OnRenderedTapped(object sender, TappedRoutedEventArgs e)
     {
         _viewModel?.RequestSelection();
+        Focus(FocusState.Programmatic); // enter command mode on the clicked cell
     }
 
     private void OnRenderedDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
         _viewModel?.EnterEditMode();
+        // The editor becomes visible on the queued UpdateViewMode pass; focus after it.
+        DispatcherQueue.TryEnqueue(FocusEditor);
     }
 
     private void OnEditorGotFocus(object sender, RoutedEventArgs e)

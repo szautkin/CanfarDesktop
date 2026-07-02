@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="CanfarDesktop.Views.Dialogs.WelcomeDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Uid="WelcomeDialog"
+    PrimaryButtonText="Set up the AI assistant"
+    CloseButtonText="Explore on my own"
+    DefaultButton="Primary"
+    PrimaryButtonStyle="{StaticResource AccentButtonStyle}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="18" Width="440">
+
+            <StackPanel Spacing="8">
+                <FontIcon Glyph="&#xE9A9;" FontSize="44" HorizontalAlignment="Center"
+                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                <TextBlock x:Uid="Welcome_Title" Text="Welcome to Verbinal" Style="{StaticResource TitleTextBlockStyle}"
+                           HorizontalAlignment="Center" />
+                <TextBlock x:Uid="Welcome_Subtitle" Text="Your native companion for the CANFAR Science Platform."
+                           Style="{StaticResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel Spacing="14" Margin="8,4,8,0">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE721;" FontSize="18" VerticalAlignment="Top" Margin="0,2,0,0"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock x:Uid="Welcome_SearchTitle" Text="Search &amp; Research" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock x:Uid="Welcome_SearchBody" Text="Explore the CADC archive and organize your downloaded observations."
+                                   Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xEDA2;" FontSize="18" VerticalAlignment="Top" Margin="0,2,0,0"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock x:Uid="Welcome_StorageTitle" Text="Storage &amp; FITS" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock x:Uid="Welcome_StorageBody" Text="Browse VOSpace and view astronomical images, hardware-accelerated."
+                                   Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE70B;" FontSize="18" VerticalAlignment="Top" Margin="0,2,0,0"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock x:Uid="Welcome_NotebookTitle" Text="Notebook" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock x:Uid="Welcome_NotebookBody" Text="Edit and run Jupyter notebooks natively, with local or session kernels."
+                                   Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE809;" FontSize="18" VerticalAlignment="Top" Margin="0,2,0,0"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock x:Uid="Welcome_CubeTitle" Text="Cube Viewer" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock x:Uid="Welcome_CubeBody" Text="Fly through FITS cubes in 3D with a Direct3D volume renderer."
+                                   Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE71D;" FontSize="18" VerticalAlignment="Top" Margin="0,2,0,0"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock x:Uid="Welcome_DiscoveryTitle" Text="Image Discovery" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock x:Uid="Welcome_DiscoveryBody" Text="See exactly what's inside a session image before you launch it."
+                                   Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE99A;" FontSize="18" VerticalAlignment="Top" Margin="0,2,0,0"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock x:Uid="Welcome_AssistantTitle" Text="AI assistant" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock x:Uid="Welcome_AssistantBody" Text="Connect Claude Desktop or Claude Code (~80 tools) to drive Verbinal for you."
+                                   Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>
