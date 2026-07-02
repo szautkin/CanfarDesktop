@@ -38,7 +38,7 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
     {
         InitializeComponent();
         _host = App.Services.GetRequiredService<McpHost>();
-        _bridgeCommand = McpBridgeLocator.Resolve();
+        _bridgeCommand = McpBridgeLocator.ResolveStable();
 
         var clients = ClaudeClientDetection.Detect();
         DesktopRadio.Content = Helpers.Loc.T(clients.DesktopInstalled ? "Wizard_ClaudeDesktopDetected" : "Wizard_ClaudeDesktop");

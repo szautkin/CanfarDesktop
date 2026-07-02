@@ -366,3 +366,6 @@ FodyWeavers.xsd
 dev_info/
 # Claude agent memory
 .claude/
+
+# Published MCP bridge staged for MSIX packaging (release step artifact)
+mcp-bridge/

@@ -31,7 +31,7 @@ public sealed partial class McpServerSettingsPanel : UserControl
         _host = App.Services.GetRequiredService<McpHost>();
         _settings = App.Services.GetRequiredService<McpSettingsService>();
         _approval = App.Services.GetRequiredService<McpClientApprovalStore>();
-        _bridgeCommand = McpBridgeLocator.Resolve();
+        _bridgeCommand = McpBridgeLocator.ResolveStable();
 
         _suppressToggle = true;
         EnableToggle.IsOn = _host.IsRunning;

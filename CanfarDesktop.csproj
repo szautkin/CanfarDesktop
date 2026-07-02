@@ -50,6 +50,19 @@
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
+  <!--
+    MCP bridge payload: Claude Desktop launches this exe directly, so a Store install must ship it.
+    The exe is staged by an explicit release step (matching the target RID):
+      dotnet publish CanfarDesktop.McpBridge -c Release -r win-x64 /p:SelfContained=true /p:PublishSingleFile=true /p:Platform=x64 -o mcp-bridge
+    Self-contained single-file: the user's machine needs no .NET runtime. A plain relative Content
+    item lands it at mcp-bridge\ in the output/package, where McpBridgeLocator already probes.
+    Conditioned on existence so day-to-day dev builds (which use the sibling project's bin output
+    via the locator's dev probe) don't require the publish step.
+  -->
+  <ItemGroup Condition="Exists('mcp-bridge\CanfarDesktop.McpBridge.exe')">
+    <Content Include="mcp-bridge\CanfarDesktop.McpBridge.exe" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="Resources\Notebook\kernel_harness.py" />
     <EmbeddedResource Include="Resources\ImageDiscovery\probe.sh" />

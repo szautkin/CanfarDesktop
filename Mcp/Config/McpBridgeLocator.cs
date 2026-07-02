@@ -17,6 +17,44 @@ public static class McpBridgeLocator
         return null;
     }
 
+    /// <summary>
+    /// The path to REGISTER in an external client's config (Claude Desktop launches it directly).
+    /// For a packaged install the in-package path lives under a version-numbered WindowsApps folder —
+    /// it breaks silently on every app update and is ACL-restricted for other processes — so the exe
+    /// is copied (and refreshed when it changes) to a stable per-user location and THAT path is
+    /// returned. A dev-tree bridge is returned as-is: devs iterate on it, a copy would go stale.
+    /// </summary>
+    public static string? ResolveStable(string? baseDirectory = null)
+    {
+        var source = Resolve(baseDirectory);
+        if (source is null || !RequiresStableCopy(source)) return source;
+
+        var stable = Path.Combine(
+            Helpers.PackagePaths.RealLocalAppData(), "Verbinal", "mcp-bridge", BridgeExeName);
+        try
+        {
+            var src = new FileInfo(source);
+            var dst = new FileInfo(stable);
+            if (!dst.Exists || dst.Length != src.Length || dst.LastWriteTimeUtc < src.LastWriteTimeUtc)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(stable)!);
+                File.Copy(source, stable, overwrite: true);
+            }
+            return stable;
+        }
+        catch
+        {
+            // Copy failed (disk full, AV lock) — the in-package path still works until the next update.
+            return source;
+        }
+    }
+
+    /// <summary>True when the resolved exe lives inside a WindowsApps package folder (version-numbered
+    /// per update, restricted ACLs) and must be mirrored to a stable path before registering.</summary>
+    internal static bool RequiresStableCopy(string path)
+        => path.Contains($"{Path.DirectorySeparatorChar}WindowsApps{Path.DirectorySeparatorChar}",
+                         StringComparison.OrdinalIgnoreCase);
+
     private static IEnumerable<string> Candidates(string baseDir)
     {
         // Packaged or copied next to the app.

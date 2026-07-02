@@ -39,6 +39,40 @@ public class BridgeInfraTests
     public void PipeSddl_OwnerOnly_IsProtectedFullAccessForSid()
         => Assert.Equal("D:P(A;;FA;;;S-1-5-21-1-2-3-1001)", McpPipeSddl.OwnerOnly("S-1-5-21-1-2-3-1001"));
 
+    // ── Bridge locator: stable-path rule for packaged installs ────────────────
+
+    [Fact]
+    public void RequiresStableCopy_TrueOnlyForWindowsAppsPaths()
+    {
+        Assert.True(CanfarDesktop.Mcp.Config.McpBridgeLocator.RequiresStableCopy(
+            @"C:\Program Files\WindowsApps\CodeBG.Verbinal_1.3.0.0_x64__abc\mcp-bridge\CanfarDesktop.McpBridge.exe"));
+        Assert.True(CanfarDesktop.Mcp.Config.McpBridgeLocator.RequiresStableCopy(
+            @"C:\Program Files\windowsapps\pkg\CanfarDesktop.McpBridge.exe")); // case-insensitive
+
+        Assert.False(CanfarDesktop.Mcp.Config.McpBridgeLocator.RequiresStableCopy(
+            @"C:\Users\u\source\repos\CanfarDesktop\CanfarDesktop.McpBridge\bin\Debug\net8.0-windows\CanfarDesktop.McpBridge.exe"));
+        Assert.False(CanfarDesktop.Mcp.Config.McpBridgeLocator.RequiresStableCopy(
+            @"C:\Users\u\WindowsAppsX\CanfarDesktop.McpBridge.exe")); // no separator-delimited match
+    }
+
+    [Fact]
+    public void ResolveStable_DevTreePath_ReturnsSourceUnchanged()
+    {
+        // A dev-tree bridge (not under WindowsApps) must be registered directly, not copied.
+        var dir = Path.Combine(Path.GetTempPath(), "vb-bridge-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(dir);
+            var exe = Path.Combine(dir, CanfarDesktop.Mcp.Config.McpBridgeLocator.BridgeExeName);
+            File.WriteAllText(exe, "stub");
+            Assert.Equal(exe, CanfarDesktop.Mcp.Config.McpBridgeLocator.ResolveStable(dir));
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { }
+        }
+    }
+
     [Fact]
     public void Sidecar_WriteReadDelete_RoundTrips()
     {
