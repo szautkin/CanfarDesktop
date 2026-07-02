@@ -69,6 +69,13 @@ public sealed partial class MarkdownCellControl : UserControl
                 case nameof(MarkdownCellViewModel.IsEditing):
                     UpdateAccentBorder();
                     break;
+                case nameof(MarkdownCellViewModel.Source):
+                    // Source changed externally (e.g. an agent's edit_cell) — re-render the
+                    // rendered view / refresh the editor. Skip while the user is editing so their
+                    // typing isn't clobbered.
+                    if (_viewModel is not null && !_viewModel.IsEditing)
+                        UpdateViewMode();
+                    break;
             }
         });
     }

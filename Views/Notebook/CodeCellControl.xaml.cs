@@ -84,6 +84,18 @@ public sealed partial class CodeCellControl : UserControl
                 case nameof(CodeCellViewModel.IsEditing):
                     UpdateAccentBorder();
                     break;
+                case nameof(CodeCellViewModel.Source):
+                    // Source changed externally (e.g. an agent's edit_cell) — refresh the display.
+                    // Skip while the user is editing this cell: their keystrokes drive Source, and
+                    // re-setting the text would fight the caret.
+                    if (_viewModel is not null && !_viewModel.IsEditing)
+                    {
+                        _suppressTextChanged = true;
+                        SourceEditor.Text = _viewModel.Source ?? "";
+                        _suppressTextChanged = false;
+                        RenderSyntax();
+                    }
+                    break;
             }
         });
     }
