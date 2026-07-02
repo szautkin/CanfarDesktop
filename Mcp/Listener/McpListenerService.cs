@@ -13,7 +13,13 @@ namespace CanfarDesktop.Mcp.Listener;
 /// </summary>
 public sealed class McpListenerService : IAsyncDisposable
 {
-    private const int MaxInstances = 4;
+    // Named-pipe server instances are cheap; a generous cap absorbs several concurrent clients
+    // (Claude Desktop + Claude Code + agent bursts) without exhausting the pipe.
+    private const int MaxInstances = 16;
+
+    // Back-off before retrying after a transient "all instances busy" so the accept loop self-heals
+    // instead of spinning while connections free up.
+    private static readonly TimeSpan BusyRetryDelay = TimeSpan.FromSeconds(1);
 
     private readonly Func<McpServerService> _serverFactory;
     private readonly McpSidecar _sidecar;
@@ -60,10 +66,15 @@ public sealed class McpListenerService : IAsyncDisposable
                     PipeTransmissionMode.Byte, PipeOptions.Asynchronous,
                     inBufferSize: 0, outBufferSize: 0, security);
             }
-            catch (IOException ex) // all instances busy or name in conflict
+            catch (IOException ex)
             {
-                _log?.Invoke($"MCP listener could not open pipe instance: {ex.Message}");
-                break;
+                // "All instances busy" is transient — instances free as clients disconnect. Backing
+                // off and retrying keeps the server alive; the old `break` here killed the accept loop
+                // permanently, dropping MCP for the rest of the app's lifetime once the cap was hit.
+                _log?.Invoke($"MCP listener could not open pipe instance ({ex.Message}); retrying in {BusyRetryDelay.TotalSeconds:0}s");
+                try { await Task.Delay(BusyRetryDelay, ct); }
+                catch (OperationCanceledException) { break; }
+                continue;
             }
 
             try
