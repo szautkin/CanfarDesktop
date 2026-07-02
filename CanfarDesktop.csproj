@@ -65,6 +65,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\Notebook\kernel_harness.py" />
+    <EmbeddedResource Include="Resources\Workflows\*.workflow.md" />
     <EmbeddedResource Include="Resources\ImageDiscovery\probe.sh" />
     <EmbeddedResource Include="Resources\ImageDiscovery\inspector.sh" />
   </ItemGroup>

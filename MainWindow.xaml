@@ -118,6 +118,7 @@
                 <Border x:Name="ObsDetailContainer" Visibility="Collapsed" />
                 <Border x:Name="CubeViewerContainer" Visibility="Collapsed" />
                 <Border x:Name="AiGuideContainer" Visibility="Collapsed" />
+                <Border x:Name="WorkflowsContainer" Visibility="Collapsed" />
             </Grid>
         </Grid>
 

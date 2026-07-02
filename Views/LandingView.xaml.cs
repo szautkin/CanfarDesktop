@@ -16,6 +16,7 @@ public sealed partial class LandingView : UserControl
     public event EventHandler? FitsViewerRequested;
     public event EventHandler? CubeViewerRequested;
     public event EventHandler? AiGuideRequested;
+    public event EventHandler? WorkflowsRequested;
     public event EventHandler? AiAssistantRequested;
 
     public string StatusMessage
@@ -67,6 +68,7 @@ public sealed partial class LandingView : UserControl
         new() { Title = Helpers.Loc.T("Tile_Notebook_Title"), Glyph = "\uE70B", Subtitle = Helpers.Loc.T("Tile_Notebook_Subtitle"), Key = "notebook" },
         new() { Title = Helpers.Loc.T("Tile_Fits_Title"), Glyph = "\uE7B8", Subtitle = Helpers.Loc.T("Tile_Fits_Subtitle"), Key = "fits" },
         new() { Title = Helpers.Loc.T("Tile_Cube_Title"), Glyph = "\uE809", Subtitle = Helpers.Loc.T("Tile_Cube_Subtitle"), Key = "cube" },
+        new() { Title = Helpers.Loc.T("Tile_Workflows_Title"), Glyph = "\uE9D5", Subtitle = Helpers.Loc.T("Tile_Workflows_Subtitle"), Key = "workflows" },
     ];
 
     public LandingView()
@@ -129,6 +131,7 @@ public sealed partial class LandingView : UserControl
                 case "fits": FitsViewerRequested?.Invoke(this, EventArgs.Empty); break;
                 case "cube": CubeViewerRequested?.Invoke(this, EventArgs.Empty); break;
                 case "aiGuide": AiGuideRequested?.Invoke(this, EventArgs.Empty); break;
+                case "workflows": WorkflowsRequested?.Invoke(this, EventArgs.Empty); break;
                 case "aiAssistant": AiAssistantRequested?.Invoke(this, EventArgs.Empty); break;
             }
         }

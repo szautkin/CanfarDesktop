@@ -188,6 +188,12 @@
   <data name="Tile_Cube_Subtitle" xml:space="preserve">
     <value>3D volume ray-marcher</value>
   </data>
+  <data name="Tile_Workflows_Title" xml:space="preserve">
+    <value>Workflows</value>
+  </data>
+  <data name="Tile_Workflows_Subtitle" xml:space="preserve">
+    <value>Step-by-step research protocols</value>
+  </data>
   <data name="Tile_AiGuide_Title" xml:space="preserve">
     <value>AI Guide</value>
   </data>

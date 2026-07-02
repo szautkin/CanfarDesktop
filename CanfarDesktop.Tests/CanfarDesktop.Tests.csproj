@@ -29,6 +29,8 @@
   <ItemGroup>
     <EmbeddedResource Include="..\Resources\ImageDiscovery\probe.sh" Link="ImageDiscovery\probe.sh" />
     <EmbeddedResource Include="..\Resources\ImageDiscovery\inspector.sh" Link="ImageDiscovery\inspector.sh" />
+    <!-- Workflow templates: the linked WorkflowStore loads from its own (test) assembly. -->
+    <EmbeddedResource Include="..\Resources\Workflows\*.workflow.md" Link="Resources\Workflows\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Link only the source files we need to test (avoids loading WinUI module initializer) -->
@@ -173,7 +175,10 @@
     <!-- Notebook MCP DTOs + tools (pure; no WinUI) -->
     <Compile Include="..\Services\Notebook\NotebookMcpState.cs" Link="Linked\Notebook\NotebookMcpState.cs" />
     <Compile Include="..\Services\Notebook\NotebookTargetResolver.cs" Link="Linked\Notebook\NotebookTargetResolver.cs" />
+    <Compile Include="..\Services\Workflows\WorkflowFormat.cs" Link="Linked\Workflows\WorkflowFormat.cs" />
+    <Compile Include="..\Services\Workflows\WorkflowStore.cs" Link="Linked\Workflows\WorkflowStore.cs" />
     <Compile Include="..\Mcp\Tools\Write\NotebookTools.cs" Link="Linked\Mcp\NotebookTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\WorkflowTools.cs" Link="Linked\Mcp\WorkflowTools.cs" />
     <Compile Include="..\Mcp\Audit\Audit.cs" Link="Linked\Mcp\Audit.cs" />
     <Compile Include="..\Mcp\McpToolRouter.cs" Link="Linked\Mcp\McpToolRouter.cs" />
     <Compile Include="..\Mcp\Transport\IMcpTransport.cs" Link="Linked\Mcp\IMcpTransport.cs" />

@@ -284,6 +284,10 @@ public sealed class McpHost : IAsyncDisposable
             or "launch_session" or "launch_headless_job" or "delete_session" or "renew_session" => "portal",
         "get_storage_quota" or "list_vospace_path" or "read_vospace_file"
             or "upload_text_to_vospace" or "create_vospace_folder" or "delete_vospace_node" => "storage",
+        // Workflow tools double as proposal kinds — one mapping covers the "Agent is working in
+        // Workflows" indicator AND follow-agent-activity navigation for reads and applied writes.
+        "list_workflows" or "get_workflow" or "save_workflow" or "update_workflow"
+            or "set_workflow_step" or "use_workflow" or "delete_workflow" => "workflows",
         _ => null,
     };
 

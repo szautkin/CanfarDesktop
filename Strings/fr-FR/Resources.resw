@@ -188,6 +188,12 @@
   <data name="Tile_Cube_Subtitle" xml:space="preserve">
     <value>Rendu volumique 3D par lancer de rayons</value>
   </data>
+  <data name="Tile_Workflows_Title" xml:space="preserve">
+    <value>Flux de travail</value>
+  </data>
+  <data name="Tile_Workflows_Subtitle" xml:space="preserve">
+    <value>Protocoles de recherche pas à pas</value>
+  </data>
   <data name="Tile_AiGuide_Title" xml:space="preserve">
     <value>Guide IA</value>
   </data>

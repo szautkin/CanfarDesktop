@@ -304,6 +304,8 @@ public partial class App : Application
         services.AddTransient<StorageBrowserPage>();
         services.AddTransient<ObservationDetailPage>();
         services.AddTransient<AiGuidePage>();
+        services.AddSingleton<CanfarDesktop.Services.Workflows.WorkflowStore>();
+        services.AddTransient<Views.WorkflowsPage>();
         // NotebookPage is created manually by NotebookTabHost (not DI-resolved)
 
         return services.BuildServiceProvider();

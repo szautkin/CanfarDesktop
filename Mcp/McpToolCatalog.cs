@@ -188,6 +188,15 @@ public static class McpToolCatalog
             new DeleteFitsBookmarkTool(id => viewState.DeleteFitsBookmarkAsync(id)),
 
             // Native notebook editor: read + lifecycle + cell CRUD + kernel/execution (active tab)
+            // Workflows: research protocols the agent reads, follows, authors, and checks off.
+            new ListWorkflowsTool(sp.GetRequiredService<CanfarDesktop.Services.Workflows.WorkflowStore>()),
+            new GetWorkflowTool(sp.GetRequiredService<CanfarDesktop.Services.Workflows.WorkflowStore>()),
+            new SaveWorkflowTool(),
+            new UpdateWorkflowTool(),
+            new SetWorkflowStepTool(),
+            new UseWorkflowTool(),
+            new DeleteWorkflowTool(),
+
             new ListNotebooksTool(() => viewState.ListNotebooksAsync()),
             new ListOpenNotebooksTool(() => viewState.ListOpenNotebooksAsync()),
             new GetNotebookTool(nb => viewState.GetNotebookAsync(nb)),
@@ -381,6 +390,23 @@ public static class McpToolCatalog
             new DiscoverImagePackagesApplier(p => p.Force
                 ? discovery.RediscoverAsync(p.Image)
                 : discovery.DiscoverAsync(p.Image)),
+
+            // Workflows: local writes go straight to the thread-safe store; a vospace save publishes
+            // to vos:<user>/workflows/ via the same storage path the upload tools use.
+            new SaveWorkflowApplier(sp.GetRequiredService<CanfarDesktop.Services.Workflows.WorkflowStore>(),
+                async (fileName, text, ct) =>
+                {
+                    var user = (auth.CurrentUsername ?? string.Empty).Trim();
+                    if (user.Length == 0) throw ProposalApplyException.BackendError("not authenticated — sign in to publish to VOSpace");
+                    try { await storage.CreateFolderAsync(user, "workflows", ct); }
+                    catch { /* folder probably exists — the upload below is the real test */ }
+                    await storage.UploadFileAsync($"{user}/workflows/{fileName}",
+                        new MemoryStream(Encoding.UTF8.GetBytes(text)), "text/markdown", ct);
+                }),
+            new UpdateWorkflowApplier(sp.GetRequiredService<CanfarDesktop.Services.Workflows.WorkflowStore>()),
+            new SetWorkflowStepApplier(sp.GetRequiredService<CanfarDesktop.Services.Workflows.WorkflowStore>()),
+            new UseWorkflowApplier(sp.GetRequiredService<CanfarDesktop.Services.Workflows.WorkflowStore>()),
+            new DeleteWorkflowApplier(sp.GetRequiredService<CanfarDesktop.Services.Workflows.WorkflowStore>()),
 
             // AI Guide management — re-tune the agent's own tool surface via the live AiGuideService.
             new SetToolDescriptionApplier(p => { aiGuide.SetOverride(p.ToolName, p.Description); return Task.CompletedTask; }),

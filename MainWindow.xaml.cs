@@ -19,7 +19,7 @@ namespace CanfarDesktop;
 
 public sealed partial class MainWindow : Window
 {
-    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer, ObservationDetail, CubeViewer, AiGuide }
+    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer, ObservationDetail, CubeViewer, AiGuide, Workflows }
 
     private readonly MainViewModel _viewModel;
     private readonly ILegalAgreementService _legal;
@@ -30,6 +30,7 @@ public sealed partial class MainWindow : Window
     private StorageBrowserPage? _storagePage;
     private ObservationDetailPage? _obsDetailPage;
     private AiGuidePage? _aiGuidePage;
+    private Views.WorkflowsPage? _workflowsPage;
     private LocalFileBrowserPanel? _filePanel;
     private bool _filePanelVisible;
     private AppMode _currentMode = AppMode.Landing;
@@ -73,6 +74,7 @@ public sealed partial class MainWindow : Window
         _landingView.FitsViewerRequested += (_, _) => OpenFitsViewer();
         _landingView.CubeViewerRequested += (_, _) => OpenCubeViewer();
         _landingView.AiGuideRequested += (_, _) => OpenAiGuidePage();
+        _landingView.WorkflowsRequested += (_, _) => OpenWorkflowsPage();
         _landingView.AiAssistantRequested += OnAiAssistantRequested;
         LandingContainer.Child = _landingView;
 
@@ -221,6 +223,7 @@ public sealed partial class MainWindow : Window
             case "notebook": OpenNotebook(); return new(true, "notebook", "Notebook");
             case "fitsViewer": NavigateTo(AppMode.FitsViewer); return new(true, "fitsViewer", "FITS Viewer");
             case "aiGuide": OpenAiGuidePage(); return new(true, "aiGuide", "AI Guide");
+            case "workflows": OpenWorkflowsPage(); return new(true, "workflows", "Workflows");
             default: return new(false, mode, mode);
         }
     }
@@ -435,6 +438,7 @@ public sealed partial class MainWindow : Window
             AppMode.FitsViewer => ("fitsViewer", "FITS Viewer"),
             AppMode.ObservationDetail => ("observationDetail", "Observation"),
             AppMode.AiGuide => ("aiGuide", "AI Guide"),
+            AppMode.Workflows => ("workflows", "Workflows"),
             _ => ("landing", "Home"),
         };
         _viewState?.SetMode(mode, title);
@@ -487,6 +491,7 @@ public sealed partial class MainWindow : Window
         "research" => Loc.T("Module_Research"),
         "fitsViewer" => Loc.T("Module_FitsViewer"),
         "notebook" => Loc.T("Module_Notebook"),
+        "workflows" => "Workflows",
         _ => Loc.T("Module_App"),
     };
 
@@ -604,6 +609,7 @@ public sealed partial class MainWindow : Window
         AppMode.ObservationDetail => ObsDetailContainer,
         AppMode.CubeViewer => CubeViewerContainer,
         AppMode.AiGuide => AiGuideContainer,
+        AppMode.Workflows => WorkflowsContainer,
         _ => LandingContainer,
     };
 
@@ -624,6 +630,7 @@ public sealed partial class MainWindow : Window
         ObsDetailContainer.Visibility = mode == AppMode.ObservationDetail ? Visibility.Visible : Visibility.Collapsed;
         CubeViewerContainer.Visibility = mode == AppMode.CubeViewer ? Visibility.Visible : Visibility.Collapsed;
         AiGuideContainer.Visibility = mode == AppMode.AiGuide ? Visibility.Visible : Visibility.Collapsed;
+        WorkflowsContainer.Visibility = mode == AppMode.Workflows ? Visibility.Visible : Visibility.Collapsed;
 
         BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         PublishViewMode();
@@ -702,6 +709,21 @@ public sealed partial class MainWindow : Window
     {
         EnsureAiGuidePage();
         NavigateTo(AppMode.AiGuide);
+    }
+
+    private void OpenWorkflowsPage()
+    {
+        EnsureWorkflowsPage();
+        NavigateTo(AppMode.Workflows);
+    }
+
+    private void EnsureWorkflowsPage()
+    {
+        if (_workflowsPage is not null) return;
+        _workflowsPage = App.Services.GetRequiredService<Views.WorkflowsPage>();
+        // Step "View:" deep-links route through the same key navigation the MCP navigate tool uses.
+        _workflowsPage.NavigateRequested += key => NavigateByKey(key);
+        WorkflowsContainer.Child = _workflowsPage;
     }
 
     private void EnsureDashboard()
