@@ -187,39 +187,45 @@ public sealed class AppViewStateService
     // ── Notebook actions (one applier for all mutations + read accessors; all marshal to the UI thread) ──
 
     private volatile Func<NotebookCommand, Task<NotebookState?>>? _notebookMutate;
-    private volatile Func<Task<NotebookState?>>? _notebookGet;
-    private volatile Func<int, Task<NotebookCellOutputs?>>? _notebookCellOutput;
-    private volatile Func<Task<NotebookKernelInfo>>? _notebookKernel;
+    private volatile Func<string?, Task<NotebookState?>>? _notebookGet;
+    private volatile Func<int, string?, Task<NotebookCellOutputs?>>? _notebookCellOutput;
+    private volatile Func<string?, Task<NotebookKernelInfo>>? _notebookKernel;
     private volatile Func<Task<IReadOnlyList<NotebookRef>>>? _notebookList;
+    private volatile Func<Task<IReadOnlyList<OpenNotebookInfo>>>? _notebookOpenList;
 
     public void SetNotebookActions(
         Func<NotebookCommand, Task<NotebookState?>> mutate,
-        Func<Task<NotebookState?>> get,
-        Func<int, Task<NotebookCellOutputs?>> cellOutput,
-        Func<Task<NotebookKernelInfo>> kernel,
-        Func<Task<IReadOnlyList<NotebookRef>>> list)
+        Func<string?, Task<NotebookState?>> get,
+        Func<int, string?, Task<NotebookCellOutputs?>> cellOutput,
+        Func<string?, Task<NotebookKernelInfo>> kernel,
+        Func<Task<IReadOnlyList<NotebookRef>>> list,
+        Func<Task<IReadOnlyList<OpenNotebookInfo>>> openList)
     {
         _notebookMutate = mutate;
         _notebookGet = get;
         _notebookCellOutput = cellOutput;
         _notebookKernel = kernel;
         _notebookList = list;
+        _notebookOpenList = openList;
     }
 
     public Task<NotebookState?> NotebookMutateAsync(NotebookCommand cmd)
         => _notebookMutate?.Invoke(cmd) ?? Task.FromResult<NotebookState?>(null);
 
-    public Task<NotebookState?> GetNotebookAsync()
-        => _notebookGet?.Invoke() ?? Task.FromResult<NotebookState?>(null);
+    public Task<NotebookState?> GetNotebookAsync(string? notebook = null)
+        => _notebookGet?.Invoke(notebook) ?? Task.FromResult<NotebookState?>(null);
 
-    public Task<NotebookCellOutputs?> GetCellOutputAsync(int index)
-        => _notebookCellOutput?.Invoke(index) ?? Task.FromResult<NotebookCellOutputs?>(null);
+    public Task<NotebookCellOutputs?> GetCellOutputAsync(int index, string? notebook = null)
+        => _notebookCellOutput?.Invoke(index, notebook) ?? Task.FromResult<NotebookCellOutputs?>(null);
 
-    public Task<NotebookKernelInfo> GetKernelStateAsync()
-        => _notebookKernel?.Invoke() ?? Task.FromResult(new NotebookKernelInfo("Dead", "no notebook open", ""));
+    public Task<NotebookKernelInfo> GetKernelStateAsync(string? notebook = null)
+        => _notebookKernel?.Invoke(notebook) ?? Task.FromResult(new NotebookKernelInfo("Dead", "no notebook open", ""));
 
     public Task<IReadOnlyList<NotebookRef>> ListNotebooksAsync()
         => _notebookList?.Invoke() ?? Task.FromResult<IReadOnlyList<NotebookRef>>(Array.Empty<NotebookRef>());
+
+    public Task<IReadOnlyList<OpenNotebookInfo>> ListOpenNotebooksAsync()
+        => _notebookOpenList?.Invoke() ?? Task.FromResult<IReadOnlyList<OpenNotebookInfo>>(Array.Empty<OpenNotebookInfo>());
 
     // ── Analysis-notebook hand-off (resolve obs → seed + open a notebook) ────────────────────────
 

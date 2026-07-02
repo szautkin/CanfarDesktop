@@ -86,10 +86,45 @@ public sealed partial class NotebookTabHost : UserControl
     // thread; MainWindow keeps only the serialization gate + the open/create branch (shell navigation +
     // host instantiation a UserControl can't do to itself).
 
-    /// <summary>Apply a NON-open/create notebook command to the active tab. Returns null if no notebook is open.</summary>
+    /// <summary>
+    /// Resolve a notebook selector (<see cref="NotebookCommand.Notebook"/>) to a target VM: the active
+    /// notebook when the selector is empty, or the open notebook whose id/path matches. Throws on a
+    /// selector that matches no open notebook (a real error, distinct from "nothing is open"); returns
+    /// null only when there's no active notebook and no selector.
+    /// </summary>
+    private NotebookViewModel? ResolveTarget(string? selector)
+    {
+        var candidates = ViewModel.Tabs
+            .Select(t => new NotebookTargetResolver.Candidate(t.ViewModel.NotebookId, t.ViewModel.FilePath))
+            .ToList();
+        var (kind, index) = NotebookTargetResolver.Resolve(candidates, selector);
+        return kind switch
+        {
+            NotebookTargetKind.Resolved => ViewModel.Tabs[index].ViewModel,
+            NotebookTargetKind.UseActive => ViewModel.ActiveViewModel,
+            _ => throw new InvalidOperationException(
+                $"No open notebook matches '{selector}'. Call list_open_notebooks for the open notebooks (id + path)."),
+        };
+    }
+
+    /// <summary>All currently-open notebook tabs (for list_open_notebooks).</summary>
+    public IReadOnlyList<OpenNotebookInfo> ListOpenNotebooks()
+    {
+        var active = ViewModel.ActiveViewModel;
+        return ViewModel.Tabs.Select(t =>
+        {
+            var vm = t.ViewModel;
+            return new OpenNotebookInfo(
+                vm.NotebookId, vm.Title, vm.FilePath,
+                ReferenceEquals(vm, active), vm.IsDirty, vm.Cells.Count, vm.KernelState.ToString());
+        }).ToList();
+    }
+
+    /// <summary>Apply a NON-open/create notebook command to the targeted tab (active by default, or the
+    /// one named by <see cref="NotebookCommand.Notebook"/>). Returns null if no notebook is open.</summary>
     public async Task<NotebookState?> ApplyNotebookCommandAsync(NotebookCommand cmd)
     {
-        var vm = ViewModel.ActiveViewModel;
+        var vm = ResolveTarget(cmd.Notebook);
         if (vm is null) return null;
 
         // Index-addressed ops fail fast on an out-of-range index (consistent with move_cell) rather than
@@ -143,19 +178,22 @@ public sealed partial class NotebookTabHost : UserControl
                 break;
         }
 
-        // The tab may have been closed/swapped mid-await (run/save/kernel ops yield the UI pump) — don't
-        // report state from an orphaned VM that is no longer the active tab.
-        return ReferenceEquals(ViewModel.ActiveViewModel, vm) ? ToNotebookState(vm) : null;
+        // The tab may have been CLOSED mid-await (run/save/kernel ops yield the UI pump) — don't report
+        // state from an orphaned VM. Membership (not active-ness) is the check: a background-targeted op
+        // is intentionally not the active tab, but is still open.
+        return ViewModel.Tabs.Any(t => ReferenceEquals(t.ViewModel, vm)) ? ToNotebookState(vm) : null;
     }
 
-    /// <summary>A snapshot of the active notebook tab (cells + kernel), or null if none is open.</summary>
-    public NotebookState? GetNotebookState()
-        => ViewModel.ActiveViewModel is { } vm ? ToNotebookState(vm) : null;
+    /// <summary>A snapshot of a notebook tab (active by default, or the one named by
+    /// <paramref name="selector"/>), or null if none is open.</summary>
+    public NotebookState? GetNotebookState(string? selector = null)
+        => ResolveTarget(selector) is { } vm ? ToNotebookState(vm) : null;
 
-    /// <summary>The outputs of a cell in the active notebook, or null if none open / index out of range.</summary>
-    public NotebookCellOutputs? GetCellOutputs(int index)
+    /// <summary>The outputs of a cell in a notebook (active by default, or <paramref name="selector"/>),
+    /// or null if none open / index out of range.</summary>
+    public NotebookCellOutputs? GetCellOutputs(int index, string? selector = null)
     {
-        var vm = ViewModel.ActiveViewModel;
+        var vm = ResolveTarget(selector);
         if (vm is null || index < 0 || index >= vm.Cells.Count) return null;
         var cell = vm.Cells[index];
         if (cell is not CodeCellViewModel code)
@@ -176,10 +214,11 @@ public sealed partial class NotebookTabHost : UserControl
         return new NotebookCellOutputs(index, "code", code.ExecutionCount, outs);
     }
 
-    /// <summary>The active notebook's kernel status, or a dead/no-notebook placeholder.</summary>
-    public NotebookKernelInfo GetKernelInfo()
+    /// <summary>A notebook's kernel status (active by default, or <paramref name="selector"/>), or a
+    /// dead/no-notebook placeholder.</summary>
+    public NotebookKernelInfo GetKernelInfo(string? selector = null)
     {
-        var vm = ViewModel.ActiveViewModel;
+        var vm = ResolveTarget(selector);
         return vm is null
             ? new NotebookKernelInfo("Dead", "no notebook open", "")
             : new NotebookKernelInfo(vm.KernelState.ToString(), vm.KernelStatusText, vm.KernelDisplayName);
@@ -230,7 +269,7 @@ public sealed partial class NotebookTabHost : UserControl
             cells.Add(new NotebookCellInfo(i, c.CellType, ClipText(src, McpNotebookTextCap), src.Length > McpNotebookTextCap, exec, outs));
         }
         return new NotebookState(
-            Loaded: true, Title: vm.Title, FilePath: vm.FilePath, FileMode: vm.FileMode.ToString(),
+            Loaded: true, NotebookId: vm.NotebookId, Title: vm.Title, FilePath: vm.FilePath, FileMode: vm.FileMode.ToString(),
             IsDirty: vm.IsDirty, KernelState: vm.KernelState.ToString(), KernelName: vm.KernelDisplayName,
             SelectedIndex: vm.SelectedCellIndex, CellCount: vm.Cells.Count, Cells: cells);
     }

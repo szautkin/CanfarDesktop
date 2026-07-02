@@ -104,6 +104,7 @@ public static class AiGuideCatalog
         ["export_cube_figure"] = "cube",
         // Notebook
         ["list_notebooks"] = "notebook",
+        ["list_open_notebooks"] = "notebook",
         ["get_notebook"] = "notebook",
         ["get_cell_output"] = "notebook",
         ["get_kernel_state"] = "notebook",

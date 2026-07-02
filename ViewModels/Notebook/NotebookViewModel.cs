@@ -34,6 +34,10 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
     public NotebookDocument Document => _document;
     public string? FilePath => _filePath;
 
+    /// <summary>Stable per-open-notebook id — the MCP `notebook` selector for targeting this tab
+    /// (an untitled notebook has no path, so id is the only way to address it).</summary>
+    public string NotebookId { get; } = Guid.NewGuid().ToString("N")[..8];
+
     /// <summary>Cell clipboard for command-mode C/V (shared across tabs via static).</summary>
     private static NotebookCell? _clipboardCell;
     public NotebookFileMode FileMode { get; private set; } = NotebookFileMode.Notebook;

@@ -14,7 +14,7 @@ public class NotebookToolsTests
     private static JsonElement Json(ToolResult r) => JsonDocument.Parse(Assert.IsType<DataResult>(r).Json).RootElement;
 
     private static NotebookState SampleState() => new(
-        Loaded: true, Title: "nb.ipynb", FilePath: "/x/nb.ipynb", FileMode: "Notebook", IsDirty: false,
+        Loaded: true, NotebookId: "nb01", Title: "nb.ipynb", FilePath: "/x/nb.ipynb", FileMode: "Notebook", IsDirty: false,
         KernelState: "Idle", KernelName: "Python 3", SelectedIndex: 0, CellCount: 1,
         Cells: new[] { new NotebookCellInfo(0, "code", "print(1)", false, 1, 1) });
 
@@ -41,7 +41,7 @@ public class NotebookToolsTests
     [Fact]
     public async Task GetNotebook_ReturnsState()
     {
-        var tool = new GetNotebookTool(() => Task.FromResult<NotebookState?>(SampleState()));
+        var tool = new GetNotebookTool(_ => Task.FromResult<NotebookState?>(SampleState()));
         var doc = Json(await tool.InvokeAsync(Args("""{}"""), Ctx, default));
         Assert.Equal("Idle", doc.GetProperty("kernelState").GetString());
         Assert.Equal(1, doc.GetProperty("cellCount").GetInt32());
@@ -52,7 +52,7 @@ public class NotebookToolsTests
     public async Task GetCellOutput_InvokesClosure_AndValidates()
     {
         int? seen = null;
-        var tool = new GetCellOutputTool(i =>
+        var tool = new GetCellOutputTool((i, _) =>
         {
             seen = i;
             return Task.FromResult<NotebookCellOutputs?>(new(i, "code", 2,
@@ -69,7 +69,7 @@ public class NotebookToolsTests
     [Fact]
     public async Task GetKernelState_ReturnsInfo()
     {
-        var tool = new GetKernelStateTool(() => Task.FromResult(new NotebookKernelInfo("Busy", "Busy", "Python 3")));
+        var tool = new GetKernelStateTool(_ => Task.FromResult(new NotebookKernelInfo("Busy", "Busy", "Python 3")));
         var doc = Json(await tool.InvokeAsync(Args("""{}"""), Ctx, default));
         Assert.Equal("Busy", doc.GetProperty("state").GetString());
     }
@@ -91,6 +91,29 @@ public class NotebookToolsTests
         var (tool, seen) = Mut(a => new CreateNotebookTool(a));
         await tool.InvokeAsync(Args("""{}"""), Ctx, default);
         Assert.Equal(NotebookOp.Create, seen()!.Op);
+    }
+
+    [Fact]
+    public async Task EditCell_ThreadsNotebookSelector()
+    {
+        var (tool, seen) = Mut(a => new EditCellTool(a));
+        await tool.InvokeAsync(Args("""{"index":2,"source":"x=1","notebook":"nb7"}"""), Ctx, default);
+        Assert.Equal(NotebookOp.EditCell, seen()!.Op);
+        Assert.Equal(2, seen()!.Index);
+        Assert.Equal("nb7", seen()!.Notebook);
+
+        // Omitting the selector leaves it null (targets the active notebook).
+        await tool.InvokeAsync(Args("""{"index":0,"source":"y=2"}"""), Ctx, default);
+        Assert.Null(seen()!.Notebook);
+    }
+
+    [Fact]
+    public async Task RunCell_ThreadsNotebookSelector()
+    {
+        var (tool, seen) = Mut(a => new RunCellTool(a));
+        await tool.InvokeAsync(Args("""{"index":1,"notebook":"C:\\nb\\b.ipynb"}"""), Ctx, default);
+        Assert.Equal(NotebookOp.RunCell, seen()!.Op);
+        Assert.Equal("C:\\nb\\b.ipynb", seen()!.Notebook);
     }
 
     [Fact]

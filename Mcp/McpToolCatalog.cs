@@ -187,9 +187,10 @@ public static class McpToolCatalog
 
             // Native notebook editor: read + lifecycle + cell CRUD + kernel/execution (active tab)
             new ListNotebooksTool(() => viewState.ListNotebooksAsync()),
-            new GetNotebookTool(() => viewState.GetNotebookAsync()),
-            new GetCellOutputTool(i => viewState.GetCellOutputAsync(i)),
-            new GetKernelStateTool(() => viewState.GetKernelStateAsync()),
+            new ListOpenNotebooksTool(() => viewState.ListOpenNotebooksAsync()),
+            new GetNotebookTool(nb => viewState.GetNotebookAsync(nb)),
+            new GetCellOutputTool((i, nb) => viewState.GetCellOutputAsync(i, nb)),
+            new GetKernelStateTool(nb => viewState.GetKernelStateAsync(nb)),
             new OpenNotebookTool(cmd => viewState.NotebookMutateAsync(cmd)),
             new CreateNotebookTool(cmd => viewState.NotebookMutateAsync(cmd)),
             new SaveNotebookTool(cmd => viewState.NotebookMutateAsync(cmd)),

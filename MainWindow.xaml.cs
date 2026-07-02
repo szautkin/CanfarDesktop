@@ -168,7 +168,7 @@ public sealed partial class MainWindow : Window
         _viewState.SetFitsActions(GetFitsActionAsync, SetFitsActionAsync, ProbeFitsActionAsync, GotoFitsActionAsync);
         _viewState.SetFitsBookmarkActions(ListFitsBookmarksActionAsync, SaveFitsBookmarkActionAsync, DeleteFitsBookmarkActionAsync);
         _viewState.SetNotebookActions(NotebookMutateActionAsync, GetNotebookActionAsync, GetCellOutputActionAsync,
-                                      GetKernelStateActionAsync, ListNotebooksActionAsync);
+                                      GetKernelStateActionAsync, ListNotebooksActionAsync, ListOpenNotebooksActionAsync);
         _viewState.SetTabActions(CloseTabActionAsync, ListOpenTabsActionAsync);
         _viewState.SetCreateAnalysisNotebookAction(CreateAnalysisNotebookActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
@@ -858,15 +858,20 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private Task<NotebookState?> GetNotebookActionAsync()
-        => OnUi(() => _notebookTabHost?.GetNotebookState(), null);
+    private Task<NotebookState?> GetNotebookActionAsync(string? notebook)
+        => OnUi(() => _notebookTabHost?.GetNotebookState(notebook), null);
 
-    private Task<NotebookCellOutputs?> GetCellOutputActionAsync(int index)
-        => OnUi(() => _notebookTabHost?.GetCellOutputs(index), null);
+    private Task<NotebookCellOutputs?> GetCellOutputActionAsync(int index, string? notebook)
+        => OnUi(() => _notebookTabHost?.GetCellOutputs(index, notebook), null);
 
-    private Task<NotebookKernelInfo> GetKernelStateActionAsync()
-        => OnUi(() => _notebookTabHost?.GetKernelInfo() ?? new NotebookKernelInfo("Dead", "no notebook open", ""),
+    private Task<NotebookKernelInfo> GetKernelStateActionAsync(string? notebook)
+        => OnUi(() => _notebookTabHost?.GetKernelInfo(notebook) ?? new NotebookKernelInfo("Dead", "no notebook open", ""),
                 new NotebookKernelInfo("Dead", "could not dispatch", ""));
+
+    private Task<IReadOnlyList<OpenNotebookInfo>> ListOpenNotebooksActionAsync()
+        => OnUi<IReadOnlyList<OpenNotebookInfo>>(
+            () => _notebookTabHost?.ListOpenNotebooks() ?? Array.Empty<OpenNotebookInfo>(),
+            Array.Empty<OpenNotebookInfo>());
 
     private Task<IReadOnlyList<NotebookRef>> ListNotebooksActionAsync()
     {

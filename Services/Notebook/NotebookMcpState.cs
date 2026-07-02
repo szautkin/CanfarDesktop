@@ -12,9 +12,10 @@ public sealed record NotebookCellInfo(
     int? ExecutionCount,
     int OutputCount);
 
-/// <summary>A snapshot of the active notebook tab + its cells + kernel, returned to the MCP layer.</summary>
+/// <summary>A snapshot of a notebook tab + its cells + kernel, returned to the MCP layer.</summary>
 public sealed record NotebookState(
     bool Loaded,
+    string NotebookId,      // stable id for this open notebook (pass as the `notebook` selector)
     string Title,
     string? FilePath,
     string FileMode,        // Notebook | PythonScript | Markdown
@@ -24,6 +25,16 @@ public sealed record NotebookState(
     int SelectedIndex,
     int CellCount,
     IReadOnlyList<NotebookCellInfo> Cells);
+
+/// <summary>One currently-open notebook tab, returned by list_open_notebooks.</summary>
+public sealed record OpenNotebookInfo(
+    string NotebookId,
+    string Title,
+    string? FilePath,
+    bool IsActive,
+    bool IsDirty,
+    int CellCount,
+    string KernelState);
 
 /// <summary>One output of a code cell, returned by get_cell_output (binary image data omitted; flagged instead).</summary>
 public sealed record NotebookOutputInfo(
@@ -51,11 +62,14 @@ public enum NotebookOp
     RunCell, RunAll, StartKernel, InterruptKernel, RestartKernel,
 }
 
-/// <summary>A single notebook mutation request (only the fields relevant to the op are set).</summary>
+/// <summary>A single notebook mutation request (only the fields relevant to the op are set).
+/// <see cref="Notebook"/> optionally targets a specific open notebook by id or path; when null the
+/// op targets the active tab.</summary>
 public sealed record NotebookCommand(
     NotebookOp Op,
     int? Index = null,
     int? ToIndex = null,
     string? Source = null,
     string? CellType = null,
-    string? Path = null);
+    string? Path = null,
+    string? Notebook = null);
