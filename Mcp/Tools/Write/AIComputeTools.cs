@@ -6,31 +6,34 @@ namespace CanfarDesktop.Mcp.Tools.Write;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AI Compute tools (Feature B): run agent-authored code on a warm remote Skaha
-// session via the /arc file-drop RPC. run_code / start_compute / stop_compute are
-// Destructive — they launch/stop PAID compute and (run_code) execute arbitrary
-// code, so they NEVER auto-apply (AutoApplyPolicy) and always queue for explicit
-// approval; the user reviews the code + cost in the proposal. run_code_output is
-// a plain read. An empty configured compute image disables run_code/start_compute.
+// session via the /arc file-drop RPC. CANFAR compute is part of the platform's
+// user experience (not billed usage), so — matching macOS — run_code and
+// start_compute are SemanticWrite: they auto-apply under the user's auto-apply
+// setting, and queue for review when it's off. stop_compute stays Destructive
+// (it tears down a session mid-work) and always queues. run_code_output is a
+// plain read. An empty configured compute image disables run_code/start_compute.
 // ─────────────────────────────────────────────────────────────────────────────
 
 public sealed record RunCodePayload(string Id, string Language, string Code, int TimeoutSeconds);
 public sealed record StartComputePayload();
 public sealed record StopComputePayload();
 
-/// <summary><c>run_code</c> — propose running an agent-authored snippet on the warm compute session. Destructive.</summary>
+/// <summary><c>run_code</c> — run an agent-authored snippet on the warm compute session. SemanticWrite
+/// (macOS parity): CANFAR compute is part of the platform's user experience, not billed usage, so with
+/// auto-apply ON this runs without a per-call click; with it OFF it still queues for review.</summary>
 public sealed class RunCodeTool : JsonWriteTool<RunCodeTool.Args>
 {
     private readonly Func<AIComputeSettings> _settings;
     public RunCodeTool(Func<AIComputeSettings> settings) => _settings = settings;
 
-    public override McpVerbClass VerbClass => McpVerbClass.Destructive;
+    public override McpVerbClass VerbClass => McpVerbClass.SemanticWrite;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "run_code",
-        "Propose running a short Python or Bash snippet on a warm remote CANFAR compute session (it is " +
-        "launched/reused automatically). STARTS PAID COMPUTE and runs your code on the user's account, so it " +
-        "queues for the user to approve — they see the code first. Returns immediately with an execution_id; " +
-        "fetch the result with run_code_output(execution_id). Requires an AI compute image set in Settings.",
+        "Run a short Python or Bash snippet on a warm remote CANFAR compute session (launched/reused " +
+        "automatically on the user's account). Auto-applies when the user has auto-apply on; otherwise " +
+        "queues for their approval. Returns immediately with an execution_id; fetch the result with " +
+        "run_code_output(execution_id). Requires an AI compute image set in Settings.",
         """{"type":"object","properties":{"code":{"type":"string","minLength":1,"description":"The snippet to run"},"language":{"type":"string","enum":["python","bash"],"description":"Default python"},"timeoutSeconds":{"type":"integer","minimum":1,"maximum":900,"description":"Per-run timeout (default 60)"}},"required":["code"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -49,7 +52,7 @@ public sealed class RunCodeTool : JsonWriteTool<RunCodeTool.Args>
         var (cores, ram) = (RunCodeContract.ClampCores(s.Cores), RunCodeContract.ClampRam(s.Ram));
 
         var summary =
-            $"Run {language} on {RunCodeContract.SessionName} (image {s.Image}, {cores}c/{ram}g) — starts PAID compute. " +
+            $"Run {language} on {RunCodeContract.SessionName} (image {s.Image}, {cores}c/{ram}g). " +
             $"execution_id {id}. Fetch output with run_code_output(executionId: \"{id}\").";
         return Task.FromResult(ProposalPlan.Encoding("run_code", summary, new RunCodePayload(id, language, code, timeout)));
     }
@@ -98,19 +101,20 @@ public sealed class RunCodeOutputTool : JsonReadTool<RunCodeOutputTool.Args, Run
         string? StartedAt, string? FinishedAt, string? Note);
 }
 
-/// <summary><c>start_compute</c> — propose pre-warming the compute session at the configured size. Destructive.</summary>
+/// <summary><c>start_compute</c> — pre-warm the compute session at the configured size. SemanticWrite
+/// (macOS parity — platform compute, not billed usage).</summary>
 public sealed class StartComputeTool : JsonWriteTool<StartComputeTool.Args>
 {
     private readonly Func<AIComputeSettings> _settings;
     public StartComputeTool(Func<AIComputeSettings> settings) => _settings = settings;
 
-    public override McpVerbClass VerbClass => McpVerbClass.Destructive;
+    public override McpVerbClass VerbClass => McpVerbClass.SemanticWrite;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "start_compute",
-        "Propose pre-warming the remote compute session (at the size configured in Settings ▸ AI compute) so " +
-        "the next run_code starts faster. STARTS PAID COMPUTE, so it queues for approval. Reusing an already-" +
-        "running session is a no-op. Requires an AI compute image set in Settings.",
+        "Pre-warm the remote compute session (at the size configured in Settings ▸ AI compute) so the next " +
+        "run_code starts faster. Auto-applies when the user has auto-apply on; otherwise queues for approval. " +
+        "Reusing an already-running session is a no-op. Requires an AI compute image set in Settings.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -121,27 +125,28 @@ public sealed class StartComputeTool : JsonWriteTool<StartComputeTool.Args>
                 "start_compute is disabled: set an AI compute image in Settings ▸ AI compute first."));
 
         var (cores, ram) = (RunCodeContract.ClampCores(s.Cores), RunCodeContract.ClampRam(s.Ram));
-        var summary = $"Pre-warm {RunCodeContract.SessionName} (image {s.Image}, {cores}c/{ram}g) — starts PAID compute.";
+        var summary = $"Pre-warm {RunCodeContract.SessionName} (image {s.Image}, {cores}c/{ram}g).";
         return Task.FromResult(ProposalPlan.Encoding("start_compute", summary, new StartComputePayload()));
     }
 
     public sealed record Args { }
 }
 
-/// <summary><c>stop_compute</c> — propose stopping the warm compute session (frees paid cores). Destructive.</summary>
+/// <summary><c>stop_compute</c> — propose stopping the warm compute session. Destructive (macOS parity:
+/// stopping tears down a session mid-work, so it always queues for approval).</summary>
 public sealed class StopComputeTool : JsonWriteTool<StopComputeTool.Args>
 {
     public override McpVerbClass VerbClass => McpVerbClass.Destructive;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "stop_compute",
-        "Propose stopping the warm remote compute session to free its (paid) cores. Idempotent — a no-op if " +
-        "nothing is running. NOTE: this is not a cancel; a request already submitted may re-run when compute " +
-        "is next started.",
+        "Propose stopping the warm remote compute session to free its cores. Queues for the user's approval. " +
+        "Idempotent — a no-op if nothing is running. NOTE: this is not a cancel; a request already submitted " +
+        "may re-run when compute is next started.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
-        => Task.FromResult(ProposalPlan.Encoding("stop_compute", $"Stop {RunCodeContract.SessionName} (frees paid compute).", new StopComputePayload()));
+        => Task.FromResult(ProposalPlan.Encoding("stop_compute", $"Stop {RunCodeContract.SessionName} (frees platform compute).", new StopComputePayload()));
 
     public sealed record Args { }
 }

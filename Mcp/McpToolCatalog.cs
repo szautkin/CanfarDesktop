@@ -119,8 +119,10 @@ public static class McpToolCatalog
             new DiscoverImagePackagesTool(),
 
             // AI Compute (Feature B): run agent code on a warm contributed session via the /arc file-drop.
-            // run_code/start_compute/stop_compute are Destructive (paid compute + arbitrary code) → always
-            // queue for approval. Disabled until an AI compute image is set in Settings ▸ AI compute.
+            // run_code/start_compute are SemanticWrite (macOS parity — CANFAR compute is platform UX, not
+            // billed usage), so they auto-apply under the user's auto-apply setting; stop_compute stays
+            // Destructive (tears down a session mid-work). Disabled until an AI compute image is set in
+            // Settings ▸ AI compute.
             new RunCodeTool(() => aiComputeSettings.Settings),
             new RunCodeOutputTool((id, ct) => aiCompute.FetchOutAsync(id, ct)),
             new StartComputeTool(() => aiComputeSettings.Settings),

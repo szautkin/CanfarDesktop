@@ -7,7 +7,7 @@
     <StackPanel Spacing="12">
         <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                   Text="Configure the remote compute the agent's run_code tool uses. Leave the image blank to disable run_code. run_code launches paid compute and runs agent-authored code on your CADC account, so every call queues for your approval." />
+                   Text="Configure the remote compute the agent's run_code tool uses. Leave the image blank to disable run_code. run_code runs agent-authored code on your CADC account: with auto-apply on it runs immediately; with it off each call queues for your approval." />
 
         <TextBox x:Name="ImageBox" Header="Compute image"
                  PlaceholderText="images.canfar.net/project/verbinal-compute:1.0" />

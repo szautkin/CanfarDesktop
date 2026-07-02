@@ -21,7 +21,7 @@ public class AIComputeToolsTests
 
     private static AIComputeSettings Enabled => new() { Image = "images.canfar.net/p/verbinal-compute:1", Cores = 2, Ram = 4 };
 
-    // ── run_code (Destructive write) ──
+    // ── run_code (SemanticWrite — macOS parity) ──
 
     [Fact]
     public async Task RunCode_BuildsProposal_WithExecutionIdInSummary()
@@ -35,7 +35,6 @@ public class AIComputeToolsTests
         Assert.Equal(60, payload.TimeoutSeconds);
         Assert.False(string.IsNullOrEmpty(payload.Id));
         Assert.Contains(payload.Id, proposed.Proposal.Summary);   // the agent reads the id from the proposal
-        Assert.Contains("PAID", proposed.Proposal.Summary);       // cost is explicit
     }
 
     [Fact]
@@ -59,10 +58,13 @@ public class AIComputeToolsTests
     }
 
     [Fact]
-    public void VerbClasses_ComputeWritesAreDestructive_SoTheyNeverAutoApply()
+    public void VerbClasses_MatchMacOS_RunAndStartAutoApply_StopAlwaysQueues()
     {
-        Assert.Equal(McpVerbClass.Destructive, new RunCodeTool(() => Enabled).VerbClass);
-        Assert.Equal(McpVerbClass.Destructive, new StartComputeTool(() => Enabled).VerbClass);
+        // CANFAR compute is platform UX, not billed usage: run_code/start_compute are SemanticWrite
+        // (auto-apply under the user's setting, macOS parity). stop_compute stays Destructive — it
+        // tears down a session mid-work, so it must always queue.
+        Assert.Equal(McpVerbClass.SemanticWrite, new RunCodeTool(() => Enabled).VerbClass);
+        Assert.Equal(McpVerbClass.SemanticWrite, new StartComputeTool(() => Enabled).VerbClass);
         Assert.Equal(McpVerbClass.Destructive, new StopComputeTool().VerbClass);
     }
 
