@@ -107,6 +107,9 @@ public class VizierService
     {
         using var content = new FormUrlEncodedContent(new[]
         {
+            // REQUEST is mandatory on TAPVizieR (400 without it) — CADC's TAP merely tolerates
+            // its absence, so don't copy TAPService's form verbatim.
+            new KeyValuePair<string, string>("REQUEST", "doQuery"),
             new KeyValuePair<string, string>("LANG", "ADQL"),
             new KeyValuePair<string, string>("FORMAT", "csv"),
             new KeyValuePair<string, string>("MAXREC", maxRec.ToString(CultureInfo.InvariantCulture)),
