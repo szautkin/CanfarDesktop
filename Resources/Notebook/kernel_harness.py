@@ -292,14 +292,26 @@ def execute_code(code, exec_count):
         send_boundary()
         return
 
-    # Redirect stdout/stderr
-    old_stdout, old_stderr = sys.stdout, sys.stderr
+    # Redirect stdout/stderr. Also GUARD stdin: the protocol owns the real stdin, so user code
+    # calling input() would either consume the next protocol command or block forever — the classic
+    # "kernel wedged" failure. Raising a clear error keeps the kernel alive and tells the user why.
+    old_stdout, old_stderr, old_stdin = sys.stdout, sys.stderr, sys.stdin
     captured_out = io.StringIO()
     captured_err = io.StringIO()
+
+    class _StdinGuard(io.TextIOBase):
+        def _refuse(self, *a, **k):
+            raise RuntimeError(
+                "stdin is not available in Verbinal notebooks: input()/sys.stdin reads would "
+                "deadlock the kernel. Assign values in code instead of prompting.")
+        read = readline = readlines = _refuse
+        def readable(self):
+            return False
 
     try:
         sys.stdout = captured_out
         sys.stderr = captured_err
+        sys.stdin = _StdinGuard()
 
         # Try to get a displayable result from the last expression. Probe with an
         # eval-compile; if the cell is statements (not an expression) that raises
@@ -339,6 +351,7 @@ def execute_code(code, exec_count):
     finally:
         sys.stdout = old_stdout
         sys.stderr = old_stderr
+        sys.stdin = old_stdin
 
     # Flush captured stdout
     stdout_text = captured_out.getvalue()

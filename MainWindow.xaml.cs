@@ -837,7 +837,18 @@ public sealed partial class MainWindow : Window
     // to itself); the active-tab cell/kernel logic lives on NotebookTabHost (viewer owns its MCP logic).
     private async Task<NotebookState?> ApplyNotebookCommandAsync(NotebookCommand cmd)
     {
-        await _notebookMutateGate.WaitAsync();
+        // interrupt/restart BYPASS the mutate gate: they are the unwedge tools. A run_cell stuck on a
+        // never-returning cell holds the gate indefinitely — serializing the interrupt behind it would
+        // make the agent's only remedies deadlock too (the exact wedge this guards against).
+        if (cmd.Op is NotebookOp.InterruptKernel or NotebookOp.RestartKernel)
+            return _notebookTabHost is null ? null : await _notebookTabHost.ApplyNotebookCommandAsync(cmd);
+
+        // Bounded wait, not infinite: a wedged execution must surface as an actionable error, not
+        // silently queue every later notebook call from every client forever.
+        if (!await _notebookMutateGate.WaitAsync(TimeSpan.FromSeconds(30)))
+            throw new InvalidOperationException(
+                "Another notebook operation is still running (a cell may be stuck executing). " +
+                "Use interrupt_kernel or restart_kernel to unblock it, then retry.");
         try
         {
             switch (cmd.Op)
