@@ -22,13 +22,17 @@
             <ItemsRepeater x:Name="TilesRepeater" HorizontalAlignment="Center">
                 <ItemsRepeater.Layout>
                     <UniformGridLayout Orientation="Horizontal"
-                                       MinItemWidth="170" MinItemHeight="160"
+                                       MinItemWidth="190" MinItemHeight="180"
                                        MinColumnSpacing="20" MinRowSpacing="20"
                                        MaximumRowsOrColumns="3" />
                 </ItemsRepeater.Layout>
                 <ItemsRepeater.ItemTemplate>
                     <DataTemplate>
-                        <Button Width="170" Height="160" Padding="0"
+                        <!-- One rigid three-zone layout for every tile: fixed icon band, fixed
+                             two-line title band, subtitle band — so icons and titles sit at the
+                             same height on every tile regardless of how the (localized) text
+                             wraps. Whole-word wrap + ellipsis keep long strings tidy. -->
+                        <Button Width="190" Height="180" Padding="0"
                                 HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                                 CornerRadius="8"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
@@ -37,19 +41,27 @@
                                 AutomationProperties.Name="{Binding Title}"
                                 ToolTipService.ToolTip="{Binding ToolTip}">
                             <Grid>
-                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14"
-                                            Opacity="{Binding TileOpacity}">
-                                    <FontIcon Glyph="{Binding Glyph}" FontSize="44" HorizontalAlignment="Center"
+                                <Grid Padding="12,16,12,10" Opacity="{Binding TileOpacity}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="56" />
+                                        <RowDefinition Height="56" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <FontIcon Glyph="{Binding Glyph}" FontSize="40"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"
                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                    <StackPanel Spacing="4" HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding Title}" Style="{StaticResource SubtitleTextBlockStyle}"
-                                                   FontWeight="Bold" HorizontalAlignment="Center" />
-                                        <TextBlock Text="{Binding Subtitle}"
-                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                   HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </StackPanel>
+                                    <TextBlock Grid.Row="1" Text="{Binding Title}"
+                                               Style="{StaticResource BodyStrongTextBlockStyle}" FontSize="17"
+                                               TextWrapping="WrapWholeWords" MaxLines="2"
+                                               TextTrimming="CharacterEllipsis" TextAlignment="Center"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="2" Text="{Binding Subtitle}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               TextWrapping="WrapWholeWords" MaxLines="2"
+                                               TextTrimming="CharacterEllipsis" TextAlignment="Center"
+                                               HorizontalAlignment="Center" VerticalAlignment="Top"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Grid>
                                 <!-- Auth-gate badge: top-right lock while signed out (macOS parity) -->
                                 <FontIcon Glyph="&#xE72E;" FontSize="12"
                                           HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,10,0"
