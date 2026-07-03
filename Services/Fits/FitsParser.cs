@@ -252,11 +252,17 @@ public static class FitsParser
         var naxis = header.NAxis;
         if (naxis is 0 or > 999) return 0; // FITS spec: NAXIS ≤ 999
 
-        long size = Math.Abs(header.BitPix) / 8;
+        long axes = 1;
         for (var i = 1; i <= naxis; i++)
-            size *= header.GetInt($"NAXIS{i}");
+            axes *= header.GetInt($"NAXIS{i}");
 
-        return size;
+        // FITS §4.4.1: size = |BITPIX|/8 × GCOUNT × (PCOUNT + NAXIS1×…×NAXISn).
+        // PCOUNT is the variable-length heap — fpack BINTABLEs put the whole compressed image
+        // there (megabytes), and omitting it made the skip land mid-heap, so the next "header"
+        // was compressed garbage that ran into the max-header-size guard.
+        long pcount = header.GetInt("PCOUNT");
+        long gcount = Math.Max(1, header.GetInt("GCOUNT"));
+        return Math.Abs(header.BitPix) / 8 * gcount * (pcount + axes);
     }
 
     private static long AlignToBlock(long size) =>

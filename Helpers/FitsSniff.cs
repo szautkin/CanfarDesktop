@@ -49,6 +49,10 @@ public static class FitsSniff
     /// <summary>true = cube, false = 2D image, null = no data in this HDU (NAXIS 0).</summary>
     private static bool? Classify(Dictionary<string, long> header)
     {
+        // fpack tile-compressed HDU: the real image shape lives in ZNAXIS*, not the BINTABLE's NAXIS*.
+        if (header.TryGetValue("ZNAXIS", out var znaxis))
+            return znaxis >= 3 && header.GetValueOrDefault("ZNAXIS3") > 1;
+
         var naxis = header.GetValueOrDefault("NAXIS");
         if (naxis == 0) return null;
         if (naxis < 3) return false;
@@ -71,7 +75,7 @@ public static class FitsSniff
                 var keyword = card[..8].TrimEnd();
                 if (keyword == "END") return cards;
                 if (card.Length > 10 && card[8] == '=' &&
-                    (keyword == "NAXIS" || keyword == "NAXIS1" || keyword == "NAXIS2" || keyword == "NAXIS3"))
+                    (keyword is "NAXIS" or "NAXIS1" or "NAXIS2" or "NAXIS3" or "ZNAXIS" or "ZNAXIS3"))
                 {
                     var value = card[10..].Split('/')[0].Trim();
                     if (long.TryParse(value, System.Globalization.NumberStyles.Integer,

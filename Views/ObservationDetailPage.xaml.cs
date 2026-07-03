@@ -591,6 +591,11 @@ public sealed partial class ObservationDetailPage : UserControl
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
         if (!System.IO.Path.HasExtension(suggestedName)) suggestedName += ".fits";
         picker.SuggestedFileName = suggestedName;
+        // The picker ENFORCES the selected file type's extension: with only ".fits" offered, an
+        // fpack artifact "x.fits.fz" was silently saved as "x.fits.fz.fits". Offer a choice that
+        // matches the artifact's real extension FIRST so the name is preserved as-is.
+        if (suggestedName.EndsWith(".fz", StringComparison.OrdinalIgnoreCase))
+            picker.FileTypeChoices.Add(Loc.T("ObsDetail_FileTypeFz"), new List<string> { ".fz" });
         picker.FileTypeChoices.Add(Loc.T("ObsDetail_FileTypeFits"), new List<string> { ".fits" });
         picker.FileTypeChoices.Add(Loc.T("ObsDetail_FileTypeAll"), new List<string> { "." });
 

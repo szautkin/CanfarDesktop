@@ -485,4 +485,64 @@ public class FitsParserTests
         Assert.True(wcs.IsValid);
         Assert.Equal(-0.001, wcs.Cd1_1, 6);
     }
+
+    /// <summary>
+    /// Regression for the CFHT .fits.fz failure: FITS data size is |BITPIX|/8 x GCOUNT x
+    /// (PCOUNT + NAXIS product). An fpack BINTABLE keeps the compressed image in the PCOUNT
+    /// heap; omitting it made the HDU skip land mid-heap, so the parser read compressed bytes
+    /// as a "header" and died with "FITS header exceeds maximum allowed size".
+    /// </summary>
+    [Fact]
+    public void Parse_FpackBintableWithHeap_SkipsHeapAndReportsFunpackError()
+    {
+        var ms = new MemoryStream();
+        // Data-less primary.
+        WriteHeaderBlock(ms,
+            FormatCard("SIMPLE", "T"), FormatCard("BITPIX", "16"),
+            FormatCard("NAXIS", "0"), FormatCard("EXTEND", "T"));
+        // fpack-style BINTABLE: tiny table (8x4 bytes) + a heap much larger than the table.
+        const int tableBytes = 8 * 4;
+        const int heapBytes = 3 * 2880 + 123; // deliberately not block-aligned
+        WriteHeaderBlock(ms,
+            FormatCard("XTENSION", "'BINTABLE'"), FormatCard("BITPIX", "8"),
+            FormatCard("NAXIS", "2"), FormatCard("NAXIS1", "8"), FormatCard("NAXIS2", "4"),
+            FormatCard("PCOUNT", heapBytes.ToString()), FormatCard("GCOUNT", "1"),
+            FormatCard("TFIELDS", "1"), FormatCard("ZIMAGE", "T"),
+            FormatCard("ZCMPTYPE", "'RICE_1  '"));
+        var dataAndHeap = new byte[((tableBytes + heapBytes + 2879) / 2880) * 2880];
+        ms.Write(dataAndHeap);
+        ms.Position = 0;
+
+        // With PCOUNT honored the parser skips the whole heap cleanly and reaches the intended,
+        // actionable fpack error - NOT the header-size crash.
+        var ex = Assert.Throws<InvalidDataException>(() => FitsParser.Parse(ms));
+        Assert.Contains("funpack", ex.Message);
+        Assert.DoesNotContain("maximum allowed size", ex.Message);
+    }
+
+    [Fact]
+    public void Parse_FpackBintable_FollowedByPlainImage_ReadsTheImage()
+    {
+        var ms = new MemoryStream();
+        WriteHeaderBlock(ms,
+            FormatCard("SIMPLE", "T"), FormatCard("BITPIX", "16"),
+            FormatCard("NAXIS", "0"), FormatCard("EXTEND", "T"));
+        const int heapBytes = 2880 + 7;
+        WriteHeaderBlock(ms,
+            FormatCard("XTENSION", "'BINTABLE'"), FormatCard("BITPIX", "8"),
+            FormatCard("NAXIS", "2"), FormatCard("NAXIS1", "8"), FormatCard("NAXIS2", "4"),
+            FormatCard("PCOUNT", heapBytes.ToString()), FormatCard("GCOUNT", "1"),
+            FormatCard("ZIMAGE", "T"));
+        ms.Write(new byte[((8 * 4 + heapBytes + 2879) / 2880) * 2880]);
+        // A plain 4x2 int16 image HDU AFTER the compressed one — only reachable with a correct skip.
+        WriteHeaderBlock(ms,
+            FormatCard("XTENSION", "'IMAGE   '"), FormatCard("BITPIX", "16"),
+            FormatCard("NAXIS", "2"), FormatCard("NAXIS1", "4"), FormatCard("NAXIS2", "2"),
+            FormatCard("PCOUNT", "0"), FormatCard("GCOUNT", "1"));
+        ms.Write(new byte[2880]);
+        ms.Position = 0;
+
+        var hdus = FitsParser.Parse(ms);
+        Assert.Contains(hdus, h => h.ImageData is not null && h.Header.NAxis1 == 4);
+    }
 }

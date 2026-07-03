@@ -3622,4 +3622,7 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Settings_ProbeFail" xml:space="preserve">
     <value>✗ {0} — unreachable ({1})</value>
   </data>
+  <data name="ObsDetail_FileTypeFz" xml:space="preserve">
+    <value>Compressed FITS (fpack)</value>
+  </data>
 </root>

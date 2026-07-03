@@ -3622,4 +3622,7 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Settings_ProbeFail" xml:space="preserve">
     <value>✗ {0} — injoignable ({1})</value>
   </data>
+  <data name="ObsDetail_FileTypeFz" xml:space="preserve">
+    <value>FITS compressé (fpack)</value>
+  </data>
 </root>
