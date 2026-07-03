@@ -37,6 +37,14 @@ public partial class App : Application
                 .ApplyEndpointsTo(Services.GetRequiredService<Helpers.ApiEndpoints>());
         }
         catch { /* defaults remain */ }
+
+        // Localize the AI Guide category widgets (the catalog lives in Services and is test-linked,
+        // so it takes translations via this hook instead of referencing Loc directly).
+        CanfarDesktop.Services.AiGuide.AiGuideCatalog.Localize = key =>
+        {
+            var value = Helpers.Loc.T(key);
+            return value == key ? null : value;
+        };
     }
 
     /// <summary>

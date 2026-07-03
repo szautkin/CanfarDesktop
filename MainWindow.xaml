@@ -33,6 +33,10 @@
                 </Button>
                 <Image Source="Assets/Verbinal_icon.png" Height="28" />
                 <TextBlock Text="Verbinal" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
+                <!-- Active-section subtitle: which app you're in, not just a back arrow. -->
+                <TextBlock x:Name="SectionText" VerticalAlignment="Center" Visibility="Collapsed"
+                           Style="{StaticResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 <Button x:Uid="MainWindow_HomeButton" Click="OnHomeClick" ToolTipService.ToolTip="Home" Padding="6,4"
                         Background="Transparent" BorderThickness="0"
                         AutomationProperties.Name="Go to home">

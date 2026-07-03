@@ -3634,4 +3634,118 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Research_FitsViewer" xml:space="preserve">
     <value>Visionneuse FITS</value>
   </data>
+  <data name="AiGuideCat_foundational_Title" xml:space="preserve">
+    <value>Fondamentaux</value>
+  </data>
+  <data name="AiGuideCat_foundational_Summary" xml:space="preserve">
+    <value>Identité de l'application, authentification, état des services, charge de la plateforme et vue actuelle.</value>
+  </data>
+  <data name="AiGuideCat_search_Title" xml:space="preserve">
+    <value>Recherche et archives</value>
+  </data>
+  <data name="AiGuideCat_search_Summary" xml:space="preserve">
+    <value>Trouvez des observations dans le CADC, puis récupérez leurs métadonnées, liens et aperçus.</value>
+  </data>
+  <data name="AiGuideCat_queries_Title" xml:space="preserve">
+    <value>Requêtes sauvegardées</value>
+  </data>
+  <data name="AiGuideCat_queries_Summary" xml:space="preserve">
+    <value>Sauvegardez, rappelez et modifiez des requêtes ADQL réutilisables.</value>
+  </data>
+  <data name="AiGuideCat_research_Title" xml:space="preserve">
+    <value>Recherche et notes</value>
+  </data>
+  <data name="AiGuideCat_research_Summary" xml:space="preserve">
+    <value>Inspectez les observations téléchargées et les notes ; exportez un paquet de recherche.</value>
+  </data>
+  <data name="AiGuideCat_downloads_Title" xml:space="preserve">
+    <value>Téléchargements</value>
+  </data>
+  <data name="AiGuideCat_downloads_Summary" xml:space="preserve">
+    <value>Rapatriez des observations dans l'archive de recherche locale.</value>
+  </data>
+  <data name="AiGuideCat_fits_Title" xml:space="preserve">
+    <value>Visionneuse FITS</value>
+  </data>
+  <data name="AiGuideCat_fits_Summary" xml:space="preserve">
+    <value>Lisez les en-têtes FITS/WCS, ouvrez des fichiers, pilotez la visionneuse 2D, marquez des coordonnées.</value>
+  </data>
+  <data name="AiGuideCat_cube_Title" xml:space="preserve">
+    <value>Visionneuse de cubes</value>
+  </data>
+  <data name="AiGuideCat_cube_Summary" xml:space="preserve">
+    <value>Ouvrez et pilotez la visionneuse 3D de cubes spectraux ; sondez des spectres ; exportez des figures.</value>
+  </data>
+  <data name="AiGuideCat_notebook_Title" xml:space="preserve">
+    <value>Calepin</value>
+  </data>
+  <data name="AiGuideCat_notebook_Summary" xml:space="preserve">
+    <value>Pilotez l'éditeur de calepin natif : cellules, noyau et exécution.</value>
+  </data>
+  <data name="AiGuideCat_storage_Title" xml:space="preserve">
+    <value>Stockage (VOSpace)</value>
+  </data>
+  <data name="AiGuideCat_storage_Summary" xml:space="preserve">
+    <value>Parcourez, lisez, téléversez, téléchargez et rangez des fichiers dans VOSpace/ARC.</value>
+  </data>
+  <data name="AiGuideCat_sessions_Title" xml:space="preserve">
+    <value>Sessions</value>
+  </data>
+  <data name="AiGuideCat_sessions_Summary" xml:space="preserve">
+    <value>Lancez et gérez des sessions de calcul interactives.</value>
+  </data>
+  <data name="AiGuideCat_headless_Title" xml:space="preserve">
+    <value>Sans interface / lot</value>
+  </data>
+  <data name="AiGuideCat_headless_Summary" xml:space="preserve">
+    <value>Soumettez des travaux par lots et suivez leurs journaux et événements.</value>
+  </data>
+  <data name="AiGuideCat_discovery_Title" xml:space="preserve">
+    <value>Découverte d'images</value>
+  </data>
+  <data name="AiGuideCat_discovery_Summary" xml:space="preserve">
+    <value>Trouvez des images de conteneurs selon les paquets qu'elles contiennent.</value>
+  </data>
+  <data name="AiGuideCat_compute_Title" xml:space="preserve">
+    <value>Calcul IA</value>
+  </data>
+  <data name="AiGuideCat_compute_Summary" xml:space="preserve">
+    <value>Exécutez du code rédigé par l'agent sur une session distante déjà active.</value>
+  </data>
+  <data name="AiGuideCat_workflows_Title" xml:space="preserve">
+    <value>Flux de travail</value>
+  </data>
+  <data name="AiGuideCat_workflows_Summary" xml:space="preserve">
+    <value>Lisez, suivez, rédigez et cochez des protocoles de recherche pas à pas.</value>
+  </data>
+  <data name="AiGuideCat_navigation_Title" xml:space="preserve">
+    <value>Vue et navigation</value>
+  </data>
+  <data name="AiGuideCat_navigation_Summary" xml:space="preserve">
+    <value>Pilotez les vues de l'application et donnez le focus au champ de recherche.</value>
+  </data>
+  <data name="AiGuideCat_control_Title" xml:space="preserve">
+    <value>Contrôle de l'agent</value>
+  </data>
+  <data name="AiGuideCat_control_Summary" xml:space="preserve">
+    <value>Inspectez et retirez les propositions en attente de l'agent.</value>
+  </data>
+  <data name="AiGuideCat_guide_Title" xml:space="preserve">
+    <value>Guide IA</value>
+  </data>
+  <data name="AiGuideCat_guide_Summary" xml:space="preserve">
+    <value>Réajustez les descriptions d'outils et ajoutez vos propres outils guides (modifiables par l'agent).</value>
+  </data>
+  <data name="AiGuideCat_other_Title" xml:space="preserve">
+    <value>Autres</value>
+  </data>
+  <data name="AiGuideCat_other_Summary" xml:space="preserve">
+    <value>Outils pas encore classés dans une catégorie.</value>
+  </data>
+  <data name="Module_CubeViewer" xml:space="preserve">
+    <value>Visionneuse de cubes</value>
+  </data>
+  <data name="Module_ObservationDetail" xml:space="preserve">
+    <value>Observation</value>
+  </data>
 </root>

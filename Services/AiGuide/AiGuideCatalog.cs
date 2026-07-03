@@ -1,54 +1,71 @@
 ﻿namespace CanfarDesktop.Services.AiGuide;
 
-/// <summary>One AI Guide category widget (UI grouping only â€” no logic, no MCP).</summary>
+/// <summary>One AI Guide category widget (UI grouping only — no logic, no MCP).</summary>
 public sealed record AiGuideCategory(string Id, string Title, string Glyph, string Summary);
 
 /// <summary>
 /// Static grouping of the built-in MCP tools into logical categories for the AI Guide UI. Keyed by
 /// tool name; any tool not listed falls into <see cref="Other"/> so a newly-added tool is never
-/// silently dropped from the screen (it surfaces under "Other" â€” a visible nudge to slot it into a
+/// silently dropped from the screen (it surfaces under "Other" — a visible nudge to slot it into a
 /// category). Ports the macOS <c>AIGuideCatalog</c>, extended with the Windows-only tools (3D cube
 /// viewer, 2D-FITS-viewer steering, and the native notebook engine). <see cref="AiGuideCategory.Glyph"/>
 /// holds a Segoe Fluent Icons code point and is assigned by the UI layer.
 /// </summary>
 public static class AiGuideCatalog
 {
-    /// <summary>Ordered categories â€” the order the widgets render top-to-bottom.</summary>
-    public static readonly IReadOnlyList<AiGuideCategory> Categories = new[]
+    /// <summary>
+    /// Optional localizer installed by the app at startup (resw key → translated text, or null to
+    /// keep the built-in English). Stays null in tests and unpackaged runs, so consumers always see
+    /// real English literals rather than raw keys.
+    /// </summary>
+    public static Func<string, string?>? Localize { get; set; }
+
+    private static AiGuideCategory Localized(AiGuideCategory c) => Localize is null ? c : c with
     {
-        new AiGuideCategory("foundational", "Foundational",     "î¥†", "App identity, auth, service health, platform load, and current view."),
-        new AiGuideCategory("search",       "Search & Archive", "îœ¡", "Find observations in CADC, then fetch their metadata, links, and previews."),
-        new AiGuideCategory("queries",      "Saved Queries",    "îœ´", "Save, recall, and edit reusable ADQL queries."),
-        new AiGuideCategory("research",     "Research & Notes", "îœ‹", "Inspect downloaded observations and notes; export a research bundle."),
-        new AiGuideCategory("downloads",    "Downloads",        "î¢–", "Pull observations into the local research archive."),
-        new AiGuideCategory("fits",         "FITS Viewer",      "îŸ…", "Read FITS headers/WCS, open files, steer the 2D viewer, bookmark coordinates."),
-        new AiGuideCategory("cube",         "Cube Viewer",      "ï…˜", "Open and steer the 3D spectral cube viewer; probe spectra; export figures."),
-        new AiGuideCategory("notebook",     "Notebook",         "î²¥", "Drive the native notebook editor: cells, kernel, and execution."),
-        new AiGuideCategory("storage",      "Storage (VOSpace)","î¢·", "Browse, read, upload, download, and tidy files in VOSpace/ARC."),
-        new AiGuideCategory("sessions",     "Sessions",         "î¥·", "Launch and manage interactive compute sessions."),
-        new AiGuideCategory("headless",     "Headless / Batch", "î–", "Submit batch jobs and follow their logs and events."),
-        new AiGuideCategory("discovery",    "Image Discovery",  "îž¸", "Find container images by the packages they contain."),
-        new AiGuideCategory("compute",      "AI Compute",       "î¥", "Run agent-authored code on a warm remote session."),
-        new AiGuideCategory("workflows",    "Workflows",        "", "Read, follow, author, and check off step-by-step research protocols."),
-        new AiGuideCategory("navigation",   "View & Navigation","îœ€", "Steer the app's views and focus the search field."),
-        new AiGuideCategory("control",      "Agent Control",    "îœ“", "Inspect and withdraw the agent's pending proposals."),
-        new AiGuideCategory("guide", "AI Guide", "î¢—", "Re-tune tool descriptions and add your own guide tools (agent-editable)."),
+        Title = Localize($"AiGuideCat_{c.Id}_Title") ?? c.Title,
+        Summary = Localize($"AiGuideCat_{c.Id}_Summary") ?? c.Summary,
     };
 
+    /// <summary>Ordered categories — the order the widgets render top-to-bottom.</summary>
+    public static IReadOnlyList<AiGuideCategory> Categories => Builtin.Select(Localized).ToList();
+
+    private static readonly IReadOnlyList<AiGuideCategory> Builtin = new[]
+    {
+        new AiGuideCategory("foundational", "Foundational",     "", "App identity, auth, service health, platform load, and current view."),
+        new AiGuideCategory("search",       "Search & Archive", "", "Find observations in CADC, then fetch their metadata, links, and previews."),
+        new AiGuideCategory("queries",      "Saved Queries",    "", "Save, recall, and edit reusable ADQL queries."),
+        new AiGuideCategory("research",     "Research & Notes", "", "Inspect downloaded observations and notes; export a research bundle."),
+        new AiGuideCategory("downloads",    "Downloads",        "", "Pull observations into the local research archive."),
+        new AiGuideCategory("fits",         "FITS Viewer",      "", "Read FITS headers/WCS, open files, steer the 2D viewer, bookmark coordinates."),
+        new AiGuideCategory("cube",         "Cube Viewer",      "", "Open and steer the 3D spectral cube viewer; probe spectra; export figures."),
+        new AiGuideCategory("notebook",     "Notebook",         "", "Drive the native notebook editor: cells, kernel, and execution."),
+        new AiGuideCategory("storage",      "Storage (VOSpace)","", "Browse, read, upload, download, and tidy files in VOSpace/ARC."),
+        new AiGuideCategory("sessions",     "Sessions",         "", "Launch and manage interactive compute sessions."),
+        new AiGuideCategory("headless",     "Headless / Batch", "", "Submit batch jobs and follow their logs and events."),
+        new AiGuideCategory("discovery",    "Image Discovery",  "", "Find container images by the packages they contain."),
+        new AiGuideCategory("compute",      "AI Compute",       "", "Run agent-authored code on a warm remote session."),
+        new AiGuideCategory("workflows",    "Workflows",        "", "Read, follow, author, and check off step-by-step research protocols."),
+        new AiGuideCategory("navigation",   "View & Navigation","", "Steer the app's views and focus the search field."),
+        new AiGuideCategory("control",      "Agent Control",    "", "Inspect and withdraw the agent's pending proposals."),
+        new AiGuideCategory("guide", "AI Guide", "", "Re-tune tool descriptions and add your own guide tools (agent-editable)."),
+    };
+
+    private static readonly AiGuideCategory OtherBuiltin = new("other", "Other", "", "Tools not yet sorted into a category.");
+
     /// <summary>Fallback bucket for any tool not explicitly categorized.</summary>
-    public static readonly AiGuideCategory Other = new("other", "Other", "îœ’", "Tools not yet sorted into a category.");
+    public static AiGuideCategory Other => Localized(OtherBuiltin);
 
     /// <summary>All categories including the fallback, for iteration in the view.</summary>
-    public static IReadOnlyList<AiGuideCategory> AllCategories { get; } = Categories.Append(Other).ToList();
+    public static IReadOnlyList<AiGuideCategory> AllCategories => Categories.Append(Other).ToList();
 
     private static readonly IReadOnlyDictionary<string, AiGuideCategory> ById =
-        AllCategories.ToDictionary(c => c.Id, StringComparer.Ordinal);
+        Builtin.Append(OtherBuiltin).ToDictionary(c => c.Id, StringComparer.Ordinal);
 
     /// <summary>Look up a category by id, defaulting to <see cref="Other"/>.</summary>
-    public static AiGuideCategory CategoryById(string id) => ById.TryGetValue(id, out var c) ? c : Other;
+    public static AiGuideCategory CategoryById(string id) => ById.TryGetValue(id, out var c) ? Localized(c) : Other;
 
     /// <summary>
-    /// Tool name â†’ category id. A superset of the macOS map: it keeps the macOS-only names (harmless â€”
+    /// Tool name → category id. A superset of the macOS map: it keeps the macOS-only names (harmless —
     /// they simply never match a live Windows tool) and adds the Windows-only tools. The reserved
     /// AI-Compute names categorize ahead of Feature B landing them.
     /// </summary>
@@ -124,7 +141,7 @@ public static class AiGuideCatalog
         ["interrupt_kernel"] = "notebook",
         ["restart_kernel"] = "notebook",
         ["create_analysis_notebook"] = "notebook",
-        // Storage (VOSpace) â€” both macOS and Windows tool names
+        // Storage (VOSpace) — both macOS and Windows tool names
         ["list_vospace_path"] = "storage",
         ["get_vospace_node"] = "storage",
         ["read_vospace_file"] = "storage",
@@ -158,7 +175,7 @@ public static class AiGuideCatalog
         // Image Discovery
         ["find_images_with_packages"] = "discovery",
         ["discover_image_packages"] = "discovery",
-        // AI Compute (Feature B â€” names reserved so they categorize once built)
+        // AI Compute (Feature B — names reserved so they categorize once built)
         ["run_code"] = "compute",
         ["run_code_output"] = "compute",
         ["start_compute"] = "compute",
@@ -205,8 +222,8 @@ public static class AiGuideCatalog
 }
 
 /// <summary>
-/// AI Guide user-preference keys. Defined here so the landing tile and the Settings â–¸ MCP toggle
-/// share one key (no drift). Showing/hiding the tile only toggles the launchpad shortcut â€” saved
+/// AI Guide user-preference keys. Defined here so the landing tile and the Settings ▸ MCP toggle
+/// share one key (no drift). Showing/hiding the tile only toggles the launchpad shortcut — saved
 /// description overrides and guide tools stay active in the MCP server regardless.
 /// </summary>
 public static class AiGuidePreferences

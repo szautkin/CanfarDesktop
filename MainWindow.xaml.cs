@@ -438,12 +438,17 @@ public sealed partial class MainWindow : Window
             AppMode.Storage => ("storage", "Storage"),
             AppMode.Notebook => ("notebook", "Notebook"),
             AppMode.FitsViewer => ("fitsViewer", "FITS Viewer"),
+            AppMode.CubeViewer => ("cubeViewer", "Cube Viewer"),
             AppMode.ObservationDetail => ("observationDetail", "Observation"),
             AppMode.AiGuide => ("aiGuide", "AI Guide"),
             AppMode.Workflows => ("workflows", "Workflows"),
             _ => ("landing", "Home"),
         };
         _viewState?.SetMode(mode, title);
+
+        // Title-bar section subtitle: name the app you're inside (localized), hidden on the launchpad.
+        SectionText.Text = _currentMode == AppMode.Landing ? string.Empty : "·  " + TitleForModule(mode);
+        SectionText.Visibility = _currentMode == AppMode.Landing ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void PublishOpenFits(FitsTabHostViewModel host)
@@ -492,8 +497,11 @@ public sealed partial class MainWindow : Window
         "storage" => Loc.T("Module_Storage"),
         "research" => Loc.T("Module_Research"),
         "fitsViewer" => Loc.T("Module_FitsViewer"),
+        "cubeViewer" => Loc.T("Module_CubeViewer"),
         "notebook" => Loc.T("Module_Notebook"),
         "workflows" => Loc.T("Module_Workflows"),
+        "aiGuide" => Loc.T("Module_AiGuide"),
+        "observationDetail" => Loc.T("Module_ObservationDetail"),
         _ => Loc.T("Module_App"),
     };
 
