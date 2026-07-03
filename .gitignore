@@ -369,3 +369,4 @@ dev_info/
 
 # Published MCP bridge staged for MSIX packaging (release step artifact)
 mcp-bridge/
+qwa_test/
