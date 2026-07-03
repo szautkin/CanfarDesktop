@@ -3754,4 +3754,7 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="ObsDetail_OpenDownloaded" xml:space="preserve">
     <value>Ouvrir</value>
   </data>
+  <data name="ObsDetail_NoLinkForArtifact" xml:space="preserve">
+    <value>Aucun lien de téléchargement disponible pour {0}.</value>
+  </data>
 </root>

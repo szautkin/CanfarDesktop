@@ -566,10 +566,30 @@ public sealed partial class ObservationDetailPage : UserControl
             var links = await _dataLink.GetLinksAsync(_publisherID);
             _lastLinks = links; // reused by RegisterInResearch for preview/thumbnail URLs
             var fileName = Caom2Format.ArtifactFileName(art.Uri);
-            var match = links.DirectFiles.FirstOrDefault(f =>
-                f.Filename.Equals(fileName, StringComparison.OrdinalIgnoreCase)
-                || f.Url.Contains(fileName, StringComparison.OrdinalIgnoreCase));
-            var url = match?.Url ?? links.DirectFileUrl ?? _dataLink.GetDownloadUrl(_publisherID);
+
+            // Resolve the URL for THIS artifact. The old logic fell back to DirectFileUrl (the
+            // science FITS) whenever nothing matched — so downloading a preview row silently
+            // saved the FITS under the preview's .png name. Previews/thumbnails now resolve
+            // against their own link lists, and a missing link is an error, not the wrong file.
+            var url = links.DirectFiles.FirstOrDefault(f =>
+                          f.Filename.Equals(fileName, StringComparison.OrdinalIgnoreCase)
+                          || f.Url.Contains(fileName, StringComparison.OrdinalIgnoreCase))?.Url
+                      ?? links.Previews.Concat(links.Thumbnails)
+                          .FirstOrDefault(u => u.Contains(fileName, StringComparison.OrdinalIgnoreCase))
+                      ?? art.ProductType?.ToLowerInvariant() switch
+                      {
+                          "preview" => links.Previews.FirstOrDefault(),
+                          "thumbnail" => links.Thumbnails.FirstOrDefault() ?? links.Previews.FirstOrDefault(),
+                          _ => links.DirectFileUrl ?? _dataLink.GetDownloadUrl(_publisherID),
+                      };
+            if (url is null)
+            {
+                DownloadBar.Severity = InfoBarSeverity.Error;
+                DownloadBar.Title = Loc.T("ObsDetail_DownloadFailed");
+                DownloadBar.Message = Loc.F("ObsDetail_NoLinkForArtifact", fileName);
+                DownloadProgress.Visibility = Visibility.Collapsed;
+                return;
+            }
 
             await DownloadUrlToFileAsync(url, fileName);
         }
