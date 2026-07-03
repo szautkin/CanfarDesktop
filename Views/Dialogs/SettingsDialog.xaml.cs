@@ -181,16 +181,30 @@ public sealed partial class SettingsDialog : ContentDialog
         if (_loading) return;
         _settings.Language = SelectedTag(LanguageCombo) ?? _settings.Language;
 
-        static string Keep(string edited, string current)
-            => string.IsNullOrWhiteSpace(edited) ? current : edited.Trim();
-        _settings.EndpointLoginBase = Keep(EpLoginBox.Text, _settings.EndpointLoginBase);
-        _settings.EndpointSkahaBase = Keep(EpSkahaBox.Text, _settings.EndpointSkahaBase);
-        _settings.EndpointAcBase = Keep(EpAcBox.Text, _settings.EndpointAcBase);
-        _settings.EndpointArcNodes = Keep(EpArcNodesBox.Text, _settings.EndpointArcNodes);
-        _settings.EndpointArcFiles = Keep(EpArcFilesBox.Text, _settings.EndpointArcFiles);
-        _settings.EndpointTapBase = Keep(EpTapBox.Text, _settings.EndpointTapBase);
-        _settings.EndpointCaom2OpsBase = Keep(EpCaom2OpsBox.Text, _settings.EndpointCaom2OpsBase);
-        _settings.EndpointResolverBase = Keep(EpResolverBox.Text, _settings.EndpointResolverBase);
+        // Per-field semantics with NO silent divergence between box, setting, and live endpoints:
+        //  · empty box   → reset that field to its default (and show the default in the box);
+        //  · invalid URL → reject the edit and put the last good value back in the box;
+        //  · valid URL   → persist. What the boxes show is always exactly what requests use, so
+        //    "Test connections" results are truthful.
+        static string Sanitize(TextBox box, string current, string fallback)
+        {
+            var text = (box.Text ?? string.Empty).Trim();
+            if (text.Length == 0) { box.Text = fallback; return fallback; }
+            var v = text.TrimEnd('/');
+            if (Uri.TryCreate(v, UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp))
+                return v;
+            box.Text = current;
+            return current;
+        }
+        _settings.EndpointLoginBase = Sanitize(EpLoginBox, _settings.EndpointLoginBase, Helpers.ApiEndpointDefaults.LoginBase);
+        _settings.EndpointSkahaBase = Sanitize(EpSkahaBox, _settings.EndpointSkahaBase, Helpers.ApiEndpointDefaults.SkahaBase);
+        _settings.EndpointAcBase = Sanitize(EpAcBox, _settings.EndpointAcBase, Helpers.ApiEndpointDefaults.AcBase);
+        _settings.EndpointArcNodes = Sanitize(EpArcNodesBox, _settings.EndpointArcNodes, Helpers.ApiEndpointDefaults.ArcNodes);
+        _settings.EndpointArcFiles = Sanitize(EpArcFilesBox, _settings.EndpointArcFiles, Helpers.ApiEndpointDefaults.ArcFiles);
+        _settings.EndpointTapBase = Sanitize(EpTapBox, _settings.EndpointTapBase, Helpers.ApiEndpointDefaults.TapBase);
+        _settings.EndpointCaom2OpsBase = Sanitize(EpCaom2OpsBox, _settings.EndpointCaom2OpsBase, Helpers.ApiEndpointDefaults.Caom2OpsBase);
+        _settings.EndpointResolverBase = Sanitize(EpResolverBox, _settings.EndpointResolverBase, Helpers.ApiEndpointDefaults.ResolverBase);
 
         _settings.Save();
 

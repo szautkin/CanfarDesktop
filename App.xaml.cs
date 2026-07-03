@@ -191,7 +191,9 @@ public partial class App : Application
         services.AddHttpClient<IAuthService, AuthService>(c => c.Timeout = TimeSpan.FromSeconds(30))
             .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
-        services.AddHttpClient<ISessionService, SessionService>(c => c.Timeout = TimeSpan.FromSeconds(30))
+        // SessionService keeps the framework default (100s): it also serves session LOG/EVENT
+        // downloads, which can be tens of MB — a 30s cap made large log fetches fail.
+        services.AddHttpClient<ISessionService, SessionService>()
             .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
         services.AddHttpClient<IImageService, ImageService>(c => c.Timeout = TimeSpan.FromSeconds(30))

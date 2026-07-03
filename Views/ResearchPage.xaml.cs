@@ -209,7 +209,7 @@ public sealed partial class ResearchPage : UserControl
             DetailContent.Children.Add(imageContainer);
             _ = LoadPreviewAsync(obs.PreviewURL ?? obs.ThumbnailURL!, imageContainer, spinner, _previewCts.Token);
         }
-        else if (!string.IsNullOrEmpty(obs.PublisherID))
+        else if (!string.IsNullOrEmpty(obs.PublisherID) && !_previewLookupDone.Contains(obs.PublisherID))
         {
             // Older records (or MCP downloads) saved without preview URLs: look them up via
             // DataLink once, persist on the record, and show the preview like any other.
@@ -240,12 +240,26 @@ public sealed partial class ResearchPage : UserControl
         if (obs.FileExists)
         {
             // Suggest the RIGHT in-app viewer for the data (header sniff, same rule as the
-            // observation-detail download banner): a real third axis \u2192 Cube Viewer, else the
-            // 2D FITS viewer. Shell-open and Explorer stay as secondary actions.
-            var isCube = Helpers.FitsSniff.IsLikelyCube(obs.LocalPath);
-            btnPanel.Children.Add(isCube
-                ? UIFactory.CreateIconButton("\uE809", Loc.T("Research_CubeViewer"), (_, _) => ViewModel.OpenInCubeViewerCommand.Execute(null))
-                : UIFactory.CreateIconButton("\uE7B8", Loc.T("Research_FitsViewer"), (_, _) => ViewModel.OpenInFitsViewerCommand.Execute(null)));
+            // observation-detail download banner): a real third axis → Cube Viewer, else the
+            // 2D FITS viewer. The sniff is file I/O, so it runs OFF the UI thread (OneDrive
+            // hydration / AV scans can block the open for seconds) — FITS viewer shows first,
+            // upgraded to Cube Viewer when the sniff says so and the selection hasn't moved.
+            var fitsBtn = UIFactory.CreateIconButton("", Loc.T("Research_FitsViewer"), (_, _) => ViewModel.OpenInFitsViewerCommand.Execute(null));
+            btnPanel.Children.Add(fitsBtn);
+            var sniffPath = obs.LocalPath;
+            var sniffCt = _previewCts.Token;
+            _ = Task.Run(() => Helpers.FitsSniff.IsLikelyCube(sniffPath)).ContinueWith(t =>
+            {
+                if (t.Status != TaskStatus.RanToCompletion || !t.Result || sniffCt.IsCancellationRequested) return;
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (sniffCt.IsCancellationRequested) return;
+                    var idx = btnPanel.Children.IndexOf(fitsBtn);
+                    if (idx < 0) return;
+                    btnPanel.Children[idx] = UIFactory.CreateIconButton("", Loc.T("Research_CubeViewer"),
+                        (_, _) => ViewModel.OpenInCubeViewerCommand.Execute(null));
+                });
+            });
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8E5", Loc.T("Research_OpenFile"), (_, _) => ViewModel.OpenFileCommand.Execute(null)));
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE838", Loc.T("Research_ShowInExplorer"), (_, _) => ViewModel.ShowInExplorerCommand.Execute(null)));
         }
@@ -422,6 +436,10 @@ public sealed partial class ResearchPage : UserControl
         if (row is not null) DetailContent.Children.Add(row);
     }
 
+    /// <summary>PublisherIDs whose DataLink lookup already ran this session (with or without a
+    /// preview found) — prevents a re-fetch per selection change for previewless/offline records.</summary>
+    private readonly HashSet<string> _previewLookupDone = new(StringComparer.Ordinal);
+
     /// <summary>DataLink lookup for records saved without preview URLs (older records, MCP-agent
     /// downloads). Mutates the in-memory record so the session skips repeat lookups; deliberately no
     /// store.Save here — that fires Changed and would rebuild the list mid-selection.</summary>
@@ -430,6 +448,7 @@ public sealed partial class ResearchPage : UserControl
         try
         {
             var links = await ViewModel.DataLink.GetLinksAsync(obs.PublisherID);
+            _previewLookupDone.Add(obs.PublisherID); // success or no-preview: don't re-fetch this session
             if (ct.IsCancellationRequested) return;
             obs.PreviewURL = links.Previews.FirstOrDefault();
             obs.ThumbnailURL = links.Thumbnails.FirstOrDefault();

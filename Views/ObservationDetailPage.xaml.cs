@@ -25,7 +25,6 @@ public sealed partial class ObservationDetailPage : UserControl
 
     private string _publisherID = string.Empty;
     private CAOM2Observation? _current;
-    private Models.DataLinkResult? _lastLinks;
     private string _collection = string.Empty;
     private string _observationID = string.Empty;
 
@@ -559,29 +558,31 @@ public sealed partial class ObservationDetailPage : UserControl
             DownloadBar.ActionButton = null;
             DownloadBar.Severity = InfoBarSeverity.Informational;
             DownloadBar.Title = Loc.F("ObsDetail_Resolving", Caom2Format.ArtifactFileName(art.Uri));
+            DownloadBar.Message = string.Empty;                     // stale error text from a prior run
+            DownloadResearchRow.Visibility = Visibility.Collapsed;  // stale "Added to Research" claim
             DownloadProgress.Visibility = Visibility.Visible;
             DownloadProgress.IsIndeterminate = true;
             DownloadText.Text = string.Empty;
 
             var links = await _dataLink.GetLinksAsync(_publisherID);
-            _lastLinks = links; // reused by RegisterInResearch for preview/thumbnail URLs
             var fileName = Caom2Format.ArtifactFileName(art.Uri);
 
-            // Resolve the URL for THIS artifact. The old logic fell back to DirectFileUrl (the
-            // science FITS) whenever nothing matched — so downloading a preview row silently
-            // saved the FITS under the preview's .png name. Previews/thumbnails now resolve
-            // against their own link lists, and a missing link is an error, not the wrong file.
-            var url = links.DirectFiles.FirstOrDefault(f =>
-                          f.Filename.Equals(fileName, StringComparison.OrdinalIgnoreCase)
-                          || f.Url.Contains(fileName, StringComparison.OrdinalIgnoreCase))?.Url
-                      ?? links.Previews.Concat(links.Thumbnails)
-                          .FirstOrDefault(u => u.Contains(fileName, StringComparison.OrdinalIgnoreCase))
-                      ?? art.ProductType?.ToLowerInvariant() switch
-                      {
-                          "preview" => links.Previews.FirstOrDefault(),
-                          "thumbnail" => links.Thumbnails.FirstOrDefault() ?? links.Previews.FirstOrDefault(),
-                          _ => links.DirectFileUrl ?? _dataLink.GetDownloadUrl(_publisherID),
-                      };
+            // Resolve the URL for THIS artifact, branching on its product type FIRST. Preview URLs
+            // often embed the science file ID (…GetPreview?ID=cadc:CFHT/1234p.fits), so a blind
+            // filename-contains scan across all lists can hand a science click the preview PNG —
+            // or vice versa. Science/aux artifacts never consult the preview lists, previews never
+            // fall back to the science file, and a missing link is an error, not the wrong file.
+            var productType = art.ProductType?.ToLowerInvariant();
+            var isPreviewType = productType is "preview" or "thumbnail";
+            var url = isPreviewType
+                ? MatchByFileName(links.Previews.Concat(links.Thumbnails), fileName)
+                  ?? (productType == "thumbnail"
+                      ? links.Thumbnails.FirstOrDefault() ?? links.Previews.FirstOrDefault()
+                      : links.Previews.FirstOrDefault())
+                : links.DirectFiles.FirstOrDefault(f =>
+                      f.Filename.Equals(fileName, StringComparison.OrdinalIgnoreCase))?.Url
+                  ?? MatchByFileName(links.DirectFiles.Select(f => f.Url), fileName)
+                  ?? links.DirectFileUrl ?? _dataLink.GetDownloadUrl(_publisherID);
             if (url is null)
             {
                 DownloadBar.Severity = InfoBarSeverity.Error;
@@ -591,7 +592,14 @@ public sealed partial class ObservationDetailPage : UserControl
                 return;
             }
 
-            await DownloadUrlToFileAsync(url, fileName);
+            // Snapshot everything completion needs NOW: this page is a cached singleton, and the
+            // user can open a different observation while the download streams — reading the live
+            // fields at completion would stamp observation B's record with A's file.
+            var ctx = new DownloadContext(
+                _publisherID, _collection, _observationID, _current, links,
+                IsScience: !isPreviewType && productType is null or "" or "science");
+
+            await DownloadUrlToFileAsync(url, fileName, ctx);
         }
         catch (Exception ex)
         {
@@ -602,7 +610,31 @@ public sealed partial class ObservationDetailPage : UserControl
         }
     }
 
-    private async Task DownloadUrlToFileAsync(string url, string suggestedName)
+    /// <summary>Download state captured at START (the page is a cached singleton — live fields may
+    /// describe a different observation by the time a long download completes).</summary>
+    private sealed record DownloadContext(
+        string PublisherID, string Collection, string ObservationID,
+        CAOM2Observation? Observation, Models.DataLinkResult? Links, bool IsScience);
+
+    /// <summary>Find a URL whose file name matches, tolerating URL-encoding ('+' → %2B) and
+    /// query-embedded file IDs.</summary>
+    private static string? MatchByFileName(IEnumerable<string> urls, string fileName)
+    {
+        foreach (var u in urls)
+        {
+            if (u.Contains(fileName, StringComparison.OrdinalIgnoreCase)) return u;
+            if (Uri.TryCreate(u, UriKind.Absolute, out var uri))
+            {
+                if (System.IO.Path.GetFileName(uri.LocalPath)
+                        .Equals(fileName, StringComparison.OrdinalIgnoreCase)) return u;
+                if (Uri.UnescapeDataString(uri.Query).Contains(fileName, StringComparison.OrdinalIgnoreCase))
+                    return u;
+            }
+        }
+        return null;
+    }
+
+    private async Task DownloadUrlToFileAsync(string url, string suggestedName, DownloadContext ctx)
     {
         var hWnd = WindowHelper.ActiveWindows.Count > 0
             ? WinRT.Interop.WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0])
@@ -664,14 +696,17 @@ public sealed partial class ObservationDetailPage : UserControl
         DownloadProgress.Visibility = Visibility.Collapsed;
 
         var savedPath = file.Path;
-        var ext = System.IO.Path.GetExtension(savedPath).ToLowerInvariant();
-        var isFitsFile = ext is ".fits" or ".fit" or ".fts" or ".fz";
 
-        if (isFitsFile)
+        // Classify by CONTENT, not extension — a mis-served download can put FITS bytes in a
+        // ".png" (and vice versa), and that is exactly the case the suggestion must survive.
+        // Off the UI thread: the file was just written, so AV on-write scans can hold the open.
+        var kind = await Task.Run(() => FitsSniff.ClassifyFile(savedPath));
+
+        if (kind != FitsKind.NotFits)
         {
-            // Suggest the RIGHT viewer for the data: sniff the FITS header shape — a real third axis
-            // gets the 3D Cube Viewer, everything else (2D imagers like this DAO frame) the FITS viewer.
-            var isCube = FitsSniff.IsLikelyCube(savedPath);
+            // Suggest the RIGHT viewer for the data: a real third axis gets the 3D Cube Viewer,
+            // everything else (2D imagers like this DAO frame) the FITS viewer.
+            var isCube = kind == FitsKind.Cube;
             var open = new Button
             {
                 Content = Loc.T(isCube ? "ObsDetail_OpenInCubeViewer" : "ObsDetail_OpenInFitsViewer"),
@@ -683,17 +718,19 @@ public sealed partial class ObservationDetailPage : UserControl
             };
             DownloadBar.ActionButton = open;
 
-            // The download also lands in the Research archive so it is tracked with notes/metadata.
-            RegisterInResearch(savedPath);
-            DownloadResearchText.Text = Loc.T("ObsDetail_AddedToResearch");
-            DownloadResearchLink.Content = Loc.T("ObsDetail_ViewInResearch");
-            DownloadResearchRow.Visibility = Visibility.Visible;
+            // Only the SCIENCE file lands in the Research archive: a calibration/aux FITS would
+            // clobber the science record (the store replaces by PublisherID).
+            if (ctx.IsScience)
+            {
+                RegisterInResearch(ctx, savedPath);
+                DownloadResearchText.Text = Loc.T("ObsDetail_AddedToResearch");
+                DownloadResearchLink.Content = Loc.T("ObsDetail_ViewInResearch");
+                DownloadResearchRow.Visibility = Visibility.Visible;
+            }
         }
         else
         {
-            // Preview PNG / README / other sidecar: shell-open with the OS default app. Never
-            // registered as the observation's Research file — that would clobber the FITS record
-            // (the store replaces by PublisherID).
+            // Preview PNG / README / other sidecar: shell-open with the OS default app.
             var open = new Button { Content = Loc.T("ObsDetail_OpenDownloaded") };
             open.Click += (_, _) =>
             {
@@ -711,32 +748,31 @@ public sealed partial class ObservationDetailPage : UserControl
     private void OnViewInResearchClick(object sender, RoutedEventArgs e) => ViewInResearchRequested?.Invoke();
 
     /// <summary>Track the downloaded file in the Research archive (updates the existing record when
-    /// this observation was downloaded before).</summary>
-    private void RegisterInResearch(string localPath)
+    /// this observation was downloaded before). Uses the context captured at download START.</summary>
+    private static void RegisterInResearch(DownloadContext ctx, string localPath)
     {
         try
         {
             var store = App.Services.GetRequiredService<Services.ObservationStore>();
+            var existing = store.Observations.FirstOrDefault(o => o.PublisherID == ctx.PublisherID);
             long? size = null;
             try { size = new FileInfo(localPath).Length; } catch { }
             store.Save(new Models.DownloadedObservation
             {
-                PublisherID = _publisherID,
-                Collection = _collection,
-                ObservationID = _observationID,
-                TargetName = _current?.Target?.Name ?? string.Empty,
-                Instrument = _current?.Instrument?.Name ?? string.Empty,
-                ProposalId = _current?.Proposal?.Id ?? string.Empty,
-                ProposalPi = _current?.Proposal?.Pi ?? string.Empty,
-                ProposalTitle = _current?.Proposal?.Title ?? string.Empty,
+                PublisherID = ctx.PublisherID,
+                Collection = ctx.Collection,
+                ObservationID = ctx.ObservationID,
+                TargetName = ctx.Observation?.Target?.Name ?? string.Empty,
+                Instrument = ctx.Observation?.Instrument?.Name ?? string.Empty,
+                ProposalId = ctx.Observation?.Proposal?.Id ?? string.Empty,
+                ProposalPi = ctx.Observation?.Proposal?.Pi ?? string.Empty,
+                ProposalTitle = ctx.Observation?.Proposal?.Title ?? string.Empty,
                 LocalPath = localPath,
                 FileSize = size,
                 // Preview URLs so Research can show the image by default (falls back to the
                 // record this one replaces — the store swaps by PublisherID).
-                ThumbnailURL = _lastLinks?.Thumbnails.FirstOrDefault()
-                               ?? store.Observations.FirstOrDefault(o => o.PublisherID == _publisherID)?.ThumbnailURL,
-                PreviewURL = _lastLinks?.Previews.FirstOrDefault()
-                             ?? store.Observations.FirstOrDefault(o => o.PublisherID == _publisherID)?.PreviewURL,
+                ThumbnailURL = ctx.Links?.Thumbnails.FirstOrDefault() ?? existing?.ThumbnailURL,
+                PreviewURL = ctx.Links?.Previews.FirstOrDefault() ?? existing?.PreviewURL,
             });
         }
         catch (Exception ex)

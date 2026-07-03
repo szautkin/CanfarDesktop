@@ -278,9 +278,6 @@
   <data name="Settings_AdvancedHeader.Text" xml:space="preserve">
     <value>Avancé</value>
   </data>
-  <data name="Settings_ApiBaseUrlBox.Header" xml:space="preserve">
-    <value>URL de base de l'API CADC</value>
-  </data>
   <data name="Settings_AutoSaveCaption.Text" xml:space="preserve">
     <value>Les modifications sont enregistrées automatiquement.</value>
   </data>
@@ -3581,7 +3578,7 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
     <value>Points de service</value>
   </data>
   <data name="Settings_EndpointsCaption.Text" xml:space="preserve">
-    <value>Tous les hôtes de services CANFAR/CADC utilisés par l'application. Les valeurs par défaut sont les hôtes publics standards du registre du CADC (ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg) — ne les modifiez que pour cibler un miroir ou un déploiement de test. Les nouvelles requêtes utilisent immédiatement les hôtes mis à jour ; une valeur invalide retombe sur la valeur par défaut.</value>
+    <value>Tous les hôtes de services CANFAR/CADC utilisés par l'application. Les valeurs par défaut sont les hôtes publics standards du registre du CADC (ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg) — ne les modifiez que pour cibler un miroir ou un déploiement de test. Les nouvelles requêtes utilisent immédiatement les hôtes mis à jour ; une valeur invalide retombe sur la valeur par défaut.</value>
   </data>
   <data name="Settings_EpLoginBox.Header" xml:space="preserve">
     <value>Connexion CADC (ac)</value>
@@ -3621,9 +3618,6 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Settings_ProbeFail" xml:space="preserve">
     <value>✗ {0} — injoignable ({1})</value>
-  </data>
-  <data name="ObsDetail_FileTypeFz" xml:space="preserve">
-    <value>FITS compressé (fpack)</value>
   </data>
   <data name="Search_LoadedRecent" xml:space="preserve">
     <value>Recherche récente chargée : {0}</value>
@@ -3756,5 +3750,8 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="ObsDetail_NoLinkForArtifact" xml:space="preserve">
     <value>Aucun lien de téléchargement disponible pour {0}.</value>
+  </data>
+  <data name="MainWindow_SectionFormat" xml:space="preserve">
+    <value>·  {0}</value>
   </data>
 </root>

@@ -9,11 +9,36 @@ namespace CanfarDesktop.Helpers;
 /// (NAXIS=0, the common MEF layout) to the first extension header. Any parse trouble returns false:
 /// the 2D FITS viewer is the safe default suggestion.
 /// </summary>
+public enum FitsKind { NotFits, Image2D, Cube }
+
 public static class FitsSniff
 {
     private const int BlockSize = 2880;
     private const int CardSize = 80;
     private const int MaxHeaderBlocks = 64; // defensive cap per HDU header
+
+    /// <summary>
+    /// Content-based classification (extension lies: a mis-served download can put FITS bytes in a
+    /// ".png"). Magic check first — every FITS starts with the literal card "SIMPLE  =" — then the
+    /// cube-vs-2D shape sniff.
+    /// </summary>
+    public static FitsKind ClassifyFile(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            var magic = new byte[9];
+            if (stream.Read(magic, 0, 9) < 9 ||
+                !System.Text.Encoding.ASCII.GetString(magic).StartsWith("SIMPLE  =", StringComparison.Ordinal))
+                return FitsKind.NotFits;
+            stream.Position = 0;
+            return IsLikelyCube(stream) ? FitsKind.Cube : FitsKind.Image2D;
+        }
+        catch
+        {
+            return FitsKind.NotFits;
+        }
+    }
 
     public static bool IsLikelyCube(string path)
     {

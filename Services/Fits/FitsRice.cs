@@ -18,7 +18,13 @@ public static class FitsRice
     public static bool CanDecompress(FitsHeader header)
         => header.GetBool("ZIMAGE")
            && string.Equals(header.GetString("ZCMPTYPE")?.Trim(), "RICE_1", StringComparison.Ordinal)
-           && header.GetInt("ZBITPIX") == 16;
+           && header.GetInt("ZBITPIX") == 16
+           // 2D images only: a compressed CUBE (ZNAXIS=3, e.g. SITELLE) would silently decode as
+           // plane 1 posing as the whole dataset — refuse so the funpack advice surfaces instead.
+           && header.GetInt("ZNAXIS") == 2
+           // 32-bit 'P' array descriptors only; 64-bit 'Q' descriptors (heaps > 2 GB) have a
+           // different row layout and would be misparsed into garbage offsets.
+           && (header.GetString("TFORM1")?.Trim().Contains('P') ?? false);
 
     /// <summary>
     /// Decompress a RICE_1 HDU. <paramref name="tableAndHeap"/> is the HDU's full data area
@@ -51,10 +57,21 @@ public static class FitsRice
 
         var nTilesX = (imageWidth + tileWidth - 1) / tileWidth;
         var nTilesY = (imageHeight + tileHeight - 1) / tileHeight;
-        var tilesToDecode = Math.Min(nTilesX * nTilesY, tableRows);
+        var nTiles = nTilesX * nTilesY;
+        if (tableRows < nTiles)
+            // A silent partial decode (missing tiles as black) would poison the display stretch —
+            // throw so the caller degrades to the actionable funpack advice.
+            throw new InvalidDataException($"Compressed FITS: {tableRows} tiles in table, geometry needs {nTiles}.");
 
-        var raw = new int[totalPixels];
-        for (var tileIdx = 0; tileIdx < tilesToDecode; tileIdx++)
+        // Physical values: BSCALE/BZERO from the bintable header apply to the ORIGINAL integers
+        // (BZERO=32768 is the standard unsigned-uint16-as-int16 convention). Scatter straight into
+        // the float output — no integer staging array (it doubled peak memory for nothing).
+        var bscale = (float)header.BScale;
+        var bzero = (float)header.BZero;
+        var pixels = new float[totalPixels];
+        float min = float.MaxValue, max = float.MinValue;
+
+        for (var tileIdx = 0; tileIdx < nTiles; tileIdx++)
         {
             var rowStart = (long)tileIdx * tableRowBytes;
             var nelem = ReadBigEndianInt32(tableAndHeap, rowStart);
@@ -74,7 +91,7 @@ public static class FitsRice
             if (tilePxWidth <= 0 || tilePxHeight <= 0) continue;
 
             var decoded = RiceDecode(
-                tableAndHeap.AsSpan((int)tileStart, nelem), tilePxWidth * tilePxHeight, blockSize);
+                tableAndHeap, (int)tileStart, nelem, tilePxWidth * tilePxHeight, blockSize);
 
             var destRowStart = tileRow * tileHeight;
             for (var py = 0; py < tilePxHeight; py++)
@@ -84,23 +101,13 @@ public static class FitsRice
                 for (var px = 0; px < tilePxWidth; px++)
                 {
                     var dest = destBase + px;
-                    if (dest < raw.Length) raw[dest] = decoded[srcBase + px];
+                    if (dest >= pixels.Length) continue;
+                    var v = bzero + bscale * decoded[srcBase + px];
+                    pixels[dest] = v;
+                    if (v < min) min = v;
+                    if (v > max) max = v;
                 }
             }
-        }
-
-        // Physical values: BSCALE/BZERO from the bintable header apply to the ORIGINAL integers
-        // (BZERO=32768 is the standard unsigned-uint16-as-int16 convention).
-        var bscale = (float)header.BScale;
-        var bzero = (float)header.BZero;
-        var pixels = new float[totalPixels];
-        float min = float.MaxValue, max = float.MinValue;
-        for (var i = 0; i < pixels.Length; i++)
-        {
-            var v = bzero + bscale * raw[i];
-            pixels[i] = v;
-            if (v < min) min = v;
-            if (v > max) max = v;
         }
 
         return new FitsImageData
@@ -117,13 +124,25 @@ public static class FitsRice
 
     // ── RICE_1 decoder (cfitsio fits_rdecomp, BYTEPIX=2) ─────────────────────
 
-    /// <summary>Decode one Rice-coded tile to signed 16-bit pixels (as ints).</summary>
+    // cfitsio constants for BYTEPIX=2: fsbits=4 (nybble), fsmax=14, bbits=16 (high-entropy literal width).
+    private const int FsMax = 14;
+    private const int BBits = 16;
+
+    /// <summary>Test-friendly overload over a standalone byte sequence.</summary>
     internal static short[] RiceDecode(ReadOnlySpan<byte> bytes, int pixelCount, int blockSize)
+    {
+        var array = bytes.ToArray();
+        return RiceDecode(array, 0, array.Length, pixelCount, blockSize);
+    }
+
+    /// <summary>Decode one Rice-coded tile to signed 16-bit pixels. Reads directly from the shared
+    /// heap buffer (no per-tile copy — a CFHT frame has thousands of tiles).</summary>
+    internal static short[] RiceDecode(byte[] data, int start, int count, int pixelCount, int blockSize)
     {
         var output = new short[pixelCount];
         if (pixelCount == 0) return output;
 
-        var reader = new BitReader(bytes.ToArray());
+        var reader = new BitReader(data, start, count);
 
         // Literal first pixel: big-endian int16 seed (the first block iteration emits pixel 0).
         var high = reader.ReadByte();
@@ -148,6 +167,26 @@ public static class FitsRice
             if (fs < 0)
             {
                 for (var i = 0; i < blockCount; i++) output[produced++] = unchecked((short)prev);
+                continue;
+            }
+
+            if (fs >= FsMax)
+            {
+                // High-entropy escape (cfitsio fs==fsmax): Rice coding would expand this block, so
+                // each pixel's folded diff is stored as a literal 16-bit value — no unary quotient.
+                // Without this branch the bitstream desyncs and the rest of the tile is garbage.
+                for (var i = 0; i < blockCount; i++)
+                {
+                    var diff = reader.ReadBits(BBits);
+                    if (diff < 0)
+                    {
+                        output[produced++] = unchecked((short)prev);
+                        continue;
+                    }
+                    var signed = (diff & 1) == 0 ? diff >> 1 : -((diff + 1) >> 1);
+                    prev = unchecked((short)(prev + signed));
+                    output[produced++] = unchecked((short)prev);
+                }
                 continue;
             }
 
@@ -186,23 +225,26 @@ public static class FitsRice
         return (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3];
     }
 
-    /// <summary>MSB-first continuous bit stream (matches cfitsio). Reads return -1 when exhausted.</summary>
+    /// <summary>MSB-first continuous bit stream over a slice of a shared buffer (matches cfitsio).
+    /// Reads return -1 when exhausted.</summary>
     private sealed class BitReader
     {
         private readonly byte[] _bytes;
+        private readonly int _start;
         private int _bitPos;
         private readonly int _totalBits;
 
-        public BitReader(byte[] bytes)
+        public BitReader(byte[] bytes, int start, int count)
         {
             _bytes = bytes;
-            _totalBits = bytes.Length * 8;
+            _start = start;
+            _totalBits = count * 8;
         }
 
         public int ReadBit()
         {
             if (_bitPos >= _totalBits) return -1;
-            var bit = (_bytes[_bitPos >> 3] >> (7 - (_bitPos & 7))) & 1;
+            var bit = (_bytes[_start + (_bitPos >> 3)] >> (7 - (_bitPos & 7))) & 1;
             _bitPos++;
             return bit;
         }

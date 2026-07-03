@@ -52,19 +52,26 @@ public static class FitsParser
                         read += n;
                     }
                     if (read < dataBytes)
-                        throw new InvalidDataException($"FITS data truncated: expected {dataBytes} bytes, got {read}");
-
-                    try
                     {
-                        imageData = FitsRice.Decompress(header, buffer);
-                        hasReadableImage = true;
-                    }
-                    catch (Exception ex) when (ex is not OutOfMemoryException)
-                    {
-                        // Corrupt tiles / unexpected geometry: fall back to the funpack advice.
-                        System.Diagnostics.Debug.WriteLine($"fpack decompression failed: {ex.Message}");
+                        // Truncated compressed HDU: degrade like the old skip path (EOF-tolerant)
+                        // so readable plain HDUs elsewhere in the file still open.
                         sawCompressedImage = true;
                         compressionType ??= header.GetString("ZCMPTYPE");
+                    }
+                    else
+                    {
+                        try
+                        {
+                            imageData = FitsRice.Decompress(header, buffer);
+                            hasReadableImage = true;
+                        }
+                        catch (Exception ex) when (ex is not OutOfMemoryException)
+                        {
+                            // Corrupt tiles / unexpected geometry: fall back to the funpack advice.
+                            System.Diagnostics.Debug.WriteLine($"fpack decompression failed: {ex.Message}");
+                            sawCompressedImage = true;
+                            compressionType ??= header.GetString("ZCMPTYPE");
+                        }
                     }
                 }
                 else

@@ -83,6 +83,7 @@
     <Compile Include="..\Helpers\ADQLBuilder.cs" Link="Linked\ADQLBuilder.cs" />
     <Compile Include="..\Helpers\NumberInput.cs" Link="Linked\NumberInput.cs" />
     <Compile Include="..\Helpers\FitsSniff.cs" Link="Linked\FitsSniff.cs" />
+    <Compile Include="..\Helpers\ApiEndpointDefaults.cs" Link="Linked\ApiEndpointDefaults.cs" />
     <Compile Include="..\Models\SearchModels.cs" Link="Linked\SearchModels.cs" />
     <Compile Include="..\Models\DataLinkResult.cs" Link="Linked\DataLinkResult.cs" />
     <Compile Include="..\Helpers\DataLinkArtifactSelector.cs" Link="Linked\DataLinkArtifactSelector.cs" />

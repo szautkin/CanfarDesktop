@@ -447,7 +447,9 @@ public sealed partial class MainWindow : Window
         _viewState?.SetMode(mode, title);
 
         // Title-bar section subtitle: name the app you're inside (localized), hidden on the launchpad.
-        SectionText.Text = _currentMode == AppMode.Landing ? string.Empty : "·  " + TitleForModule(mode);
+        SectionText.Text = _currentMode == AppMode.Landing
+            ? string.Empty
+            : Loc.F("MainWindow_SectionFormat", TitleForModule(mode));
         SectionText.Visibility = _currentMode == AppMode.Landing ? Visibility.Collapsed : Visibility.Visible;
     }
 

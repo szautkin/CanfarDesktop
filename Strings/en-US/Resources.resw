@@ -278,9 +278,6 @@
   <data name="Settings_AdvancedHeader.Text" xml:space="preserve">
     <value>Advanced</value>
   </data>
-  <data name="Settings_ApiBaseUrlBox.Header" xml:space="preserve">
-    <value>CADC API base URL</value>
-  </data>
   <data name="Settings_AutoSaveCaption.Text" xml:space="preserve">
     <value>Changes are saved automatically.</value>
   </data>
@@ -3622,9 +3619,6 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Settings_ProbeFail" xml:space="preserve">
     <value>✗ {0} — unreachable ({1})</value>
   </data>
-  <data name="ObsDetail_FileTypeFz" xml:space="preserve">
-    <value>Compressed FITS (fpack)</value>
-  </data>
   <data name="Search_LoadedRecent" xml:space="preserve">
     <value>Loaded your recent search: {0}</value>
   </data>
@@ -3756,5 +3750,8 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="ObsDetail_NoLinkForArtifact" xml:space="preserve">
     <value>No download link available for {0}.</value>
+  </data>
+  <data name="MainWindow_SectionFormat" xml:space="preserve">
+    <value>·  {0}</value>
   </data>
 </root>

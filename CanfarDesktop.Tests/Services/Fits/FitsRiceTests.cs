@@ -39,6 +39,61 @@ public class FitsRiceTests
     }
 
     [Fact]
+    public void HighEntropyBlock_FsMax_DecodesLiteral16BitDiffs()
+    {
+        // cfitsio escape: nybble raw=15 → fs=fsmax=14 → each pixel is a literal 16-bit folded
+        // diff, NO unary quotient. seed=0; diffs 2 (→+1) and 3 (→−2).
+        // Bits: 1111 | 0000000000000010 | 0000000000000011 | pad → F0 00 20 00 30.
+        var bytes = new byte[] { 0x00, 0x00, 0xF0, 0x00, 0x20, 0x00, 0x30 };
+        var pixels = FitsRice.RiceDecode(bytes, pixelCount: 2, blockSize: 32);
+        Assert.Equal(new short[] { 1, -1 }, pixels);
+    }
+
+    [Fact]
+    public void Parse_CompressedCube_FallsBackToFunpackAdvice()
+    {
+        // ZNAXIS=3: decoding only plane 1 and presenting it as the dataset would be silent data
+        // loss — the parser must refuse and surface the funpack advice.
+        var ms = new MemoryStream();
+        WriteHeader(ms,
+            Card("SIMPLE", "T"), Card("BITPIX", "16"), Card("NAXIS", "0"), Card("EXTEND", "T"));
+        WriteHeader(ms,
+            Card("XTENSION", "'BINTABLE'"), Card("BITPIX", "8"),
+            Card("NAXIS", "2"), Card("NAXIS1", "8"), Card("NAXIS2", "1"),
+            Card("PCOUNT", "3"), Card("GCOUNT", "1"), Card("TFIELDS", "1"),
+            Card("TFORM1", "'1PB(3)  '"),
+            Card("ZIMAGE", "T"), Card("ZCMPTYPE", "'RICE_1  '"), Card("ZBITPIX", "16"),
+            Card("ZNAXIS", "3"), Card("ZNAXIS1", "3"), Card("ZNAXIS2", "1"), Card("ZNAXIS3", "5"));
+        ms.Write(new byte[2880]);
+        ms.Position = 0;
+
+        var ex = Assert.Throws<InvalidDataException>(() => FitsParser.Parse(ms));
+        Assert.Contains("funpack", ex.Message);
+    }
+
+    [Fact]
+    public void Parse_QDescriptors_FallBackToFunpackAdvice()
+    {
+        // 64-bit 'Q' variable-length descriptors have a different row layout — misparsing them
+        // would read garbage heap offsets, so the parser must refuse rather than decode.
+        var ms = new MemoryStream();
+        WriteHeader(ms,
+            Card("SIMPLE", "T"), Card("BITPIX", "16"), Card("NAXIS", "0"), Card("EXTEND", "T"));
+        WriteHeader(ms,
+            Card("XTENSION", "'BINTABLE'"), Card("BITPIX", "8"),
+            Card("NAXIS", "2"), Card("NAXIS1", "16"), Card("NAXIS2", "1"),
+            Card("PCOUNT", "3"), Card("GCOUNT", "1"), Card("TFIELDS", "1"),
+            Card("TFORM1", "'1QB(3)  '"),
+            Card("ZIMAGE", "T"), Card("ZCMPTYPE", "'RICE_1  '"), Card("ZBITPIX", "16"),
+            Card("ZNAXIS", "2"), Card("ZNAXIS1", "3"), Card("ZNAXIS2", "1"));
+        ms.Write(new byte[2880]);
+        ms.Position = 0;
+
+        var ex = Assert.Throws<InvalidDataException>(() => FitsParser.Parse(ms));
+        Assert.Contains("funpack", ex.Message);
+    }
+
+    [Fact]
     public void TruncatedStream_FillsRemainderWithPrev()
     {
         // Seed only, no block data: every pixel repeats the seed.

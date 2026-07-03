@@ -2,8 +2,6 @@ namespace CanfarDesktop.Services;
 
 public interface ISettingsService
 {
-    string ApiBaseUrl { get; set; }
-
     // ── CANFAR service endpoints (defaults = the standard public hosts; user-editable in Settings).
     // Applied to the ApiEndpoints singleton at startup and on save — URLs are built per request, so
     // changes take effect immediately for new calls.

@@ -20,41 +20,28 @@ public class SettingsService : ISettingsService
         }
     }
 
-    public string ApiBaseUrl { get; set; } = "https://ws-cadc.canfar.net";
-
-    // Endpoint defaults mirror Helpers.ApiEndpoints — one place each; the settings only exist to
-    // let a user redirect to a mirror/staging host and must reset to exactly these values.
-    internal static class EndpointDefaults
-    {
-        public const string LoginBase = "https://ws-cadc.canfar.net/ac";
-        public const string SkahaBase = "https://ws-uv.canfar.net/skaha";
-        public const string AcBase = "https://ws-uv.canfar.net/ac";
-        public const string ArcNodes = "https://ws-uv.canfar.net/arc/nodes";
-        public const string ArcFiles = "https://ws-uv.canfar.net/arc/files";
-        public const string TapBase = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus";
-        public const string Caom2OpsBase = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops";
-        public const string ResolverBase = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cadc-target-resolver";
-    }
-
-    public string EndpointLoginBase { get; set; } = EndpointDefaults.LoginBase;
-    public string EndpointSkahaBase { get; set; } = EndpointDefaults.SkahaBase;
-    public string EndpointAcBase { get; set; } = EndpointDefaults.AcBase;
-    public string EndpointArcNodes { get; set; } = EndpointDefaults.ArcNodes;
-    public string EndpointArcFiles { get; set; } = EndpointDefaults.ArcFiles;
-    public string EndpointTapBase { get; set; } = EndpointDefaults.TapBase;
-    public string EndpointCaom2OpsBase { get; set; } = EndpointDefaults.Caom2OpsBase;
-    public string EndpointResolverBase { get; set; } = EndpointDefaults.ResolverBase;
+    // Endpoint defaults come from Helpers.ApiEndpointDefaults — the single source of truth
+    // shared with ApiEndpoints' initializers. Values equal to the default are NOT persisted, so a
+    // future release changing a default reaches every user who never customized that field.
+    public string EndpointLoginBase { get; set; } = Helpers.ApiEndpointDefaults.LoginBase;
+    public string EndpointSkahaBase { get; set; } = Helpers.ApiEndpointDefaults.SkahaBase;
+    public string EndpointAcBase { get; set; } = Helpers.ApiEndpointDefaults.AcBase;
+    public string EndpointArcNodes { get; set; } = Helpers.ApiEndpointDefaults.ArcNodes;
+    public string EndpointArcFiles { get; set; } = Helpers.ApiEndpointDefaults.ArcFiles;
+    public string EndpointTapBase { get; set; } = Helpers.ApiEndpointDefaults.TapBase;
+    public string EndpointCaom2OpsBase { get; set; } = Helpers.ApiEndpointDefaults.Caom2OpsBase;
+    public string EndpointResolverBase { get; set; } = Helpers.ApiEndpointDefaults.ResolverBase;
 
     public void ResetEndpoints()
     {
-        EndpointLoginBase = EndpointDefaults.LoginBase;
-        EndpointSkahaBase = EndpointDefaults.SkahaBase;
-        EndpointAcBase = EndpointDefaults.AcBase;
-        EndpointArcNodes = EndpointDefaults.ArcNodes;
-        EndpointArcFiles = EndpointDefaults.ArcFiles;
-        EndpointTapBase = EndpointDefaults.TapBase;
-        EndpointCaom2OpsBase = EndpointDefaults.Caom2OpsBase;
-        EndpointResolverBase = EndpointDefaults.ResolverBase;
+        EndpointLoginBase = Helpers.ApiEndpointDefaults.LoginBase;
+        EndpointSkahaBase = Helpers.ApiEndpointDefaults.SkahaBase;
+        EndpointAcBase = Helpers.ApiEndpointDefaults.AcBase;
+        EndpointArcNodes = Helpers.ApiEndpointDefaults.ArcNodes;
+        EndpointArcFiles = Helpers.ApiEndpointDefaults.ArcFiles;
+        EndpointTapBase = Helpers.ApiEndpointDefaults.TapBase;
+        EndpointCaom2OpsBase = Helpers.ApiEndpointDefaults.Caom2OpsBase;
+        EndpointResolverBase = Helpers.ApiEndpointDefaults.ResolverBase;
     }
 
     public void ApplyEndpointsTo(Helpers.ApiEndpoints endpoints)
@@ -67,14 +54,14 @@ public class SettingsService : ISettingsService
                 ? v : fallback; // a malformed host must never brick the app — fall back to default
         }
 
-        endpoints.LoginBaseUrl = Clean(EndpointLoginBase, EndpointDefaults.LoginBase);
-        endpoints.SkahaBaseUrl = Clean(EndpointSkahaBase, EndpointDefaults.SkahaBase);
-        endpoints.AcBaseUrl = Clean(EndpointAcBase, EndpointDefaults.AcBase);
-        endpoints.ArcNodesRoot = Clean(EndpointArcNodes, EndpointDefaults.ArcNodes);
-        endpoints.ArcFilesRoot = Clean(EndpointArcFiles, EndpointDefaults.ArcFiles);
-        endpoints.TapBaseUrl = Clean(EndpointTapBase, EndpointDefaults.TapBase);
-        endpoints.Caom2OpsBaseUrl = Clean(EndpointCaom2OpsBase, EndpointDefaults.Caom2OpsBase);
-        endpoints.ResolverBaseUrl = Clean(EndpointResolverBase, EndpointDefaults.ResolverBase);
+        endpoints.LoginBaseUrl = Clean(EndpointLoginBase, Helpers.ApiEndpointDefaults.LoginBase);
+        endpoints.SkahaBaseUrl = Clean(EndpointSkahaBase, Helpers.ApiEndpointDefaults.SkahaBase);
+        endpoints.AcBaseUrl = Clean(EndpointAcBase, Helpers.ApiEndpointDefaults.AcBase);
+        endpoints.ArcNodesRoot = Clean(EndpointArcNodes, Helpers.ApiEndpointDefaults.ArcNodes);
+        endpoints.ArcFilesRoot = Clean(EndpointArcFiles, Helpers.ApiEndpointDefaults.ArcFiles);
+        endpoints.TapBaseUrl = Clean(EndpointTapBase, Helpers.ApiEndpointDefaults.TapBase);
+        endpoints.Caom2OpsBaseUrl = Clean(EndpointCaom2OpsBase, Helpers.ApiEndpointDefaults.Caom2OpsBase);
+        endpoints.ResolverBaseUrl = Clean(EndpointResolverBase, Helpers.ApiEndpointDefaults.ResolverBase);
     }
 
     public string DefaultSessionType { get; set; } = "notebook";
@@ -88,7 +75,6 @@ public class SettingsService : ISettingsService
     public void Save()
     {
         if (_localSettings is null) return;
-        _localSettings.Values["ApiBaseUrl"] = ApiBaseUrl;
         _localSettings.Values["DefaultSessionType"] = DefaultSessionType;
         _localSettings.Values["DefaultResourceType"] = DefaultResourceType;
         _localSettings.Values["DefaultCores"] = DefaultCores;
@@ -96,21 +82,31 @@ public class SettingsService : ISettingsService
         _localSettings.Values["DefaultGpus"] = DefaultGpus;
         _localSettings.Values["Theme"] = Theme;
         _localSettings.Values["Language"] = Language;
-        _localSettings.Values["EndpointLoginBase"] = EndpointLoginBase;
-        _localSettings.Values["EndpointSkahaBase"] = EndpointSkahaBase;
-        _localSettings.Values["EndpointAcBase"] = EndpointAcBase;
-        _localSettings.Values["EndpointArcNodes"] = EndpointArcNodes;
-        _localSettings.Values["EndpointArcFiles"] = EndpointArcFiles;
-        _localSettings.Values["EndpointTapBase"] = EndpointTapBase;
-        _localSettings.Values["EndpointCaom2OpsBase"] = EndpointCaom2OpsBase;
-        _localSettings.Values["EndpointResolverBase"] = EndpointResolverBase;
+        // Endpoints: persist only real customizations. Freezing the current defaults into
+        // settings would pin every user to this release's hosts forever.
+        SaveEndpoint("EndpointLoginBase", EndpointLoginBase, Helpers.ApiEndpointDefaults.LoginBase);
+        SaveEndpoint("EndpointSkahaBase", EndpointSkahaBase, Helpers.ApiEndpointDefaults.SkahaBase);
+        SaveEndpoint("EndpointAcBase", EndpointAcBase, Helpers.ApiEndpointDefaults.AcBase);
+        SaveEndpoint("EndpointArcNodes", EndpointArcNodes, Helpers.ApiEndpointDefaults.ArcNodes);
+        SaveEndpoint("EndpointArcFiles", EndpointArcFiles, Helpers.ApiEndpointDefaults.ArcFiles);
+        SaveEndpoint("EndpointTapBase", EndpointTapBase, Helpers.ApiEndpointDefaults.TapBase);
+        SaveEndpoint("EndpointCaom2OpsBase", EndpointCaom2OpsBase, Helpers.ApiEndpointDefaults.Caom2OpsBase);
+        SaveEndpoint("EndpointResolverBase", EndpointResolverBase, Helpers.ApiEndpointDefaults.ResolverBase);
+    }
+
+
+    private void SaveEndpoint(string key, string value, string defaultValue)
+    {
+        if (_localSettings is null) return;
+        if (string.Equals(value, defaultValue, StringComparison.Ordinal))
+            _localSettings.Values.Remove(key);
+        else
+            _localSettings.Values[key] = value;
     }
 
     public void Load()
     {
         if (_localSettings is null) return;
-        if (_localSettings.Values.TryGetValue("ApiBaseUrl", out var baseUrl))
-            ApiBaseUrl = (string)baseUrl;
         if (_localSettings.Values.TryGetValue("DefaultSessionType", out var sessionType))
             DefaultSessionType = (string)sessionType;
         if (_localSettings.Values.TryGetValue("DefaultResourceType", out var resourceType))

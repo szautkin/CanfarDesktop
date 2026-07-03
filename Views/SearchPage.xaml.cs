@@ -293,6 +293,9 @@ public sealed partial class SearchPage : Page
     /// <summary>Transient "we loaded your pick" confirmation in the shared info bar.</summary>
     private void ShowLoadedFeedback(string title)
     {
+        // Skipped while a download is streaming: bumping the shared sequence would hijack and
+        // auto-close the download's progress bar, eating its completion message.
+        if (DownloadInfoBar.IsOpen && DownloadProgressBar.Visibility == Visibility.Visible) return;
         var seq = ++_downloadOpSeq;
         DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
         DownloadInfoBar.Title = title;
