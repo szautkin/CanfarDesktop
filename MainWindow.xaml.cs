@@ -50,7 +50,9 @@ public sealed partial class MainWindow : Window
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
         var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
-        appWindow.SetIcon("Assets/Verbinal.ico");
+        // Absolute path: a relative one resolves against the process working directory, which for a
+        // packaged launch is NOT the install folder — SetIcon then fails silently to the generic glyph.
+        appWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Verbinal.ico"));
         // Loc.T returns the key when no resources.pri is present (unpackaged dev run) — keep the English title then.
         var locTitle = Loc.T("MainWindow_Title");
         appWindow.Title = locTitle == "MainWindow_Title" ? "Verbinal - a CANFAR Science Portal and Research Platform" : locTitle;
