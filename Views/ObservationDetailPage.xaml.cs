@@ -52,13 +52,22 @@ public sealed partial class ObservationDetailPage : UserControl
 
     /// <summary>
     /// The page is a cached singleton, so without this a new observation opens on
-    /// whatever Pivot tab and scroll offset the previous one was left at.
+    /// whatever Pivot tab and scroll offset the previous one was left at — and, worse,
+    /// still shows the PREVIOUS observation's download banner, whose open-in-viewer
+    /// buttons point at the old file.
     /// </summary>
     private void ResetViewState()
     {
         DetailPivot.SelectedIndex = 0;
         foreach (var panel in new FrameworkElement[] { OverviewPanel, CoveragePanel, FilesPanel, ProvenancePanel, RawPanel })
             (panel.Parent as ScrollViewer)?.ChangeView(null, 0, null, disableAnimation: true);
+
+        DownloadBar.IsOpen = false;
+        DownloadBar.ActionButton = null;
+        DownloadResearchRow.Visibility = Visibility.Collapsed;
+        DownloadProgress.Visibility = Visibility.Visible; // restored for the next download's progress
+        DownloadProgress.IsIndeterminate = true;
+        DownloadText.Text = string.Empty;
     }
 
     private async Task ReloadAsync()
@@ -643,24 +652,12 @@ public sealed partial class ObservationDetailPage : UserControl
 
         // The download also lands in the Research archive so it is tracked with notes/metadata.
         RegisterInResearch(savedPath);
-        var viewResearch = new HyperlinkButton { Content = Loc.T("ObsDetail_ViewInResearch"), Padding = new Thickness(2, 0, 2, 0) };
-        viewResearch.Click += (_, _) => ViewInResearchRequested?.Invoke();
-        DownloadBar.Content = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 4,
-            Children =
-            {
-                new TextBlock
-                {
-                    Text = Loc.T("ObsDetail_AddedToResearch"),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-                },
-                viewResearch,
-            },
-        };
+        DownloadResearchText.Text = Loc.T("ObsDetail_AddedToResearch");
+        DownloadResearchLink.Content = Loc.T("ObsDetail_ViewInResearch");
+        DownloadResearchRow.Visibility = Visibility.Visible;
     }
+
+    private void OnViewInResearchClick(object sender, RoutedEventArgs e) => ViewInResearchRequested?.Invoke();
 
     /// <summary>Track the downloaded file in the Research archive (updates the existing record when
     /// this observation was downloaded before).</summary>

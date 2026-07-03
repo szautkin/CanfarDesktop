@@ -65,6 +65,13 @@
                     <ProgressBar x:Name="DownloadProgress" IsIndeterminate="True" />
                     <TextBlock x:Name="DownloadText" Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <!-- Shown on completion: the file is tracked in Research (never swap InfoBar.Content —
+                         this panel IS the Content, and replacing it orphans the progress controls). -->
+                    <StackPanel x:Name="DownloadResearchRow" Orientation="Horizontal" Spacing="4" Visibility="Collapsed">
+                        <TextBlock x:Name="DownloadResearchText" VerticalAlignment="Center"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                        <HyperlinkButton x:Name="DownloadResearchLink" Padding="2,0" Click="OnViewInResearchClick" />
+                    </StackPanel>
                 </StackPanel>
             </InfoBar>
         </StackPanel>
