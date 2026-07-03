@@ -3631,4 +3631,7 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Search_LoadedSaved" xml:space="preserve">
     <value>Requête sauvegardée « {0} » chargée</value>
   </data>
+  <data name="Research_FitsViewer" xml:space="preserve">
+    <value>Visionneuse FITS</value>
+  </data>
 </root>

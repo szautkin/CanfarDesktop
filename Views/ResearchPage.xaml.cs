@@ -229,8 +229,14 @@ public sealed partial class ResearchPage : UserControl
 
         if (obs.FileExists)
         {
+            // Suggest the RIGHT in-app viewer for the data (header sniff, same rule as the
+            // observation-detail download banner): a real third axis \u2192 Cube Viewer, else the
+            // 2D FITS viewer. Shell-open and Explorer stay as secondary actions.
+            var isCube = Helpers.FitsSniff.IsLikelyCube(obs.LocalPath);
+            btnPanel.Children.Add(isCube
+                ? UIFactory.CreateIconButton("\uE809", Loc.T("Research_CubeViewer"), (_, _) => ViewModel.OpenInCubeViewerCommand.Execute(null))
+                : UIFactory.CreateIconButton("\uE7B8", Loc.T("Research_FitsViewer"), (_, _) => ViewModel.OpenInFitsViewerCommand.Execute(null)));
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8E5", Loc.T("Research_OpenFile"), (_, _) => ViewModel.OpenFileCommand.Execute(null)));
-            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE809", Loc.T("Research_CubeViewer"), (_, _) => ViewModel.OpenInCubeViewerCommand.Execute(null)));
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE838", Loc.T("Research_ShowInExplorer"), (_, _) => ViewModel.ShowInExplorerCommand.Execute(null)));
         }
         else

@@ -3631,4 +3631,7 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Search_LoadedSaved" xml:space="preserve">
     <value>Loaded saved query “{0}”</value>
   </data>
+  <data name="Research_FitsViewer" xml:space="preserve">
+    <value>FITS Viewer</value>
+  </data>
 </root>
