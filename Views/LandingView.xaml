@@ -21,7 +21,10 @@
             <!-- Tiles: 3 columns × 2 rows -->
             <ItemsRepeater x:Name="TilesRepeater" HorizontalAlignment="Center">
                 <ItemsRepeater.Layout>
-                    <UniformGridLayout Orientation="Horizontal"
+                    <!-- MaximumRowsOrColumns is adaptive (UpdateTileColumns): wide windows spread
+                         the tiles over more columns (up to 5 → two rows), narrow ones fall back
+                         to the classic 3-column launchpad. -->
+                    <UniformGridLayout x:Name="TilesLayout" Orientation="Horizontal"
                                        MinItemWidth="190" MinItemHeight="180"
                                        MinColumnSpacing="20" MinRowSpacing="20"
                                        MaximumRowsOrColumns="3" />

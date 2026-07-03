@@ -94,6 +94,19 @@ public sealed partial class LandingView : UserControl
             if (args.Element is Microsoft.UI.Xaml.FrameworkElement tile && hooked.Add(tile))
                 Helpers.AppMotion.AttachHoverScale(tile);
         };
+
+        // Adaptive launchpad: let wide windows spread the tiles over more columns (two rows on a
+        // full-screen 1440p/4K display) while narrow windows keep the classic 3-wide grid.
+        SizeChanged += (_, e) => UpdateTileColumns(e.NewSize.Width);
+    }
+
+    private void UpdateTileColumns(double availableWidth)
+    {
+        const double tile = 190, spacing = 20;
+        var fit = (int)Math.Floor((availableWidth + spacing) / (tile + spacing));
+        var columns = Math.Clamp(fit, 3, 5);
+        if (TilesLayout.MaximumRowsOrColumns != columns)
+            TilesLayout.MaximumRowsOrColumns = columns;
     }
 
     /// <summary>Locks/unlocks the auth-gated tiles (Portal, Storage). Called by MainWindow on auth changes.</summary>
