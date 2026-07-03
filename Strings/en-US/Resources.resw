@@ -3625,4 +3625,10 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="ObsDetail_FileTypeFz" xml:space="preserve">
     <value>Compressed FITS (fpack)</value>
   </data>
+  <data name="Search_LoadedRecent" xml:space="preserve">
+    <value>Loaded your recent search: {0}</value>
+  </data>
+  <data name="Search_LoadedSaved" xml:space="preserve">
+    <value>Loaded saved query “{0}”</value>
+  </data>
 </root>

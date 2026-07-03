@@ -3625,4 +3625,10 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="ObsDetail_FileTypeFz" xml:space="preserve">
     <value>FITS compressé (fpack)</value>
   </data>
+  <data name="Search_LoadedRecent" xml:space="preserve">
+    <value>Recherche récente chargée : {0}</value>
+  </data>
+  <data name="Search_LoadedSaved" xml:space="preserve">
+    <value>Requête sauvegardée « {0} » chargée</value>
+  </data>
 </root>

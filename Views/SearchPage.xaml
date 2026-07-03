@@ -200,7 +200,7 @@
                             </Grid>
 
                             <!-- Data Train (below the 4 columns) — lazy loaded on expand -->
-                            <Expander x:Uid="Search_ConstraintsExpander" Header="Additional Constraints" IsExpanded="False"
+                            <Expander x:Name="ConstraintsExpander" x:Uid="Search_ConstraintsExpander" Header="Additional Constraints" IsExpanded="False"
                                       HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                                 <StackPanel Spacing="8">
                                     <Grid ColumnSpacing="8">

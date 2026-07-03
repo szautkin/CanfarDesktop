@@ -276,7 +276,30 @@ public sealed partial class SearchPage : Page
                 SyncAllTrainLists();
             }
             MainPivot.SelectedIndex = 0;
+
+            // The pick may have restored facet selections that live inside the collapsed
+            // Additional Constraints expander — open it so the restored state is VISIBLE,
+            // and confirm the load so the form change doesn't pass silently.
+            var facetsRestored =
+                ViewModel.SelectedBands.Count + ViewModel.SelectedCollections.Count +
+                ViewModel.SelectedInstruments.Count + ViewModel.SelectedFilters.Count +
+                ViewModel.SelectedCalLevels.Count + ViewModel.SelectedDataTypes.Count +
+                ViewModel.SelectedObsTypes.Count;
+            if (facetsRestored > 0) ConstraintsExpander.IsExpanded = true;
+            ShowLoadedFeedback(Loc.F("Search_LoadedRecent", search.Summary));
         }
+    }
+
+    /// <summary>Transient "we loaded your pick" confirmation in the shared info bar.</summary>
+    private void ShowLoadedFeedback(string title)
+    {
+        var seq = ++_downloadOpSeq;
+        DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
+        DownloadInfoBar.Title = title;
+        DownloadProgressBar.Visibility = Visibility.Collapsed;
+        DownloadProgressText.Text = string.Empty;
+        DownloadInfoBar.IsOpen = true;
+        ScheduleDownloadBarReset(seq, 4000);
     }
 
     private void OnRemoveRecentSearch(object sender, RoutedEventArgs e)
@@ -305,6 +328,7 @@ public sealed partial class SearchPage : Page
         {
             ViewModel.LoadSavedQuery(query);
             MainPivot.SelectedIndex = 2;
+            ShowLoadedFeedback(Loc.F("Search_LoadedSaved", query.Name));
         }
     }
 
