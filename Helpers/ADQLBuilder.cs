@@ -338,8 +338,8 @@ public static class ADQLBuilder
         else
         {
             // Legacy wavelength min/max fallback
-            var hasMin = double.TryParse(s.WavelengthMin, out var wlMin) && wlMin > 0;
-            var hasMax = double.TryParse(s.WavelengthMax, out var wlMax) && wlMax > 0;
+            var hasMin = NumberInput.TryParseUser(s.WavelengthMin, out var wlMin) && wlMin > 0;
+            var hasMax = NumberInput.TryParseUser(s.WavelengthMax, out var wlMax) && wlMax > 0;
             if (hasMin && hasMax)
                 c.Add($"INTERSECTS( INTERVAL( {F(wlMin)}, {F(wlMax)} ), Plane.energy_bounds_samples ) = 1");
             else if (hasMin)
@@ -470,7 +470,7 @@ public static class ADQLBuilder
     private static void AddNumericRangeClause(string column, ParsedRange range, List<string> c)
     {
         AddConvertedRangeClause(column, range, "", c,
-            (v, _) => double.TryParse(v, out var d) ? d : null);
+            (v, _) => NumberInput.TryParseUser(v, out var d) ? d : null);
     }
 
     private static void AddInClause(string column, string commaSeparated, List<string> clauses)

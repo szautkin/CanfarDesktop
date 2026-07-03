@@ -109,7 +109,7 @@ public partial class PlatformLoadViewModel : ObservableObject
         if (TryStripSuffix(s, ["TB", "Ti", "T"], out var tb)) return tb * 1024;
         if (TryStripSuffix(s, ["MB", "Mi", "M"], out var mb)) return mb / 1024;
 
-        return double.TryParse(s, out var raw) ? raw : 0;
+        return Helpers.NumberInput.TryParseWire(s, out var raw) ? raw : 0;
     }
 
     private static bool TryStripSuffix(string s, string[] suffixes, out double value)
@@ -117,7 +117,7 @@ public partial class PlatformLoadViewModel : ObservableObject
         foreach (var suffix in suffixes)
         {
             if (s.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)
-                && double.TryParse(s[..^suffix.Length], out value))
+                && Helpers.NumberInput.TryParseWire(s[..^suffix.Length], out value))
                 return true;
         }
         value = 0;

@@ -81,6 +81,7 @@
     <Compile Include="..\Helpers\RangeParser.cs" Link="Linked\RangeParser.cs" />
     <Compile Include="..\Helpers\UnitConverter.cs" Link="Linked\UnitConverter.cs" />
     <Compile Include="..\Helpers\ADQLBuilder.cs" Link="Linked\ADQLBuilder.cs" />
+    <Compile Include="..\Helpers\NumberInput.cs" Link="Linked\NumberInput.cs" />
     <Compile Include="..\Models\SearchModels.cs" Link="Linked\SearchModels.cs" />
     <Compile Include="..\Models\DataLinkResult.cs" Link="Linked\DataLinkResult.cs" />
     <Compile Include="..\Helpers\DataLinkArtifactSelector.cs" Link="Linked\DataLinkArtifactSelector.cs" />

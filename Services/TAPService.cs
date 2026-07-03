@@ -158,9 +158,9 @@ public class TAPService : ITAPService
                 values[line[..eq].Trim()] = line[(eq + 1)..].Trim();
         }
 
-        if (!values.TryGetValue("ra", out var raStr) || !double.TryParse(raStr, out var ra))
+        if (!values.TryGetValue("ra", out var raStr) || !Helpers.NumberInput.TryParseWire(raStr, out var ra))
             return null;
-        if (!values.TryGetValue("dec", out var decStr) || !double.TryParse(decStr, out var dec))
+        if (!values.TryGetValue("dec", out var decStr) || !Helpers.NumberInput.TryParseWire(decStr, out var dec))
             return null;
 
         return new ResolverResult

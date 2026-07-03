@@ -61,7 +61,7 @@ public static class UnitConverter
     public static bool TryConvertToMetres(string numericValue, string unit, out double metres)
     {
         metres = 0;
-        if (!double.TryParse(numericValue, out var val) || val <= 0) return false;
+        if (!NumberInput.TryParseUser(numericValue, out var val) || val <= 0) return false;
 
         var u = unit.ToLower()
             .Replace("\u00b5", "u")  // µ → u
@@ -126,7 +126,7 @@ public static class UnitConverter
     public static bool TryConvertToSeconds(string numericValue, string unit, out double seconds)
     {
         seconds = 0;
-        if (!double.TryParse(numericValue, out var val)) return false;
+        if (!NumberInput.TryParseUser(numericValue, out var val)) return false;
 
         double? factor = unit.ToLower() switch
         {
@@ -149,7 +149,7 @@ public static class UnitConverter
     public static bool TryConvertToDays(string numericValue, string unit, out double days)
     {
         days = 0;
-        if (!double.TryParse(numericValue, out var val)) return false;
+        if (!NumberInput.TryParseUser(numericValue, out var val)) return false;
 
         double? factor = unit.ToLower() switch
         {
@@ -172,7 +172,7 @@ public static class UnitConverter
     public static bool TryConvertToDegrees(string numericValue, string unit, out double degrees)
     {
         degrees = 0;
-        if (!double.TryParse(numericValue, out var val)) return false;
+        if (!NumberInput.TryParseUser(numericValue, out var val)) return false;
 
         double? factor = unit.ToLower() switch
         {

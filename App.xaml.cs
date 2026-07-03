@@ -45,10 +45,11 @@ public partial class App : Application
             Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = tag;
             if (tag.Length > 0)
             {
+                // UI CULTURE ONLY. The UI language must not hijack CurrentCulture: that governs
+                // number/date parsing and formatting, and flipping it to fr-FR made dot-decimal
+                // wire data (TAP CSV, FITS cards) unparseable and risked comma-decimal output.
                 var culture = new System.Globalization.CultureInfo(tag);
-                System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
                 System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
-                System.Globalization.CultureInfo.CurrentCulture = culture;
                 System.Globalization.CultureInfo.CurrentUICulture = culture;
             }
         }
