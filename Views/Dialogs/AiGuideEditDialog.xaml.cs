@@ -18,7 +18,7 @@ public sealed partial class AiGuideEditDialog : ContentDialog
         _existing = existing;
         InitializeComponent();
 
-        Title = existing is null ? "New guide tool" : "Edit guide tool";
+        Title = existing is null ? Helpers.Loc.T("Guide_NewToolTitle") : Helpers.Loc.T("Guide_EditToolTitle");
         if (existing is not null)
         {
             NameBox.Text = existing.Name;
@@ -39,8 +39,8 @@ public sealed partial class AiGuideEditDialog : ContentDialog
     {
         var slug = AiGuideService.Slug(NameBox.Text ?? string.Empty);
         SlugText.Text = slug.Length > 0
-            ? $"Agent tool name: {slug}"
-            : "Agent tool name: (enter letters or numbers)";
+            ? Helpers.Loc.F("Guide_SlugLabel", slug)
+            : Helpers.Loc.T("Guide_SlugEmpty");
     }
 
     private void UpdateCounters()

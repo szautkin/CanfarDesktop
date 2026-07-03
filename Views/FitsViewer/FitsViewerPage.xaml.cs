@@ -202,7 +202,7 @@ public sealed partial class FitsViewerPage : UserControl
         var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
         package.SetText(text);
         Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-        ViewModel.StatusMessage = "Coordinates copied to clipboard";
+        ViewModel.StatusMessage = Loc.T("Fits_CoordsCopied");
         return text;
     }
 
@@ -210,7 +210,7 @@ public sealed partial class FitsViewerPage : UserControl
     {
         if (ViewModel.CrosshairPosition is null)
         {
-            ViewModel.StatusMessage = "Right-click on the image to place crosshair first";
+            ViewModel.StatusMessage = Loc.T("Fits_RightClickToPlace");
             return;
         }
         SearchAtPositionRequested?.Invoke(ViewModel.CrosshairPosition.Ra, ViewModel.CrosshairPosition.Dec);
@@ -243,14 +243,14 @@ public sealed partial class FitsViewerPage : UserControl
             var mag = Math.Abs(ImageTransform.ScaleX);
             ImageTransform.Rotation = 0;
             ImageTransform.ScaleX = mag;
-            ViewModel.StatusMessage = "Original orientation";
+            ViewModel.StatusMessage = Loc.T("Fits_OriginalOrientation");
             RedrawCrosshairFromImage();
             return;
         }
 
         if (ViewModel.ImageData?.Wcs is not { IsValid: true } wcs)
         {
-            ViewModel.StatusMessage = "No WCS — cannot determine North direction";
+            ViewModel.StatusMessage = Loc.T("Fits_NoWcsNorth");
             ViewModel.IsNorthUp = false;
             return;
         }
@@ -264,9 +264,9 @@ public sealed partial class FitsViewerPage : UserControl
         // With RenderTransformOrigin="0.5,0.5" the rotation is around image center —
         // no translate compensation needed.
 
-        ViewModel.StatusMessage = $"North Up (rotated {angle:F1}\u00b0" +
-            (wcs.HasParityFlip ? ", mirrored" : "") +
-            $", {wcs.PixelScaleArcsec:F2}\"/px)";
+        ViewModel.StatusMessage = wcs.HasParityFlip
+            ? Loc.F("Fits_NorthUpStatusMirrored", angle, wcs.PixelScaleArcsec)
+            : Loc.F("Fits_NorthUpStatus", angle, wcs.PixelScaleArcsec);
         RedrawCrosshairFromImage();
     }
 
@@ -279,7 +279,7 @@ public sealed partial class FitsViewerPage : UserControl
         var displayPixel = ViewModel.GoToCoordinate(ra, dec);
         if (displayPixel is null)
         {
-            ViewModel.StatusMessage = "No WCS available for coordinate navigation";
+            ViewModel.StatusMessage = Loc.T("Fits_NoWcsNav");
             return;
         }
 
@@ -290,7 +290,7 @@ public sealed partial class FitsViewerPage : UserControl
 
         if (x < 0 || x >= w || y < 0 || y >= h)
         {
-            ViewModel.StatusMessage = $"Coordinate outside image bounds (pixel {x:F0}, {y:F0} — image is {w}x{h})";
+            ViewModel.StatusMessage = Loc.F("Fits_CoordOutsideBounds", x, y, w, h);
             return;
         }
 
@@ -554,13 +554,13 @@ public sealed partial class FitsViewerPage : UserControl
             var fitsY = h - 1 - iy;
             var pixelIdx = fitsY * w + ix;
             var value = ViewModel.ImageData.Pixels[pixelIdx];
-            lines.Add($"Pixel ({ix}, {iy}) = {value:G6}");
+            lines.Add(Loc.F("Fits_PixelReadout", ix, iy, value));
 
             if (ViewModel.ImageData.Wcs is { IsValid: true } wcs)
             {
                 var (ra, dec) = wcs.PixelToWorld(ix + 1, fitsY + 1);
-                lines.Add($"RA  {WcsInfo.FormatRa(ra)}");
-                lines.Add($"Dec {WcsInfo.FormatDec(dec)}");
+                lines.Add(Loc.F("Fits_ReadoutRa", WcsInfo.FormatRa(ra)));
+                lines.Add(Loc.F("Fits_ReadoutDec", WcsInfo.FormatDec(dec)));
                 ViewModel.CrosshairPosition = new WorldCoordinate(ra, dec);
             }
         }

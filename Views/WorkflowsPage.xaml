@@ -19,34 +19,34 @@
             </Grid.RowDefinitions>
 
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="Workflows" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
-                <Button x:Name="NewButton" Click="OnNewClick" ToolTipService.ToolTip="New workflow">
+                <TextBlock x:Uid="Wf_PageTitle" Text="Workflows" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
+                <Button x:Name="NewButton" x:Uid="Wf_NewButton" Click="OnNewClick" ToolTipService.ToolTip="New workflow">
                     <FontIcon Glyph="&#xE710;" FontSize="14" />
                 </Button>
-                <Button x:Name="ImportButton" Click="OnImportClick" ToolTipService.ToolTip="Import a .workflow.md file">
+                <Button x:Name="ImportButton" x:Uid="Wf_ImportButton" Click="OnImportClick" ToolTipService.ToolTip="Import a .workflow.md file">
                     <FontIcon Glyph="&#xE8E5;" FontSize="14" />
                 </Button>
             </StackPanel>
 
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="4">
-                    <TextBlock Text="TEMPLATES" Style="{StaticResource CaptionTextBlockStyle}"
+                    <TextBlock x:Uid="Wf_TemplatesHeader" Text="TEMPLATES" Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="4,8,0,2" />
                     <ListView x:Name="BuiltInList" SelectionChanged="OnListSelectionChanged"
                               SelectionMode="Single" IsItemClickEnabled="False" />
 
-                    <TextBlock Text="MY WORKFLOWS" Style="{StaticResource CaptionTextBlockStyle}"
+                    <TextBlock x:Uid="Wf_MyWorkflowsHeader" Text="MY WORKFLOWS" Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="4,12,0,2" />
                     <ListView x:Name="LocalList" SelectionChanged="OnListSelectionChanged"
                               SelectionMode="Single" />
-                    <TextBlock x:Name="LocalEmptyHint" Text="Pick a template and press “Use this workflow” to start."
+                    <TextBlock x:Name="LocalEmptyHint" x:Uid="Wf_LocalEmptyHint" Text="Pick a template and press “Use this workflow” to start."
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}" Margin="4,0,0,0" TextWrapping="Wrap" />
 
                     <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,12,0,2">
-                        <TextBlock Text="VOSPACE" Style="{StaticResource CaptionTextBlockStyle}"
+                        <TextBlock x:Uid="Wf_VosHeader" Text="VOSPACE" Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
-                        <Button x:Name="VosRefreshButton" Click="OnVosRefreshClick" Padding="4,2"
+                        <Button x:Name="VosRefreshButton" x:Uid="Wf_VosRefreshButton" Click="OnVosRefreshClick" Padding="4,2"
                                 ToolTipService.ToolTip="Refresh vos:&lt;you&gt;/workflows">
                             <FontIcon Glyph="&#xE72C;" FontSize="11" />
                         </Button>
@@ -61,7 +61,7 @@
         <!-- ── Right: detail ───────────────────────────────────────────────── -->
         <Grid Grid.Column="1">
 
-            <TextBlock x:Name="EmptyState" Text="Select a workflow to see its steps — or start from a template."
+            <TextBlock x:Name="EmptyState" x:Uid="Wf_EmptyState" Text="Select a workflow to see its steps — or start from a template."
                        Style="{StaticResource BodyTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -146,7 +146,7 @@
                                                 <Border Visibility="{x:Bind CurrentPillVisibility, Mode=OneWay}"
                                                         Background="{ThemeResource AccentFillColorTertiaryBrush}"
                                                         CornerRadius="8" Padding="8,1" VerticalAlignment="Center">
-                                                    <TextBlock Text="current" Style="{StaticResource CaptionTextBlockStyle}" />
+                                                    <TextBlock x:Uid="Wf_CurrentPill" Text="current" Style="{StaticResource CaptionTextBlockStyle}" />
                                                 </Border>
                                             </StackPanel>
                                             <TextBlock Text="{x:Bind Body}" TextWrapping="Wrap"
@@ -164,7 +164,7 @@
                                                     </ItemsControl.ItemsPanel>
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate x:DataType="x:String">
-                                                            <Button Padding="8,2" CornerRadius="10" Click="OnToolChipClick" Tag="{x:Bind}"
+                                                            <Button x:Uid="Wf_ToolChip" Padding="8,2" CornerRadius="10" Click="OnToolChipClick" Tag="{x:Bind}"
                                                                     Background="{ThemeResource AccentFillColorTertiaryBrush}"
                                                                     ToolTipService.ToolTip="Agent tool — click to copy the name">
                                                                 <TextBlock FontFamily="Consolas" FontSize="12" Text="{x:Bind}" />
@@ -186,12 +186,12 @@
 
                 <!-- Actions -->
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="UseButton" Click="OnUseClick" Style="{StaticResource AccentButtonStyle}" Content="Use this workflow" />
-                    <Button x:Name="EditButton" Click="OnEditClick" Content="Edit" />
-                    <Button x:Name="DuplicateButton" Click="OnDuplicateClick" Content="Duplicate" />
-                    <Button x:Name="PublishButton" Click="OnPublishClick" Content="Publish to VOSpace" />
-                    <Button x:Name="CopyPromptButton" Click="OnCopyPromptClick" Content="Copy agent prompt" />
-                    <Button x:Name="DeleteButton" Click="OnDeleteClick" Content="Delete" />
+                    <Button x:Name="UseButton" x:Uid="Wf_UseButton" Click="OnUseClick" Style="{StaticResource AccentButtonStyle}" Content="Use this workflow" />
+                    <Button x:Name="EditButton" x:Uid="Wf_EditButton" Click="OnEditClick" Content="Edit" />
+                    <Button x:Name="DuplicateButton" x:Uid="Wf_DuplicateButton" Click="OnDuplicateClick" Content="Duplicate" />
+                    <Button x:Name="PublishButton" x:Uid="Wf_PublishButton" Click="OnPublishClick" Content="Publish to VOSpace" />
+                    <Button x:Name="CopyPromptButton" x:Uid="Wf_CopyPromptButton" Click="OnCopyPromptClick" Content="Copy agent prompt" />
+                    <Button x:Name="DeleteButton" x:Uid="Wf_DeleteButton" Click="OnDeleteClick" Content="Delete" />
                 </StackPanel>
             </Grid>
 
@@ -204,7 +204,7 @@
                     <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Text="Edit workflow (markdown checklist — changes preview live)"
+                <TextBlock x:Uid="Wf_EditHeader" Text="Edit workflow (markdown checklist — changes preview live)"
                            Grid.ColumnSpan="2" Style="{StaticResource BodyStrongTextBlockStyle}" />
                 <TextBox x:Name="EditorBox" Grid.Row="1" AcceptsReturn="True" TextWrapping="NoWrap"
                          FontFamily="Consolas" FontSize="13" TextChanged="OnEditorTextChanged"
@@ -220,8 +220,8 @@
                            Foreground="{ThemeResource SystemFillColorCautionBrush}"
                            Style="{StaticResource CaptionTextBlockStyle}" />
                 <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="SaveEditButton" Click="OnSaveEditClick" Style="{StaticResource AccentButtonStyle}" Content="Save" />
-                    <Button Click="OnCancelEditClick" Content="Cancel" />
+                    <Button x:Name="SaveEditButton" x:Uid="Wf_SaveButton" Click="OnSaveEditClick" Style="{StaticResource AccentButtonStyle}" Content="Save" />
+                    <Button x:Uid="Wf_CancelButton" Click="OnCancelEditClick" Content="Cancel" />
                 </StackPanel>
             </Grid>
         </Grid>

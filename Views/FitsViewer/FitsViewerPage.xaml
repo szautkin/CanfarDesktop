@@ -18,7 +18,7 @@
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="0,0,1,0">
                 <Grid RowDefinitions="Auto,*">
-                    <TextBox Grid.Row="0" x:Name="HeaderFilter"
+                    <TextBox Grid.Row="0" x:Name="HeaderFilter" x:Uid="Fits_HeaderFilter"
                              PlaceholderText="Search headers..."
                              Margin="4" TextChanged="OnHeaderFilterChanged" />
                     <ListView Grid.Row="1" x:Name="HeaderList" SelectionMode="None"

@@ -73,7 +73,7 @@ public sealed partial class RecentLaunchesControl : UserControl
         if (filtered.Count == 0)
         {
             EmptyText.Visibility = Visibility.Visible;
-            EmptyText.Text = hasAny ? "No matches" : "No recent launches";
+            EmptyText.Text = hasAny ? Helpers.Loc.T("Recent_NoMatches") : Helpers.Loc.T("Recent_Empty");
             return;
         }
 
@@ -216,17 +216,17 @@ public sealed partial class RecentLaunchesControl : UserControl
         bottomRow.Children.Add(buttonPanel);
 
         var relaunchBtn = new Button { Padding = new Thickness(6, 4, 6, 4), IsEnabled = !_isAtSessionLimit };
-        ToolTipService.SetToolTip(relaunchBtn, "Relaunch");
+        ToolTipService.SetToolTip(relaunchBtn, Helpers.Loc.T("Recent_Relaunch"));
         var relaunchContent = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
         relaunchContent.Children.Add(new FontIcon { Glyph = "\uE768", FontSize = 12 });
-        relaunchContent.Children.Add(new TextBlock { Text = "Relaunch", FontSize = 12 });
+        relaunchContent.Children.Add(new TextBlock { Text = Helpers.Loc.T("Recent_Relaunch"), FontSize = 12 });
         relaunchBtn.Content = relaunchContent;
         relaunchBtn.Click += (_, _) => RelaunchRequested?.Invoke(this, launch);
         buttonPanel.Children.Add(relaunchBtn);
         _relaunchButtons.Add(relaunchBtn);
 
         var removeBtn = new Button { Padding = new Thickness(6, 4, 6, 4) };
-        ToolTipService.SetToolTip(removeBtn, "Remove");
+        ToolTipService.SetToolTip(removeBtn, Helpers.Loc.T("Recent_Remove"));
         removeBtn.Content = new FontIcon
         {
             Glyph = "\uE74D",
@@ -247,11 +247,11 @@ public sealed partial class RecentLaunchesControl : UserControl
     private static string BuildResourceText(RecentLaunch launch)
     {
         if (launch.ResourceType != "fixed")
-            return "Flexible resources";
+            return Helpers.Loc.T("Launch_FlexibleResources");
 
-        var parts = new List<string> { $"CPU: {launch.Cores}", $"RAM: {launch.Ram}GB" };
+        var parts = new List<string> { Helpers.Loc.F("Portal_CpuCount", launch.Cores), Helpers.Loc.F("Portal_RamGb", launch.Ram) };
         if (launch.Gpus > 0)
-            parts.Add($"GPU: {launch.Gpus}");
+            parts.Add(Helpers.Loc.F("Portal_GpuCount", launch.Gpus));
         return string.Join("  \u00B7  ", parts);
     }
 
@@ -262,11 +262,11 @@ public sealed partial class RecentLaunchesControl : UserControl
 
     private static (Windows.UI.Color color, string imageFile, string label) GetTypeInfo(string type) => type switch
     {
-        "notebook" => (ColorHelper.FromArgb(255, 33, 150, 243), "session-notebook.jpg", "Notebook"),
-        "desktop" => (ColorHelper.FromArgb(255, 103, 58, 183), "session-desktop.png", "Desktop"),
-        "carta" => (ColorHelper.FromArgb(255, 0, 150, 136), "session-carta.png", "CARTA"),
-        "contributed" => (ColorHelper.FromArgb(255, 255, 87, 34), "session-contributed.png", "Contrib"),
-        "firefly" => (ColorHelper.FromArgb(255, 255, 152, 0), "session-firefly.png", "Firefly"),
+        "notebook" => (ColorHelper.FromArgb(255, 33, 150, 243), "session-notebook.jpg", Helpers.Loc.T("Sessions_TypeNotebook")),
+        "desktop" => (ColorHelper.FromArgb(255, 103, 58, 183), "session-desktop.png", Helpers.Loc.T("Sessions_TypeDesktop")),
+        "carta" => (ColorHelper.FromArgb(255, 0, 150, 136), "session-carta.png", "CARTA"), // brand name
+        "contributed" => (ColorHelper.FromArgb(255, 255, 87, 34), "session-contributed.png", Helpers.Loc.T("Sessions_TypeContrib")),
+        "firefly" => (ColorHelper.FromArgb(255, 255, 152, 0), "session-firefly.png", "Firefly"), // brand name
         _ => (ColorHelper.FromArgb(255, 158, 158, 158), "session-desktop.png", type)
     };
 

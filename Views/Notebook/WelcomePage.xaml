@@ -13,7 +13,7 @@
                       HorizontalAlignment="Center" />
             <TextBlock Text="Jupiter" Style="{StaticResource TitleTextBlockStyle}"
                        HorizontalAlignment="Center" />
-            <TextBlock Text="Native Notebook Editor"
+            <TextBlock x:Uid="Nb_WelcomeSubtitle" Text="Native Notebook Editor"
                        Style="{StaticResource BodyTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        HorizontalAlignment="Center" />
@@ -24,13 +24,13 @@
                         Style="{StaticResource AccentButtonStyle}" Padding="16,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE8A5;" FontSize="16" />
-                        <TextBlock Text="New Notebook" />
+                        <TextBlock x:Uid="Nb_WelcomeNewLabel" Text="New Notebook" />
                     </StackPanel>
                 </Button>
                 <Button Click="OnOpenNotebook" HorizontalAlignment="Stretch" Padding="16,10">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE8E5;" FontSize="16" />
-                        <TextBlock Text="Open Notebook" />
+                        <TextBlock x:Uid="Nb_WelcomeOpenLabel" Text="Open Notebook" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -43,7 +43,7 @@
 
             <!-- Recent files (scrollable) -->
             <StackPanel x:Name="RecentSection" Spacing="8" Visibility="Collapsed" MinWidth="400">
-                <TextBlock Text="Recent Notebooks"
+                <TextBlock x:Uid="Nb_RecentHeader" Text="Recent Notebooks"
                            Style="{StaticResource SubtitleTextBlockStyle}" />
                 <ScrollViewer MaxHeight="400"
                               VerticalScrollBarVisibility="Auto"

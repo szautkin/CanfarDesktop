@@ -114,7 +114,7 @@ public sealed partial class MarkdownCellControl : UserControl
         {
             RenderedView.Children.Add(new TextBlock
             {
-                Text = "Double-click to edit",
+                Text = Helpers.Loc.T("Nb_DoubleClickToEdit"),
                 Foreground = Helpers.Notebook.ThemeHelper.GetBrush("TextFillColorTertiaryBrush"),
                 FontStyle = Windows.UI.Text.FontStyle.Italic,
             });

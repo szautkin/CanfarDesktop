@@ -23,13 +23,13 @@ public sealed partial class CubeViewerPage
 
     private async void OnExportClick(object sender, RoutedEventArgs e)
     {
-        if (_volume is null) { ShowStatus("Open a cube first."); return; }
+        if (_volume is null) { ShowStatus(Helpers.Loc.T("Cube_OpenFirst")); return; }
         if (_exporting) return;
         _exporting = true;
         try
         {
             var cap = await CaptureExportFrameAsync();
-            if (cap is null) { ShowStatus("Export capture failed (is the cube viewer visible?)", isError: true); return; }
+            if (cap is null) { ShowStatus(Helpers.Loc.T("Cube_CaptureFailed"), isError: true); return; }
 
             var dialog = new CubeExportDialog { XamlRoot = XamlRoot };
             dialog.Initialize(cap.Value.Frame, cap.Value.W, cap.Value.H, BuildPlateData(), ExportBaseName());
@@ -37,7 +37,7 @@ public sealed partial class CubeViewerPage
         }
         catch (Exception ex)
         {
-            ShowStatus("Export failed: " + ex.Message, isError: true);
+            ShowStatus(Helpers.Loc.F("Cube_ExportFailed", ex.Message), isError: true);
         }
         finally
         {
@@ -198,7 +198,7 @@ public sealed partial class CubeViewerPage
                     await encoder.FlushAsync();
                 }
             }
-            ShowStatus("Saved " + Path.GetFileName(full));
+            ShowStatus(Helpers.Loc.F("Cube_Saved", Path.GetFileName(full)));
             return null;
         }
         catch (Exception ex)
@@ -217,7 +217,7 @@ public sealed partial class CubeViewerPage
     private CubeExportPlate.PlateData BuildPlateData()
     {
         string title = !string.IsNullOrEmpty(_meta?.Object) ? _meta!.Object
-            : (string.IsNullOrEmpty(_cubeName) ? "Cube" : _cubeName);
+            : (string.IsNullOrEmpty(_cubeName) ? Helpers.Loc.T("Cube_DefaultTitle") : _cubeName);
 
         var d = new CubeExportPlate.PlateData
         {
@@ -263,14 +263,14 @@ public sealed partial class CubeViewerPage
             if (nz > 1)
             {
                 string spec = w.HasSpectral ? $" · {w.SpecText(ViewModel.Channel)} {w.SpecUnitDisplay()}".TrimEnd() : "";
-                d.ChannelText = $"CH {ViewModel.Channel}/{Math.Max(0, nz - 1)}{spec}";
+                d.ChannelText = Helpers.Loc.F("Cube_ChannelLabel", ViewModel.Channel, Math.Max(0, nz - 1), spec);
             }
         }
         else
         {
             d.Dims = $"{_volNx}×{_volNy}";
             d.NanText = "";
-            d.ModeText = "Synthetic";
+            d.ModeText = Helpers.Loc.T("Cube_ModeSynthetic");
             d.CbMin = "0";
             d.CbMax = "1";
         }

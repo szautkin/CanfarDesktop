@@ -169,11 +169,11 @@ public sealed partial class CubeExportPlate : UserControl
     private void BuildMetaGrid(PlateData d, FontFamily fam, double smallF, Color main, Color dim)
     {
         MetaPanel.Children.Clear();
-        AddMetaColumn("DIMENSIONS", d.Dims, fam, smallF, main, dim);
+        AddMetaColumn(Helpers.Loc.T("Cube_PlateDims"), d.Dims, fam, smallF, main, dim);
         foreach (var (name, range) in d.AxisRanges ?? new())
             AddMetaColumn(name, range, fam, smallF, main, dim);
-        AddMetaColumn("NaN", d.NanText, fam, smallF, main, dim);
-        AddMetaColumn("MODE", d.ModeText, fam, smallF, main, dim);
+        AddMetaColumn("NaN", d.NanText, fam, smallF, main, dim); // NaN is a technical term — not localized
+        AddMetaColumn(Helpers.Loc.T("Cube_PlateMode"), d.ModeText, fam, smallF, main, dim);
     }
 
     private void AddMetaColumn(string key, string value, FontFamily fam, double smallF, Color main, Color dim)

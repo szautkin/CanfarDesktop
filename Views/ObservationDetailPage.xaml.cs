@@ -41,7 +41,7 @@ public sealed partial class ObservationDetailPage : UserControl
     {
         _publisherID = publisherID;
         (_collection, _observationID) = SplitUri(Caom2Uri.ToObservationUri(publisherID));
-        HeaderObsId.Text = string.IsNullOrEmpty(_observationID) ? "Observation" : _observationID;
+        HeaderObsId.Text = string.IsNullOrEmpty(_observationID) ? Loc.T("ObsDetail_ObservationFallback") : _observationID;
         HeaderCollection.Text = _collection;
         HeaderChips.Children.Clear();
         ResetViewState();
@@ -73,11 +73,11 @@ public sealed partial class ObservationDetailPage : UserControl
                 SetState(auth: true);
                 break;
             case Caom2Status.NotFound:
-                NotFoundText.Text = $"The observation '{_observationID}' could not be located in collection '{_collection}'. It may have been removed or the ID is incorrect.";
+                NotFoundText.Text = Loc.F("ObsDetail_NotFoundBody", _observationID, _collection);
                 SetState(notFound: true);
                 break;
             default:
-                ErrorBar.Message = result.Message ?? "The metadata service could not be reached.";
+                ErrorBar.Message = result.Message ?? Loc.T("ObsDetail_ServiceUnreachable");
                 SetState(error: true);
                 break;
         }
@@ -130,43 +130,43 @@ public sealed partial class ObservationDetailPage : UserControl
     {
         OverviewPanel.Children.Clear();
 
-        OverviewPanel.Children.Add(Card("Observation Identity",
-            ("Algorithm", Caom2Format.Text(obs.Algorithm)),
-            ("Sequence No.", Caom2Format.Text(obs.SequenceNumber)),
-            ("Meta Release", Caom2Format.Date(obs.MetaRelease)),
-            ("Type", Caom2Format.Text(obs.ObservationType)),
-            ("Intent", Caom2Format.Text(obs.Intent))));
+        OverviewPanel.Children.Add(Card(Loc.T("ObsDetail_CardIdentity"),
+            (Loc.T("ObsDetail_RowAlgorithm"), Caom2Format.Text(obs.Algorithm)),
+            (Loc.T("ObsDetail_RowSequenceNo"), Caom2Format.Text(obs.SequenceNumber)),
+            (Loc.T("ObsDetail_RowMetaRelease"), Caom2Format.Date(obs.MetaRelease)),
+            (Loc.T("ObsDetail_RowType"), Caom2Format.Text(obs.ObservationType)),
+            (Loc.T("ObsDetail_RowIntent"), Caom2Format.Text(obs.Intent))));
 
-        Border? targetCard = obs.Target is { } t ? Card("Target",
-            ("Name", Caom2Format.Text(t.Name)),
-            ("Type", Caom2Format.Text(t.Type)),
-            ("Standard", Caom2Format.Bool(t.Standard)),
-            ("Redshift", Caom2Format.Number(t.Redshift)),
-            ("Moving", Caom2Format.Bool(t.Moving)),
-            ("Keywords", JoinKeywords(t.Keywords))) : null;
+        Border? targetCard = obs.Target is { } t ? Card(Loc.T("ObsDetail_CardTarget"),
+            (Loc.T("ObsDetail_RowName"), Caom2Format.Text(t.Name)),
+            (Loc.T("ObsDetail_RowType"), Caom2Format.Text(t.Type)),
+            (Loc.T("ObsDetail_RowStandard"), Caom2Format.Bool(t.Standard)),
+            (Loc.T("ObsDetail_RowRedshift"), Caom2Format.Number(t.Redshift)),
+            (Loc.T("ObsDetail_RowMoving"), Caom2Format.Bool(t.Moving)),
+            (Loc.T("ObsDetail_RowKeywords"), JoinKeywords(t.Keywords))) : null;
 
-        Border? proposalCard = obs.Proposal is { } p ? Card("Proposal",
-            ("ID", Caom2Format.Text(p.Id)),
-            ("PI", Caom2Format.Text(p.Pi)),
-            ("Project", Caom2Format.Text(p.Project)),
-            ("Title", Caom2Format.Text(p.Title)),
-            ("Keywords", JoinKeywords(p.Keywords))) : null;
+        Border? proposalCard = obs.Proposal is { } p ? Card(Loc.T("ObsDetail_CardProposal"),
+            (Loc.T("ObsDetail_RowId"), Caom2Format.Text(p.Id)),
+            (Loc.T("ObsDetail_RowPi"), Caom2Format.Text(p.Pi)),
+            (Loc.T("ObsDetail_RowProject"), Caom2Format.Text(p.Project)),
+            (Loc.T("ObsDetail_RowTitle"), Caom2Format.Text(p.Title)),
+            (Loc.T("ObsDetail_RowKeywords"), JoinKeywords(p.Keywords))) : null;
 
         OverviewPanel.Children.Add(TwoColumn(targetCard, proposalCard));
 
-        Border? scopeCard = (obs.Telescope is not null || obs.Instrument is not null) ? Card("Telescope + Instrument",
-            ("Telescope", Caom2Format.Text(obs.Telescope?.Name)),
-            ("Instrument", Caom2Format.Text(obs.Instrument?.Name)),
-            ("Location", obs.Telescope?.GeoLocation is { } g
+        Border? scopeCard = (obs.Telescope is not null || obs.Instrument is not null) ? Card(Loc.T("ObsDetail_CardTelescope"),
+            (Loc.T("ObsDetail_RowTelescope"), Caom2Format.Text(obs.Telescope?.Name)),
+            (Loc.T("ObsDetail_RowInstrument"), Caom2Format.Text(obs.Instrument?.Name)),
+            (Loc.T("ObsDetail_RowLocation"), obs.Telescope?.GeoLocation is { } g
                 ? $"({Caom2Format.Number(g.X)}, {Caom2Format.Number(g.Y)}, {Caom2Format.Number(g.Z)}) m"
                 : "—")) : null;
 
-        Border? envCard = obs.Environment is { } e ? Card("Environment",
-            ("Seeing", Caom2Format.Number(e.Seeing)),
-            ("Humidity", Caom2Format.Number(e.Humidity)),
-            ("Elevation", Caom2Format.Degrees(e.Elevation)),
-            ("Ambient Temp", Caom2Format.Number(e.AmbientTemp)),
-            ("Photometric", Caom2Format.Bool(e.Photometric))) : null;
+        Border? envCard = obs.Environment is { } e ? Card(Loc.T("ObsDetail_CardEnvironment"),
+            (Loc.T("ObsDetail_RowSeeing"), Caom2Format.Number(e.Seeing)),
+            (Loc.T("ObsDetail_RowHumidity"), Caom2Format.Number(e.Humidity)),
+            (Loc.T("ObsDetail_RowElevation"), Caom2Format.Degrees(e.Elevation)),
+            (Loc.T("ObsDetail_RowAmbientTemp"), Caom2Format.Number(e.AmbientTemp)),
+            (Loc.T("ObsDetail_RowPhotometric"), Caom2Format.Bool(e.Photometric))) : null;
 
         OverviewPanel.Children.Add(TwoColumn(scopeCard, envCard));
     }
@@ -178,29 +178,29 @@ public sealed partial class ObservationDetailPage : UserControl
         {
             if (plane.Position is { } pos)
             {
-                var spatial = Card("Spatial",
-                    ("Footprint", pos.Polygon.Count >= 3 ? "" : "—"),
-                    ("Dimensions", pos.DimensionPixels is { } d ? $"{d.NAxis1} × {d.NAxis2} px" : "—"),
-                    ("Resolution", pos.ResolutionArcsec is { } r ? $"{Caom2Format.Number(r)}″" : "—"),
-                    ("Sample Size", pos.SampleSizeArcsec is { } s ? $"{Caom2Format.Number(s)}″" : "—"));
+                var spatial = Card(Loc.T("ObsDetail_CardSpatial"),
+                    (Loc.T("ObsDetail_RowFootprint"), pos.Polygon.Count >= 3 ? "" : "—"),
+                    (Loc.T("ObsDetail_RowDimensions"), pos.DimensionPixels is { } d ? $"{d.NAxis1} × {d.NAxis2} px" : "—"),
+                    (Loc.T("ObsDetail_RowResolution"), pos.ResolutionArcsec is { } r ? $"{Caom2Format.Number(r)}″" : "—"),
+                    (Loc.T("ObsDetail_RowSampleSize"), pos.SampleSizeArcsec is { } s ? $"{Caom2Format.Number(s)}″" : "—"));
                 if (pos.Polygon.Count >= 3 && BuildFootprint(pos.Polygon) is { } fp && spatial.Child is StackPanel sp)
                     sp.Children.Insert(1, fp);
                 into.Children.Add(spatial);
             }
             if (plane.Energy is { } en)
-                into.Children.Add(Card("Spectral",
-                    ("Bandpass", Caom2Format.Text(en.BandpassName)),
-                    ("Band", Caom2Format.Text(en.EmBand)),
-                    ("Wavelength", Caom2Format.WavelengthRange(en.LowerMetres, en.UpperMetres)),
-                    ("Resolving Power", Caom2Format.Number(en.ResolvingPower)),
-                    ("Rest Wavelength", Caom2Format.Wavelength(en.RestWavMetres))));
+                into.Children.Add(Card(Loc.T("ObsDetail_CardSpectral"),
+                    (Loc.T("ObsDetail_RowBandpass"), Caom2Format.Text(en.BandpassName)),
+                    (Loc.T("ObsDetail_RowBand"), Caom2Format.Text(en.EmBand)),
+                    (Loc.T("ObsDetail_RowWavelength"), Caom2Format.WavelengthRange(en.LowerMetres, en.UpperMetres)),
+                    (Loc.T("ObsDetail_RowResolvingPower"), Caom2Format.Number(en.ResolvingPower)),
+                    (Loc.T("ObsDetail_RowRestWavelength"), Caom2Format.Wavelength(en.RestWavMetres))));
             if (plane.Time is { } tm)
-                into.Children.Add(Card("Temporal",
-                    ("Start", Caom2Format.MjdToDate(tm.LowerMJD)),
-                    ("End", Caom2Format.MjdToDate(tm.UpperMJD)),
-                    ("Exposure", Caom2Format.Seconds(tm.ExposureSeconds))));
+                into.Children.Add(Card(Loc.T("ObsDetail_CardTemporal"),
+                    (Loc.T("ObsDetail_RowStart"), Caom2Format.MjdToDate(tm.LowerMJD)),
+                    (Loc.T("ObsDetail_RowEnd"), Caom2Format.MjdToDate(tm.UpperMJD)),
+                    (Loc.T("ObsDetail_RowExposure"), Caom2Format.Seconds(tm.ExposureSeconds))));
             if (plane.Polarization is { States.Count: > 0 } pol)
-                into.Children.Add(Card("Polarization", ("States", string.Join(", ", pol.States))));
+                into.Children.Add(Card(Loc.T("ObsDetail_CardPolarization"), (Loc.T("ObsDetail_RowStates"), string.Join(", ", pol.States))));
         });
     }
 
@@ -213,7 +213,7 @@ public sealed partial class ObservationDetailPage : UserControl
             {
                 into.Children.Add(new TextBlock
                 {
-                    Text = "No files listed for this plane.",
+                    Text = Loc.T("ObsDetail_NoFiles"),
                     Foreground = Res("TextFillColorTertiaryBrush"),
                     Style = Sty("CaptionTextBlockStyle"),
                 });
@@ -223,7 +223,7 @@ public sealed partial class ObservationDetailPage : UserControl
                 into.Children.Add(BuildArtifactRow(art));
         });
 
-        var link = new HyperlinkButton { Content = "View all files on CADC", Margin = new Thickness(0, 4, 0, 0) };
+        var link = new HyperlinkButton { Content = Loc.T("ObsDetail_ViewAllFilesCadc"), Margin = new Thickness(0, 4, 0, 0) };
         link.Click += OnViewOnCadc;
         FilesPanel.Children.Add(link);
     }
@@ -238,32 +238,32 @@ public sealed partial class ObservationDetailPage : UserControl
             {
                 into.Children.Add(new TextBlock
                 {
-                    Text = "No provenance recorded for this plane.",
+                    Text = Loc.T("ObsDetail_NoProvenance"),
                     Foreground = Res("TextFillColorTertiaryBrush"),
                     Style = Sty("CaptionTextBlockStyle"),
                 });
                 return;
             }
             any = true;
-            into.Children.Add(Card("Pipeline",
-                ("Name", Caom2Format.Text(pv.Name)),
-                ("Version", Caom2Format.Text(pv.Version)),
-                ("Project", Caom2Format.Text(pv.Project)),
-                ("Producer", Caom2Format.Text(pv.Producer)),
-                ("Run ID", Caom2Format.Text(pv.RunID)),
-                ("Reference", Caom2Format.Text(pv.Reference)),
-                ("Last Executed", Caom2Format.Date(pv.LastExecuted))));
+            into.Children.Add(Card(Loc.T("ObsDetail_CardPipeline"),
+                (Loc.T("ObsDetail_RowName"), Caom2Format.Text(pv.Name)),
+                (Loc.T("ObsDetail_RowVersion"), Caom2Format.Text(pv.Version)),
+                (Loc.T("ObsDetail_RowProject"), Caom2Format.Text(pv.Project)),
+                (Loc.T("ObsDetail_RowProducer"), Caom2Format.Text(pv.Producer)),
+                (Loc.T("ObsDetail_RowRunId"), Caom2Format.Text(pv.RunID)),
+                (Loc.T("ObsDetail_RowReference"), Caom2Format.Text(pv.Reference)),
+                (Loc.T("ObsDetail_RowLastExecuted"), Caom2Format.Date(pv.LastExecuted))));
 
             if (pv.Inputs.Count > 0)
             {
                 var inputsStack = new StackPanel { Spacing = 4 };
-                inputsStack.Children.Add(Heading("Inputs"));
+                inputsStack.Children.Add(Heading(Loc.T("ObsDetail_HeadingInputs")));
                 foreach (var input in pv.Inputs)
                 {
                     var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
                     row.Children.Add(new FontIcon { Glyph = "", FontSize = 12, Foreground = Res("TextFillColorSecondaryBrush") });
                     row.Children.Add(new TextBlock { Text = input, IsTextSelectionEnabled = true, TextWrapping = TextWrapping.Wrap, Style = Sty("CaptionTextBlockStyle") });
-                    AutomationProperties.SetName(row, $"Input: {input}");
+                    AutomationProperties.SetName(row, Loc.F("ObsDetail_InputName", input));
                     inputsStack.Children.Add(row);
                 }
                 into.Children.Add(CardFrom(inputsStack));
@@ -328,11 +328,12 @@ public sealed partial class ObservationDetailPage : UserControl
             var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
             header.Children.Add(new TextBlock
             {
-                Text = $"{plane.ProductID}  —  {Caom2Format.Text(plane.DataProductType)}  —  Cal. Level {plane.CalibrationLevel?.ToString() ?? "?"}",
+                Text = Loc.F("ObsDetail_PlaneHeader",
+                    plane.ProductID, Caom2Format.Text(plane.DataProductType), plane.CalibrationLevel?.ToString() ?? "?"),
                 Style = Sty("BodyStrongTextBlockStyle"),
             });
             if (string.Equals(plane.Quality, "junk", StringComparison.OrdinalIgnoreCase))
-                header.Children.Add(Chip("Junk", "SystemFillColorCriticalBrush", "TextOnAccentFillColorPrimaryBrush"));
+                header.Children.Add(Chip(Loc.T("ObsDetail_JunkChip"), "SystemFillColorCriticalBrush", "TextOnAccentFillColorPrimaryBrush"));
 
             target.Children.Add(new Expander
             {
@@ -354,7 +355,7 @@ public sealed partial class ObservationDetailPage : UserControl
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var (bg, fg) = ArtifactBadge(art.ProductType);
-        var badge = Chip(string.IsNullOrWhiteSpace(art.ProductType) ? "file" : art.ProductType!, bg, fg);
+        var badge = Chip(string.IsNullOrWhiteSpace(art.ProductType) ? Loc.T("ObsDetail_FileBadge") : art.ProductType!, bg, fg);
         Grid.SetColumn(badge, 0);
         grid.Children.Add(badge);
 
@@ -381,8 +382,8 @@ public sealed partial class ObservationDetailPage : UserControl
         grid.Children.Add(meta);
 
         var dl = new Button { Content = new FontIcon { Glyph = "", FontSize = 14 } };
-        ToolTipService.SetToolTip(dl, "Download this file");
-        AutomationProperties.SetName(dl, $"Download {Caom2Format.ArtifactFileName(art.Uri)}");
+        ToolTipService.SetToolTip(dl, Loc.T("ObsDetail_DownloadTooltip"));
+        AutomationProperties.SetName(dl, Loc.F("ObsDetail_DownloadFileName", Caom2Format.ArtifactFileName(art.Uri)));
         dl.Click += (_, _) => _ = OnDownloadArtifactAsync(art);
         Grid.SetColumn(dl, 3);
         grid.Children.Add(dl);
@@ -434,7 +435,7 @@ public sealed partial class ObservationDetailPage : UserControl
             Margin = new Thickness(0, 0, 0, 4),
         };
         AutomationProperties.SetName(border,
-            $"Spatial footprint: {poly.Count}-vertex polygon, RA {minRa:F2}° to {maxRa:F2}°, Dec {minDec:F2}° to {maxDec:F2}°");
+            Loc.F("ObsDetail_FootprintName", poly.Count, minRa, maxRa, minDec, maxDec));
         return border;
     }
 
@@ -544,7 +545,7 @@ public sealed partial class ObservationDetailPage : UserControl
             DownloadBar.IsOpen = true;
             DownloadBar.ActionButton = null;
             DownloadBar.Severity = InfoBarSeverity.Informational;
-            DownloadBar.Title = $"Resolving {Caom2Format.ArtifactFileName(art.Uri)}…";
+            DownloadBar.Title = Loc.F("ObsDetail_Resolving", Caom2Format.ArtifactFileName(art.Uri));
             DownloadProgress.Visibility = Visibility.Visible;
             DownloadProgress.IsIndeterminate = true;
             DownloadText.Text = string.Empty;
@@ -561,7 +562,7 @@ public sealed partial class ObservationDetailPage : UserControl
         catch (Exception ex)
         {
             DownloadBar.Severity = InfoBarSeverity.Error;
-            DownloadBar.Title = "Download failed";
+            DownloadBar.Title = Loc.T("ObsDetail_DownloadFailed");
             DownloadBar.Message = ex.Message;
             DownloadProgress.Visibility = Visibility.Collapsed;
         }
@@ -578,13 +579,13 @@ public sealed partial class ObservationDetailPage : UserControl
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
         if (!System.IO.Path.HasExtension(suggestedName)) suggestedName += ".fits";
         picker.SuggestedFileName = suggestedName;
-        picker.FileTypeChoices.Add("FITS Image", new List<string> { ".fits" });
-        picker.FileTypeChoices.Add("All Files", new List<string> { "." });
+        picker.FileTypeChoices.Add(Loc.T("ObsDetail_FileTypeFits"), new List<string> { ".fits" });
+        picker.FileTypeChoices.Add(Loc.T("ObsDetail_FileTypeAll"), new List<string> { "." });
 
         var file = await picker.PickSaveFileAsync();
         if (file is null) { DownloadBar.IsOpen = false; return; }
 
-        DownloadBar.Title = $"Downloading {file.Name}…";
+        DownloadBar.Title = Loc.F("ObsDetail_Downloading", file.Name);
         var tempPath = file.Path + ".tmp";
 
         using (var response = await _dataLink.DownloadAsync(url))
@@ -618,11 +619,11 @@ public sealed partial class ObservationDetailPage : UserControl
         File.Move(tempPath, file.Path);
 
         DownloadBar.Severity = InfoBarSeverity.Success;
-        DownloadBar.Title = $"Downloaded {file.Name}";
+        DownloadBar.Title = Loc.F("ObsDetail_Downloaded", file.Name);
         DownloadProgress.Visibility = Visibility.Collapsed;
 
         // Offer to open it in the 3D Cube Viewer (it reports gracefully if not a NAXIS3 cube).
-        var openCube = new Button { Content = "Open in Cube Viewer" };
+        var openCube = new Button { Content = Loc.T("ObsDetail_OpenInCubeViewer") };
         var savedPath = file.Path;
         openCube.Click += (_, _) => OpenInCubeRequested?.Invoke(savedPath);
         DownloadBar.ActionButton = openCube;

@@ -90,7 +90,7 @@ public sealed partial class CubeViewerPage : UserControl
         var (pw, ph) = PhysicalSize();
         if (!_renderer.Initialize(RenderPanel, pw, ph))
         {
-            ShowFallback(_renderer.InitError ?? "No compatible Direct3D 11 device was found.");
+            ShowFallback(_renderer.InitError ?? Helpers.Loc.T("Cube_NoD3DDevice"));
             // Don't leave an MCP open_cube awaiting a load that can never happen.
             _pendingCubePath = null;
             _pendingLoadTcs?.TrySetResult(false);
@@ -182,7 +182,7 @@ public sealed partial class CubeViewerPage : UserControl
         catch (Exception ex)
         {
             HideLoading();
-            ShowStatus("Couldn't load " + fname + " — " + ex.Message, isError: true);
+            ShowStatus(Helpers.Loc.F("Cube_LoadFailed", fname, ex.Message), isError: true);
             return false;
         }
     }
@@ -673,8 +673,7 @@ public sealed partial class CubeViewerPage : UserControl
 
     private void ShowFallback(string message)
     {
-        FallbackText.Text =
-            "The 3D cube viewer needs a Direct3D 11 capable GPU.\n\n" + message;
+        FallbackText.Text = Helpers.Loc.F("Cube_GpuFallback", message);
         FallbackText.Visibility = Visibility.Visible;
     }
 }

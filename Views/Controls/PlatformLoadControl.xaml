@@ -16,8 +16,8 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Platform Load" Style="{StaticResource SubtitleTextBlockStyle}" />
-                <Button Grid.Column="1" Click="OnRefreshClick" ToolTipService.ToolTip="Refresh">
+                <TextBlock Grid.Column="0" x:Uid="Load_Header" Text="Platform Load" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <Button Grid.Column="1" x:Uid="Portal_RefreshBtn" Click="OnRefreshClick" ToolTipService.ToolTip="Refresh">
                     <FontIcon Glyph="&#xE72C;" FontSize="14" />
                 </Button>
             </Grid>
@@ -30,7 +30,7 @@
 
             <!-- Instances -->
             <StackPanel x:Name="InstancesPanel" Visibility="Collapsed" Spacing="4">
-                <TextBlock Text="Instances" Style="{StaticResource BodyTextBlockStyle}" />
+                <TextBlock x:Uid="Load_InstancesLabel" Text="Instances" Style="{StaticResource BodyTextBlockStyle}" />
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock x:Name="InstancesText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
                 </StackPanel>
@@ -39,7 +39,7 @@
             <!-- Last updated -->
             <TextBlock x:Name="LastUpdateText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5" />
 
-            <InfoBar x:Name="ErrorBar" IsOpen="False" Severity="Error" Title="Error" />
+            <InfoBar x:Name="ErrorBar" x:Uid="Portal_ErrorBar" IsOpen="False" Severity="Error" Title="Error" />
         </StackPanel>
     </Border>
 </UserControl>

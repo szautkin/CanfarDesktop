@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="using:CanfarDesktop.Converters"
     xmlns:idctl="using:CanfarDesktop.Views.Controls.ImageDiscovery"
+    x:Uid="ImageDiscoveryDialog"
     Title="Find images by package"
     PrimaryButtonText="Use this image"
     CloseButtonText="Close"
@@ -46,7 +47,7 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                Text="{Binding CategoryLabel}" />
                     <TextBlock VerticalAlignment="Center" Text="{Binding Value}" />
-                    <Button Padding="2" MinWidth="0" Background="Transparent" BorderThickness="0"
+                    <Button x:Uid="Discovery_RemoveFilterButton" Padding="2" MinWidth="0" Background="Transparent" BorderThickness="0"
                             Command="{Binding RemoveCommand}" CommandParameter="{Binding}"
                             ToolTipService.ToolTip="Remove filter">
                         <FontIcon Glyph="&#xE894;" FontSize="11" />
@@ -71,13 +72,13 @@
                                Visibility="{Binding HasJobLogs, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                    <Button Content="Inspect" Command="{Binding DiscoverCommand}"
+                    <Button x:Uid="Discovery_InspectButton" Content="Inspect" Command="{Binding DiscoverCommand}"
                             Visibility="{Binding IsNeverDiscovered, Converter={StaticResource BoolToVis}}" />
-                    <Button Content="Details" Command="{Binding DetailsCommand}"
+                    <Button x:Uid="Discovery_DetailsButton" Content="Details" Command="{Binding DetailsCommand}"
                             Visibility="{Binding CanShowDetails, Converter={StaticResource BoolToVis}}" />
-                    <Button Content="Re-inspect" Command="{Binding RediscoverCommand}"
+                    <Button x:Uid="Discovery_ReinspectButton" Content="Re-inspect" Command="{Binding RediscoverCommand}"
                             Visibility="{Binding CanShowDetails, Converter={StaticResource BoolToVis}}" />
-                    <Button Content="Dismiss" Command="{Binding DismissCommand}"
+                    <Button x:Uid="Discovery_DismissButton" Content="Dismiss" Command="{Binding DismissCommand}"
                             Visibility="{Binding IsFailed, Converter={StaticResource BoolToVis}}" />
                     <ProgressRing Width="16" Height="16" IsActive="{Binding IsRunning}"
                                   Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}" />
@@ -104,7 +105,7 @@
                        Style="{StaticResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        Text="{Binding DiscoveredSubtitle}" />
-            <Button Grid.Column="1" Content="Clear errors" Command="{Binding ClearAllFailuresCommand}"
+            <Button x:Uid="Discovery_ClearErrorsButton" Grid.Column="1" Content="Clear errors" Command="{Binding ClearAllFailuresCommand}"
                     Visibility="{Binding HasFailures, Converter={StaticResource BoolToVis}}" />
             <ProgressRing Grid.Column="2" Width="20" Height="20" IsActive="{Binding IsDiscoveryRunning}" />
         </Grid>
@@ -113,10 +114,10 @@
         <StackPanel Grid.Row="1" Spacing="4"
                     Visibility="{Binding HasActiveFilters, Converter={StaticResource BoolToVis}}">
             <Grid>
-                <TextBlock Text="Active filters" VerticalAlignment="Center"
+                <TextBlock x:Uid="Discovery_ActiveFiltersLabel" Text="Active filters" VerticalAlignment="Center"
                            Style="{StaticResource CaptionTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <HyperlinkButton Content="Clear all" HorizontalAlignment="Right"
+                <HyperlinkButton x:Uid="Discovery_ClearAllLink" Content="Clear all" HorizontalAlignment="Right"
                                  Command="{Binding ClearAllFiltersCommand}" />
             </Grid>
             <ScrollViewer HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Auto"
@@ -147,9 +148,9 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <TextBox Grid.Row="0" PlaceholderText="Filter packages, OS, …"
+                <TextBox x:Uid="Discovery_FilterBox" Grid.Row="0" PlaceholderText="Filter packages, OS, …"
                          Text="{Binding PackageSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <ComboBox Grid.Row="1" Header="Session type" HorizontalAlignment="Stretch"
+                <ComboBox x:Uid="Discovery_SessionTypeCombo" Grid.Row="1" Header="Session type" HorizontalAlignment="Stretch"
                           ItemsSource="{Binding SessionTypeOptions}"
                           SelectedItem="{Binding SelectedSessionType, Mode=TwoWay}" />
                 <ListView Grid.Row="2" ItemsSource="{Binding FilterItems}"
@@ -163,7 +164,7 @@
                         </Style>
                     </ListView.ItemContainerStyle>
                 </ListView>
-                <HyperlinkButton Grid.Row="3" Content="Clear all filters"
+                <HyperlinkButton x:Uid="Discovery_ClearAllFiltersLink" Grid.Row="3" Content="Clear all filters"
                                  Command="{Binding ClearAllFiltersCommand}"
                                  Visibility="{Binding HasActiveFilters, Converter={StaticResource BoolToVis}}" />
             </Grid>
@@ -176,7 +177,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <TextBox Grid.Row="0" PlaceholderText="Search images…"
+                <TextBox x:Uid="Discovery_ImageSearchBox" Grid.Row="0" PlaceholderText="Search images…"
                          Text="{Binding ImageSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <Grid Grid.Row="1">
                     <ListView x:Name="MatchListView" SelectionMode="Single"
@@ -194,7 +195,7 @@
                             </GroupStyle>
                         </ListView.GroupStyle>
                     </ListView>
-                    <TextBlock Text="No images match the current filters"
+                    <TextBlock x:Uid="Discovery_NoMatches" Text="No images match the current filters"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                Visibility="{Binding IsEmptyResult, Converter={StaticResource BoolToVis}}" />
@@ -217,7 +218,7 @@
                 <Button Command="{Binding Detail.CloseCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <FontIcon Glyph="&#xE72B;" FontSize="12" />
-                        <TextBlock Text="Back" />
+                        <TextBlock x:Uid="Discovery_BackLabel" Text="Back" />
                     </StackPanel>
                 </Button>
                 <TextBlock Text="{Binding Detail.Label}" VerticalAlignment="Center"
@@ -298,7 +299,7 @@
                                    Visibility="{Binding Detail.HasJob, Converter={StaticResource BoolToVis}}" />
                         <StackPanel Orientation="Horizontal" Spacing="8"
                                     Visibility="{Binding Detail.HasJob, Converter={StaticResource BoolToVis}}">
-                            <Button Content="Load probe logs" Command="{Binding Detail.LoadLogsCommand}" />
+                            <Button x:Uid="Discovery_LoadLogsButton" Content="Load probe logs" Command="{Binding Detail.LoadLogsCommand}" />
                             <ProgressRing Width="16" Height="16" IsActive="{Binding Detail.IsLoadingLogs}" />
                         </StackPanel>
                         <TextBox Text="{Binding Detail.LogsText}" IsReadOnly="True" TextWrapping="NoWrap"
@@ -311,9 +312,9 @@
 
             <!-- detail footer -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                <Button x:Name="CopyJsonButton" Content="Copy as JSON" Click="OnCopyJson"
+                <Button x:Name="CopyJsonButton" x:Uid="Discovery_CopyJsonButton" Content="Copy as JSON" Click="OnCopyJson"
                         Visibility="{Binding Detail.HasManifest, Converter={StaticResource BoolToVis}}" />
-                <Button Content="Back" Command="{Binding Detail.CloseCommand}" />
+                <Button x:Uid="Discovery_BackButton" Content="Back" Command="{Binding Detail.CloseCommand}" />
             </StackPanel>
         </Grid>
     </Grid>

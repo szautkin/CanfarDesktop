@@ -493,7 +493,7 @@ public sealed partial class MainWindow : Window
         "research" => Loc.T("Module_Research"),
         "fitsViewer" => Loc.T("Module_FitsViewer"),
         "notebook" => Loc.T("Module_Notebook"),
-        "workflows" => "Workflows",
+        "workflows" => Loc.T("Module_Workflows"),
         _ => Loc.T("Module_App"),
     };
 

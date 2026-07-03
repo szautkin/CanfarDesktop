@@ -25,7 +25,7 @@ public sealed partial class CubeViewerPage
 
     private const double MaxSliceZoom = 20;      // macOS MagnificationGesture cap
     private const double SlicePanThresholdPx = 6; // below this a press+release is a probe click
-    private const string CoordBarHint = "hover the slice for coordinates";
+    private static string CoordBarHint => Helpers.Loc.T("Cube_CoordBarHint");
 
     // ── Viewport sizing ────────────────────────────────────────────────────────
 

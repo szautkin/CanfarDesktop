@@ -3,6 +3,7 @@
     x:Class="CanfarDesktop.Views.Dialogs.BatchJobsDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Uid="Batch_Dialog"
     Title="Batch Jobs"
     CloseButtonText="Close"
     DefaultButton="Close">
@@ -23,17 +24,17 @@
                 <TextBlock Grid.Column="2" Text="{Binding ImageLabel}" Opacity="0.7"
                            FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                    <Button Tag="{Binding Id}" Click="OnEventsClick"
+                    <Button Tag="{Binding Id}" x:Uid="Batch_EventsBtn" Click="OnEventsClick"
                             ToolTipService.ToolTip="Events" Padding="6,4"
                             Background="Transparent" BorderThickness="0">
                         <FontIcon Glyph="&#xE81C;" FontSize="12" />
                     </Button>
-                    <Button Tag="{Binding Id}" Click="OnLogsClick"
+                    <Button Tag="{Binding Id}" x:Uid="Batch_LogsBtn" Click="OnLogsClick"
                             ToolTipService.ToolTip="Logs" Padding="6,4"
                             Background="Transparent" BorderThickness="0">
                         <FontIcon Glyph="&#xE756;" FontSize="12" />
                     </Button>
-                    <Button Tag="{Binding Id}" Click="OnDeleteClick"
+                    <Button Tag="{Binding Id}" x:Uid="Batch_DeleteBtn" Click="OnDeleteClick"
                             ToolTipService.ToolTip="Delete" Padding="6,4"
                             Background="Transparent" BorderThickness="0">
                         <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="#FFF44336" />

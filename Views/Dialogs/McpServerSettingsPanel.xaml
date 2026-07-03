@@ -6,11 +6,11 @@
 
     <StackPanel Spacing="14" Width="460">
 
-        <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+        <TextBlock x:Uid="Mcp_Intro" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                    Text="Let Claude (Desktop or Code) read your CADC/CANFAR data over a local, read-only MCP server — observation search, Skaha sessions, downloaded research, image discovery, and more. Off by default; nothing is exposed until you turn it on." />
 
-        <ToggleSwitch x:Name="EnableToggle" Header="Enable MCP server"
+        <ToggleSwitch x:Name="EnableToggle" x:Uid="Mcp_EnableToggle" Header="Enable MCP server"
                       OnContent="On" OffContent="Off" Toggled="OnEnableToggled" />
 
         <Border CornerRadius="6" Padding="12,10"
@@ -24,55 +24,55 @@
             </StackPanel>
         </Border>
 
-        <TextBlock Text="Agent autonomy" Style="{StaticResource BodyStrongTextBlockStyle}" />
-        <ToggleSwitch x:Name="AutoApplyToggle" Header="Auto-apply agent writes"
+        <TextBlock x:Uid="Mcp_AutonomyHeader" Text="Agent autonomy" Style="{StaticResource BodyStrongTextBlockStyle}" />
+        <ToggleSwitch x:Name="AutoApplyToggle" x:Uid="Mcp_AutoApplyToggle" Header="Auto-apply agent writes"
                       OnContent="On" OffContent="Off" Toggled="OnAutoApplyToggled" />
-        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+        <TextBlock x:Uid="Mcp_AutoApplyCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                    Text="When on, an agent's writes (e.g. saving a query) apply immediately and show in the activity feed below. When off, they queue for you to review. Destructive writes (deletes) always queue regardless." />
-        <ToggleSwitch x:Name="FollowActivityToggle" Header="Follow agent activity"
+        <ToggleSwitch x:Name="FollowActivityToggle" x:Uid="Mcp_FollowActivityToggle" Header="Follow agent activity"
                       OnContent="On" OffContent="Off" Toggled="OnFollowActivityToggled" />
-        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+        <TextBlock x:Uid="Mcp_FollowActivityCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                    Text="Navigate to the relevant view after an applied write." />
 
-        <ToggleSwitch x:Name="ShowAiGuideToggle" Header="Show AI Guide on landing"
+        <ToggleSwitch x:Name="ShowAiGuideToggle" x:Uid="Mcp_ShowAiGuideToggle" Header="Show AI Guide on landing"
                       OnContent="On" OffContent="Off" Toggled="OnShowAiGuideToggled" />
-        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+        <TextBlock x:Uid="Mcp_ShowAiGuideCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                    Text="Add an AI Guide tile to the landing page — re-tune each tool's description and add your own read-only guide tools. Your overrides stay active whether or not the tile is shown." />
 
-        <TextBlock Text="Connect Claude Desktop" Style="{StaticResource BodyStrongTextBlockStyle}" />
-        <TextBlock x:Name="ConnectIntro" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+        <TextBlock x:Uid="Mcp_ConnectHeader" Text="Connect Claude Desktop" Style="{StaticResource BodyStrongTextBlockStyle}" />
+        <TextBlock x:Name="ConnectIntro" x:Uid="Mcp_ConnectIntro" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                    Text="Add Verbinal to your Claude Desktop config. Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop afterwards." />
 
-        <Button x:Name="ConnectButton" Content="Add to Claude Desktop…" Click="OnConnectClick" />
+        <Button x:Name="ConnectButton" x:Uid="Mcp_ConnectButton" Content="Add to Claude Desktop…" Click="OnConnectClick" />
 
         <!-- Inline confirmation (no nested dialog) -->
         <Border x:Name="ConfirmPanel" Visibility="Collapsed" CornerRadius="6" Padding="12,10"
                 Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
             <StackPanel Spacing="8">
-                <TextBlock Text="Confirm config change" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <TextBlock x:Uid="Mcp_ConfirmHeader" Text="Confirm config change" Style="{StaticResource BodyStrongTextBlockStyle}" />
                 <TextBlock x:Name="ConfirmTargetText" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                <TextBlock x:Uid="Mcp_CommandLabel" Style="{StaticResource CaptionTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="Command:" />
                 <TextBlock x:Name="ConfirmCommandText" FontFamily="Consolas" FontSize="12"
                            IsTextSelectionEnabled="True" TextWrapping="Wrap"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="ConfirmWriteButton" Content="Write config" Click="OnConfirmWriteClick"
+                    <Button x:Name="ConfirmWriteButton" x:Uid="Mcp_ConfirmWriteButton" Content="Write config" Click="OnConfirmWriteClick"
                             Style="{StaticResource AccentButtonStyle}" />
-                    <Button Content="Cancel" Click="OnConfirmCancelClick" />
+                    <Button x:Uid="Mcp_ConfirmCancelButton" Content="Cancel" Click="OnConfirmCancelClick" />
                 </StackPanel>
             </StackPanel>
         </Border>
 
         <InfoBar x:Name="ResultBar" IsOpen="False" IsClosable="True" />
 
-        <TextBlock Text="…or, for Claude Code, run:" Style="{StaticResource CaptionTextBlockStyle}"
+        <TextBlock x:Uid="Mcp_ClaudeCodeLabel" Text="…or, for Claude Code, run:" Style="{StaticResource CaptionTextBlockStyle}"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
         <Grid ColumnSpacing="6">
             <Grid.ColumnDefinitions>
@@ -81,19 +81,19 @@
             </Grid.ColumnDefinitions>
             <TextBox x:Name="ClaudeCodeBox" Grid.Column="0" IsReadOnly="True"
                      FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" />
-            <Button x:Name="CopyCommandButton" Grid.Column="1" VerticalAlignment="Top"
+            <Button x:Name="CopyCommandButton" x:Uid="Mcp_CopyCommandButton" Grid.Column="1" VerticalAlignment="Top"
                     Click="OnCopyCommandClick" ToolTipService.ToolTip="Copy">
                 <FontIcon Glyph="&#xE8C8;" FontSize="14" />
             </Button>
         </Grid>
 
-        <TextBlock Text="Connected clients" Style="{StaticResource BodyStrongTextBlockStyle}" />
-        <ToggleSwitch x:Name="RequireApprovalToggle" Header="Require approval for new clients"
+        <TextBlock x:Uid="Mcp_ClientsHeader" Text="Connected clients" Style="{StaticResource BodyStrongTextBlockStyle}" />
+        <ToggleSwitch x:Name="RequireApprovalToggle" x:Uid="Mcp_RequireApprovalToggle" Header="Require approval for new clients"
                       OnContent="On" OffContent="Off" Toggled="OnRequireApprovalToggled" />
-        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+        <TextBlock x:Uid="Mcp_RequireApprovalCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                    Text="When on, only approved clients may connect — others are refused until you approve them below. The connection identity is self-reported, so this is for visibility and revocation; the real boundary is that the server only listens on your private per-user pipe." />
-        <TextBlock x:Name="NoClientsText" Style="{StaticResource CaptionTextBlockStyle}"
+        <TextBlock x:Name="NoClientsText" x:Uid="Mcp_NoClients" Style="{StaticResource CaptionTextBlockStyle}"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="No clients have connected yet." />
         <ItemsControl x:Name="ClientsList">
             <ItemsControl.ItemTemplate>
@@ -115,8 +115,8 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <TextBlock Text="Recent agent activity" Style="{StaticResource BodyStrongTextBlockStyle}" />
-        <TextBlock x:Name="NoActivityText" Style="{StaticResource CaptionTextBlockStyle}"
+        <TextBlock x:Uid="Mcp_ActivityHeader" Text="Recent agent activity" Style="{StaticResource BodyStrongTextBlockStyle}" />
+        <TextBlock x:Name="NoActivityText" x:Uid="Mcp_NoActivity" Style="{StaticResource CaptionTextBlockStyle}"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="No agent activity yet." />
         <ItemsControl x:Name="ActivityList">
             <ItemsControl.ItemTemplate>
@@ -138,12 +138,12 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <Expander Header="Diagnostics" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+        <Expander x:Uid="Mcp_DiagnosticsExpander" Header="Diagnostics" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
             <StackPanel Spacing="8">
-                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                <TextBlock x:Uid="Mcp_DiagnosticsCaption" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Text="Check every link in the chain — server, listener, bridge exe, Claude clients, and the Claude Desktop config — with a one-click fix where one exists." />
-                <Button x:Name="RunDiagnosticsButton" Content="Run diagnostics" Click="OnRunDiagnosticsClick" />
+                <Button x:Name="RunDiagnosticsButton" x:Uid="Mcp_RunDiagnosticsButton" Content="Run diagnostics" Click="OnRunDiagnosticsClick" />
                 <ItemsControl x:Name="DiagnosticsList">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

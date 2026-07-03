@@ -27,6 +27,8 @@ public sealed partial class FitsTabHost : UserControl
         ViewModel = viewModel;
         InitializeComponent();
         CoordListView.ItemsSource = ViewModel.SavedCoordinates;
+        // Localized initial readout (code owns this text at runtime, so no x:Uid on it).
+        PanelCrosshairText.Text = Loc.T("Fits_NoCrosshair");
 
         // Pre-select the 100% item (editable ComboBox ignores Text= on first render)
         Loaded += (_, _) =>
@@ -455,7 +457,7 @@ public sealed partial class FitsTabHost : UserControl
             case Windows.System.VirtualKey.Space:
                 _blinkSession.IsPaused = !_blinkSession.IsPaused;
                 if (ViewModel.ActiveViewModel is not null)
-                    ViewModel.ActiveViewModel.StatusMessage = _blinkSession.IsPaused ? "Blink paused (Space to resume)" : "Blinking...";
+                    ViewModel.ActiveViewModel.StatusMessage = _blinkSession.IsPaused ? Loc.T("Fits_BlinkPaused") : Loc.T("Fits_Blinking");
                 e.Handled = true;
                 break;
             case Windows.System.VirtualKey.Left:
@@ -483,7 +485,7 @@ public sealed partial class FitsTabHost : UserControl
         if (wcsA is null || !wcsA.IsValid || wcsB is null || !wcsB.IsValid)
         {
             if (ViewModel.ActiveViewModel is not null)
-                ViewModel.ActiveViewModel.StatusMessage = "Both images need valid WCS for blink";
+                ViewModel.ActiveViewModel.StatusMessage = Loc.T("Fits_BlinkNeedsWcs");
             return;
         }
 
@@ -542,7 +544,7 @@ public sealed partial class FitsTabHost : UserControl
         BlinkIntervalSlider.Visibility = Visibility.Visible;
         StopBlinkButton.Visibility = Visibility.Visible;
         if (ViewModel.ActiveViewModel is not null)
-            ViewModel.ActiveViewModel.StatusMessage = $"Blinking: {tabA.Header} ↔ {tabB.Header} (Esc to stop)";
+            ViewModel.ActiveViewModel.StatusMessage = Loc.F("Fits_BlinkingStatus", tabA.Header, tabB.Header);
     }
 
     private void StopBlink()
@@ -608,13 +610,13 @@ public sealed partial class FitsTabHost : UserControl
             if (tab == ViewModel.ActiveTab) continue;
             flyout.Items.Add(new MenuFlyoutItem
             {
-                Text = $"Blink with {tab.Header}",
+                Text = Loc.F("Fits_BlinkWith", tab.Header),
                 Tag = tab,
             });
             ((MenuFlyoutItem)flyout.Items[^1]).Click += OnStartBlinkWithTab;
         }
         if (flyout.Items.Count == 0)
-            flyout.Items.Add(new MenuFlyoutItem { Text = "Open another tab first", IsEnabled = false });
+            flyout.Items.Add(new MenuFlyoutItem { Text = Loc.T("Fits_OpenAnotherTab"), IsEnabled = false });
     }
 
     // ── Linked crosshair ───────────────────────────────────────────────────
@@ -648,13 +650,13 @@ public sealed partial class FitsTabHost : UserControl
     {
         if (vm?.CrosshairPosition is { } pos)
         {
-            PanelCrosshairText.Text = $"RA  {pos.FormattedRa}\nDec {pos.FormattedDec}";
+            PanelCrosshairText.Text = Loc.F("Fits_CrosshairReadout", pos.FormattedRa, pos.FormattedDec);
             PanelCrosshairText.Foreground = (Microsoft.UI.Xaml.Media.Brush)
                 Application.Current.Resources["TextFillColorPrimaryBrush"];
         }
         else
         {
-            PanelCrosshairText.Text = "No crosshair placed";
+            PanelCrosshairText.Text = Loc.T("Fits_NoCrosshair");
             PanelCrosshairText.Foreground = (Microsoft.UI.Xaml.Media.Brush)
                 Application.Current.Resources["TextFillColorTertiaryBrush"];
         }
@@ -677,7 +679,7 @@ public sealed partial class FitsTabHost : UserControl
         var vm = ViewModel.ActiveViewModel;
         if (vm?.CrosshairPosition is null)
         {
-            if (vm is not null) vm.StatusMessage = "Right-click to place crosshair first";
+            if (vm is not null) vm.StatusMessage = Loc.T("Fits_PlaceCrosshairFirst");
             return;
         }
         ViewModel.SaveCoordinate(label, vm.CrosshairPosition.Ra, vm.CrosshairPosition.Dec, vm.FilePath);
@@ -690,7 +692,7 @@ public sealed partial class FitsTabHost : UserControl
             !double.TryParse(ManualDecBox.Text.Trim(), out var dec))
         {
             if (ViewModel.ActiveViewModel is not null)
-                ViewModel.ActiveViewModel.StatusMessage = "Enter valid RA and Dec in degrees";
+                ViewModel.ActiveViewModel.StatusMessage = Loc.T("Fits_EnterValidCoords");
             return;
         }
         _activePage.GoToWorldCoordinate(ra, dec);

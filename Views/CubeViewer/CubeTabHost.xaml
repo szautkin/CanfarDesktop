@@ -16,9 +16,9 @@
                     Spacing="14" MaxWidth="400">
             <FontIcon Glyph="&#xE809;" FontSize="56" HorizontalAlignment="Center"
                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-            <TextBlock Text="No cube open" HorizontalAlignment="Center"
+            <TextBlock x:Uid="Cube_EmptyTitle" Text="No cube open" HorizontalAlignment="Center"
                        Style="{StaticResource SubtitleTextBlockStyle}" />
-            <TextBlock TextWrapping="Wrap" TextAlignment="Center"
+            <TextBlock x:Uid="Cube_EmptyBody" TextWrapping="Wrap" TextAlignment="Center"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        Style="{StaticResource BodyTextBlockStyle}"
                        Text="Open a FITS spectral cube (NAXIS=3) to explore it in 3D — orbit the volume, scrub channels, probe spectra, and export figures." />
@@ -26,13 +26,13 @@
                     Style="{StaticResource AccentButtonStyle}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon Glyph="&#xE8E5;" FontSize="16" />
-                    <TextBlock Text="Open cube…" />
+                    <TextBlock x:Uid="Cube_OpenLabel" Text="Open cube…" />
                 </StackPanel>
             </Button>
 
             <!-- Recently opened cubes (persisted; entries built in code from RecentCubesService) -->
             <StackPanel x:Name="RecentsPanel" Visibility="Collapsed" Spacing="2" Margin="0,10,0,0">
-                <TextBlock Text="Recent cubes" HorizontalAlignment="Center"
+                <TextBlock x:Uid="Cube_RecentsHeader" Text="Recent cubes" HorizontalAlignment="Center"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Style="{StaticResource CaptionTextBlockStyle}" />
                 <ItemsControl x:Name="RecentsList" HorizontalAlignment="Center" />

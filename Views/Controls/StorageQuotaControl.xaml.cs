@@ -22,9 +22,9 @@ public sealed partial class StorageQuotaControl : UserControl
             LoadingBar.Visibility = ViewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
             DataPanel.Visibility = ViewModel.HasData ? Visibility.Visible : Visibility.Collapsed;
 
-            UsedText.Text = $"{ViewModel.UsedGB:F2} GB";
-            QuotaText.Text = $"{ViewModel.QuotaGB:F2} GB";
-            UsageText.Text = $"{ViewModel.UsagePercent:F1}%";
+            UsedText.Text = Helpers.Loc.F("Quota_Gigabytes", ViewModel.UsedGB);
+            QuotaText.Text = Helpers.Loc.F("Quota_Gigabytes", ViewModel.QuotaGB);
+            UsageText.Text = Helpers.Loc.F("Quota_Percent", ViewModel.UsagePercent);
             UsageBar.Value = ViewModel.UsagePercent;
 
             ErrorBar.IsOpen = ViewModel.HasError;

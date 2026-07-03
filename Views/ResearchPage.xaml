@@ -28,16 +28,16 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <TextBlock Text="Downloads" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <TextBlock x:Uid="Research_DownloadsTitle" Text="Downloads" Style="{StaticResource SubtitleTextBlockStyle}" />
                         <TextBlock x:Name="CountText" Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                     </StackPanel>
-                    <Button Grid.Column="1" Content="Export…" Click="OnExportClick"
+                    <Button x:Uid="Research_ExportButton" Grid.Column="1" Content="Export…" Click="OnExportClick"
                             Padding="8,4" Background="Transparent" BorderThickness="0"
                             ToolTipService.ToolTip="Export your research + searches as a Claude-friendly bundle" />
                 </Grid>
 
-                <TextBox Grid.Row="1" x:Name="FilterBox" PlaceholderText="Filter..."
+                <TextBox x:Uid="Research_FilterBox" Grid.Row="1" x:Name="FilterBox" PlaceholderText="Filter..."
                          TextChanged="OnFilterChanged" />
 
                 <ListView Grid.Row="2" x:Name="FileList" SelectionMode="Single"
@@ -77,9 +77,9 @@
                 <!-- Empty state -->
                 <StackPanel x:Name="EmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
                     <FontIcon Glyph="&#xE8B7;" FontSize="48" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" />
-                    <TextBlock Text="Select an observation" Style="{StaticResource SubtitleTextBlockStyle}"
+                    <TextBlock x:Uid="Research_EmptyTitle" Text="Select an observation" Style="{StaticResource SubtitleTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
-                    <TextBlock Text="Downloaded observations from CADC archive search appear here."
+                    <TextBlock x:Uid="Research_EmptyHint" Text="Downloaded observations from CADC archive search appear here."
                                Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="300" />
                 </StackPanel>

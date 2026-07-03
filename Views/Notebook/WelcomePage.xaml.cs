@@ -45,12 +45,12 @@ public sealed partial class WelcomePage : UserControl
         }
         else
         {
-            AddStatusRow("\uE783", "Python not found", "Install Python 3.8+ from python.org",
+            AddStatusRow("\uE783", Helpers.Loc.T("Nb_PythonNotFound"), Helpers.Loc.T("Nb_PythonInstallHint"),
                 "SystemFillColorCriticalBrush");
 
             var installBtn = new HyperlinkButton
             {
-                Content = "Download Python",
+                Content = Helpers.Loc.T("Nb_DownloadPython"),
                 NavigateUri = new System.Uri("https://www.python.org/downloads/"),
                 Margin = new Thickness(24, 0, 0, 0),
             };
@@ -89,13 +89,13 @@ public sealed partial class WelcomePage : UserControl
             if (proc.ExitCode == 0 && !string.IsNullOrEmpty(output))
                 AddStatusRow("\uE73E", $"{package} {output}", null, "SystemFillColorSuccessBrush");
             else
-                AddStatusRow("\uE783", $"{package} not installed",
-                    $"Run: %pip install {package}", "SystemFillColorCautionBrush");
+                AddStatusRow("\uE783", Helpers.Loc.F("Nb_PackageNotInstalled", package),
+                    Helpers.Loc.F("Nb_PipInstallHint", package), "SystemFillColorCautionBrush");
         }
         catch
         {
-            AddStatusRow("\uE783", $"{package} not installed",
-                $"Run: %pip install {package}", "SystemFillColorCautionBrush");
+            AddStatusRow("\uE783", Helpers.Loc.F("Nb_PackageNotInstalled", package),
+                Helpers.Loc.F("Nb_PipInstallHint", package), "SystemFillColorCautionBrush");
         }
     }
 

@@ -20,14 +20,14 @@ public sealed partial class SessionEventsDialog : ContentDialog
 
             await Task.WhenAll(eventsTask, logsTask);
 
-            EventsText.Text = eventsTask.Result ?? "No events available";
-            LogsText.Text = logsTask.Result ?? "No logs available";
+            EventsText.Text = eventsTask.Result ?? Helpers.Loc.T("Events_NoEvents");
+            LogsText.Text = logsTask.Result ?? Helpers.Loc.T("Events_NoLogs");
         }
         catch (Exception ex)
         {
             // Without this the dialog is stuck on the spinner forever.
-            EventsText.Text = $"Failed to load session events: {ex.Message}";
-            LogsText.Text = $"Failed to load session logs: {ex.Message}";
+            EventsText.Text = Helpers.Loc.F("Events_LoadEventsFailed", ex.Message);
+            LogsText.Text = Helpers.Loc.F("Events_LoadLogsFailed", ex.Message);
         }
         finally
         {

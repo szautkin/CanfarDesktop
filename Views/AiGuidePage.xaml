@@ -28,7 +28,7 @@
                             <Border CornerRadius="8" Padding="6,1" VerticalAlignment="Center"
                                     Background="{ThemeResource AccentFillColorSecondaryBrush}"
                                     Visibility="{x:Bind IsOverridden, Mode=OneWay, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="Overridden" Style="{StaticResource CaptionTextBlockStyle}" />
+                                <TextBlock x:Uid="Guide_OverriddenBadge" Text="Overridden" Style="{StaticResource CaptionTextBlockStyle}" />
                             </Border>
                         </StackPanel>
                         <TextBlock Grid.Column="1" Text="{x:Bind EffectiveDescription, Mode=OneWay}"
@@ -38,12 +38,12 @@
                     </Grid>
                 </Expander.Header>
                 <StackPanel Spacing="8" Padding="0,4">
-                    <TextBlock Text="Built-in default" Style="{StaticResource CaptionTextBlockStyle}"
+                    <TextBlock x:Uid="Guide_BuiltInDefault" Text="Built-in default" Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                     <TextBlock Text="{x:Bind DefaultDescription}" TextWrapping="Wrap" IsTextSelectionEnabled="True"
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBox Header="Your description" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"
+                    <TextBox x:Uid="Guide_YourDescriptionBox" Header="Your description" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"
                              Text="{x:Bind EditText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              PlaceholderText="Describe this tool the way you want the agent to read it" />
                     <Grid>
@@ -56,10 +56,10 @@
                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                     </Grid>
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="Save" Click="OnSaveOverrideClick" Style="{StaticResource AccentButtonStyle}" />
-                        <Button Content="Reset to default" Click="OnResetOverrideClick"
+                        <Button x:Uid="Guide_SaveButton" Content="Save" Click="OnSaveOverrideClick" Style="{StaticResource AccentButtonStyle}" />
+                        <Button x:Uid="Guide_ResetButton" Content="Reset to default" Click="OnResetOverrideClick"
                                 Visibility="{x:Bind IsOverridden, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
-                        <Button Content="Cancel" Click="OnCancelEditClick" />
+                        <Button x:Uid="Guide_CancelButton" Content="Cancel" Click="OnCancelEditClick" />
                     </StackPanel>
                 </StackPanel>
             </Expander>
@@ -151,10 +151,10 @@
                                Visibility="{x:Bind HasBody, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
-                    <Button Click="OnEditGuideClick" ToolTipService.ToolTip="Edit" Padding="8,4">
+                    <Button x:Uid="Guide_EditGuideButton" Click="OnEditGuideClick" ToolTipService.ToolTip="Edit" Padding="8,4">
                         <FontIcon Glyph="&#xE70F;" FontSize="13" />
                     </Button>
-                    <Button Click="OnDeleteGuideClick" ToolTipService.ToolTip="Delete" Padding="8,4">
+                    <Button x:Uid="Guide_DeleteGuideButton" Click="OnDeleteGuideClick" ToolTipService.ToolTip="Delete" Padding="8,4">
                         <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
                     </Button>
                 </StackPanel>
@@ -181,7 +181,7 @@
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <FontIcon Glyph="&#xE945;" FontSize="20" VerticalAlignment="Top"
                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                    <TextBlock TextWrapping="Wrap" MaxWidth="640"
+                                    <TextBlock x:Uid="Guide_Intro" TextWrapping="Wrap" MaxWidth="640"
                                                Style="{StaticResource BodyTextBlockStyle}"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                Text="Re-tune how the AI agent sees each tool. Your edits override the built-in description the MCP server advertises, live." />
@@ -203,9 +203,9 @@
                                 </StackPanel>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top">
-                                <TextBox x:Name="SearchBox" Width="240" PlaceholderText="Filter tools…"
+                                <TextBox x:Name="SearchBox" x:Uid="Guide_SearchBox" Width="240" PlaceholderText="Filter tools…"
                                          Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                <Button Click="OnClearSearchClick" ToolTipService.ToolTip="Clear filter"
+                                <Button x:Uid="Guide_ClearSearchButton" Click="OnClearSearchClick" ToolTipService.ToolTip="Clear filter"
                                         Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BoolToVis}}">
                                     <FontIcon Glyph="&#xE711;" FontSize="13" />
                                 </Button>
@@ -229,19 +229,19 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Spacing="2">
-                                <TextBlock Text="My guide tools" Style="{StaticResource SubtitleTextBlockStyle}" />
-                                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                                <TextBlock x:Uid="Guide_MyGuidesHeader" Text="My guide tools" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                <TextBlock x:Uid="Guide_MyGuidesCaption" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                            Text="Custom read-only instruction tools you author. The agent sees each as a callable tool and receives your text when it calls it — no code runs." />
                             </StackPanel>
                             <Button Grid.Column="1" VerticalAlignment="Center" Click="OnAddGuideClick">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <FontIcon Glyph="&#xE710;" FontSize="14" />
-                                    <TextBlock Text="New guide" />
+                                    <TextBlock x:Uid="Guide_NewGuideLabel" Text="New guide" />
                                 </StackPanel>
                             </Button>
                         </Grid>
-                        <TextBlock Text="No guides yet. Add one to teach the agent a workflow, a naming convention, or a project rule."
+                        <TextBlock x:Uid="Guide_NoGuides" Text="No guides yet. Add one to teach the agent a workflow, a naming convention, or a project rule."
                                    Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                    Visibility="{x:Bind ViewModel.HasGuides, Mode=OneWay, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}" />
@@ -263,11 +263,11 @@
                 <StackPanel Spacing="12"
                             Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <TextBlock Text="View:" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"
+                        <TextBlock x:Uid="Guide_ViewLabel" Text="View:" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <RadioButton GroupName="aiGuideView" Content="Tiles" Checked="OnTilesChecked"
+                        <RadioButton x:Uid="Guide_TilesRadio" GroupName="aiGuideView" Content="Tiles" Checked="OnTilesChecked"
                                      IsChecked="{x:Bind ViewModel.ShowTiles, Mode=OneWay}" />
-                        <RadioButton GroupName="aiGuideView" Content="See everything" Checked="OnEverythingChecked"
+                        <RadioButton x:Uid="Guide_EverythingRadio" GroupName="aiGuideView" Content="See everything" Checked="OnEverythingChecked"
                                      IsChecked="{x:Bind ViewModel.ShowEverything, Mode=OneWay}" />
                     </StackPanel>
 
@@ -318,7 +318,7 @@
                         <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.FocusedCategory.ToolCountText, Mode=OneWay}"
                                    VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <Button Grid.Column="3" Click="OnCloseFocusClick" ToolTipService.ToolTip="Close"
+                        <Button x:Uid="Guide_CloseFocusButton" Grid.Column="3" Click="OnCloseFocusClick" ToolTipService.ToolTip="Close"
                                 Background="Transparent" BorderThickness="0" Padding="6">
                             <FontIcon Glyph="&#xE711;" FontSize="14" />
                         </Button>

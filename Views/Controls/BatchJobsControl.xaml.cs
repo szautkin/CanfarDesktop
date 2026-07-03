@@ -70,7 +70,7 @@ public sealed partial class BatchJobsControl : UserControl
 
     private void UpdateCountdownText()
     {
-        CountdownText.Text = $"{_countdown}s";
+        CountdownText.Text = Helpers.Loc.F("Portal_CountdownSeconds", _countdown);
     }
 
     private async void OnRefreshClick(object sender, RoutedEventArgs e)

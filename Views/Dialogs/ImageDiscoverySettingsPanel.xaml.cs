@@ -45,8 +45,8 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
     {
         var hasSecret = _service.Settings.HasSecret;
         SecretStatus.Text = hasSecret
-            ? "A secret is stored. Type a new one to replace it, or leave blank to keep it."
-            : "No secret stored.";
+            ? Helpers.Loc.T("Discovery_SecretStored")
+            : Helpers.Loc.T("Discovery_NoSecret");
         RemoveSecretButton.Visibility = hasSecret ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -60,8 +60,10 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
         CacheSection.Visibility = Visibility.Visible;
         var count = _coordinator.CacheCount();
         CacheCountText.Text = count == 0
-            ? "No images cached yet."
-            : $"{count.ToString(CultureInfo.InvariantCulture)} image{(count == 1 ? "" : "s")} cached.";
+            ? Helpers.Loc.T("Discovery_CacheEmpty")
+            : count == 1
+                ? Helpers.Loc.T("Discovery_CacheCountOne")
+                : Helpers.Loc.F("Discovery_CacheCountMany", count);
         ClearCacheButton.IsEnabled = count > 0;
     }
 
@@ -102,14 +104,14 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
             }
             catch (Exception ex)
             {
-                ShowStatus(InfoBarSeverity.Error, "Couldn't save secret", ex.Message);
+                ShowStatus(InfoBarSeverity.Error, Helpers.Loc.T("Discovery_SecretSaveFailedTitle"), ex.Message);
                 return;
             }
         }
 
         RefreshSecretStatus();
         ResetButton.IsEnabled = !_service.Settings.IsAllDefaults;
-        ShowStatus(InfoBarSeverity.Success, "Saved", "Image-discovery settings were saved.");
+        ShowStatus(InfoBarSeverity.Success, Helpers.Loc.T("Discovery_SavedTitle"), Helpers.Loc.T("Discovery_SavedBody"));
     }
 
     private void OnRemoveSecret(object sender, RoutedEventArgs e)
@@ -118,14 +120,14 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
         SecretBox.Password = string.Empty;
         RefreshSecretStatus();
         ResetButton.IsEnabled = !_service.Settings.IsAllDefaults;
-        ShowStatus(InfoBarSeverity.Success, "Secret removed", "The stored registry secret was deleted.");
+        ShowStatus(InfoBarSeverity.Success, Helpers.Loc.T("Discovery_SecretRemovedTitle"), Helpers.Loc.T("Discovery_SecretRemovedBody"));
     }
 
     private void OnClearCache(object sender, RoutedEventArgs e)
     {
         _coordinator?.ClearCache();
         LoadCache();
-        ShowStatus(InfoBarSeverity.Success, "Cache cleared", "Discovered image manifests were cleared.");
+        ShowStatus(InfoBarSeverity.Success, Helpers.Loc.T("Discovery_CacheClearedTitle"), Helpers.Loc.T("Discovery_CacheClearedBody"));
     }
 
     private void OnResetClick(object sender, RoutedEventArgs e)
@@ -141,7 +143,7 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
     {
         _service.ResetToDefaults();
         Populate();
-        ShowStatus(InfoBarSeverity.Success, "Reset", "Image-discovery settings were reset to defaults.");
+        ShowStatus(InfoBarSeverity.Success, Helpers.Loc.T("Discovery_ResetTitle"), Helpers.Loc.T("Discovery_ResetBody"));
     }
 
     private async void OnTestCredentials(object sender, RoutedEventArgs e)
@@ -158,13 +160,13 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
             }
             catch (Exception ex)
             {
-                ShowStatus(InfoBarSeverity.Error, "Couldn't save secret", ex.Message);
+                ShowStatus(InfoBarSeverity.Error, Helpers.Loc.T("Discovery_SecretSaveFailedTitle"), ex.Message);
                 return;
             }
         }
 
         TestButton.IsEnabled = false;
-        ShowStatus(InfoBarSeverity.Informational, "Testing…", $"Contacting {_service.Settings.RegistryHost} …");
+        ShowStatus(InfoBarSeverity.Informational, Helpers.Loc.T("Discovery_TestingTitle"), Helpers.Loc.F("Discovery_ContactingBody", _service.Settings.RegistryHost));
         try
         {
             var client = App.Services.GetRequiredService<IHttpClientFactory>().CreateClient();
@@ -177,17 +179,17 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
             };
             var title = result.Kind switch
             {
-                RegistryTestKind.Success => "Credentials valid",
-                RegistryTestKind.Unauthorized => "Credentials rejected",
-                RegistryTestKind.MissingConfiguration => "Configuration incomplete",
-                RegistryTestKind.InvalidChallenge => "Unexpected registry response",
-                _ => "Network error",
+                RegistryTestKind.Success => Helpers.Loc.T("Discovery_TestValid"),
+                RegistryTestKind.Unauthorized => Helpers.Loc.T("Discovery_TestRejected"),
+                RegistryTestKind.MissingConfiguration => Helpers.Loc.T("Discovery_TestIncomplete"),
+                RegistryTestKind.InvalidChallenge => Helpers.Loc.T("Discovery_TestUnexpected"),
+                _ => Helpers.Loc.T("Discovery_TestNetworkError"),
             };
             ShowStatus(severity, title, result.Message);
         }
         catch (Exception ex)
         {
-            ShowStatus(InfoBarSeverity.Error, "Test failed", ex.Message);
+            ShowStatus(InfoBarSeverity.Error, Helpers.Loc.T("Discovery_TestFailed"), ex.Message);
         }
         finally
         {

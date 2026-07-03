@@ -36,15 +36,15 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <HyperlinkButton x:Name="ViewOnCadcButton" Click="OnViewOnCadc"
+                <HyperlinkButton x:Uid="ObsDetail_ViewOnCadcButton" x:Name="ViewOnCadcButton" Click="OnViewOnCadc"
                                  ToolTipService.ToolTip="View on CADC"
                                  AutomationProperties.Name="View observation on CADC website">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE71B;" FontSize="14" />
-                        <TextBlock Text="View on CADC" />
+                        <TextBlock x:Uid="ObsDetail_ViewOnCadcText" Text="View on CADC" />
                     </StackPanel>
                 </HyperlinkButton>
-                <Button Click="OnClose" Background="Transparent" BorderThickness="0" Padding="6,4"
+                <Button x:Uid="ObsDetail_CloseButton" Click="OnClose" Background="Transparent" BorderThickness="0" Padding="6,4"
                         AutomationProperties.Name="Close observation detail"
                         ToolTipService.ToolTip="Close (Back)">
                     <FontIcon Glyph="&#xE711;" FontSize="14" />
@@ -54,10 +54,10 @@
 
         <!-- Status bars -->
         <StackPanel Grid.Row="1">
-            <InfoBar x:Name="ErrorBar" IsOpen="False" IsClosable="False" Severity="Error"
+            <InfoBar x:Uid="ObsDetail_ErrorBar" x:Name="ErrorBar" IsOpen="False" IsClosable="False" Severity="Error"
                      Title="Could not load observation">
                 <InfoBar.ActionButton>
-                    <Button Content="Retry" Click="OnRetry" />
+                    <Button x:Uid="ObsDetail_RetryButton" Content="Retry" Click="OnRetry" />
                 </InfoBar.ActionButton>
             </InfoBar>
             <InfoBar x:Name="DownloadBar" IsOpen="False" IsClosable="True">
@@ -74,7 +74,7 @@
             <StackPanel x:Name="LoadingPanel" HorizontalAlignment="Center" VerticalAlignment="Center"
                         Spacing="12" Visibility="Collapsed">
                 <ProgressRing Width="48" Height="48" IsActive="True" />
-                <TextBlock Text="Loading observation…" HorizontalAlignment="Center"
+                <TextBlock x:Uid="ObsDetail_LoadingText" Text="Loading observation…" HorizontalAlignment="Center"
                            Style="{StaticResource CaptionTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
@@ -83,13 +83,13 @@
                         Spacing="12" MaxWidth="400" Visibility="Collapsed">
                 <FontIcon Glyph="&#xE72E;" FontSize="56" HorizontalAlignment="Center"
                           Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                <TextBlock Text="Sign in to view" Style="{StaticResource TitleTextBlockStyle}"
+                <TextBlock x:Uid="ObsDetail_AuthTitle" Text="Sign in to view" Style="{StaticResource TitleTextBlockStyle}"
                            HorizontalAlignment="Center" />
-                <TextBlock TextWrapping="Wrap" TextAlignment="Center"
+                <TextBlock x:Uid="ObsDetail_AuthBody" TextWrapping="Wrap" TextAlignment="Center"
                            Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Text="This observation is from a proprietary collection. Sign in with your CADC account to access the details." />
-                <Button Content="Sign in" Style="{StaticResource AccentButtonStyle}"
+                <Button x:Uid="ObsDetail_SignInButton" Content="Sign in" Style="{StaticResource AccentButtonStyle}"
                         HorizontalAlignment="Center" Click="OnSignIn"
                         AutomationProperties.Name="Sign in to view proprietary observation" />
             </StackPanel>
@@ -98,7 +98,7 @@
                         Spacing="12" MaxWidth="400" Visibility="Collapsed">
                 <FontIcon Glyph="&#xE783;" FontSize="56" HorizontalAlignment="Center"
                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                <TextBlock Text="Observation not found" Style="{StaticResource TitleTextBlockStyle}"
+                <TextBlock x:Uid="ObsDetail_NotFoundTitle" Text="Observation not found" Style="{StaticResource TitleTextBlockStyle}"
                            HorizontalAlignment="Center" />
                 <TextBlock x:Name="NotFoundText" TextWrapping="Wrap" TextAlignment="Center"
                            Style="{StaticResource BodyTextBlockStyle}"
@@ -106,19 +106,19 @@
             </StackPanel>
 
             <Pivot x:Name="DetailPivot" Visibility="Collapsed" Padding="16,4,16,0">
-                <PivotItem Header="Overview">
+                <PivotItem x:Uid="ObsDetail_TabOverview" Header="Overview">
                     <ScrollViewer><StackPanel x:Name="OverviewPanel" Spacing="12" Padding="0,12" /></ScrollViewer>
                 </PivotItem>
-                <PivotItem Header="Coverage">
+                <PivotItem x:Uid="ObsDetail_TabCoverage" Header="Coverage">
                     <ScrollViewer><StackPanel x:Name="CoveragePanel" Spacing="12" Padding="0,12" /></ScrollViewer>
                 </PivotItem>
-                <PivotItem Header="Files">
+                <PivotItem x:Uid="ObsDetail_TabFiles" Header="Files">
                     <ScrollViewer><StackPanel x:Name="FilesPanel" Spacing="12" Padding="0,12" /></ScrollViewer>
                 </PivotItem>
-                <PivotItem Header="Provenance">
+                <PivotItem x:Uid="ObsDetail_TabProvenance" Header="Provenance">
                     <ScrollViewer><StackPanel x:Name="ProvenancePanel" Spacing="12" Padding="0,12" /></ScrollViewer>
                 </PivotItem>
-                <PivotItem Header="Raw">
+                <PivotItem x:Uid="ObsDetail_TabRaw" Header="Raw">
                     <ScrollViewer><StackPanel x:Name="RawPanel" Spacing="4" Padding="0,12" /></ScrollViewer>
                 </PivotItem>
             </Pivot>

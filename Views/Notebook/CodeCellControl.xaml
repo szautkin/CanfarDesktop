@@ -47,7 +47,7 @@
                                TextWrapping="Wrap" Visibility="Visible"
                                Tapped="OnSyntaxViewTapped" />
                 <!-- TextBox editor (shown when editing) -->
-                <TextBox x:Name="SourceEditor"
+                <TextBox x:Name="SourceEditor" x:Uid="Nb_CodeEditor"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
                          FontFamily="Consolas"
@@ -76,7 +76,7 @@
                     ManipulationMode="System">
                 <StackPanel>
                     <!-- Collapse toggle -->
-                    <Button x:Name="CollapseToggle" Click="OnToggleOutputCollapse"
+                    <Button x:Name="CollapseToggle" x:Uid="Nb_CollapseToggle" Click="OnToggleOutputCollapse"
                             Padding="8,2" Background="Transparent" BorderThickness="0"
                             HorizontalAlignment="Left"
                             AutomationProperties.Name="Toggle output">

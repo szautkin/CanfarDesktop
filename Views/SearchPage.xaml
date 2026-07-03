@@ -23,11 +23,11 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Text="CADC Archive Search" Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock Grid.Row="0" x:Uid="Search_Title" Text="CADC Archive Search" Style="{StaticResource TitleTextBlockStyle}" />
 
             <Pivot Grid.Row="1" x:Name="MainPivot">
                 <!-- SEARCH FORM -->
-                <PivotItem Header="Search Form">
+                <PivotItem x:Uid="Search_FormPivot" Header="Search Form">
                     <Grid RowSpacing="0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
@@ -47,21 +47,21 @@
 
                                 <!-- Col 1: Observation -->
                                 <StackPanel Grid.Column="0" Spacing="8">
-                                    <TextBlock Text="Observation" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                                    <TextBox Header="Observation ID" PlaceholderText="e.g. jw01345*"
+                                    <TextBlock x:Uid="Search_ObservationSection" Text="Observation" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <TextBox x:Uid="Search_ObservationIdBox" Header="Observation ID" PlaceholderText="e.g. jw01345*"
                                              Text="{x:Bind ViewModel.ObservationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Header="PI Name" PlaceholderText="e.g. Smith"
+                                    <TextBox x:Uid="Search_PiNameBox" Header="PI Name" PlaceholderText="e.g. Smith"
                                              Text="{x:Bind ViewModel.ProposalPi, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Header="Proposal ID"
+                                    <TextBox x:Uid="Search_ProposalIdBox" Header="Proposal ID"
                                              Text="{x:Bind ViewModel.ProposalId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Header="Proposal Title"
+                                    <TextBox x:Uid="Search_ProposalTitleBox" Header="Proposal Title"
                                              Text="{x:Bind ViewModel.ProposalTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Header="Keywords"
+                                    <TextBox x:Uid="Search_KeywordsBox" Header="Keywords"
                                              Text="{x:Bind ViewModel.ProposalKeywords, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Header="Data Release" PlaceholderText="e.g. > 2023-01-01"
+                                    <TextBox x:Uid="Search_DataReleaseBox" Header="Data Release" PlaceholderText="e.g. > 2023-01-01"
                                              Text="{x:Bind ViewModel.DataRelease, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <CheckBox Content="Public only" IsChecked="{x:Bind ViewModel.PublicOnly, Mode=TwoWay}" />
-                                    <ComboBox Header="Intent" HorizontalAlignment="Stretch"
+                                    <CheckBox x:Uid="Search_PublicOnlyCheck" Content="Public only" IsChecked="{x:Bind ViewModel.PublicOnly, Mode=TwoWay}" />
+                                    <ComboBox x:Uid="Search_IntentCombo" Header="Intent" HorizontalAlignment="Stretch"
                                               SelectedItem="{x:Bind ViewModel.Intent, Mode=TwoWay}">
                                         <x:String></x:String>
                                         <x:String>science</x:String>
@@ -71,10 +71,10 @@
 
                                 <!-- Col 2: Spatial -->
                                 <StackPanel Grid.Column="1" Spacing="8">
-                                    <TextBlock Text="Spatial" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                                    <TextBox Header="Target or Coordinates" PlaceholderText="e.g. M31, NGC 1234"
+                                    <TextBlock x:Uid="Search_SpatialSection" Text="Spatial" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <TextBox x:Uid="Search_TargetBox" Header="Target or Coordinates" PlaceholderText="e.g. M31, NGC 1234"
                                              Text="{x:Bind ViewModel.Target, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <ComboBox Header="Resolver" HorizontalAlignment="Stretch"
+                                    <ComboBox x:Uid="Search_ResolverCombo" Header="Resolver" HorizontalAlignment="Stretch"
                                               ItemsSource="{x:Bind ViewModel.ResolverServices}"
                                               SelectedItem="{x:Bind ViewModel.ResolverService, Mode=TwoWay}" />
                                     <!-- Resolver status -->
@@ -83,36 +83,36 @@
                                             Visibility="{x:Bind ViewModel.IsResolving, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <ProgressRing IsActive="True" Width="14" Height="14" />
-                                            <TextBlock Text="Resolving..." Style="{StaticResource CaptionTextBlockStyle}" />
+                                            <TextBlock x:Uid="Search_ResolvingText" Text="Resolving..." Style="{StaticResource CaptionTextBlockStyle}" />
                                         </StackPanel>
                                     </Border>
                                     <TextBlock x:Name="ResolverStatusText" Text="{x:Bind ViewModel.ResolverStatus, Mode=OneWay}"
                                                Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" TextWrapping="Wrap" />
-                                    <NumberBox Header="Radius (deg)" Value="{x:Bind ViewModel.SearchRadius, Mode=TwoWay}"
+                                    <NumberBox x:Uid="Search_RadiusBox" Header="Radius (deg)" Value="{x:Bind ViewModel.SearchRadius, Mode=TwoWay}"
                                                Minimum="0" SmallChange="0.01" SpinButtonPlacementMode="Compact" />
                                     <Grid ColumnSpacing="4">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Header="Pixel Scale" PlaceholderText="e.g. 0.1..1.0"
+                                        <TextBox Grid.Column="0" x:Uid="Search_PixelScaleBox" Header="Pixel Scale" PlaceholderText="e.g. 0.1..1.0"
                                                  Text="{x:Bind ViewModel.PixelScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         <ComboBox Grid.Column="1" Width="90" VerticalAlignment="Bottom"
                                                   ItemsSource="{x:Bind PixelScaleUnits}"
                                                   SelectedItem="{x:Bind ViewModel.PixelScaleUnit, Mode=TwoWay}" />
                                     </Grid>
-                                    <CheckBox Content="Spatial cutout" IsChecked="{x:Bind ViewModel.SpatialCutout, Mode=TwoWay}" />
+                                    <CheckBox x:Uid="Search_SpatialCutoutCheck" Content="Spatial cutout" IsChecked="{x:Bind ViewModel.SpatialCutout, Mode=TwoWay}" />
                                 </StackPanel>
 
                                 <!-- Col 3: Temporal -->
                                 <StackPanel Grid.Column="2" Spacing="8">
-                                    <TextBlock Text="Temporal" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <TextBlock x:Uid="Search_TemporalSection" Text="Temporal" Style="{StaticResource BodyStrongTextBlockStyle}" />
                                     <Grid ColumnSpacing="4">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Header="Observation Date" PlaceholderText="e.g. 2020..2021"
+                                        <TextBox Grid.Column="0" x:Uid="Search_ObsDateBox" Header="Observation Date" PlaceholderText="e.g. 2020..2021"
                                                  Text="{x:Bind ViewModel.ObservationDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         <ComboBox Grid.Column="1" Width="110" VerticalAlignment="Bottom"
                                                   SelectedItem="{x:Bind ViewModel.DatePreset, Mode=TwoWay}">
@@ -127,7 +127,7 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Header="Integration Time" PlaceholderText="e.g. 100..3600"
+                                        <TextBox Grid.Column="0" x:Uid="Search_IntegrationTimeBox" Header="Integration Time" PlaceholderText="e.g. 100..3600"
                                                  Text="{x:Bind ViewModel.IntegrationTimeMin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         <ComboBox Grid.Column="1" Width="60" VerticalAlignment="Bottom"
                                                   ItemsSource="{x:Bind TimeUnits}"
@@ -138,7 +138,7 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Header="Time Span" PlaceholderText="e.g. 1..10"
+                                        <TextBox Grid.Column="0" x:Uid="Search_TimeSpanBox" Header="Time Span" PlaceholderText="e.g. 1..10"
                                                  Text="{x:Bind ViewModel.TimeSpan, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         <ComboBox Grid.Column="1" Width="60" VerticalAlignment="Bottom"
                                                   ItemsSource="{x:Bind TimeUnits}"
@@ -148,13 +148,13 @@
 
                                 <!-- Col 4: Spectral -->
                                 <StackPanel Grid.Column="3" Spacing="8">
-                                    <TextBlock Text="Spectral" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <TextBlock x:Uid="Search_SpectralSection" Text="Spectral" Style="{StaticResource BodyStrongTextBlockStyle}" />
                                     <Grid ColumnSpacing="4">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Header="Spectral Coverage" PlaceholderText="e.g. 400..700"
+                                        <TextBox Grid.Column="0" x:Uid="Search_SpectralCoverageBox" Header="Spectral Coverage" PlaceholderText="e.g. 400..700"
                                                  Text="{x:Bind ViewModel.SpectralCoverage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         <ComboBox Grid.Column="1" Width="80" VerticalAlignment="Bottom"
                                                   ItemsSource="{x:Bind SpectralUnits}"
@@ -165,20 +165,20 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Header="Spectral Sampling"
+                                        <TextBox Grid.Column="0" x:Uid="Search_SpectralSamplingBox" Header="Spectral Sampling"
                                                  Text="{x:Bind ViewModel.SpectralSampling, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         <ComboBox Grid.Column="1" Width="80" VerticalAlignment="Bottom"
                                                   ItemsSource="{x:Bind SpectralUnits}"
                                                   SelectedItem="{x:Bind ViewModel.SpectralSamplingUnit, Mode=TwoWay}" />
                                     </Grid>
-                                    <TextBox Header="Resolving Power" PlaceholderText="e.g. 1000..5000"
+                                    <TextBox x:Uid="Search_ResolvingPowerBox" Header="Resolving Power" PlaceholderText="e.g. 1000..5000"
                                              Text="{x:Bind ViewModel.ResolvingPower, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <Grid ColumnSpacing="4">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Header="Bandpass Width"
+                                        <TextBox Grid.Column="0" x:Uid="Search_BandpassWidthBox" Header="Bandpass Width"
                                                  Text="{x:Bind ViewModel.BandpassWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         <ComboBox Grid.Column="1" Width="80" VerticalAlignment="Bottom"
                                                   ItemsSource="{x:Bind SpectralUnits}"
@@ -189,18 +189,18 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Header="Rest Frame Energy"
+                                        <TextBox Grid.Column="0" x:Uid="Search_RestFrameEnergyBox" Header="Rest Frame Energy"
                                                  Text="{x:Bind ViewModel.RestFrameEnergy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         <ComboBox Grid.Column="1" Width="80" VerticalAlignment="Bottom"
                                                   ItemsSource="{x:Bind SpectralUnits}"
                                                   SelectedItem="{x:Bind ViewModel.RestFrameEnergyUnit, Mode=TwoWay}" />
                                     </Grid>
-                                    <CheckBox Content="Spectral cutout" IsChecked="{x:Bind ViewModel.SpectralCutout, Mode=TwoWay}" />
+                                    <CheckBox x:Uid="Search_SpectralCutoutCheck" Content="Spectral cutout" IsChecked="{x:Bind ViewModel.SpectralCutout, Mode=TwoWay}" />
                                 </StackPanel>
                             </Grid>
 
                             <!-- Data Train (below the 4 columns) — lazy loaded on expand -->
-                            <Expander Header="Additional Constraints" IsExpanded="False"
+                            <Expander x:Uid="Search_ConstraintsExpander" Header="Additional Constraints" IsExpanded="False"
                                       HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                                 <StackPanel Spacing="8">
                                     <Grid ColumnSpacing="8">
@@ -213,19 +213,19 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0"><TextBlock Text="Band" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                        <StackPanel Grid.Column="0"><TextBlock x:Uid="Search_TrainBandLabel" Text="Band" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
                                             <ListView x:Name="BandList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="0" /></StackPanel>
-                                        <StackPanel Grid.Column="1"><TextBlock Text="Collection" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                        <StackPanel Grid.Column="1"><TextBlock x:Uid="Search_TrainCollectionLabel" Text="Collection" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
                                             <ListView x:Name="CollectionList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="1" /></StackPanel>
-                                        <StackPanel Grid.Column="2"><TextBlock Text="Instrument" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                        <StackPanel Grid.Column="2"><TextBlock x:Uid="Search_TrainInstrumentLabel" Text="Instrument" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
                                             <ListView x:Name="InstrumentList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="2" /></StackPanel>
-                                        <StackPanel Grid.Column="3"><TextBlock Text="Filter" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                        <StackPanel Grid.Column="3"><TextBlock x:Uid="Search_TrainFilterLabel" Text="Filter" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
                                             <ListView x:Name="FilterList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="3" /></StackPanel>
-                                        <StackPanel Grid.Column="4"><TextBlock Text="Cal. Level" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                        <StackPanel Grid.Column="4"><TextBlock x:Uid="Search_TrainCalLevelLabel" Text="Cal. Level" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
                                             <ListView x:Name="CalLevelList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="4" /></StackPanel>
-                                        <StackPanel Grid.Column="5"><TextBlock Text="Data Type" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                        <StackPanel Grid.Column="5"><TextBlock x:Uid="Search_TrainDataTypeLabel" Text="Data Type" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
                                             <ListView x:Name="DataTypeList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="5" /></StackPanel>
-                                        <StackPanel Grid.Column="6"><TextBlock Text="Obs. Type" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
+                                        <StackPanel Grid.Column="6"><TextBlock x:Uid="Search_TrainObsTypeLabel" Text="Obs. Type" Style="{StaticResource CaptionTextBlockStyle}" Margin="0,0,0,2" />
                                             <ListView x:Name="ObsTypeList" MaxHeight="180" SelectionMode="Multiple" SelectionChanged="OnTrainSelectionChanged" Tag="6" /></StackPanel>
                                     </Grid>
                                 </StackPanel>
@@ -256,12 +256,12 @@
                             <Button Grid.Column="0" x:Name="SearchButton" Style="{StaticResource AccentButtonStyle}" Click="OnSearchClick">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE721;" FontSize="14" />
-                                    <TextBlock Text="Search" />
+                                    <TextBlock x:Uid="Search_SearchButtonText" Text="Search" />
                                 </StackPanel>
                             </Button>
-                            <Button Grid.Column="1" Click="OnClearClick" Content="Reset" />
+                            <Button Grid.Column="1" x:Uid="Search_ResetButton" Click="OnClearClick" Content="Reset" />
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
-                                <TextBlock Text="Max Records" VerticalAlignment="Center"
+                                <TextBlock x:Uid="Search_MaxRecordsLabel" Text="Max Records" VerticalAlignment="Center"
                                            Style="{StaticResource CaptionTextBlockStyle}" />
                                 <NumberBox Width="100" Value="{x:Bind ViewModel.MaxRecords, Mode=TwoWay}"
                                            Minimum="1" Maximum="30000" SpinButtonPlacementMode="Compact" />
@@ -270,7 +270,7 @@
                                           Width="24" Height="24" VerticalAlignment="Bottom" />
                         </Grid>
 
-                        <InfoBar Grid.Row="2"
+                        <InfoBar Grid.Row="2" x:Uid="Search_ErrorBar"
                                  IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}" Severity="Error"
                                  Title="Error" Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
                     </Grid>
@@ -279,7 +279,7 @@
                 </PivotItem>
 
                 <!-- RESULTS -->
-                <PivotItem Header="Results">
+                <PivotItem x:Uid="Search_ResultsPivot" Header="Results">
                     <Grid RowSpacing="0" Padding="0,8,0,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -293,14 +293,14 @@
                         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
                             <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
                                        Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
-                            <Button Click="OnColumnsClick" Content="Columns" Padding="8,4" />
+                            <Button x:Uid="Search_ColumnsButton" Click="OnColumnsClick" Content="Columns" Padding="8,4" />
                             <Button Click="OnExportCsvClick" Content="CSV" Padding="8,4" />
                             <Button Click="OnExportTsvClick" Content="TSV" Padding="8,4" />
-                            <Button x:Name="ApplyFiltersBtn" Click="OnApplyFiltersToAdql" Padding="8,4"
+                            <Button x:Name="ApplyFiltersBtn" x:Uid="Search_ApplyFiltersBtn" Click="OnApplyFiltersToAdql" Padding="8,4"
                                     Visibility="Collapsed" ToolTipService.ToolTip="Convert active filters to ADQL query">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <FontIcon Glyph="&#xE71C;" FontSize="12" />
-                                    <TextBlock Text="Apply to ADQL" />
+                                    <TextBlock x:Uid="Search_ApplyFiltersText" Text="Apply to ADQL" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -325,22 +325,22 @@
                                     Padding="0,8" VerticalAlignment="Center">
                             <TextBlock x:Name="PageStatusText" VerticalAlignment="Center"
                                        Style="{StaticResource CaptionTextBlockStyle}" />
-                            <Button Click="OnFirstPage" Padding="8,4" ToolTipService.ToolTip="First page">
+                            <Button x:Uid="Search_FirstPageBtn" Click="OnFirstPage" Padding="8,4" ToolTipService.ToolTip="First page">
                                 <FontIcon Glyph="&#xEB9E;" FontSize="12" />
                             </Button>
-                            <Button Click="OnPrevPage" Padding="8,4" ToolTipService.ToolTip="Previous page">
+                            <Button x:Uid="Search_PrevPageBtn" Click="OnPrevPage" Padding="8,4" ToolTipService.ToolTip="Previous page">
                                 <FontIcon Glyph="&#xE76B;" FontSize="12" />
                             </Button>
                             <TextBlock x:Name="PageNumberText" VerticalAlignment="Center"
                                        Style="{StaticResource BodyTextBlockStyle}" Margin="4,0" />
-                            <Button Click="OnNextPage" Padding="8,4" ToolTipService.ToolTip="Next page">
+                            <Button x:Uid="Search_NextPageBtn" Click="OnNextPage" Padding="8,4" ToolTipService.ToolTip="Next page">
                                 <FontIcon Glyph="&#xE76C;" FontSize="12" />
                             </Button>
-                            <Button Click="OnLastPage" Padding="8,4" ToolTipService.ToolTip="Last page">
+                            <Button x:Uid="Search_LastPageBtn" Click="OnLastPage" Padding="8,4" ToolTipService.ToolTip="Last page">
                                 <FontIcon Glyph="&#xEB9D;" FontSize="12" />
                             </Button>
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <TextBlock Text="Rows per page" VerticalAlignment="Center"
+                                <TextBlock x:Uid="Search_RowsPerPageLabel" Text="Rows per page" VerticalAlignment="Center"
                                            Style="{StaticResource CaptionTextBlockStyle}" />
                                 <ComboBox x:Name="RowsPerPageCombo" Width="80"
                                           ItemsSource="{x:Bind ViewModel.RowsPerPageOptions}"
@@ -366,20 +366,20 @@
                 </PivotItem>
 
                 <!-- ADQL EDITOR -->
-                <PivotItem Header="ADQL Editor">
+                <PivotItem x:Uid="Search_AdqlPivot" Header="ADQL Editor">
                     <Grid RowSpacing="8" Padding="0,8,0,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBox Grid.Row="0" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
+                        <TextBox Grid.Row="0" x:Uid="Search_AdqlBox" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
                                  Text="{x:Bind ViewModel.AdqlText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  PlaceholderText="Enter ADQL query..." />
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
                             <Button x:Name="ExecuteAdqlButton" Style="{StaticResource AccentButtonStyle}" Click="OnExecuteAdqlClick">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE768;" FontSize="14" />
-                                    <TextBlock Text="Execute" />
+                                    <TextBlock x:Uid="Search_ExecuteButtonText" Text="Execute" />
                                 </StackPanel>
                             </Button>
                             <ProgressRing IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}" Width="20" Height="20" />
@@ -403,8 +403,8 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Recent Searches" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
-                            <Button Content="Clear All" Click="OnClearRecentSearches" Padding="6,2"
+                            <TextBlock x:Uid="Search_RecentHeader" Text="Recent Searches" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                            <Button x:Uid="Search_ClearAllButton" Content="Clear All" Click="OnClearRecentSearches" Padding="6,2"
                                     FontSize="11" VerticalAlignment="Center" />
                         </StackPanel>
                         <ListView Grid.Row="1" x:Name="RecentSearchList" SelectionMode="None" MaxHeight="280"
@@ -422,15 +422,15 @@
                                                        Style="{StaticResource CaptionTextBlockStyle}" />
                                             <TextBlock Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                                        Style="{StaticResource CaptionTextBlockStyle}">
-                                                <Run Text="{Binding ResultCount}" /> results
+                                                <Run Text="{Binding ResultCount}" /><Run Text=" " /><Run x:Uid="Search_ResultsSuffix" Text="results" />
                                             </TextBlock>
                                         </StackPanel>
-                                        <Button Grid.Column="1" Click="OnLoadRecentSearch" Tag="{Binding}"
+                                        <Button Grid.Column="1" x:Uid="Search_LoadRecentBtn" Click="OnLoadRecentSearch" Tag="{Binding}"
                                                 Padding="8" ToolTipService.ToolTip="Load into form"
                                                 AutomationProperties.Name="Load into search form">
                                             <FontIcon Glyph="&#xE8A5;" FontSize="12" />
                                         </Button>
-                                        <Button Grid.Column="2" Click="OnRemoveRecentSearch" Tag="{Binding}"
+                                        <Button Grid.Column="2" x:Uid="Search_RemoveRecentBtn" Click="OnRemoveRecentSearch" Tag="{Binding}"
                                                 Padding="8" ToolTipService.ToolTip="Remove"
                                                 AutomationProperties.Name="Remove from history">
                                             <FontIcon Glyph="&#xE74D;" FontSize="12" />
@@ -453,14 +453,14 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Saved Queries" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock Grid.Row="0" x:Uid="Search_SavedHeader" Text="Saved Queries" Style="{StaticResource BodyStrongTextBlockStyle}" />
                         <Grid Grid.Row="1" ColumnSpacing="4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" x:Name="SaveQueryName" PlaceholderText="Name (optional)" />
-                            <Button Grid.Column="1" Click="OnSaveQuery" ToolTipService.ToolTip="Save current ADQL" Padding="8">
+                            <TextBox Grid.Column="0" x:Name="SaveQueryName" x:Uid="Search_SaveQueryNameBox" PlaceholderText="Name (optional)" />
+                            <Button Grid.Column="1" x:Uid="Search_SaveQueryBtn" Click="OnSaveQuery" ToolTipService.ToolTip="Save current ADQL" Padding="8">
                                 <FontIcon Glyph="&#xE74E;" FontSize="14" />
                             </Button>
                         </Grid>
@@ -484,17 +484,17 @@
                                                        FontFamily="Consolas" Style="{StaticResource CaptionTextBlockStyle}"
                                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                         </StackPanel>
-                                        <Button Grid.Column="1" Click="OnRunSavedQuery" Tag="{Binding}"
+                                        <Button Grid.Column="1" x:Uid="Search_RunSavedBtn" Click="OnRunSavedQuery" Tag="{Binding}"
                                                 Padding="8" ToolTipService.ToolTip="Run query"
                                                 AutomationProperties.Name="Run query">
                                             <FontIcon Glyph="&#xE768;" FontSize="12" />
                                         </Button>
-                                        <Button Grid.Column="2" Click="OnLoadSavedQuery" Tag="{Binding}"
+                                        <Button Grid.Column="2" x:Uid="Search_LoadSavedBtn" Click="OnLoadSavedQuery" Tag="{Binding}"
                                                 Padding="8" ToolTipService.ToolTip="Load into ADQL editor"
                                                 AutomationProperties.Name="Load into ADQL editor">
                                             <FontIcon Glyph="&#xE8DA;" FontSize="12" />
                                         </Button>
-                                        <Button Grid.Column="3" Click="OnDeleteSavedQuery" Tag="{Binding}"
+                                        <Button Grid.Column="3" x:Uid="Search_DeleteSavedBtn" Click="OnDeleteSavedQuery" Tag="{Binding}"
                                                 Padding="8" ToolTipService.ToolTip="Delete"
                                                 AutomationProperties.Name="Delete saved query">
                                             <FontIcon Glyph="&#xE74D;" FontSize="12" />

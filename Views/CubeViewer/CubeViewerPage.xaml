@@ -80,9 +80,9 @@
                 Margin="0,16,0,0" CornerRadius="6" Padding="3"
                 Background="#C0101622" BorderBrush="#40FFFFFF" BorderThickness="1">
             <StackPanel Orientation="Horizontal" Spacing="2">
-                <ToggleButton x:Name="VolumeModeButton" Content="Volume" IsChecked="True"
+                <ToggleButton x:Name="VolumeModeButton" x:Uid="Cube_VolumeModeButton" Content="Volume" IsChecked="True"
                               MinWidth="84" Click="OnVolumeModeClick" />
-                <ToggleButton x:Name="SliceModeButton" Content="Slice"
+                <ToggleButton x:Name="SliceModeButton" x:Uid="Cube_SliceModeButton" Content="Slice"
                               MinWidth="84" Click="OnSliceModeClick" />
             </StackPanel>
         </Border>
@@ -99,10 +99,10 @@
         <!-- Title / status -->
         <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top"
                     Margin="20" Spacing="2" IsHitTestVisible="False">
-            <TextBlock Text="Cube Viewer" FontWeight="Bold"
+            <TextBlock x:Uid="Cube_Title" Text="Cube Viewer" FontWeight="Bold"
                        Foreground="#FFF0F0F0"
                        Style="{StaticResource SubtitleTextBlockStyle}" />
-            <TextBlock Text="Drag to orbit · Scroll to zoom"
+            <TextBlock x:Uid="Cube_OrbitHint" Text="Drag to orbit · Scroll to zoom"
                        Foreground="#80FFFFFF"
                        Style="{StaticResource CaptionTextBlockStyle}" />
         </StackPanel>
@@ -135,31 +135,31 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="DIMENSIONS"
+                    <TextBlock x:Uid="Cube_InfoDimsLabel" Grid.Row="0" Grid.Column="0" Text="DIMENSIONS"
                                Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
                     <TextBlock x:Name="InfoDims" Grid.Row="0" Grid.Column="1"
                                Foreground="#FFE0E0E0" FontFamily="Consolas"
                                Style="{StaticResource CaptionTextBlockStyle}" />
 
-                    <TextBlock x:Name="InfoUnitLabel" Grid.Row="1" Grid.Column="0" Text="UNIT"
+                    <TextBlock x:Name="InfoUnitLabel" x:Uid="Cube_InfoUnitLabel" Grid.Row="1" Grid.Column="0" Text="UNIT"
                                Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
                     <TextBlock x:Name="InfoUnit" Grid.Row="1" Grid.Column="1"
                                Foreground="#FFE0E0E0" FontFamily="Consolas"
                                Style="{StaticResource CaptionTextBlockStyle}" />
 
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="RANGE"
+                    <TextBlock x:Uid="Cube_InfoRangeLabel" Grid.Row="2" Grid.Column="0" Text="RANGE"
                                Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
                     <TextBlock x:Name="InfoRange" Grid.Row="2" Grid.Column="1"
                                Foreground="#FFE0E0E0" FontFamily="Consolas" TextTrimming="CharacterEllipsis"
                                Style="{StaticResource CaptionTextBlockStyle}" />
 
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="MIN / MAX"
+                    <TextBlock x:Uid="Cube_InfoMinMaxLabel" Grid.Row="3" Grid.Column="0" Text="MIN / MAX"
                                Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
                     <TextBlock x:Name="InfoMinMax" Grid.Row="3" Grid.Column="1"
                                Foreground="#FFE0E0E0" FontFamily="Consolas" TextTrimming="CharacterEllipsis"
                                Style="{StaticResource CaptionTextBlockStyle}" />
 
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="MEDIAN"
+                    <TextBlock x:Uid="Cube_InfoMedianLabel" Grid.Row="4" Grid.Column="0" Text="MEDIAN"
                                Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
                     <TextBlock x:Name="InfoMedian" Grid.Row="4" Grid.Column="1"
                                Foreground="#FFE0E0E0" FontFamily="Consolas"
@@ -171,7 +171,7 @@
                                Foreground="#FFE0E0E0" FontFamily="Consolas"
                                Style="{StaticResource CaptionTextBlockStyle}" />
 
-                    <TextBlock Grid.Row="6" Grid.Column="0" Text="MODE"
+                    <TextBlock x:Uid="Cube_InfoModeLabel" Grid.Row="6" Grid.Column="0" Text="MODE"
                                Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
                     <TextBlock x:Name="InfoMode" Grid.Row="6" Grid.Column="1"
                                Foreground="#FFE0E0E0" FontFamily="Consolas" TextTrimming="CharacterEllipsis"
@@ -189,16 +189,16 @@
             <StackPanel Spacing="12" Width="228">
 
                 <!-- ── DISPLAY ── -->
-                <TextBlock Text="DISPLAY" FontWeight="SemiBold"
+                <TextBlock x:Uid="Cube_DisplayHeader" Text="DISPLAY" FontWeight="SemiBold"
                            Foreground="#90BFD8FF"
                            Style="{StaticResource CaptionTextBlockStyle}" />
 
                 <StackPanel Spacing="2">
                     <Grid>
-                        <TextBlock Text="Window" Foreground="#FFE0E0E0" HorizontalAlignment="Left"
+                        <TextBlock x:Uid="Cube_WindowLabel" Text="Window" Foreground="#FFE0E0E0" HorizontalAlignment="Left"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                         <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
-                            <Button Content="Min/Max" Padding="6,1" FontSize="11" Click="OnWindowMinMax" />
+                            <Button x:Uid="Cube_WindowMinMaxButton" Content="Min/Max" Padding="6,1" FontSize="11" Click="OnWindowMinMax" />
                             <Button Content="99%" Padding="6,1" FontSize="11" Click="OnWindowP99" />
                         </StackPanel>
                     </Grid>
@@ -211,20 +211,20 @@
                 </StackPanel>
 
                 <StackPanel Spacing="2">
-                    <TextBlock Text="Stretch" Foreground="#FFE0E0E0"
+                    <TextBlock x:Uid="Cube_StretchLabel" Text="Stretch" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
                     <ComboBox x:Name="StretchCombo" HorizontalAlignment="Stretch"
                               SelectionChanged="OnStretchChanged">
-                        <ComboBoxItem Content="Linear" Tag="Linear" IsSelected="True" />
-                        <ComboBoxItem Content="Log" Tag="Log" />
-                        <ComboBoxItem Content="Sqrt" Tag="Sqrt" />
-                        <ComboBoxItem Content="Squared" Tag="Squared" />
-                        <ComboBoxItem Content="Asinh" Tag="Asinh" />
+                        <ComboBoxItem x:Uid="Cube_StretchLinear" Content="Linear" Tag="Linear" IsSelected="True" />
+                        <ComboBoxItem x:Uid="Cube_StretchLog" Content="Log" Tag="Log" />
+                        <ComboBoxItem x:Uid="Cube_StretchSqrt" Content="Sqrt" Tag="Sqrt" />
+                        <ComboBoxItem x:Uid="Cube_StretchSquared" Content="Squared" Tag="Squared" />
+                        <ComboBoxItem x:Uid="Cube_StretchAsinh" Content="Asinh" Tag="Asinh" />
                     </ComboBox>
                 </StackPanel>
 
                 <StackPanel Spacing="2">
-                    <TextBlock Text="Colormap" Foreground="#FFE0E0E0"
+                    <TextBlock x:Uid="Cube_ColormapLabel" Text="Colormap" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
                     <ComboBox x:Name="ColormapCombo" HorizontalAlignment="Stretch"
                               SelectionChanged="OnColormapChanged" />
@@ -243,34 +243,34 @@
                 </StackPanel>
 
                 <StackPanel Spacing="2">
-                    <TextBlock Text="Background" Foreground="#FFE0E0E0"
+                    <TextBlock x:Uid="Cube_BackgroundLabel" Text="Background" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
                     <ComboBox x:Name="BackgroundCombo" HorizontalAlignment="Stretch"
                               SelectionChanged="OnBackgroundChanged">
-                        <ComboBoxItem Content="Dark" IsSelected="True" />
-                        <ComboBoxItem Content="Black" />
-                        <ComboBoxItem Content="Light" />
+                        <ComboBoxItem x:Uid="Cube_BgDark" Content="Dark" IsSelected="True" />
+                        <ComboBoxItem x:Uid="Cube_BgBlack" Content="Black" />
+                        <ComboBoxItem x:Uid="Cube_BgLight" Content="Light" />
                     </ComboBox>
                 </StackPanel>
 
                 <!-- ── VOLUME ── (hidden in Slice mode) -->
                 <StackPanel x:Name="VolumeSection" Spacing="12">
-                    <TextBlock Text="VOLUME" FontWeight="SemiBold" Margin="0,4,0,0"
+                    <TextBlock x:Uid="Cube_VolumeHeader" Text="VOLUME" FontWeight="SemiBold" Margin="0,4,0,0"
                                Foreground="#90BFD8FF"
                                Style="{StaticResource CaptionTextBlockStyle}" />
 
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Render mode" Foreground="#FFE0E0E0"
+                        <TextBlock x:Uid="Cube_RenderModeLabel" Text="Render mode" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                         <ComboBox x:Name="RenderModeCombo" HorizontalAlignment="Stretch"
                                   SelectionChanged="OnRenderModeChanged">
-                            <ComboBoxItem Content="Emission" IsSelected="True" />
-                            <ComboBoxItem Content="Max-Intensity" />
+                            <ComboBoxItem x:Uid="Cube_RenderEmission" Content="Emission" IsSelected="True" />
+                            <ComboBoxItem x:Uid="Cube_RenderMip" Content="Max-Intensity" />
                         </ComboBox>
                     </StackPanel>
 
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Density" Foreground="#FFE0E0E0"
+                        <TextBlock x:Uid="Cube_DensityLabel" Text="Density" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                         <Slider x:Name="DensitySlider" Minimum="0.1" Maximum="3.0"
                                 StepFrequency="0.05" Value="1.0"
@@ -278,7 +278,7 @@
                     </StackPanel>
 
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Spectral scale" Foreground="#FFE0E0E0"
+                        <TextBlock x:Uid="Cube_SpectralLabel" Text="Spectral scale" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                         <Slider x:Name="SpectralSlider" Minimum="0.5" Maximum="4.0"
                                 StepFrequency="0.05" Value="1.5"
@@ -286,24 +286,24 @@
                     </StackPanel>
 
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Quality (steps)" Foreground="#FFE0E0E0"
+                        <TextBlock x:Uid="Cube_StepsLabel" Text="Quality (steps)" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                         <Slider x:Name="StepsSlider" Minimum="96" Maximum="768"
                                 StepFrequency="16" Value="384"
                                 ValueChanged="OnStepsChanged" />
                     </StackPanel>
 
-                    <ToggleSwitch x:Name="AutoOrbitToggle" Header="Idle auto-orbit"
+                    <ToggleSwitch x:Name="AutoOrbitToggle" x:Uid="Cube_AutoOrbitToggle" Header="Idle auto-orbit"
                                   OffContent="Off" OnContent="On"
                                   Foreground="#FFE0E0E0"
                                   Toggled="OnAutoOrbitToggled" />
 
-                    <ToggleSwitch x:Name="CaptionsToggle" Header="Axis captions"
+                    <ToggleSwitch x:Name="CaptionsToggle" x:Uid="Cube_CaptionsToggle" Header="Axis captions"
                                   OffContent="Off" OnContent="On" IsOn="True"
                                   Foreground="#FFE0E0E0"
                                   Toggled="OnCaptionsToggled" />
 
-                    <ToggleSwitch x:Name="SlicePlaneToggle" Header="Slice-plane marker"
+                    <ToggleSwitch x:Name="SlicePlaneToggle" x:Uid="Cube_SlicePlaneToggle" Header="Slice-plane marker"
                                   OffContent="Off" OnContent="On" IsOn="True"
                                   Foreground="#FFE0E0E0"
                                   Toggled="OnSlicePlaneToggled" />
@@ -312,9 +312,9 @@
                          to remove (endpoints are pinned in value). Feeds the renderer's alpha ramp. -->
                     <StackPanel Spacing="2">
                         <Grid>
-                            <TextBlock Text="Opacity curve" Foreground="#FFE0E0E0" VerticalAlignment="Center"
+                            <TextBlock x:Uid="Cube_OpacityLabel" Text="Opacity curve" Foreground="#FFE0E0E0" VerticalAlignment="Center"
                                        Style="{StaticResource CaptionTextBlockStyle}" />
-                            <Button Content="Reset" Padding="6,1" FontSize="11" HorizontalAlignment="Right"
+                            <Button x:Uid="Cube_TransferResetButton" Content="Reset" Padding="6,1" FontSize="11" HorizontalAlignment="Right"
                                     Click="OnTransferReset" />
                         </Grid>
                         <Canvas x:Name="TransferCanvas" Height="120" Background="#30000000"
@@ -323,15 +323,15 @@
                                 PointerMoved="OnTransferPointerMoved"
                                 PointerReleased="OnTransferPointerReleased"
                                 RightTapped="OnTransferRightTapped" />
-                        <TextBlock Text="Drag points · click adds · right-click removes"
+                        <TextBlock x:Uid="Cube_TransferHint" Text="Drag points · click adds · right-click removes"
                                    Foreground="#70BFD8FF" Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
 
-                    <Button Content="Reset view" HorizontalAlignment="Stretch"
+                    <Button x:Uid="Cube_ResetViewButton" Content="Reset view" HorizontalAlignment="Stretch"
                             Click="OnResetView" />
                 </StackPanel>
 
-                <Button x:Name="ExportButton" Content="Export figure…" HorizontalAlignment="Stretch"
+                <Button x:Name="ExportButton" x:Uid="Cube_ExportButton" Content="Export figure…" HorizontalAlignment="Stretch"
                         Click="OnExportClick" />
             </StackPanel>
             </ScrollViewer>
@@ -396,7 +396,7 @@
                 Margin="0,0,0,20" Padding="14,8" CornerRadius="8"
                 Background="#C0101622" BorderBrush="#40FFFFFF" BorderThickness="1">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <Button x:Name="PlayButton" Click="OnPlayPause" Width="42" Padding="0"
+                <Button x:Name="PlayButton" x:Uid="Cube_PlayButton" Click="OnPlayPause" Width="42" Padding="0"
                         ToolTipService.ToolTip="Play / Pause (Space)">
                     <FontIcon x:Name="PlayIcon" Glyph="&#xE768;" FontSize="16" />
                 </Button>

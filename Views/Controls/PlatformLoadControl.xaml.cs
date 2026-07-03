@@ -12,6 +12,12 @@ public sealed partial class PlatformLoadControl : UserControl
     {
         ViewModel = viewModel;
         InitializeComponent();
+        // MetricBar Label/Unit are custom properties, so they are localized here
+        // rather than via x:Uid (the XAML literals remain the English fallback).
+        CpuBar.Label = Helpers.Loc.T("Load_CpuCores");
+        CpuBar.Unit = Helpers.Loc.T("Load_UnitCores");
+        RamBar.Label = Helpers.Loc.T("Load_Ram");
+        RamBar.Unit = Helpers.Loc.T("Load_UnitGb");
         ViewModel.PropertyChanged += (_, _) => UpdateDisplay();
     }
 
@@ -32,14 +38,13 @@ public sealed partial class PlatformLoadControl : UserControl
             if (ViewModel.HasInstances)
             {
                 InstancesPanel.Visibility = Visibility.Visible;
-                InstancesText.Text = $"{ViewModel.InstancesTotal} total  ·  " +
-                    $"{ViewModel.InstancesSessions} sessions  ·  " +
-                    $"{ViewModel.InstancesDesktopApp} desktop  ·  " +
-                    $"{ViewModel.InstancesHeadless} headless";
+                InstancesText.Text = Helpers.Loc.F("Load_InstancesLine",
+                    ViewModel.InstancesTotal, ViewModel.InstancesSessions,
+                    ViewModel.InstancesDesktopApp, ViewModel.InstancesHeadless);
             }
 
             LastUpdateText.Text = string.IsNullOrEmpty(ViewModel.LastUpdate)
-                ? "" : $"Last updated: {ViewModel.LastUpdate}";
+                ? "" : Helpers.Loc.F("Load_LastUpdated", ViewModel.LastUpdate);
 
             ErrorBar.IsOpen = ViewModel.HasError;
             ErrorBar.Message = ViewModel.ErrorMessage;

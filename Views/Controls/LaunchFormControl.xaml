@@ -23,29 +23,29 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <TextBlock Grid.Row="0" Text="Launch Session" Style="{StaticResource SubtitleTextBlockStyle}" />
+            <TextBlock Grid.Row="0" x:Uid="Launch_FormHeader" Text="Launch Session" Style="{StaticResource SubtitleTextBlockStyle}" />
 
             <!-- Loading -->
             <ProgressBar Grid.Row="1" x:Name="LoadingBar" IsIndeterminate="True" Visibility="Collapsed" />
 
             <!-- Session limit warning -->
-            <InfoBar Grid.Row="2" x:Name="SessionLimitBar" Severity="Warning"
+            <InfoBar Grid.Row="2" x:Name="SessionLimitBar" x:Uid="Launch_SessionLimitBar" Severity="Warning"
                      Title="Session Limit" IsClosable="False" Visibility="Collapsed" />
 
             <!-- Tabs: Standard + Advanced -->
             <Pivot Grid.Row="3">
-                <PivotItem Header="Standard">
+                <PivotItem x:Uid="Launch_StandardTab" Header="Standard">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
                         <StackPanel Spacing="12">
                             <!-- Session Type -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Session Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_TypeLabel" Text="Session Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="StdTypeHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="StdTypeTip" Target="{x:Bind StdTypeHelpBtn}"
+                                    <TeachingTip x:Name="StdTypeTip" x:Uid="Launch_TypeTip" Target="{x:Bind StdTypeHelpBtn}"
                                                  Title="Session Type"
                                                  Subtitle="Choose a session type." />
                                 </StackPanel>
@@ -57,12 +57,12 @@
                             <!-- Image Registry -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Image Registry" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_RegistryLabel" Text="Image Registry" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="StdRegistryHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="StdRegistryTip" Target="{x:Bind StdRegistryHelpBtn}"
+                                    <TeachingTip x:Name="StdRegistryTip" x:Uid="Launch_RegistryTip" Target="{x:Bind StdRegistryHelpBtn}"
                                                  Title="Image Registry"
                                                  Subtitle="The container image registry hosting the session images." />
                                 </StackPanel>
@@ -74,12 +74,12 @@
                             <!-- Project -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Project" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_ProjectLabel" Text="Project" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="StdProjectHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="StdProjectTip" Target="{x:Bind StdProjectHelpBtn}"
+                                    <TeachingTip x:Name="StdProjectTip" x:Uid="Launch_ProjectTip" Target="{x:Bind StdProjectHelpBtn}"
                                                  Title="Project"
                                                  Subtitle="The project for which the image is used. Use the Skaha project to access the default CANFAR image list." />
                                 </StackPanel>
@@ -91,12 +91,12 @@
                             <!-- Image -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_ImageLabel" Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="StdImageHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="StdImageTip" Target="{x:Bind StdImageHelpBtn}"
+                                    <TeachingTip x:Name="StdImageTip" x:Uid="Launch_StdImageTip" Target="{x:Bind StdImageHelpBtn}"
                                                  Title="Container Image"
                                                  Subtitle="The Docker image for the session." />
                                 </StackPanel>
@@ -109,12 +109,12 @@
                             <!-- Session Name -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Session Name" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_NameLabel" Text="Session Name" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="StdNameHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="StdNameTip" Target="{x:Bind StdNameHelpBtn}"
+                                    <TeachingTip x:Name="StdNameTip" x:Uid="Launch_NameTip" Target="{x:Bind StdNameHelpBtn}"
                                                  Title="Session Name"
                                                  Subtitle="Name for the session. Alphanumeric and '-' characters only." />
                                 </StackPanel>
@@ -125,7 +125,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBox Grid.Column="0"
                                              Text="{x:Bind ViewModel.SessionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <Button Grid.Column="1" VerticalAlignment="Bottom" Click="OnGenerateNameClick"
+                                    <Button Grid.Column="1" x:Uid="Launch_GenerateNameBtn" VerticalAlignment="Bottom" Click="OnGenerateNameClick"
                                             ToolTipService.ToolTip="Generate Name">
                                         <FontIcon Glyph="&#xE8EE;" FontSize="14" />
                                     </Button>
@@ -135,18 +135,18 @@
                             <!-- Resource Type -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_ResTypeLabel" Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="StdResTypeHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="StdResTypeTip" Target="{x:Bind StdResTypeHelpBtn}"
+                                    <TeachingTip x:Name="StdResTypeTip" x:Uid="Launch_ResTypeTip" Target="{x:Bind StdResTypeHelpBtn}"
                                                  Title="Resource Type"
                                                  Subtitle="Flexible: variable access to shared resources (up to 8 cores, 32 GB RAM). Fixed: guaranteed dedicated resources that may be harder to allocate." />
                                 </StackPanel>
                                 <RadioButtons SelectedIndex="0" SelectionChanged="OnResourceTypeChanged">
-                                    <RadioButton Content="Flexible (platform-managed)" Tag="flexible" />
-                                    <RadioButton Content="Fixed" Tag="fixed" />
+                                    <RadioButton x:Uid="Launch_FlexibleRadio" Content="Flexible (platform-managed)" Tag="flexible" />
+                                    <RadioButton x:Uid="Launch_FixedRadio" Content="Fixed" Tag="fixed" />
                                 </RadioButtons>
                             </StackPanel>
 
@@ -154,7 +154,7 @@
                             <local:ResourceSelectorPanel x:Name="StdResourcePanel" Visibility="Collapsed" />
 
                             <!-- Error -->
-                            <InfoBar x:Name="StandardErrorBar" IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                            <InfoBar x:Name="StandardErrorBar" x:Uid="Portal_ErrorBar" IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
                                      Severity="Error" Title="Error"
                                      Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
 
@@ -163,25 +163,25 @@
                                     Click="OnLaunchClick" x:Name="LaunchButton">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE768;" FontSize="14" />
-                                    <TextBlock Text="Launch" />
+                                    <TextBlock x:Uid="Launch_LaunchLabel" Text="Launch" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
                     </ScrollViewer>
                 </PivotItem>
 
-                <PivotItem Header="Advanced">
+                <PivotItem x:Uid="Launch_AdvancedTab" Header="Advanced">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
                         <StackPanel Spacing="12">
                             <!-- Session Type -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Session Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_TypeLabel" Text="Session Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="AdvTypeHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="AdvTypeTip" Target="{x:Bind AdvTypeHelpBtn}"
+                                    <TeachingTip x:Name="AdvTypeTip" x:Uid="Launch_TypeTip" Target="{x:Bind AdvTypeHelpBtn}"
                                                  Title="Session Type"
                                                  Subtitle="Choose a session type." />
                                 </StackPanel>
@@ -193,12 +193,12 @@
                             <!-- Container Image: Host + Image in one row -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_ImageLabel" Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="AdvImageHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="AdvImageTip" Target="{x:Bind AdvImageHelpBtn}"
+                                    <TeachingTip x:Name="AdvImageTip" x:Uid="Launch_AdvImageTip" Target="{x:Bind AdvImageHelpBtn}"
                                                  Title="Container Image"
                                                  Subtitle="Select the image registry containing your container images, then provide the project/name:tag." />
                                 </StackPanel>
@@ -211,7 +211,7 @@
                                               HorizontalAlignment="Stretch"
                                               ItemsSource="{x:Bind ViewModel.Repositories}"
                                               SelectedItem="{x:Bind ViewModel.RepositoryHost, Mode=TwoWay}" />
-                                    <TextBox Grid.Column="1" x:Name="CustomImageBox"
+                                    <TextBox Grid.Column="1" x:Name="CustomImageBox" x:Uid="Launch_CustomImageBox"
                                              PlaceholderText="project/example-image:1.0.0"
                                              Text="{x:Bind ViewModel.CustomImageUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
@@ -220,12 +220,12 @@
                             <!-- Registry Auth: Username + Secret in one row -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Registry Auth" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_AuthLabel" Text="Registry Auth" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="AdvAuthHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="AdvAuthTip" Target="{x:Bind AdvAuthHelpBtn}"
+                                    <TeachingTip x:Name="AdvAuthTip" x:Uid="Launch_AuthTip" Target="{x:Bind AdvAuthHelpBtn}"
                                                  Title="Registry Authentication"
                                                  Subtitle="Credentials for pulling images from a private registry. Leave blank for public images." />
                                 </StackPanel>
@@ -234,10 +234,10 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0" x:Name="RepoUsernameBox"
+                                    <TextBox Grid.Column="0" x:Name="RepoUsernameBox" x:Uid="Launch_RepoUsernameBox"
                                              PlaceholderText="username"
                                              Text="{x:Bind ViewModel.RepositoryUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <PasswordBox Grid.Column="1" x:Name="RepoSecretBox"
+                                    <PasswordBox Grid.Column="1" x:Name="RepoSecretBox" x:Uid="Launch_RepoSecretBox"
                                                  PlaceholderText="token or password" />
                                 </Grid>
                             </StackPanel>
@@ -245,12 +245,12 @@
                             <!-- Session Name -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Session Name" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_NameLabel" Text="Session Name" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="AdvNameHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="AdvNameTip" Target="{x:Bind AdvNameHelpBtn}"
+                                    <TeachingTip x:Name="AdvNameTip" x:Uid="Launch_NameTip" Target="{x:Bind AdvNameHelpBtn}"
                                                  Title="Session Name"
                                                  Subtitle="Name for the session. Alphanumeric and '-' characters only." />
                                 </StackPanel>
@@ -261,7 +261,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBox Grid.Column="0"
                                              Text="{x:Bind ViewModel.SessionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <Button Grid.Column="1" VerticalAlignment="Bottom" Click="OnGenerateNameClick"
+                                    <Button Grid.Column="1" x:Uid="Launch_GenerateNameBtn" VerticalAlignment="Bottom" Click="OnGenerateNameClick"
                                             ToolTipService.ToolTip="Generate Name">
                                         <FontIcon Glyph="&#xE8EE;" FontSize="14" />
                                     </Button>
@@ -271,18 +271,18 @@
                             <!-- Resource Type -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_ResTypeLabel" Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="AdvResTypeHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="AdvResTypeTip" Target="{x:Bind AdvResTypeHelpBtn}"
+                                    <TeachingTip x:Name="AdvResTypeTip" x:Uid="Launch_ResTypeTip" Target="{x:Bind AdvResTypeHelpBtn}"
                                                  Title="Resource Type"
                                                  Subtitle="Flexible: variable access to shared resources (up to 8 cores, 32 GB RAM). Fixed: guaranteed dedicated resources that may be harder to allocate." />
                                 </StackPanel>
                                 <RadioButtons SelectedIndex="0" SelectionChanged="OnAdvancedResourceTypeChanged">
-                                    <RadioButton Content="Flexible (platform-managed)" Tag="flexible" />
-                                    <RadioButton Content="Fixed" Tag="fixed" />
+                                    <RadioButton x:Uid="Launch_FlexibleRadio" Content="Flexible (platform-managed)" Tag="flexible" />
+                                    <RadioButton x:Uid="Launch_FixedRadio" Content="Fixed" Tag="fixed" />
                                 </RadioButtons>
                             </StackPanel>
 
@@ -290,7 +290,7 @@
                             <local:ResourceSelectorPanel x:Name="AdvResourcePanel" Visibility="Collapsed" />
 
                             <!-- Error -->
-                            <InfoBar x:Name="AdvancedErrorBar" IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                            <InfoBar x:Name="AdvancedErrorBar" x:Uid="Portal_ErrorBar" IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
                                      Severity="Error" Title="Error"
                                      Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
 
@@ -299,7 +299,7 @@
                                     Click="OnAdvancedLaunchClick" x:Name="AdvancedLaunchButton">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE768;" FontSize="14" />
-                                    <TextBlock Text="Launch (Custom Image)" />
+                                    <TextBlock x:Uid="Launch_CustomImageLabel" Text="Launch (Custom Image)" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -308,20 +308,20 @@
 
                 <!-- Headless batch jobs — the write surface for new jobs; the Batch Jobs
                      panel is the read surface for already-running ones. -->
-                <PivotItem Header="Headless">
+                <PivotItem x:Uid="Launch_HeadlessTab" Header="Headless">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
                         <StackPanel Spacing="12">
                             <!-- Job Name -->
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Job Name" Style="{StaticResource BodyTextBlockStyle}" />
+                                <TextBlock x:Uid="Launch_JobNameLabel" Text="Job Name" Style="{StaticResource BodyTextBlockStyle}" />
                                 <Grid ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0" PlaceholderText="e.g. nightly-reduction"
+                                    <TextBox Grid.Column="0" x:Uid="Launch_JobNameBox" PlaceholderText="e.g. nightly-reduction"
                                              Text="{x:Bind ViewModel.HeadlessSessionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <Button Grid.Column="1" VerticalAlignment="Bottom" Click="OnGenerateHeadlessNameClick"
+                                    <Button Grid.Column="1" x:Uid="Launch_GenerateNameBtn" VerticalAlignment="Bottom" Click="OnGenerateHeadlessNameClick"
                                             ToolTipService.ToolTip="Generate Name">
                                         <FontIcon Glyph="&#xE8EE;" FontSize="14" />
                                     </Button>
@@ -329,13 +329,13 @@
                             </StackPanel>
 
                             <!-- No headless images hint -->
-                            <InfoBar x:Name="NoHeadlessImagesBar" Severity="Warning" IsClosable="False"
+                            <InfoBar x:Name="NoHeadlessImagesBar" x:Uid="Launch_NoHeadlessBar" Severity="Warning" IsClosable="False"
                                      Title="No headless images"
                                      Message="No headless images available for this account. Contact CADC support if you expect to see batch images here." />
 
                             <!-- Project -->
                             <StackPanel Spacing="2" x:Name="HeadlessProjectSection">
-                                <TextBlock Text="Project" Style="{StaticResource BodyTextBlockStyle}" />
+                                <TextBlock x:Uid="Launch_ProjectLabel" Text="Project" Style="{StaticResource BodyTextBlockStyle}" />
                                 <ComboBox HorizontalAlignment="Stretch"
                                           ItemsSource="{x:Bind ViewModel.HeadlessProjects}"
                                           SelectedItem="{x:Bind ViewModel.HeadlessSelectedProject, Mode=TwoWay}" />
@@ -343,7 +343,7 @@
 
                             <!-- Image -->
                             <StackPanel Spacing="2" x:Name="HeadlessImageSection">
-                                <TextBlock Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" />
+                                <TextBlock x:Uid="Launch_ImageLabel" Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" />
                                 <ComboBox HorizontalAlignment="Stretch"
                                           ItemsSource="{x:Bind ViewModel.HeadlessImages}"
                                           SelectedItem="{x:Bind ViewModel.HeadlessSelectedImage, Mode=TwoWay}"
@@ -353,44 +353,44 @@
                             <!-- Command (required) -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Command" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_CommandLabel" Text="Command" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="HlCmdHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="HlCmdTip" Target="{x:Bind HlCmdHelpBtn}"
+                                    <TeachingTip x:Name="HlCmdTip" x:Uid="Launch_CommandTip" Target="{x:Bind HlCmdHelpBtn}"
                                                  Title="Command"
                                                  Subtitle="The command the container runs. Required." />
                                 </StackPanel>
-                                <TextBox PlaceholderText="e.g. python /arc/home/me/reduce.py"
+                                <TextBox x:Uid="Launch_CommandBox" PlaceholderText="e.g. python /arc/home/me/reduce.py"
                                          Text="{x:Bind ViewModel.HeadlessCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
 
                             <!-- Arguments -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Arguments" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_ArgsLabel" Text="Arguments" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="HlArgsHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="HlArgsTip" Target="{x:Bind HlArgsHelpBtn}"
+                                    <TeachingTip x:Name="HlArgsTip" x:Uid="Launch_ArgsTip" Target="{x:Bind HlArgsHelpBtn}"
                                                  Title="Arguments"
                                                  Subtitle="Single string of additional arguments. Skaha treats this as one parameter and splits it server-side." />
                                 </StackPanel>
-                                <TextBox PlaceholderText="optional, space-separated"
+                                <TextBox x:Uid="Launch_ArgsBox" PlaceholderText="optional, space-separated"
                                          Text="{x:Bind ViewModel.HeadlessArgs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
 
                             <!-- Replicas -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="Replicas" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Uid="Launch_ReplicasLabel" Text="Replicas" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="HlReplicasHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
                                     </Button>
-                                    <TeachingTip x:Name="HlReplicasTip" Target="{x:Bind HlReplicasHelpBtn}"
+                                    <TeachingTip x:Name="HlReplicasTip" x:Uid="Launch_ReplicasTip" Target="{x:Bind HlReplicasHelpBtn}"
                                                  Title="Replicas"
                                                  Subtitle="Number of parallel container replicas. REPLICA_ID and REPLICA_COUNT are auto-injected as env vars." />
                                 </StackPanel>
@@ -401,10 +401,10 @@
 
                             <!-- Resource Type -->
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" />
+                                <TextBlock x:Uid="Launch_ResTypeLabel" Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" />
                                 <RadioButtons SelectedIndex="0" SelectionChanged="OnHeadlessResourceTypeChanged">
-                                    <RadioButton Content="Flexible (platform-managed)" Tag="flexible" />
-                                    <RadioButton Content="Fixed" Tag="fixed" />
+                                    <RadioButton x:Uid="Launch_FlexibleRadio" Content="Flexible (platform-managed)" Tag="flexible" />
+                                    <RadioButton x:Uid="Launch_FixedRadio" Content="Fixed" Tag="fixed" />
                                 </RadioButtons>
                             </StackPanel>
 
@@ -412,7 +412,7 @@
                             <local:ResourceSelectorPanel x:Name="HeadlessResourcePanel" Visibility="Collapsed" />
 
                             <!-- Error -->
-                            <InfoBar IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                            <InfoBar x:Uid="Portal_ErrorBar" IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
                                      Severity="Error" Title="Error"
                                      Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
 

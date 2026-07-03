@@ -95,7 +95,7 @@ public sealed partial class McpServerSettingsPanel : UserControl
                 {
                     e.Kind,
                     $"{e.OriginLabel} ({e.OriginFingerprint})",
-                    e.AutoApplied ? "auto" : null,
+                    e.AutoApplied ? Helpers.Loc.T("Mcp_AutoLabel") : null,
                     e.Timestamp.ToLocalTime().ToString("t"),
                 }.Where(s => !string.IsNullOrEmpty(s))),
         };
@@ -105,13 +105,13 @@ public sealed partial class McpServerSettingsPanel : UserControl
     {
         if (_host.IsRunning)
         {
-            StatusText.Text = "Running";
-            PipeText.Text = $"pipe: {_host.PipeName}";
+            StatusText.Text = Helpers.Loc.T("Mcp_StatusRunning");
+            PipeText.Text = Helpers.Loc.F("Mcp_PipeLabel", _host.PipeName);
             PipeText.Visibility = Visibility.Visible;
         }
         else
         {
-            StatusText.Text = "Stopped";
+            StatusText.Text = Helpers.Loc.T("Mcp_StatusStopped");
             PipeText.Visibility = Visibility.Collapsed;
         }
     }
@@ -122,7 +122,7 @@ public sealed partial class McpServerSettingsPanel : UserControl
         {
             ConnectButton.IsEnabled = false;
             CopyCommandButton.IsEnabled = false;
-            ConnectIntro.Text = "The MCP bridge (CanfarDesktop.McpBridge.exe) wasn't found. Build the bridge project, then reopen this.";
+            ConnectIntro.Text = Helpers.Loc.T("Mcp_BridgeNotFound");
             ClaudeCodeBox.Text = string.Empty;
             return;
         }
@@ -139,7 +139,9 @@ public sealed partial class McpServerSettingsPanel : UserControl
         }
         catch (Exception ex)
         {
-            ShowResult(InfoBarSeverity.Error, $"Couldn't {(EnableToggle.IsOn ? "start" : "stop")} the server: {ex.Message}");
+            ShowResult(InfoBarSeverity.Error, EnableToggle.IsOn
+                ? Helpers.Loc.F("Mcp_CouldntStartServer", ex.Message)
+                : Helpers.Loc.F("Mcp_CouldntStopServer", ex.Message));
         }
         RefreshStatus();
     }
@@ -147,7 +149,7 @@ public sealed partial class McpServerSettingsPanel : UserControl
     private void OnConnectClick(object sender, RoutedEventArgs e)
     {
         if (_bridgeCommand is null) return;
-        ConfirmTargetText.Text = $"Verbinal will be added to:\n{_repair.ConfigPath}";
+        ConfirmTargetText.Text = Helpers.Loc.T("Mcp_ConfirmTarget") + "\n" + _repair.ConfigPath;
         ConfirmCommandText.Text = $"{_bridgeCommand} mcp";
         ResultBar.IsOpen = false;
         ConfirmPanel.Visibility = Visibility.Visible;
@@ -162,11 +164,11 @@ public sealed partial class McpServerSettingsPanel : UserControl
         try
         {
             _repair.Apply(_bridgeCommand!);
-            ShowResult(InfoBarSeverity.Success, "Added to Claude Desktop. Restart Claude Desktop to pick it up.");
+            ShowResult(InfoBarSeverity.Success, Helpers.Loc.T("Mcp_AddedToDesktop"));
         }
         catch (Exception ex)
         {
-            ShowResult(InfoBarSeverity.Error, $"Couldn't write the config: {ex.Message}");
+            ShowResult(InfoBarSeverity.Error, Helpers.Loc.F("Mcp_ConfigWriteFailed", ex.Message));
         }
     }
 
@@ -175,7 +177,7 @@ public sealed partial class McpServerSettingsPanel : UserControl
         var data = new DataPackage();
         data.SetText(ClaudeCodeBox.Text);
         Clipboard.SetContent(data);
-        ShowResult(InfoBarSeverity.Informational, "Command copied.");
+        ShowResult(InfoBarSeverity.Informational, Helpers.Loc.T("Mcp_CommandCopied"));
     }
 
     private void OnRequireApprovalToggled(object sender, RoutedEventArgs e)
@@ -204,14 +206,16 @@ public sealed partial class McpServerSettingsPanel : UserControl
     {
         public string ClientId { get; init; } = string.Empty;
         public string Subtitle { get; init; } = string.Empty;
-        public string ActionLabel { get; init; } = "Approve";
+        public string ActionLabel { get; init; } = string.Empty;
 
         public static ClientRow From(McpSeenClient c, bool approved) => new()
         {
             ClientId = c.ClientId,
-            Subtitle = $"{c.ConnectCount} connection{(c.ConnectCount == 1 ? "" : "s")} · last {c.LastSeen.ToLocalTime():t}"
-                       + (approved ? " · approved" : ""),
-            ActionLabel = approved ? "Revoke" : "Approve",
+            Subtitle = (c.ConnectCount == 1
+                           ? Helpers.Loc.F("Mcp_ClientSubtitleOne", c.LastSeen.ToLocalTime().ToString("t"))
+                           : Helpers.Loc.F("Mcp_ClientSubtitleMany", c.ConnectCount, c.LastSeen.ToLocalTime().ToString("t")))
+                       + (approved ? " · " + Helpers.Loc.T("Mcp_ApprovedLabel") : ""),
+            ActionLabel = approved ? Helpers.Loc.T("Mcp_RevokeAction") : Helpers.Loc.T("Mcp_ApproveAction"),
         };
     }
 
@@ -250,7 +254,7 @@ public sealed partial class McpServerSettingsPanel : UserControl
         DiagnosticsList.ItemsSource = new[]
         {
             DiagnosticRow.From(new McpDiagnosticCheck(
-                "running", "Running diagnostics", McpDiagnosticStatus.Running, "Checking the MCP server…")),
+                "running", Helpers.Loc.T("Mcp_DiagRunningTitle"), McpDiagnosticStatus.Running, Helpers.Loc.T("Mcp_DiagRunningMessage"))),
         };
         try
         {
@@ -277,7 +281,7 @@ public sealed partial class McpServerSettingsPanel : UserControl
         }
         catch (Exception ex)
         {
-            ShowResult(InfoBarSeverity.Error, $"Fix failed: {ex.Message}");
+            ShowResult(InfoBarSeverity.Error, Helpers.Loc.F("Mcp_FixFailed", ex.Message));
         }
         if (fixId != McpDiagnosticFix.RevealBridge) await RunDiagnosticsAsync();
     }

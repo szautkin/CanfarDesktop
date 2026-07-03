@@ -42,8 +42,8 @@ public sealed partial class AIComputeSettingsPanel : UserControl
     {
         var hasSecret = _service.Settings.HasSecret;
         SecretStatus.Text = hasSecret
-            ? "A secret is stored. Type a new one to replace it, or leave blank to keep it."
-            : "No secret stored.";
+            ? Helpers.Loc.T("Compute_SecretStored")
+            : Helpers.Loc.T("Compute_NoSecret");
         RemoveSecretButton.Visibility = hasSecret ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -86,14 +86,14 @@ public sealed partial class AIComputeSettingsPanel : UserControl
             }
             catch (Exception ex)
             {
-                ShowStatus(InfoBarSeverity.Error, "Couldn't save secret", ex.Message);
+                ShowStatus(InfoBarSeverity.Error, Helpers.Loc.T("Compute_SecretSaveFailedTitle"), ex.Message);
                 return;
             }
         }
 
         RefreshSecretStatus();
         ResetButton.IsEnabled = !_service.Settings.IsAllDefaults;
-        ShowStatus(InfoBarSeverity.Success, "Saved", "AI compute settings were saved.");
+        ShowStatus(InfoBarSeverity.Success, Helpers.Loc.T("Compute_SavedTitle"), Helpers.Loc.T("Compute_SavedBody"));
     }
 
     private static int ToInt(double value, int fallback) => double.IsNaN(value) ? fallback : (int)value;
@@ -104,7 +104,7 @@ public sealed partial class AIComputeSettingsPanel : UserControl
         SecretBox.Password = string.Empty;
         RefreshSecretStatus();
         ResetButton.IsEnabled = !_service.Settings.IsAllDefaults;
-        ShowStatus(InfoBarSeverity.Success, "Secret removed", "The stored registry secret was deleted.");
+        ShowStatus(InfoBarSeverity.Success, Helpers.Loc.T("Compute_SecretRemovedTitle"), Helpers.Loc.T("Compute_SecretRemovedBody"));
     }
 
     private void OnResetClick(object sender, RoutedEventArgs e)
@@ -120,7 +120,7 @@ public sealed partial class AIComputeSettingsPanel : UserControl
     {
         _service.ResetToDefaults();
         Populate();
-        ShowStatus(InfoBarSeverity.Success, "Reset", "AI compute settings were reset to defaults (run_code is now disabled).");
+        ShowStatus(InfoBarSeverity.Success, Helpers.Loc.T("Compute_ResetTitle"), Helpers.Loc.T("Compute_ResetBody"));
     }
 
     private async void OnTestCredentials(object sender, RoutedEventArgs e)
@@ -137,13 +137,13 @@ public sealed partial class AIComputeSettingsPanel : UserControl
             }
             catch (Exception ex)
             {
-                ShowStatus(InfoBarSeverity.Error, "Couldn't save secret", ex.Message);
+                ShowStatus(InfoBarSeverity.Error, Helpers.Loc.T("Compute_SecretSaveFailedTitle"), ex.Message);
                 return;
             }
         }
 
         TestButton.IsEnabled = false;
-        ShowStatus(InfoBarSeverity.Informational, "Testing…", $"Contacting {_service.Settings.RegistryHost} …");
+        ShowStatus(InfoBarSeverity.Informational, Helpers.Loc.T("Compute_TestingTitle"), Helpers.Loc.F("Compute_ContactingBody", _service.Settings.RegistryHost));
         try
         {
             var client = App.Services.GetRequiredService<IHttpClientFactory>().CreateClient();
@@ -156,17 +156,17 @@ public sealed partial class AIComputeSettingsPanel : UserControl
             };
             var title = result.Kind switch
             {
-                RegistryTestKind.Success => "Credentials valid",
-                RegistryTestKind.Unauthorized => "Credentials rejected",
-                RegistryTestKind.MissingConfiguration => "Configuration incomplete",
-                RegistryTestKind.InvalidChallenge => "Unexpected registry response",
-                _ => "Network error",
+                RegistryTestKind.Success => Helpers.Loc.T("Compute_TestValid"),
+                RegistryTestKind.Unauthorized => Helpers.Loc.T("Compute_TestRejected"),
+                RegistryTestKind.MissingConfiguration => Helpers.Loc.T("Compute_TestIncomplete"),
+                RegistryTestKind.InvalidChallenge => Helpers.Loc.T("Compute_TestUnexpected"),
+                _ => Helpers.Loc.T("Compute_TestNetworkError"),
             };
             ShowStatus(severity, title, result.Message);
         }
         catch (Exception ex)
         {
-            ShowStatus(InfoBarSeverity.Error, "Test failed", ex.Message);
+            ShowStatus(InfoBarSeverity.Error, Helpers.Loc.T("Compute_TestFailed"), ex.Message);
         }
         finally
         {

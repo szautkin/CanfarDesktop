@@ -24,6 +24,8 @@ public sealed partial class CodeCellControl : UserControl
         CanBeScrollAnchor = true;
         DataContextChanged += OnDataContextChanged;
         Unloaded += (_, _) => DetachViewModel();
+        // Localized initial label (code owns this text at runtime, so no x:Uid on it).
+        CollapseLabel.Text = Helpers.Loc.T("Nb_OutputLabel");
         ApplySettings();
 
         // Re-apply when settings change
@@ -174,7 +176,8 @@ public sealed partial class CodeCellControl : UserControl
             var p = new Microsoft.UI.Xaml.Documents.Paragraph();
             p.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run
             {
-                Text = "Type Python code here...",
+                // Mirror the editor's (localized via x:Uid) placeholder so the two never drift.
+                Text = SourceEditor.PlaceholderText,
                 Foreground = ThemeHelper.GetBrush("TextFillColorTertiaryBrush"),
             });
             SyntaxView.Blocks.Add(p);
@@ -271,8 +274,8 @@ public sealed partial class CodeCellControl : UserControl
         OutputStack.Visibility = _viewModel.IsOutputCollapsed ? Visibility.Collapsed : Visibility.Visible;
         CollapseIcon.Glyph = _viewModel.IsOutputCollapsed ? "\uE76C" : "\uE76B"; // ChevronRight vs ChevronDown
         CollapseLabel.Text = _viewModel.IsOutputCollapsed
-            ? $"Output collapsed ({_viewModel.Outputs.Count} items)"
-            : "Output";
+            ? Helpers.Loc.F("Nb_OutputCollapsed", _viewModel.Outputs.Count)
+            : Helpers.Loc.T("Nb_OutputLabel");
     }
 
     // Number of Outputs already rendered into OutputStack — lets streaming

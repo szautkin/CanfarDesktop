@@ -13,7 +13,12 @@ namespace CanfarDesktop.Views.CubeViewer;
 public sealed partial class CubeViewerPage
 {
     private static readonly string[] LoadStepNames =
-        { "Reading header", "Decoding planes", "Normalizing", "Uploading to GPU" };
+    {
+        Helpers.Loc.T("Cube_StepHeader"),
+        Helpers.Loc.T("Cube_StepDecode"),
+        Helpers.Loc.T("Cube_StepNormalize"),
+        Helpers.Loc.T("Cube_StepUpload"),
+    };
 
     private (TextBlock Glyph, TextBlock Name, TextBlock Detail)[]? _loadSteps;
 
@@ -55,7 +60,7 @@ public sealed partial class CubeViewerPage
         BuildLoadingSteps();
         HideStatus(); // clear any prior error/status snack while a fresh load runs
         _statusTimer?.Stop();
-        LoadingTitle.Text = "Loading " + fileName;
+        LoadingTitle.Text = Helpers.Loc.F("Cube_Loading", fileName);
         LoadingBar.Value = 0;
         UpdateLoadSteps(0, "");
         LoadingPanel.Visibility = Visibility.Visible;

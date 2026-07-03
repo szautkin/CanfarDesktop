@@ -83,14 +83,14 @@ public sealed partial class ResearchPage : UserControl
         try
         {
             // 1. Options
-            var includeNotes = new CheckBox { Content = "Include research notes", IsChecked = true };
-            var includeHistory = new CheckBox { Content = "Include saved queries & search history", IsChecked = true };
-            var includeFiles = new CheckBox { Content = "Include downloaded files (larger bundle)", IsChecked = false };
-            var uploadVo = new CheckBox { Content = "Also upload the zip to VOSpace (Verbinal-Exports/)", IsChecked = false };
+            var includeNotes = new CheckBox { Content = Loc.T("Research_ExportIncludeNotes"), IsChecked = true };
+            var includeHistory = new CheckBox { Content = Loc.T("Research_ExportIncludeHistory"), IsChecked = true };
+            var includeFiles = new CheckBox { Content = Loc.T("Research_ExportIncludeFiles"), IsChecked = false };
+            var uploadVo = new CheckBox { Content = Loc.T("Research_ExportUploadVoSpace"), IsChecked = false };
             var panel = new StackPanel { Spacing = 8 };
             panel.Children.Add(new TextBlock
             {
-                Text = "Exports your downloaded observations + notes and saved searches as a Claude-friendly bundle (manifest.json + README + per-module folders), zipped.",
+                Text = Loc.T("Research_ExportDescription"),
                 TextWrapping = TextWrapping.Wrap,
                 Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
             });
@@ -101,10 +101,10 @@ public sealed partial class ResearchPage : UserControl
 
             var optionsDialog = new ContentDialog
             {
-                Title = "Export data",
+                Title = Loc.T("Research_ExportDialogTitle"),
                 Content = panel,
-                PrimaryButtonText = "Choose folder & export…",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = Loc.T("Research_ExportChooseFolder"),
+                CloseButtonText = Loc.T("Research_Cancel"),
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = XamlRoot,
             };
@@ -138,18 +138,18 @@ public sealed partial class ResearchPage : UserControl
             if (uploadVo.IsChecked == true && _auth.CurrentUsername is { Length: > 0 } username)
                 remote = await _exportService.UploadBundleToVoSpaceAsync(zipPath, _storage, username);
 
-            var message = $"Bundle: {bundleDir}\nZip: {zipPath}";
-            if (remote is not null) message += $"\nUploaded to VOSpace: {remote}";
-            else if (uploadVo.IsChecked == true) message += "\n\n(VOSpace upload skipped — not signed in.)";
-            await ShowExportResultAsync("Export complete", message);
+            var message = Loc.F("Research_ExportBundleLine", bundleDir) + "\n" + Loc.F("Research_ExportZipLine", zipPath);
+            if (remote is not null) message += "\n" + Loc.F("Research_ExportUploadedLine", remote);
+            else if (uploadVo.IsChecked == true) message += "\n\n" + Loc.T("Research_ExportUploadSkipped");
+            await ShowExportResultAsync(Loc.T("Research_ExportComplete"), message);
         }
         catch (ExportException ex)
         {
-            await ShowExportResultAsync("Export failed", ex.Message);
+            await ShowExportResultAsync(Loc.T("Research_ExportFailed"), ex.Message);
         }
         catch (Exception ex)
         {
-            await ShowExportResultAsync("Export failed", ex.Message);
+            await ShowExportResultAsync(Loc.T("Research_ExportFailed"), ex.Message);
         }
     }
 
@@ -158,7 +158,7 @@ public sealed partial class ResearchPage : UserControl
         {
             Title = title,
             Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true },
-            CloseButtonText = "Close",
+            CloseButtonText = Loc.T("Research_Close"),
             XamlRoot = XamlRoot,
         }.ShowAsync().AsTask();
 
@@ -229,13 +229,13 @@ public sealed partial class ResearchPage : UserControl
 
         if (obs.FileExists)
         {
-            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8E5", "Open File", (_, _) => ViewModel.OpenFileCommand.Execute(null)));
-            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE809", "Cube Viewer", (_, _) => ViewModel.OpenInCubeViewerCommand.Execute(null)));
-            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE838", "Show in Explorer", (_, _) => ViewModel.ShowInExplorerCommand.Execute(null)));
+            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8E5", Loc.T("Research_OpenFile"), (_, _) => ViewModel.OpenFileCommand.Execute(null)));
+            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE809", Loc.T("Research_CubeViewer"), (_, _) => ViewModel.OpenInCubeViewerCommand.Execute(null)));
+            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE838", Loc.T("Research_ShowInExplorer"), (_, _) => ViewModel.ShowInExplorerCommand.Execute(null)));
         }
         else
         {
-            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", "Download FITS", async (_, _) =>
+            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", Loc.T("Research_DownloadFits"), async (_, _) =>
             {
                 try
                 {
@@ -246,9 +246,9 @@ public sealed partial class ResearchPage : UserControl
 
                     var picker = new Windows.Storage.Pickers.FileSavePicker();
                     WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
-                    var name = obs.TargetName is { Length: > 0 } ? obs.TargetName : "observation";
+                    var name = obs.TargetName is { Length: > 0 } ? obs.TargetName : Loc.T("Research_DefaultFileName");
                     picker.SuggestedFileName = $"{name}.fits";
-                    picker.FileTypeChoices.Add("FITS Image", new List<string> { ".fits" });
+                    picker.FileTypeChoices.Add(Loc.T("Research_FileTypeFits"), new List<string> { ".fits" });
 
                     var file = await picker.PickSaveFileAsync();
                     if (file is null) return;
@@ -263,7 +263,7 @@ public sealed partial class ResearchPage : UserControl
             }));
         }
 
-        var deleteBtn = UIFactory.CreateIconButton("\uE74D", "Delete", (_, _) =>
+        var deleteBtn = UIFactory.CreateIconButton("\uE74D", Loc.T("Research_Delete"), (_, _) =>
         {
             ViewModel.DeleteObservationCommand.Execute(null);
             EmptyState.Visibility = Visibility.Visible;
@@ -274,28 +274,28 @@ public sealed partial class ResearchPage : UserControl
         DetailContent.Children.Add(btnPanel);
 
         // Metadata
-        AddRow("Collection", obs.Collection);
-        AddRow("Observation ID", obs.ObservationID);
-        AddRow("Target", obs.TargetName);
-        AddRow("Instrument", obs.Instrument);
-        AddRow("Filter", obs.Filter);
-        AddRow("RA", obs.RA);
-        AddRow("Dec", obs.Dec);
+        AddRow(Loc.T("Research_RowCollection"), obs.Collection);
+        AddRow(Loc.T("Research_RowObservationId"), obs.ObservationID);
+        AddRow(Loc.T("Research_RowTarget"), obs.TargetName);
+        AddRow(Loc.T("Research_RowInstrument"), obs.Instrument);
+        AddRow(Loc.T("Research_RowFilter"), obs.Filter);
+        AddRow(Loc.T("Research_RowRa"), obs.RA);
+        AddRow(Loc.T("Research_RowDec"), obs.Dec);
         if (!string.IsNullOrEmpty(obs.StartDate))
-            AddRow("Start Date", CellFormatter.Format("startdate", obs.StartDate));
-        AddRow("Cal. Level", CellFormatter.Format("callev", obs.CalLevel));
+            AddRow(Loc.T("Research_RowStartDate"), CellFormatter.Format("startdate", obs.StartDate));
+        AddRow(Loc.T("Research_RowCalLevel"), CellFormatter.Format("callev", obs.CalLevel));
 
         // File info
         DetailContent.Children.Add(new TextBlock
         {
-            Text = "File Info",
+            Text = Loc.T("Research_FileInfo"),
             Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
             Margin = new Thickness(0, 8, 0, 0)
         });
-        AddRow("Path", obs.LocalPath);
-        if (obs.FileSize.HasValue) AddRow("Size", obs.FormattedSize);
-        AddRow("Downloaded", obs.DownloadedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"));
-        AddRow("File exists", obs.FileExists ? "Yes" : "Missing");
+        AddRow(Loc.T("Research_RowPath"), obs.LocalPath);
+        if (obs.FileSize.HasValue) AddRow(Loc.T("Research_RowSize"), obs.FormattedSize);
+        AddRow(Loc.T("Research_RowDownloaded"), obs.DownloadedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"));
+        AddRow(Loc.T("Research_RowFileExists"), obs.FileExists ? Loc.T("Research_Yes") : Loc.T("Research_Missing"));
 
         BuildNotesEditor(obs);
     }
@@ -320,7 +320,7 @@ public sealed partial class ResearchPage : UserControl
 
         var header = new TextBlock
         {
-            Text = "Research Notes",
+            Text = Loc.T("Research_NotesTitle"),
             Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -335,25 +335,25 @@ public sealed partial class ResearchPage : UserControl
         headerRow.Children.Add(new Controls.AgentBadge { Attribution = saved?.AgentAttribution });
         DetailContent.Children.Add(headerRow);
 
-        _ratingControl = new RatingControl { IsClearEnabled = true, Caption = "rating" };
+        _ratingControl = new RatingControl { IsClearEnabled = true, Caption = Loc.T("Research_RatingCaption") };
         _ratingControl.ValueChanged += (_, _) => OnNoteEdited();
         DetailContent.Children.Add(_ratingControl);
 
         _noteBox = new TextBox
         {
-            PlaceholderText = "Add a note…",
+            PlaceholderText = Loc.T("Research_NotePlaceholder"),
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             MinHeight = 96,
-            Header = "Note",
+            Header = Loc.T("Research_NoteHeader"),
         };
         _noteBox.TextChanged += (_, _) => OnNoteEdited();
         DetailContent.Children.Add(_noteBox);
 
         _tagsBox = new TextBox
         {
-            PlaceholderText = "comma-separated tags",
-            Header = "Tags",
+            PlaceholderText = Loc.T("Research_TagsPlaceholder"),
+            Header = Loc.T("Research_TagsHeader"),
         };
         _tagsBox.TextChanged += (_, _) => OnNoteEdited();
         DetailContent.Children.Add(_tagsBox);

@@ -26,8 +26,8 @@ public sealed class WorkflowStepRow : INotifyPropertyChanged
     public string ViewLinkText { get; init; } = string.Empty;
     public bool CanToggle { get; init; }
     public string ToggleTooltip => CanToggle
-        ? "Mark this step done / not done"
-        : "Read-only source — press “Use this workflow” to track progress";
+        ? Helpers.Loc.T("Wf_ToggleStepTooltip")
+        : Helpers.Loc.T("Wf_ReadOnlyToggleTooltip");
 
     public Visibility BodyVisibility => Body.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     public Visibility NoteVisibility => Note.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -132,7 +132,7 @@ public sealed partial class WorkflowsPage : UserControl
         };
 
         RefreshLists();
-        VosHint.Text = "Press refresh to list vos:<you>/workflows.";
+        VosHint.Text = Helpers.Loc.T("Wf_VosHintInitial");
     }
 
     // ── Lists ─────────────────────────────────────────────────────────────────
@@ -229,9 +229,9 @@ public sealed partial class WorkflowsPage : UserControl
         TimeText.Text = info.Doc.Metadata.TryGetValue("Time", out var t) ? t : string.Empty;
         SourceBadgeText.Text = info.Source switch
         {
-            WorkflowSource.BuiltIn => "Built-in template",
-            WorkflowSource.VoSpace => "VOSpace",
-            _ => "Local",
+            WorkflowSource.BuiltIn => Helpers.Loc.T("Wf_SourceBuiltIn"),
+            WorkflowSource.VoSpace => Helpers.Loc.T("Wf_SourceVoSpace"),
+            _ => Helpers.Loc.T("Wf_SourceLocal"),
         };
 
         var local = info.Source == WorkflowSource.Local;
@@ -268,9 +268,15 @@ public sealed partial class WorkflowsPage : UserControl
 
     private static string TitleForView(string key) => key switch
     {
-        "portal" => "Portal", "search" => "Search", "research" => "Research", "storage" => "Storage",
-        "notebook" => "Notebook", "fitsViewer" => "FITS Viewer", "aiGuide" => "AI Guide",
-        "workflows" => "Workflows", _ => key,
+        "portal" => Helpers.Loc.T("Module_Portal"),
+        "search" => Helpers.Loc.T("Module_Search"),
+        "research" => Helpers.Loc.T("Module_Research"),
+        "storage" => Helpers.Loc.T("Module_Storage"),
+        "notebook" => Helpers.Loc.T("Module_Notebook"),
+        "fitsViewer" => Helpers.Loc.T("Module_FitsViewer"),
+        "aiGuide" => Helpers.Loc.T("Module_AiGuide"),
+        "workflows" => Helpers.Loc.T("Module_Workflows"),
+        _ => key,
     };
 
     private async Task LoadVosTextAsync(string vosId)
@@ -285,7 +291,7 @@ public sealed partial class WorkflowsPage : UserControl
         }
         catch (Exception ex)
         {
-            VosHint.Text = $"Could not open the VOSpace workflow: {ex.Message}";
+            VosHint.Text = Helpers.Loc.F("Wf_VosOpenFailed", ex.Message);
         }
     }
 
@@ -339,7 +345,7 @@ public sealed partial class WorkflowsPage : UserControl
     {
         var info = _selectedId is null ? null : _store.Get(_selectedId);
         if (info is null) return;
-        _selectedId = _store.SaveNew(info.Doc.Title + " copy", info.RawText);
+        _selectedId = _store.SaveNew(Helpers.Loc.F("Wf_CopySuffix", info.Doc.Title), info.RawText);
         RefreshLists();
         RenderDetail();
     }
@@ -350,10 +356,10 @@ public sealed partial class WorkflowsPage : UserControl
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "Delete workflow?",
-            Content = "This deletes the local file, including its progress. Templates it was copied from are unaffected.",
-            PrimaryButtonText = "Delete",
-            CloseButtonText = "Cancel",
+            Title = Helpers.Loc.T("Wf_DeleteTitle"),
+            Content = Helpers.Loc.T("Wf_DeleteBody"),
+            PrimaryButtonText = Helpers.Loc.T("Wf_DeleteConfirm"),
+            CloseButtonText = Helpers.Loc.T("Wf_Cancel"),
             DefaultButton = ContentDialogButton.Close,
         };
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
@@ -366,7 +372,7 @@ public sealed partial class WorkflowsPage : UserControl
     private void OnNewClick(object sender, RoutedEventArgs e)
     {
         _editingId = null;
-        EnterEditMode(WorkflowFormat.Skeleton("New workflow"));
+        EnterEditMode(WorkflowFormat.Skeleton(Helpers.Loc.T("Wf_NewWorkflowTitle")));
     }
 
     private void OnEditClick(object sender, RoutedEventArgs e)
@@ -399,24 +405,24 @@ public sealed partial class WorkflowsPage : UserControl
         var info = _selectedId is null ? null : _store.Get(_selectedId);
         if (info is null || info.Source != WorkflowSource.Local) return;
         var user = (_auth.CurrentUsername ?? string.Empty).Trim();
-        if (user.Length == 0) { VosHint.Text = "Sign in to publish workflows to VOSpace."; return; }
+        if (user.Length == 0) { VosHint.Text = Helpers.Loc.T("Wf_SignInToPublish"); return; }
 
-        var reset = new CheckBox { Content = "Reset progress in the published copy", IsChecked = true };
+        var reset = new CheckBox { Content = Helpers.Loc.T("Wf_ResetProgressCheck"), IsChecked = true };
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "Publish to VOSpace",
+            Title = Helpers.Loc.T("Wf_PublishTitle"),
             Content = new StackPanel
             {
                 Spacing = 8,
                 Children =
                 {
-                    new TextBlock { Text = $"Uploads to vos:{user}/workflows/{WorkflowStore.Slugify(info.Doc.Title)}{WorkflowFormat.FileExtension}", TextWrapping = TextWrapping.Wrap },
+                    new TextBlock { Text = Helpers.Loc.F("Wf_PublishUploadsTo", $"vos:{user}/workflows/{WorkflowStore.Slugify(info.Doc.Title)}{WorkflowFormat.FileExtension}"), TextWrapping = TextWrapping.Wrap },
                     reset,
                 },
             },
-            PrimaryButtonText = "Publish",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Helpers.Loc.T("Wf_PublishConfirm"),
+            CloseButtonText = Helpers.Loc.T("Wf_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
@@ -434,11 +440,11 @@ public sealed partial class WorkflowsPage : UserControl
             var remote = $"{user}/workflows/{WorkflowStore.Slugify(info.Doc.Title)}{WorkflowFormat.FileExtension}";
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(text));
             await _storage.UploadFileAsync(remote, stream, "text/markdown");
-            VosHint.Text = $"Published vos:{remote}";
+            VosHint.Text = Helpers.Loc.F("Wf_PublishedTo", $"vos:{remote}");
         }
         catch (Exception ex)
         {
-            VosHint.Text = $"Publish failed: {ex.Message}";
+            VosHint.Text = Helpers.Loc.F("Wf_PublishFailed", ex.Message);
         }
     }
 
@@ -452,7 +458,7 @@ public sealed partial class WorkflowsPage : UserControl
             "work through them in order using the tools each step names, mark each finished step with " +
             $"set_workflow_step(id: \"{info.Id}\", index, done: true), and stop to ask me at any judgment call.");
         Clipboard.SetContent(package);
-        VosHint.Text = "Agent prompt copied — paste it into Claude.";
+        VosHint.Text = Helpers.Loc.T("Wf_PromptCopied");
     }
 
     // ── VOSpace listing ───────────────────────────────────────────────────────
@@ -463,9 +469,9 @@ public sealed partial class WorkflowsPage : UserControl
     {
         if (_vosBusy) return;
         var user = (_auth.CurrentUsername ?? string.Empty).Trim();
-        if (user.Length == 0) { VosHint.Text = "Sign in to browse VOSpace workflows."; return; }
+        if (user.Length == 0) { VosHint.Text = Helpers.Loc.T("Wf_SignInToBrowse"); return; }
         _vosBusy = true;
-        VosHint.Text = "Loading…";
+        VosHint.Text = Helpers.Loc.T("Wf_Loading");
         try
         {
             var nodes = await _storage.ListNodesAsync($"{user}/workflows", 500);
@@ -477,11 +483,11 @@ public sealed partial class WorkflowsPage : UserControl
             VosList.ItemsSource = items;
             _suppressSelection = false;
             ReselectById();
-            VosHint.Text = items.Count == 0 ? "No .workflow.md files in vos:" + user + "/workflows yet." : string.Empty;
+            VosHint.Text = items.Count == 0 ? Helpers.Loc.F("Wf_VosEmpty", $"vos:{user}/workflows") : string.Empty;
         }
         catch (Exception ex)
         {
-            VosHint.Text = $"Could not list VOSpace workflows: {ex.Message}";
+            VosHint.Text = Helpers.Loc.F("Wf_VosListFailed", ex.Message);
         }
         finally
         {

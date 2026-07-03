@@ -282,7 +282,7 @@ public sealed partial class SearchPage : Page
     {
         var name = SaveQueryName.Text.Trim();
         if (string.IsNullOrWhiteSpace(name))
-            name = $"Query {DateTime.Now:yyyy-MM-dd HH:mm}";
+            name = Loc.F("Search_DefaultQueryName", DateTime.Now.ToString("yyyy-MM-dd HH:mm"));
         ViewModel.SaveCurrentQuery(name);
         SaveQueryName.Text = string.Empty;
     }
@@ -304,7 +304,7 @@ public sealed partial class SearchPage : Page
         {
             // Show progress
             QueryRunStatus.Visibility = Visibility.Visible;
-            QueryRunStatusText.Text = $"Running \"{query.Name}\"...";
+            QueryRunStatusText.Text = Loc.F("Search_RunningQuery", query.Name);
 
             ViewModel.AdqlText = query.Adql;
             await ViewModel.ExecuteAdqlCommand.ExecuteAsync(null);
@@ -365,7 +365,7 @@ public sealed partial class SearchPage : Page
         {
             ResultsPanel.Children.Add(new TextBlock
             {
-                Text = "No results found.",
+                Text = Loc.T("Search_NoResults"),
                 Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
                 Margin = new Thickness(0, 16, 0, 0)
             });
@@ -448,7 +448,7 @@ public sealed partial class SearchPage : Page
                 Height = 24,
                 FontSize = 11,
                 Padding = new Thickness(4, 2, 4, 2),
-                PlaceholderText = "Filter...",
+                PlaceholderText = Loc.T("Search_FilterPlaceholder"),
                 Text = ViewModel.GetColumnFilter(key)
             };
 
@@ -531,7 +531,7 @@ public sealed partial class SearchPage : Page
                     BorderThickness = new Thickness(0),
                     Width = width,
                     VerticalAlignment = VerticalAlignment.Center,
-                    Content = new TextBlock { Text = "Preview", FontSize = 11 },
+                    Content = new TextBlock { Text = Loc.T("Search_PreviewButton"), FontSize = 11 },
                     Tag = "action"
                 };
 
@@ -556,7 +556,7 @@ public sealed partial class SearchPage : Page
                         if (imageUrl is null)
                         {
                             flyoutPanel.Children.Clear();
-                            flyoutPanel.Children.Add(new TextBlock { Text = "No preview available", Opacity = 0.6 });
+                            flyoutPanel.Children.Add(new TextBlock { Text = Loc.T("Search_NoPreview"), Opacity = 0.6 });
                             return;
                         }
 
@@ -565,12 +565,12 @@ public sealed partial class SearchPage : Page
                         if (img is not null)
                             flyoutPanel.Children.Add(new Image { Source = img, MaxWidth = 300, MaxHeight = 300, Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform });
                         else
-                            flyoutPanel.Children.Add(new TextBlock { Text = "Image load failed", Opacity = 0.6 });
+                            flyoutPanel.Children.Add(new TextBlock { Text = Loc.T("Search_ImageLoadFailed"), Opacity = 0.6 });
                     }
                     catch
                     {
                         flyoutPanel.Children.Clear();
-                        flyoutPanel.Children.Add(new TextBlock { Text = "Preview failed", Opacity = 0.6 });
+                        flyoutPanel.Children.Add(new TextBlock { Text = Loc.T("Search_PreviewFailed"), Opacity = 0.6 });
                         flyoutLoaded = false;
                     }
                 };
@@ -643,7 +643,7 @@ public sealed partial class SearchPage : Page
                     var ck = key;
                     var cv = rawValue;
                     tb.Tag = "action"; // suppress row-detail open
-                    ToolTipService.SetToolTip(tb, $"Narrow results to “{cv}”");
+                    ToolTipService.SetToolTip(tb, Loc.F("Search_NarrowToValue", cv));
                     tb.Tapped += (_, _) =>
                     {
                         ViewModel.SetColumnFilter(ck, cv);
@@ -705,7 +705,7 @@ public sealed partial class SearchPage : Page
         // Non-coordinate columns keep a readable legacy default → offer an explicit "Default" choice.
         if (!isCoord)
         {
-            var defItem = new ToggleMenuFlyoutItem { Text = "Default", IsChecked = active is null };
+            var defItem = new ToggleMenuFlyoutItem { Text = Loc.T("Search_UnitDefault"), IsChecked = active is null };
             defItem.Click += (_, _) => { ViewModel.SetUnit(key, null); RenderResultsPage(rebuildHeader: true); };
             flyout.Items.Add(defItem);
             flyout.Items.Add(new MenuFlyoutSeparator());
@@ -763,7 +763,7 @@ public sealed partial class SearchPage : Page
         ViewModel.UpdatePagination();
         PageStatusText.Text = ViewModel.PageStatus;
         PageNumberText.Text = ViewModel.TotalPages > 0
-            ? $"Page {ViewModel.CurrentPage} / {ViewModel.TotalPages}"
+            ? Loc.F("Search_PageNumber", ViewModel.CurrentPage, ViewModel.TotalPages)
             : "";
     }
 
@@ -849,7 +849,7 @@ public sealed partial class SearchPage : Page
             var seq = ++_downloadOpSeq;
             DownloadInfoBar.IsOpen = true;
             DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
-            DownloadInfoBar.Title = "Saved to Research";
+            DownloadInfoBar.Title = Loc.T("Search_SavedToResearch");
             DownloadProgressBar.Visibility = Visibility.Collapsed;
             DownloadProgressText.Text = obs.TargetName ?? publisherID;
             ScheduleDownloadBarReset(seq);
@@ -857,7 +857,7 @@ public sealed partial class SearchPage : Page
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Save to research error: {ex.Message}");
-            ShowDownloadError("Save to Research failed", ex.Message);
+            ShowDownloadError(Loc.T("Search_SaveToResearchFailed"), ex.Message);
         }
     }
 
@@ -896,8 +896,8 @@ public sealed partial class SearchPage : Page
             if (!Path.HasExtension(suggestedName))
                 suggestedName += ".fits";
             picker.SuggestedFileName = suggestedName;
-            picker.FileTypeChoices.Add("FITS Image", new List<string> { ".fits" });
-            picker.FileTypeChoices.Add("All Files", new List<string> { "." });
+            picker.FileTypeChoices.Add(Loc.T("Search_FileTypeFits"), new List<string> { ".fits" });
+            picker.FileTypeChoices.Add(Loc.T("Search_FileTypeAll"), new List<string> { "." });
 
             var file = await picker.PickSaveFileAsync();
             if (file is null) return;
@@ -908,7 +908,7 @@ public sealed partial class SearchPage : Page
             {
                 DownloadInfoBar.IsOpen = true;
                 DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
-                DownloadInfoBar.Title = $"Downloading {Path.GetFileName(file.Path)}...";
+                DownloadInfoBar.Title = Loc.F("Search_DownloadingFile", Path.GetFileName(file.Path));
                 DownloadProgressBar.Visibility = Visibility.Visible;
                 DownloadProgressBar.IsIndeterminate = true;
                 DownloadProgressText.Text = "";
@@ -930,7 +930,7 @@ public sealed partial class SearchPage : Page
                 await _downloads.DownloadToPathAsync(url, file.Path, progress: progress);
 
                 DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
-                DownloadInfoBar.Title = $"Downloaded {Path.GetFileName(file.Path)}";
+                DownloadInfoBar.Title = Loc.F("Search_DownloadedFile", Path.GetFileName(file.Path));
                 DownloadProgressBar.Visibility = Visibility.Collapsed;
                 ScheduleDownloadBarReset(seq);
             }
@@ -962,7 +962,7 @@ public sealed partial class SearchPage : Page
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Download error: {ex.Message}");
-            ShowDownloadError("Download failed", ex.Message);
+            ShowDownloadError(Loc.T("Search_DownloadFailed"), ex.Message);
         }
     }
 
@@ -1007,10 +1007,10 @@ public sealed partial class SearchPage : Page
 
         var dialog = new ContentDialog
         {
-            Title = $"Select file to download ({files.Count} available)",
+            Title = Loc.F("Search_SelectFileTitle", files.Count),
             Content = listView,
-            PrimaryButtonText = "Download",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Loc.T("Search_DownloadButton"),
+            CloseButtonText = Loc.T("Search_CancelButton"),
             XamlRoot = XamlRoot,
         };
 
@@ -1033,10 +1033,10 @@ public sealed partial class SearchPage : Page
 
     private static string FormatBytes(long bytes) => bytes switch
     {
-        < 1024 => $"{bytes} B",
-        < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
-        < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
-        _ => $"{bytes / (1024.0 * 1024 * 1024):F2} GB"
+        < 1024 => Loc.F("Search_SizeB", bytes),
+        < 1024 * 1024 => Loc.F("Search_SizeKB", bytes / 1024.0),
+        < 1024 * 1024 * 1024 => Loc.F("Search_SizeMB", bytes / (1024.0 * 1024)),
+        _ => Loc.F("Search_SizeGB", bytes / (1024.0 * 1024 * 1024))
     };
 
     private async Task LoadPreviewFlyout(Flyout flyout, string publisherID)
@@ -1061,12 +1061,12 @@ public sealed partial class SearchPage : Page
             }
             else
             {
-                flyout.Content = new TextBlock { Text = "No preview available", Opacity = 0.6 };
+                flyout.Content = new TextBlock { Text = Loc.T("Search_NoPreview"), Opacity = 0.6 };
             }
         }
         catch
         {
-            flyout.Content = new TextBlock { Text = "Preview failed", Opacity = 0.6 };
+            flyout.Content = new TextBlock { Text = Loc.T("Search_PreviewFailed"), Opacity = 0.6 };
         }
     }
 
@@ -1121,7 +1121,7 @@ public sealed partial class SearchPage : Page
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Export failed: {ex.Message}");
-            ShowDownloadError($"{formatLabel} export failed", ex.Message);
+            ShowDownloadError(Loc.F("Search_ExportFailed", formatLabel), ex.Message);
         }
     }
 

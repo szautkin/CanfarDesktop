@@ -150,10 +150,10 @@ public sealed partial class LocalFileBrowserPanel : UserControl
         var input = new TextBox { Text = node.Name };
         var dialog = new ContentDialog
         {
-            Title = "Rename",
+            Title = Helpers.Loc.T("LocalFiles_RenameTitle"),
             Content = input,
-            PrimaryButtonText = "Rename",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Helpers.Loc.T("LocalFiles_RenameButton"),
+            CloseButtonText = Helpers.Loc.T("LocalFiles_CancelButton"),
             XamlRoot = XamlRoot,
         };
         // Focus/SelectAll only work once the box is in the visual tree.
@@ -256,12 +256,12 @@ public sealed partial class LocalFileBrowserPanel : UserControl
     {
         var dialog = new ContentDialog
         {
-            Title = "Delete",
+            Title = Helpers.Loc.T("LocalFiles_DeleteTitle"),
             Content = node.IsFolder
-                ? $"Delete folder \"{node.Name}\" and all contents?"
-                : $"Delete \"{node.Name}\"?",
-            PrimaryButtonText = "Delete",
-            CloseButtonText = "Cancel",
+                ? Helpers.Loc.F("LocalFiles_DeleteFolderConfirm", node.Name)
+                : Helpers.Loc.F("LocalFiles_DeleteFileConfirm", node.Name),
+            PrimaryButtonText = Helpers.Loc.T("LocalFiles_DeleteConfirmButton"),
+            CloseButtonText = Helpers.Loc.T("LocalFiles_CancelButton"),
             XamlRoot = XamlRoot,
         };
 

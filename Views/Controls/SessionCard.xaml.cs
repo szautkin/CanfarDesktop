@@ -27,10 +27,10 @@ public sealed partial class SessionCard : UserControl
         NameText.Text = session.SessionName;
         StatusText.Text = session.Status;
         ImageText.Text = ParseImageLabel(session.ContainerImage);
-        StartText.Text = $"Started: {FormatTime(session.StartedTime)}";
-        ExpiryText.Text = $"Expires: {FormatTime(session.ExpiresTime)}";
-        CpuText.Text = $"CPU: {FormatResource(session.CpuAllocated)}";
-        RamText.Text = $"RAM: {FormatResource(session.MemoryAllocated)}";
+        StartText.Text = Helpers.Loc.F("Sessions_Started", FormatTime(session.StartedTime));
+        ExpiryText.Text = Helpers.Loc.F("Sessions_Expires", FormatTime(session.ExpiresTime));
+        CpuText.Text = Helpers.Loc.F("Portal_CpuCount", FormatResource(session.CpuAllocated));
+        RamText.Text = Helpers.Loc.F("Sessions_Ram", FormatResource(session.MemoryAllocated));
 
         // Status badge color
         StatusBadge.Background = session.Status switch
@@ -44,12 +44,12 @@ public sealed partial class SessionCard : UserControl
         // Type badge color + image
         var (typeColor, typeImageFile, typeLabel) = session.SessionType switch
         {
-            "notebook" => (ColorHelper.FromArgb(255, 33, 150, 243), "session-notebook.jpg", "Notebook"),
-            "desktop" => (ColorHelper.FromArgb(255, 103, 58, 183), "session-desktop.png", "Desktop"),
-            "carta" => (ColorHelper.FromArgb(255, 0, 150, 136), "session-carta.png", "CARTA"),
-            "contributed" => (ColorHelper.FromArgb(255, 255, 87, 34), "session-contributed.png", "Contrib"),
-            "firefly" => (ColorHelper.FromArgb(255, 255, 152, 0), "session-firefly.png", "Firefly"),
-            "headless" => (ColorHelper.FromArgb(255, 96, 125, 139), "session-desktop.png", "Headless"),
+            "notebook" => (ColorHelper.FromArgb(255, 33, 150, 243), "session-notebook.jpg", Helpers.Loc.T("Sessions_TypeNotebook")),
+            "desktop" => (ColorHelper.FromArgb(255, 103, 58, 183), "session-desktop.png", Helpers.Loc.T("Sessions_TypeDesktop")),
+            "carta" => (ColorHelper.FromArgb(255, 0, 150, 136), "session-carta.png", "CARTA"), // brand name
+            "contributed" => (ColorHelper.FromArgb(255, 255, 87, 34), "session-contributed.png", Helpers.Loc.T("Sessions_TypeContrib")),
+            "firefly" => (ColorHelper.FromArgb(255, 255, 152, 0), "session-firefly.png", "Firefly"), // brand name
+            "headless" => (ColorHelper.FromArgb(255, 96, 125, 139), "session-desktop.png", Helpers.Loc.T("Sessions_TypeHeadless")),
             _ => (ColorHelper.FromArgb(255, 158, 158, 158), "session-desktop.png", session.SessionType)
         };
 
@@ -69,7 +69,7 @@ public sealed partial class SessionCard : UserControl
 
     private static string FormatResource(string? value)
     {
-        return string.IsNullOrWhiteSpace(value) ? "n/a" : value;
+        return string.IsNullOrWhiteSpace(value) ? Helpers.Loc.T("Sessions_NotAvailable") : value;
     }
 
     private static string FormatTime(string? time)

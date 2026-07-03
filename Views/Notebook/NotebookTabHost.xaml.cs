@@ -320,11 +320,11 @@ public sealed partial class NotebookTabHost : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Recover unsaved notebooks?",
-            Content = $"{orphaned.Count} unsaved notebook(s) found from a previous session.",
-            PrimaryButtonText = "Recover",
-            SecondaryButtonText = "Discard",
-            CloseButtonText = "Later",
+            Title = Helpers.Loc.T("Nb_RecoverTitle"),
+            Content = Helpers.Loc.F("Nb_RecoverBody", orphaned.Count),
+            PrimaryButtonText = Helpers.Loc.T("Nb_RecoverButton"),
+            SecondaryButtonText = Helpers.Loc.T("Nb_DiscardButton"),
+            CloseButtonText = Helpers.Loc.T("Nb_LaterButton"),
             XamlRoot = XamlRoot,
         };
 
@@ -338,11 +338,11 @@ public sealed partial class NotebookTabHost : UserControl
                 if (candidate.OriginalPath is not null && File.Exists(candidate.OriginalPath))
                 {
                     page.ViewModel.LoadFromFile(candidate.OriginalPath, page.ViewModel.Document);
-                    page.ViewModel.StatusMessage = $"[Recovered] {candidate.OriginalPath}";
+                    page.ViewModel.StatusMessage = Helpers.Loc.F("Nb_RecoveredStatus", candidate.OriginalPath);
                 }
                 else
                 {
-                    page.ViewModel.StatusMessage = "[Recovered] " + candidate.DisplayName;
+                    page.ViewModel.StatusMessage = Helpers.Loc.F("Nb_RecoveredStatus", candidate.DisplayName);
                 }
             }
         }
@@ -370,11 +370,11 @@ public sealed partial class NotebookTabHost : UserControl
         {
             var dialog = new ContentDialog
             {
-                Title = "Unsaved changes",
-                Content = $"Save changes to {tabItem.ViewModel.Title}?",
-                PrimaryButtonText = "Save",
-                SecondaryButtonText = "Don't Save",
-                CloseButtonText = "Cancel",
+                Title = Helpers.Loc.T("Nb_UnsavedTitle"),
+                Content = Helpers.Loc.F("Nb_UnsavedBody", tabItem.ViewModel.Title),
+                PrimaryButtonText = Helpers.Loc.T("Nb_SaveDialogButton"),
+                SecondaryButtonText = Helpers.Loc.T("Nb_DontSaveButton"),
+                CloseButtonText = Helpers.Loc.T("Nb_CancelButton"),
                 XamlRoot = XamlRoot,
             };
             var result = await dialog.ShowAsync();
@@ -438,7 +438,7 @@ public sealed partial class NotebookTabHost : UserControl
         }
         catch (Exception ex)
         {
-            if (ActiveVM is not null) ActiveVM.StatusMessage = $"Open error: {ex.Message}";
+            if (ActiveVM is not null) ActiveVM.StatusMessage = Helpers.Loc.F("Nb_OpenError", ex.Message);
         }
     }
 
@@ -460,15 +460,15 @@ public sealed partial class NotebookTabHost : UserControl
             {
                 case NotebookFileMode.PythonScript:
                     picker.SuggestedFileName = ActiveVM.Title;
-                    picker.FileTypeChoices.Add("Python Script", [".py"]);
+                    picker.FileTypeChoices.Add(Helpers.Loc.T("Nb_FileTypePython"), [".py"]);
                     break;
                 case NotebookFileMode.Markdown:
                     picker.SuggestedFileName = ActiveVM.Title;
-                    picker.FileTypeChoices.Add("Markdown", [".md"]);
+                    picker.FileTypeChoices.Add(Helpers.Loc.T("Nb_FileTypeMarkdown"), [".md"]);
                     break;
                 default:
                     picker.SuggestedFileName = ActiveVM.Title.Replace(".ipynb", "") + ".ipynb";
-                    picker.FileTypeChoices.Add("Jupyter Notebook", [".ipynb"]);
+                    picker.FileTypeChoices.Add(Helpers.Loc.T("Nb_FileTypeNotebook"), [".ipynb"]);
                     break;
             }
 
@@ -478,7 +478,7 @@ public sealed partial class NotebookTabHost : UserControl
         }
         catch (Exception ex)
         {
-            ActiveVM.StatusMessage = $"Save As error: {ex.Message}";
+            ActiveVM.StatusMessage = Helpers.Loc.F("Nb_SaveAsError", ex.Message);
         }
     }
 

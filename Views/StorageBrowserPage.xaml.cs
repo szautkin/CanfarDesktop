@@ -55,7 +55,7 @@ public sealed partial class StorageBrowserPage : UserControl
 
             _view.ReplaceAll(SortNodes(ViewModel.Nodes));
             UpdateEmptyState();
-            ItemCountText.Text = $"{ViewModel.Nodes.Count} items";
+            ItemCountText.Text = Loc.F("Storage_ItemCount", ViewModel.Nodes.Count);
 
             if (isRefresh)
             {
@@ -182,13 +182,13 @@ public sealed partial class StorageBrowserPage : UserControl
         _actionBusy = true;
         try
         {
-            var input = new TextBox { PlaceholderText = "Folder name" };
+            var input = new TextBox { PlaceholderText = Loc.T("Storage_FolderNamePlaceholder") };
             var dialog = new ContentDialog
             {
-                Title = "New Folder",
+                Title = Loc.T("Storage_NewFolderTitle"),
                 Content = input,
-                PrimaryButtonText = "Create",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = Loc.T("Storage_CreateButton"),
+                CloseButtonText = Loc.T("Storage_CancelButton"),
                 XamlRoot = XamlRoot
             };
             if (await dialog.ShowAsync() == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(input.Text))
@@ -219,7 +219,7 @@ public sealed partial class StorageBrowserPage : UserControl
             if (file is null) return;
 
             TransferRing.IsActive = true;
-            TransferText.Text = $"Uploading {file.Name}...";
+            TransferText.Text = Loc.F("Storage_Uploading", file.Name);
 
             using var stream = await file.OpenStreamForReadAsync();
             await ViewModel.UploadAsync(file.Name, stream);
@@ -232,7 +232,7 @@ public sealed partial class StorageBrowserPage : UserControl
             TransferRing.IsActive = false;
             TransferText.Text = "";
             System.Diagnostics.Debug.WriteLine($"Upload error: {ex.Message}");
-            ReportError($"Upload failed: {ex.Message}");
+            ReportError(Loc.F("Storage_UploadFailed", ex.Message));
         }
         finally
         {
@@ -260,7 +260,7 @@ public sealed partial class StorageBrowserPage : UserControl
         var ext = Path.GetExtension(name).ToLowerInvariant();
         if (ext is not (".fits" or ".fit" or ".fts"))
         {
-            ViewModel.ErrorMessage = "Only FITS files can be opened in the viewer";
+            ViewModel.ErrorMessage = Loc.T("Storage_OnlyFitsInViewer");
             ViewModel.HasError = true;
             return null;
         }
@@ -268,7 +268,7 @@ public sealed partial class StorageBrowserPage : UserControl
         try
         {
             TransferRing.IsActive = true;
-            TransferText.Text = $"Downloading {name}...";
+            TransferText.Text = Loc.F("Storage_Downloading", name);
 
             var remotePath = string.IsNullOrEmpty(ViewModel.CurrentPath)
                 ? name : $"{ViewModel.CurrentPath}/{name}";
@@ -288,7 +288,7 @@ public sealed partial class StorageBrowserPage : UserControl
         {
             TransferRing.IsActive = false;
             TransferText.Text = "";
-            ViewModel.ErrorMessage = $"Failed to open: {ex.Message}";
+            ViewModel.ErrorMessage = Loc.F("Storage_OpenFailed", ex.Message);
             ViewModel.HasError = true;
             return null;
         }
@@ -309,13 +309,13 @@ public sealed partial class StorageBrowserPage : UserControl
             var picker = new Windows.Storage.Pickers.FileSavePicker();
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
             picker.SuggestedFileName = ViewModel.SelectedNode.Name;
-            picker.FileTypeChoices.Add("All Files", new List<string> { "." });
+            picker.FileTypeChoices.Add(Loc.T("Storage_AllFiles"), new List<string> { "." });
 
             var file = await picker.PickSaveFileAsync();
             if (file is null) return;
 
             TransferRing.IsActive = true;
-            TransferText.Text = $"Downloading {ViewModel.SelectedNode.Name}...";
+            TransferText.Text = Loc.F("Storage_Downloading", ViewModel.SelectedNode.Name);
 
             using var remoteStream = await ViewModel.DownloadSelectedAsync();
             if (remoteStream is not null)
@@ -333,7 +333,7 @@ public sealed partial class StorageBrowserPage : UserControl
             TransferRing.IsActive = false;
             TransferText.Text = "";
             System.Diagnostics.Debug.WriteLine($"Download error: {ex.Message}");
-            ReportError($"Download failed: {ex.Message}");
+            ReportError(Loc.F("Storage_DownloadFailed", ex.Message));
         }
         finally
         {
@@ -350,12 +350,12 @@ public sealed partial class StorageBrowserPage : UserControl
         {
             var dialog = new ContentDialog
             {
-                Title = "Delete",
+                Title = Loc.T("Storage_DeleteTitle"),
                 Content = ViewModel.SelectedNode.IsContainer
-                    ? $"Delete folder \"{ViewModel.SelectedNode.Name}\"? (Must be empty)"
-                    : $"Delete \"{ViewModel.SelectedNode.Name}\"?",
-                PrimaryButtonText = "Delete",
-                CloseButtonText = "Cancel",
+                    ? Loc.F("Storage_DeleteFolderConfirm", ViewModel.SelectedNode.Name)
+                    : Loc.F("Storage_DeleteFileConfirm", ViewModel.SelectedNode.Name),
+                PrimaryButtonText = Loc.T("Storage_DeleteConfirmButton"),
+                CloseButtonText = Loc.T("Storage_CancelButton"),
                 XamlRoot = XamlRoot
             };
 
@@ -411,7 +411,7 @@ public sealed partial class StorageBrowserPage : UserControl
                 try
                 {
                     TransferRing.IsActive = true;
-                    TransferText.Text = $"Uploading {file.Name}...";
+                    TransferText.Text = Loc.F("Storage_Uploading", file.Name);
 
                     using var stream = await file.OpenStreamForReadAsync();
                     await ViewModel.UploadAsync(file.Name, stream);
@@ -419,7 +419,7 @@ public sealed partial class StorageBrowserPage : UserControl
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Drop upload error: {ex.Message}");
-                    ReportError($"Upload of {file.Name} failed: {ex.Message}");
+                    ReportError(Loc.F("Storage_UploadOfFileFailed", file.Name, ex.Message));
                 }
             }
         }

@@ -35,7 +35,7 @@ public sealed partial class SessionListControl : UserControl
             else if (e.PropertyName == nameof(ViewModel.PollCountdown))
             {
                 DispatcherQueue.TryEnqueue(() =>
-                    CountdownText.Text = $"{ViewModel.PollCountdown}s");
+                    CountdownText.Text = Helpers.Loc.F("Portal_CountdownSeconds", ViewModel.PollCountdown));
             }
         };
     }
@@ -79,7 +79,7 @@ public sealed partial class SessionListControl : UserControl
             _cards.Clear();
             SessionsPanel.Children.Add(new TextBlock
             {
-                Text = "No active sessions.",
+                Text = Helpers.Loc.T("Sessions_Empty"),
                 Opacity = 0.6,
                 Margin = new Thickness(0, 16, 0, 0)
             });

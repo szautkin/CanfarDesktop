@@ -14,6 +14,6 @@ public sealed partial class DeleteSessionDialog : ContentDialog
     public void SetSessionName(string name)
     {
         SessionName = name;
-        MessageText.Text = $"Are you sure you want to delete session '{name}'?";
+        MessageText.Text = Helpers.Loc.F("Sessions_DeleteConfirm", name);
     }
 }

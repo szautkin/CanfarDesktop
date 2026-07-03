@@ -184,7 +184,7 @@ public sealed class HistoryRow
         {
             e.Kind,
             $"{e.OriginLabel} ({e.OriginFingerprint})",
-            e.AutoApplied ? "auto" : null,
+            e.AutoApplied ? Helpers.Loc.T("Proposals_AutoLabel") : null,
             e.Timestamp.ToLocalTime().ToString("g"),
         }.Where(s => !string.IsNullOrEmpty(s))),
     };

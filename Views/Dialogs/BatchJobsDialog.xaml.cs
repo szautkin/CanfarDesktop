@@ -58,10 +58,10 @@ public sealed partial class BatchJobsDialog : ContentDialog
             }
         }
 
-        PendingHeader.Text = $"Pending ({pending.Count})";
-        RunningHeader.Text = $"Running ({running.Count})";
-        CompletedHeader.Text = $"Completed ({completed.Count})";
-        FailedHeader.Text = $"Failed ({failed.Count})";
+        PendingHeader.Text = Helpers.Loc.F("Batch_PendingTab", pending.Count);
+        RunningHeader.Text = Helpers.Loc.F("Batch_RunningTab", running.Count);
+        CompletedHeader.Text = Helpers.Loc.F("Batch_CompletedTab", completed.Count);
+        FailedHeader.Text = Helpers.Loc.F("Batch_FailedTab", failed.Count);
 
         PendingList.ItemsSource = pending;
         RunningList.ItemsSource = running;
@@ -91,10 +91,10 @@ public sealed partial class BatchJobsDialog : ContentDialog
         Hide(); // Must close before showing another ContentDialog
         var confirm = new ContentDialog
         {
-            Title = "Delete Batch Job",
-            Content = $"Delete job {sessionId}?",
-            PrimaryButtonText = "Delete",
-            CloseButtonText = "Cancel",
+            Title = Helpers.Loc.T("Batch_DeleteJobTitle"),
+            Content = Helpers.Loc.F("Batch_DeleteJobConfirm", sessionId),
+            PrimaryButtonText = Helpers.Loc.T("Portal_Delete"),
+            CloseButtonText = Helpers.Loc.T("Portal_Cancel"),
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = XamlRoot
         };
@@ -121,20 +121,20 @@ public sealed partial class BatchJobsDialog : ContentDialog
         var events = await _sessionService.GetSessionEventsAsync(sessionId);
         var dialog = new ContentDialog
         {
-            Title = $"Events — {sessionId}",
+            Title = Helpers.Loc.F("Batch_EventsTitle", sessionId),
             Content = new ScrollViewer
             {
                 MaxHeight = 400,
                 Content = new TextBlock
                 {
-                    Text = events ?? "No events available",
+                    Text = events ?? Helpers.Loc.T("Events_NoEvents"),
                     TextWrapping = TextWrapping.Wrap,
                     IsTextSelectionEnabled = true,
                     FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
                     FontSize = 12
                 }
             },
-            CloseButtonText = "Close",
+            CloseButtonText = Helpers.Loc.T("Common_Close"),
             XamlRoot = XamlRoot
         };
         dialog.Resources["ContentDialogMinWidth"] = 600.0;
@@ -148,20 +148,20 @@ public sealed partial class BatchJobsDialog : ContentDialog
         var logs = await _sessionService.GetSessionLogsAsync(sessionId);
         var dialog = new ContentDialog
         {
-            Title = $"Logs — {sessionId}",
+            Title = Helpers.Loc.F("Batch_LogsTitle", sessionId),
             Content = new ScrollViewer
             {
                 MaxHeight = 400,
                 Content = new TextBlock
                 {
-                    Text = logs ?? "No logs available",
+                    Text = logs ?? Helpers.Loc.T("Events_NoLogs"),
                     TextWrapping = TextWrapping.Wrap,
                     IsTextSelectionEnabled = true,
                     FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
                     FontSize = 12
                 }
             },
-            CloseButtonText = "Close",
+            CloseButtonText = Helpers.Loc.T("Common_Close"),
             XamlRoot = XamlRoot
         };
         dialog.Resources["ContentDialogMinWidth"] = 600.0;

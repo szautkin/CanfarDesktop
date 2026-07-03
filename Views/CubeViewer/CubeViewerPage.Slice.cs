@@ -217,7 +217,7 @@ public sealed partial class CubeViewerPage
             string unit = _meta.Wcs.SpecUnitDisplay();
             spec = " · " + _meta.Wcs.SpecText(c) + (string.IsNullOrEmpty(unit) ? "" : " " + unit);
         }
-        ChannelLabel.Text = $"CH {c}/{Math.Max(0, nz - 1)}{spec}";
+        ChannelLabel.Text = Helpers.Loc.F("Cube_ChannelLabel", c, Math.Max(0, nz - 1), spec);
     }
 
     // ── Channel scrubber + playback ────────────────────────────────────────────
@@ -338,7 +338,7 @@ public sealed partial class CubeViewerPage
         int sy = MapDispToVolume(_probeY, _sliceDispNy, _volume.Ny);
         _probeSpectrum = CubeSliceRenderer.Spectrum(
             _volume, sx, sy, _meta?.NormLo ?? 0, _meta?.NormHi ?? 1);
-        SpectrumTitle.Text = $"Spectrum @ ({_probeX}, {_probeY})";
+        SpectrumTitle.Text = Helpers.Loc.F("Cube_SpectrumTitle", _probeX, _probeY);
         SpectrumPanel.Visibility = Visibility.Visible;
         DrawSpectrum();
     }
@@ -406,7 +406,7 @@ public sealed partial class CubeViewerPage
         {
             SpectrumCanvas.Children.Add(new TextBlock
             {
-                Text = "NO SIGNAL",
+                Text = Helpers.Loc.T("Cube_NoSignal"),
                 Foreground = new SolidColorBrush(Color.FromArgb(0xA0, 0xFF, 0xFF, 0xFF)),
                 FontSize = 12,
             });

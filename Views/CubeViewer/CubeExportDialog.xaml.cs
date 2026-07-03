@@ -42,6 +42,8 @@ public sealed partial class CubeExportDialog : ContentDialog
         FontCombo.SelectedIndex = 0;      // sans
         TextColorCombo.SelectedIndex = 0; // auto
         ResCombo.SelectedIndex = 0;       // 2×
+        // Localized initial label (code owns this text at runtime, so no x:Uid on it).
+        ScaleLabel.Text = Helpers.Loc.F("Cube_ExpTextScale", ScaleSlider.Value);
         _ready = true;
         Rebuild();
     }
@@ -68,7 +70,7 @@ public sealed partial class CubeExportDialog : ContentDialog
 
     private void OnScaleChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
-        if (ScaleLabel is not null) ScaleLabel.Text = $"Text scale {ScaleSlider.Value:0.00}×";
+        if (ScaleLabel is not null) ScaleLabel.Text = Helpers.Loc.F("Cube_ExpTextScale", ScaleSlider.Value);
         Rebuild();
     }
 
@@ -81,7 +83,7 @@ public sealed partial class CubeExportDialog : ContentDialog
         CubeExportPlate? raster = null;
         try
         {
-            StatusLabel.Text = "Rendering…";
+            StatusLabel.Text = Helpers.Loc.T("Cube_ExpRendering");
 
             // Rasterize a FRESH plate at full natural size — NOT the preview plate, which is scaled
             // down inside the Viewbox (that would soften the text). This keeps the export font crisp.
@@ -99,18 +101,20 @@ public sealed partial class CubeExportDialog : ContentDialog
             byte[] buf = (await rtb.GetPixelsAsync()).ToArray();
             if (rw <= 0 || rh <= 0 || buf.Length < (long)rw * rh * 4)
             {
-                StatusLabel.Text = scale >= 4 ? "Too large — try 2×." : "Render failed.";
+                StatusLabel.Text = scale >= 4 ? Helpers.Loc.T("Cube_ExpTooLarge") : Helpers.Loc.T("Cube_ExpRenderFailed");
                 return;
             }
 
             var hwnd = WindowHelper.ActiveWindows.Count > 0
                 ? WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0]) : nint.Zero;
-            if (hwnd == nint.Zero) { StatusLabel.Text = "No window handle."; return; }
+            if (hwnd == nint.Zero) { StatusLabel.Text = Helpers.Loc.T("Cube_ExpNoWindow"); return; }
 
             var picker = new FileSavePicker { SuggestedStartLocation = PickerLocationId.PicturesLibrary };
             InitializeWithWindow.Initialize(picker, hwnd);
             picker.SuggestedFileName = _baseName;
-            picker.FileTypeChoices.Add(pdf ? "PDF document" : "PNG image", new List<string> { pdf ? ".pdf" : ".png" });
+            picker.FileTypeChoices.Add(
+                pdf ? Helpers.Loc.T("Cube_ExpPdfType") : Helpers.Loc.T("Cube_ExpPngType"),
+                new List<string> { pdf ? ".pdf" : ".png" });
             var file = await picker.PickSaveFileAsync();
             if (file is null) { StatusLabel.Text = string.Empty; return; }
 
@@ -132,11 +136,11 @@ public sealed partial class CubeExportDialog : ContentDialog
                     (uint)rw, (uint)rh, 96, 96, buf);
                 await encoder.FlushAsync();
             }
-            StatusLabel.Text = "Saved " + file.Name;
+            StatusLabel.Text = Helpers.Loc.F("Cube_Saved", file.Name);
         }
         catch (Exception ex)
         {
-            StatusLabel.Text = "Failed: " + ex.Message;
+            StatusLabel.Text = Helpers.Loc.F("Cube_ExpFailed", ex.Message);
         }
         finally
         {

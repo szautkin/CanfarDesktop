@@ -37,7 +37,7 @@ public sealed partial class NotebookPage : UserControl
 
         ViewModel.Cells.CollectionChanged += (_, _) => DispatcherQueue.TryEnqueue(() =>
         {
-            CellCountLabel.Text = $"{ViewModel.Cells.Count} cells";
+            CellCountLabel.Text = Helpers.Loc.F("Nb_CellCount", ViewModel.Cells.Count);
             if (!_initialCellFocusDone && ViewModel.Cells.Count > 0)
             {
                 _initialCellFocusDone = true;
@@ -63,9 +63,9 @@ public sealed partial class NotebookPage : UserControl
         };
 
         // Initial state
-        KernelLabel.Text = ViewModel.KernelState.ToString();
+        KernelLabel.Text = KernelStateText(ViewModel.KernelState);
         StatusLabel.Text = ViewModel.StatusMessage;
-        CellCountLabel.Text = $"{ViewModel.Cells.Count} cells";
+        CellCountLabel.Text = Helpers.Loc.F("Nb_CellCount", ViewModel.Cells.Count);
         UpdateKernelIndicator(ViewModel.KernelState);
     }
 
@@ -107,9 +107,21 @@ public sealed partial class NotebookPage : UserControl
         }
     }
 
+    /// <summary>Localized display text for a kernel state (the enum NAMES stay English — comparisons
+    /// and MCP payloads use <c>ToString()</c> elsewhere; only this status-bar label is translated).</summary>
+    private static string KernelStateText(KernelState state) => state switch
+    {
+        KernelState.Dead => Helpers.Loc.T("Nb_KernelDead"),
+        KernelState.Starting => Helpers.Loc.T("Nb_KernelStarting"),
+        KernelState.Idle => Helpers.Loc.T("Nb_KernelIdle"),
+        KernelState.Busy => Helpers.Loc.T("Nb_KernelBusy"),
+        KernelState.Error => Helpers.Loc.T("Nb_KernelError"),
+        _ => state.ToString(),
+    };
+
     private void UpdateKernelIndicator(KernelState state)
     {
-        KernelLabel.Text = state.ToString();
+        KernelLabel.Text = KernelStateText(state);
         KernelDot.Fill = state switch
         {
             KernelState.Idle => Helpers.Notebook.ThemeHelper.GetBrush("SystemFillColorSuccessBrush"),
@@ -146,7 +158,7 @@ public sealed partial class NotebookPage : UserControl
         }
         catch (Exception ex)
         {
-            ViewModel.StatusMessage = $"Open failed: {ex.Message}";
+            ViewModel.StatusMessage = Helpers.Loc.F("Nb_OpenFailed", ex.Message);
         }
     }
 
@@ -156,7 +168,7 @@ public sealed partial class NotebookPage : UserControl
         var pythonPath = discovery.PythonPath;
         if (pythonPath is null) return;
 
-        ViewModel.StatusMessage = "Checking dependencies...";
+        ViewModel.StatusMessage = Helpers.Loc.T("Nb_CheckingDeps");
 
         var imports = Helpers.Notebook.DependencyScanner.ExtractImports(document);
         if (imports.Count == 0) return;
@@ -164,7 +176,7 @@ public sealed partial class NotebookPage : UserControl
         var missing = await Helpers.Notebook.DependencyScanner.FindMissingAsync(imports, pythonPath);
         if (missing.Count == 0)
         {
-            ViewModel.StatusMessage = "All dependencies installed";
+            ViewModel.StatusMessage = Helpers.Loc.T("Nb_DepsAllInstalled");
             return;
         }
 
@@ -174,27 +186,27 @@ public sealed partial class NotebookPage : UserControl
         var packageList = string.Join("\n", missing.Select(m => $"  - {m.pipName}"));
         var dialog = new ContentDialog
         {
-            Title = $"{missing.Count} missing package(s)",
-            Content = $"This notebook needs:\n{packageList}\n\nInstall them now?",
-            PrimaryButtonText = "Install All",
-            CloseButtonText = "Skip",
+            Title = Helpers.Loc.F("Nb_MissingPkgTitle", missing.Count),
+            Content = Helpers.Loc.F("Nb_MissingPkgBody", packageList),
+            PrimaryButtonText = Helpers.Loc.T("Nb_InstallAllButton"),
+            CloseButtonText = Helpers.Loc.T("Nb_SkipButton"),
             XamlRoot = XamlRoot,
         };
 
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         {
-            ViewModel.StatusMessage = $"Installing {missing.Count} packages...";
+            ViewModel.StatusMessage = Helpers.Loc.F("Nb_InstallingPkgs", missing.Count);
             var pipNames = missing.Select(m => m.pipName);
             var result = await Helpers.Notebook.DependencyScanner.InstallAsync(pipNames, pythonPath);
             var errors = result.errors;
 
             ViewModel.StatusMessage = errors.Contains("ERROR")
-                ? "Some packages failed to install"
-                : $"Installed {missing.Count} packages";
+                ? Helpers.Loc.T("Nb_PkgInstallFailed")
+                : Helpers.Loc.F("Nb_PkgInstalled", missing.Count);
         }
         else
         {
-            ViewModel.StatusMessage = "Ready (some packages may be missing)";
+            ViewModel.StatusMessage = Helpers.Loc.T("Nb_ReadyPkgMissing");
         }
     }
 

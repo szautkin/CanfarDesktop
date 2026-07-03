@@ -5,60 +5,60 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <StackPanel Spacing="12">
-        <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+        <TextBlock x:Uid="Compute_Intro" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                    Text="Configure the remote compute the agent's run_code tool uses. Leave the image blank to disable run_code. run_code runs agent-authored code on your CADC account: with auto-apply on it runs immediately; with it off each call queues for your approval." />
 
-        <TextBox x:Name="ImageBox" Header="Compute image"
+        <TextBox x:Name="ImageBox" x:Uid="Compute_ImageBox" Header="Compute image"
                  PlaceholderText="images.canfar.net/project/verbinal-compute:1.0" />
-        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+        <TextBlock x:Uid="Compute_ImageCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                    Text="A verbinal-execution watcher image. Blank disables run_code / start_compute." />
 
         <StackPanel Orientation="Horizontal" Spacing="12">
-            <NumberBox x:Name="CoresBox" Header="Cores" Minimum="1" Maximum="64"
+            <NumberBox x:Name="CoresBox" x:Uid="Compute_CoresBox" Header="Cores" Minimum="1" Maximum="64"
                        SpinButtonPlacementMode="Inline" Width="130" />
-            <NumberBox x:Name="RamBox" Header="RAM (GB)" Minimum="1" Maximum="256"
+            <NumberBox x:Name="RamBox" x:Uid="Compute_RamBox" Header="RAM (GB)" Minimum="1" Maximum="256"
                        SpinButtonPlacementMode="Inline" Width="130" />
         </StackPanel>
 
-        <TextBlock Text="Registry credentials" Style="{StaticResource BodyStrongTextBlockStyle}" />
-        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+        <TextBlock x:Uid="Compute_RegistryHeader" Text="Registry credentials" Style="{StaticResource BodyStrongTextBlockStyle}" />
+        <TextBlock x:Uid="Compute_RegistryCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                    Text="Used to pull a private compute image. Stored separately from the Image Discovery tab's credentials." />
-        <TextBox x:Name="RegistryHostBox" Header="Registry host" PlaceholderText="images.canfar.net" />
-        <TextBox x:Name="RegistryRepoBox" Header="Registry repository (project)" PlaceholderText="project" />
-        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+        <TextBox x:Name="RegistryHostBox" x:Uid="Compute_RegistryHostBox" Header="Registry host" PlaceholderText="images.canfar.net" />
+        <TextBox x:Name="RegistryRepoBox" x:Uid="Compute_RegistryRepoBox" Header="Registry repository (project)" PlaceholderText="project" />
+        <TextBlock x:Uid="Compute_RepoCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                    Text="Optional project/namespace used to expand a short compute image name to host/project/name. A full image path is used as-is." />
-        <TextBox x:Name="UsernameBox" Header="Registry username" />
+        <TextBox x:Name="UsernameBox" x:Uid="Compute_UsernameBox" Header="Registry username" />
 
         <StackPanel Spacing="4">
-            <PasswordBox x:Name="SecretBox" Header="Registry secret (Harbor CLI secret)" />
+            <PasswordBox x:Name="SecretBox" x:Uid="Compute_SecretBox" Header="Registry secret (Harbor CLI secret)" />
             <TextBlock x:Name="SecretStatus" Style="{StaticResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" />
-            <Button x:Name="RemoveSecretButton" Content="Remove secret" Click="OnRemoveSecret"
+            <Button x:Name="RemoveSecretButton" x:Uid="Compute_RemoveSecretButton" Content="Remove secret" Click="OnRemoveSecret"
                     HorizontalAlignment="Left" Visibility="Collapsed" />
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button x:Name="SaveButton" Content="Save" Click="OnSave" Style="{StaticResource AccentButtonStyle}" />
-            <Button x:Name="TestButton" Content="Test credentials" Click="OnTestCredentials" />
+            <Button x:Name="SaveButton" x:Uid="Compute_SaveButton" Content="Save" Click="OnSave" Style="{StaticResource AccentButtonStyle}" />
+            <Button x:Name="TestButton" x:Uid="Compute_TestButton" Content="Test credentials" Click="OnTestCredentials" />
         </StackPanel>
 
         <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="True" Severity="Informational" />
 
-        <Button x:Name="ResetButton" Content="Reset to defaults" Click="OnResetClick" HorizontalAlignment="Left" />
+        <Button x:Name="ResetButton" x:Uid="Compute_ResetButton" Content="Reset to defaults" Click="OnResetClick" HorizontalAlignment="Left" />
         <Border x:Name="ResetConfirmPanel" Visibility="Collapsed" CornerRadius="6" Padding="12,10"
                 Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
             <StackPanel Spacing="8">
-                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                <TextBlock x:Uid="Compute_ResetConfirmBody" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Text="Reset the compute image, cores/RAM, registry host/repository/username, and the stored secret to defaults? This disables run_code until you set an image again." />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="Reset" Click="OnResetConfirm" Style="{StaticResource AccentButtonStyle}" />
-                    <Button Content="Cancel" Click="OnResetCancel" />
+                    <Button x:Uid="Compute_ResetConfirmButton" Content="Reset" Click="OnResetConfirm" Style="{StaticResource AccentButtonStyle}" />
+                    <Button x:Uid="Compute_ResetCancelButton" Content="Cancel" Click="OnResetCancel" />
                 </StackPanel>
             </StackPanel>
         </Border>

@@ -13,58 +13,58 @@
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="0,0,0,1">
 
-            <Button Click="OnOpenFile" ToolTipService.ToolTip="Open FITS" Padding="8,4"
+            <Button x:Uid="Fits_OpenButton" Click="OnOpenFile" ToolTipService.ToolTip="Open FITS" Padding="8,4"
                     AutomationProperties.Name="Open FITS file">
                 <FontIcon Glyph="&#xE8E5;" FontSize="14" />
             </Button>
             <AppBarSeparator />
 
             <!-- Stretch -->
-            <ComboBox x:Name="StretchCombo" Header="Stretch" Width="120"
+            <ComboBox x:Name="StretchCombo" x:Uid="Fits_StretchCombo" Header="Stretch" Width="120"
                       SelectionChanged="OnStretchChanged">
-                <ComboBoxItem Content="Linear" Tag="Linear" IsSelected="True" />
-                <ComboBoxItem Content="Log" Tag="Log" />
-                <ComboBoxItem Content="Sqrt" Tag="Sqrt" />
-                <ComboBoxItem Content="Squared" Tag="Squared" />
-                <ComboBoxItem Content="Asinh" Tag="Asinh" />
+                <ComboBoxItem x:Uid="Fits_StretchLinear" Content="Linear" Tag="Linear" IsSelected="True" />
+                <ComboBoxItem x:Uid="Fits_StretchLog" Content="Log" Tag="Log" />
+                <ComboBoxItem x:Uid="Fits_StretchSqrt" Content="Sqrt" Tag="Sqrt" />
+                <ComboBoxItem x:Uid="Fits_StretchSquared" Content="Squared" Tag="Squared" />
+                <ComboBoxItem x:Uid="Fits_StretchAsinh" Content="Asinh" Tag="Asinh" />
             </ComboBox>
 
             <!-- Colormap -->
-            <ComboBox x:Name="ColormapCombo" Header="Colormap" Width="120"
+            <ComboBox x:Name="ColormapCombo" x:Uid="Fits_ColormapCombo" Header="Colormap" Width="120"
                       SelectionChanged="OnColormapChanged">
-                <ComboBoxItem Content="Grayscale" Tag="Grayscale" IsSelected="True" />
-                <ComboBoxItem Content="Inverted" Tag="Inverted" />
-                <ComboBoxItem Content="Heat" Tag="Heat" />
-                <ComboBoxItem Content="Cool" Tag="Cool" />
-                <ComboBoxItem Content="Viridis" Tag="Viridis" />
+                <ComboBoxItem x:Uid="Fits_CmapGrayscale" Content="Grayscale" Tag="Grayscale" IsSelected="True" />
+                <ComboBoxItem x:Uid="Fits_CmapInverted" Content="Inverted" Tag="Inverted" />
+                <ComboBoxItem x:Uid="Fits_CmapHeat" Content="Heat" Tag="Heat" />
+                <ComboBoxItem x:Uid="Fits_CmapCool" Content="Cool" Tag="Cool" />
+                <ComboBoxItem x:Uid="Fits_CmapViridis" Content="Viridis" Tag="Viridis" />
             </ComboBox>
 
             <AppBarSeparator />
 
             <!-- Min/Max cuts -->
             <StackPanel Orientation="Vertical" Spacing="2" VerticalAlignment="Center">
-                <TextBlock Text="Min Cut" Style="{StaticResource CaptionTextBlockStyle}" />
+                <TextBlock x:Uid="Fits_MinCutLabel" Text="Min Cut" Style="{StaticResource CaptionTextBlockStyle}" />
                 <Slider x:Name="MinCutSlider" Width="120" Minimum="0" Maximum="100"
                         ValueChanged="OnMinCutChanged" />
             </StackPanel>
             <StackPanel Orientation="Vertical" Spacing="2" VerticalAlignment="Center">
-                <TextBlock Text="Max Cut" Style="{StaticResource CaptionTextBlockStyle}" />
+                <TextBlock x:Uid="Fits_MaxCutLabel" Text="Max Cut" Style="{StaticResource CaptionTextBlockStyle}" />
                 <Slider x:Name="MaxCutSlider" Width="120" Minimum="0" Maximum="100" Value="100"
                         ValueChanged="OnMaxCutChanged" />
             </StackPanel>
 
             <AppBarSeparator />
-            <Button Click="OnResetStretch" Padding="8,4"
+            <Button x:Uid="Fits_ResetButton" Click="OnResetStretch" Padding="8,4"
                     ToolTipService.ToolTip="Reset stretch and view"
                     AutomationProperties.Name="Reset stretch and view">
                 <FontIcon Glyph="&#xE72C;" FontSize="14" />
             </Button>
-            <Button Click="OnToggleHeader" Padding="8,4"
+            <Button x:Uid="Fits_HeaderButton" Click="OnToggleHeader" Padding="8,4"
                     ToolTipService.ToolTip="Toggle FITS header panel"
                     AutomationProperties.Name="Toggle FITS header panel">
                 <FontIcon Glyph="&#xE8A7;" FontSize="14" />
             </Button>
-            <ToggleButton x:Name="NorthUpToggle" Click="OnToggleNorthUp" Padding="8,4"
+            <ToggleButton x:Name="NorthUpToggle" x:Uid="Fits_NorthUpToggle" Click="OnToggleNorthUp" Padding="8,4"
                           ToolTipService.ToolTip="Orient North Up"
                           AutomationProperties.Name="Toggle North up orientation">
                 <FontIcon Glyph="&#xE816;" FontSize="14" />
@@ -73,26 +73,26 @@
             <AppBarSeparator />
 
             <!-- Crosshair menu (consolidated to save toolbar space) -->
-            <DropDownButton Padding="8,4"
+            <DropDownButton x:Uid="Fits_CrosshairButton" Padding="8,4"
                             AutomationProperties.Name="Crosshair actions"
                             ToolTipService.ToolTip="Crosshair tools">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <FontIcon Glyph="&#xE81D;" FontSize="14" />
-                    <TextBlock Text="Crosshair" />
+                    <TextBlock x:Uid="Fits_CrosshairLabel" Text="Crosshair" />
                 </StackPanel>
                 <DropDownButton.Flyout>
                     <MenuFlyout>
-                        <MenuFlyoutItem Text="Copy RA/Dec" Click="OnCopyCoords">
+                        <MenuFlyoutItem x:Uid="Fits_CopyCoordsItem" Text="Copy RA/Dec" Click="OnCopyCoords">
                             <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8C8;" /></MenuFlyoutItem.Icon>
                         </MenuFlyoutItem>
-                        <MenuFlyoutItem Text="Search at Position" Click="OnSearchAtPosition">
+                        <MenuFlyoutItem x:Uid="Fits_SearchAtPositionItem" Text="Search at Position" Click="OnSearchAtPosition">
                             <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE721;" /></MenuFlyoutItem.Icon>
                         </MenuFlyoutItem>
-                        <MenuFlyoutItem Text="Save Bookmark" Click="OnSaveCrosshair">
+                        <MenuFlyoutItem x:Uid="Fits_SaveBookmarkItem" Text="Save Bookmark" Click="OnSaveCrosshair">
                             <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74E;" /></MenuFlyoutItem.Icon>
                         </MenuFlyoutItem>
                         <MenuFlyoutSeparator />
-                        <MenuFlyoutItem Text="Clear Crosshair" Click="OnClearCrosshair">
+                        <MenuFlyoutItem x:Uid="Fits_ClearCrosshairItem" Text="Clear Crosshair" Click="OnClearCrosshair">
                             <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE894;" /></MenuFlyoutItem.Icon>
                         </MenuFlyoutItem>
                     </MenuFlyout>
@@ -100,7 +100,7 @@
             </DropDownButton>
 
             <!-- Blink comparison -->
-            <DropDownButton Padding="8,4"
+            <DropDownButton x:Uid="Fits_BlinkButton" Padding="8,4"
                             ToolTipService.ToolTip="Blink comparison between two images"
                             AutomationProperties.Name="Blink comparison">
                 <FontIcon Glyph="&#xE786;" FontSize="14" />
@@ -108,22 +108,22 @@
                     <MenuFlyout Opening="OnBlinkFlyoutOpening" />
                 </DropDownButton.Flyout>
             </DropDownButton>
-            <Slider x:Name="BlinkIntervalSlider" Width="80" Minimum="500" Maximum="5000" Value="2000"
+            <Slider x:Name="BlinkIntervalSlider" x:Uid="Fits_BlinkIntervalSlider" Width="80" Minimum="500" Maximum="5000" Value="2000"
                     Visibility="Collapsed" ToolTipService.ToolTip="Fade speed (ms per cycle)"
                     AutomationProperties.Name="Blink fade speed"
                     ValueChanged="OnBlinkIntervalChanged" />
-            <Button x:Name="StopBlinkButton" Visibility="Collapsed" Click="OnStopBlink" Padding="8,4"
+            <Button x:Name="StopBlinkButton" x:Uid="Fits_StopBlinkButton" Visibility="Collapsed" Click="OnStopBlink" Padding="8,4"
                     ToolTipService.ToolTip="Stop blinking (Escape)"
                     AutomationProperties.Name="Stop blink comparison"
                     Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <FontIcon Glyph="&#xE71A;" FontSize="14" />
-                    <TextBlock Text="Stop Blink" />
+                    <TextBlock x:Uid="Fits_StopBlinkLabel" Text="Stop Blink" />
                 </StackPanel>
             </Button>
 
             <!-- Sync zoom toggle -->
-            <ToggleButton x:Name="SyncZoomToggle"
+            <ToggleButton x:Name="SyncZoomToggle" x:Uid="Fits_SyncZoomToggle"
                           Click="OnToggleSyncZoom" Padding="8,4"
                           ToolTipService.ToolTip="Sync zoom across tabs (match angular extent)"
                           AutomationProperties.Name="Sync zoom across tabs">
@@ -131,7 +131,7 @@
             </ToggleButton>
 
             <!-- Linked crosshair toggle -->
-            <ToggleButton x:Name="LinkedCrosshairToggle" IsChecked="True"
+            <ToggleButton x:Name="LinkedCrosshairToggle" x:Uid="Fits_LinkedCrosshairToggle" IsChecked="True"
                           Click="OnToggleLinkedCrosshair" Padding="8,4"
                           ToolTipService.ToolTip="Link crosshair across tabs"
                           AutomationProperties.Name="Link crosshair across tabs">
@@ -139,7 +139,7 @@
             </ToggleButton>
 
             <!-- Bookmarks toggle -->
-            <Button Click="OnToggleCoordPanel" Padding="8,4"
+            <Button x:Uid="Fits_CoordPanelButton" Click="OnToggleCoordPanel" Padding="8,4"
                     ToolTipService.ToolTip="Saved Coordinates panel"
                     AutomationProperties.Name="Toggle saved coordinates panel">
                 <FontIcon Glyph="&#xE728;" FontSize="14" />
@@ -148,7 +148,7 @@
             <AppBarSeparator />
 
             <!-- Zoom preset dropdown -->
-            <ComboBox x:Name="ZoomPresetCombo" Width="95"
+            <ComboBox x:Name="ZoomPresetCombo" x:Uid="Fits_ZoomCombo" Width="95"
                           SelectionChanged="OnZoomPresetChanged"
                           TextSubmitted="OnZoomTextSubmitted"
                           IsEditable="True"
@@ -196,22 +196,22 @@
                     <Border Grid.Row="0" Padding="8" CornerRadius="6"
                             Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Current Crosshair"
+                            <TextBlock x:Uid="Fits_CurrentCrosshairHeader" Text="Current Crosshair"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             <TextBlock x:Name="PanelCrosshairText" FontFamily="Consolas" FontSize="11"
                                        Text="No crosshair placed"
                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                            <TextBox x:Name="CoordLabelBox" PlaceholderText="Label (optional)"
+                            <TextBox x:Name="CoordLabelBox" x:Uid="Fits_CoordLabelBox" PlaceholderText="Label (optional)"
                                      FontSize="12" Margin="0,4,0,0"
                                      AutomationProperties.Name="Bookmark label" />
-                            <Button Click="OnSaveCrosshairFromPanel" HorizontalAlignment="Stretch"
+                            <Button x:Uid="Fits_SavePanelButton" Click="OnSaveCrosshairFromPanel" HorizontalAlignment="Stretch"
                                     ToolTipService.ToolTip="Save crosshair as bookmark"
                                     Padding="8,6" Margin="0,4,0,0"
                                     AutomationProperties.Name="Save crosshair bookmark">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <FontIcon Glyph="&#xE74E;" FontSize="14" />
-                                    <TextBlock Text="Save Bookmark" />
+                                    <TextBlock x:Uid="Fits_SaveBookmarkLabel" Text="Save Bookmark" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -219,37 +219,37 @@
 
                     <!-- Go To coordinate -->
                     <StackPanel Grid.Row="1" Spacing="4" Margin="0,12,0,0">
-                        <TextBlock Text="Go To (degrees)"
+                        <TextBlock x:Uid="Fits_GoToHeader" Text="Go To (degrees)"
                                    Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" RowSpacing="4"
                               RowDefinitions="Auto,Auto">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="RA"
+                            <TextBlock x:Uid="Fits_RaLabel" Grid.Row="0" Grid.Column="0" Text="RA"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        VerticalAlignment="Center" Width="28" />
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="ManualRaBox"
+                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="ManualRaBox" x:Uid="Fits_ManualRaBox"
                                      PlaceholderText="e.g. 19.8" FontSize="12"
                                      AutomationProperties.Name="Right ascension in degrees" />
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Dec"
+                            <TextBlock x:Uid="Fits_DecLabel" Grid.Row="1" Grid.Column="0" Text="Dec"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        VerticalAlignment="Center" Width="28" />
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="ManualDecBox"
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="ManualDecBox" x:Uid="Fits_ManualDecBox"
                                      PlaceholderText="e.g. 42.1" FontSize="12"
                                      AutomationProperties.Name="Declination in degrees" />
                         </Grid>
-                        <Button Click="OnGoToManual" HorizontalAlignment="Stretch"
+                        <Button x:Uid="Fits_GoToButton" Click="OnGoToManual" HorizontalAlignment="Stretch"
                                 ToolTipService.ToolTip="Navigate to coordinate"
                                 Padding="8,6"
                                 AutomationProperties.Name="Go to coordinate">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE81D;" FontSize="14" />
-                                <TextBlock Text="Go To" />
+                                <TextBlock x:Uid="Fits_GoToLabel" Text="Go To" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
 
                     <!-- Bookmarks header -->
-                    <TextBlock Grid.Row="2" Text="Bookmarks" Margin="0,14,0,4"
+                    <TextBlock x:Uid="Fits_BookmarksHeader" Grid.Row="2" Text="Bookmarks" Margin="0,14,0,4"
                                Style="{StaticResource BodyStrongTextBlockStyle}" />
 
                     <!-- Bookmarks list -->
@@ -270,12 +270,12 @@
                                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                                    TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Click="OnGoToSaved" Tag="{Binding}"
+                                    <Button x:Uid="Fits_GoToSavedButton" Grid.Column="1" Click="OnGoToSaved" Tag="{Binding}"
                                             Padding="5" ToolTipService.ToolTip="Go to coordinate"
                                             AutomationProperties.Name="Go to saved coordinate">
                                         <FontIcon Glyph="&#xE81D;" FontSize="11" />
                                     </Button>
-                                    <Button Grid.Column="2" Click="OnDeleteCoord" Tag="{Binding}"
+                                    <Button x:Uid="Fits_DeleteCoordButton" Grid.Column="2" Click="OnDeleteCoord" Tag="{Binding}"
                                             Padding="5" ToolTipService.ToolTip="Delete"
                                             AutomationProperties.Name="Delete saved coordinate">
                                         <FontIcon Glyph="&#xE74D;" FontSize="11" />

@@ -49,9 +49,9 @@ public partial class CanfarImageRow : ObservableObject
 
     public string StatusTooltip => Status switch
     {
-        ImageDiscoveryStatus.Discovered => "Manifest cached",
-        ImageDiscoveryStatus.Failed => "Last probe failed",
-        _ => "Not yet inspected",
+        ImageDiscoveryStatus.Discovered => Helpers.Loc.T("Images_StatusDiscovered"),
+        ImageDiscoveryStatus.Failed => Helpers.Loc.T("Images_StatusFailed"),
+        _ => Helpers.Loc.T("Images_StatusUnknown"),
     };
 
     partial void OnStatusChanged(ImageDiscoveryStatus value)
@@ -166,7 +166,7 @@ public sealed partial class CanfarImagesControl : UserControl
             return;
         }
 
-        row.MetaLine = "Inspecting…";
+        row.MetaLine = Helpers.Loc.T("Images_Inspecting");
         try
         {
             await _coordinator.DiscoverAsync(row.ImageId);
@@ -186,12 +186,12 @@ public sealed partial class CanfarImagesControl : UserControl
         {
             row.Status = ImageDiscoveryStatus.Discovered;
             var os = m.OsFamily != "unknown" ? $"{m.OsFamily} {m.OsVersion} · " : string.Empty;
-            row.MetaLine = $"{os}{PackageCount(m)} packages";
+            row.MetaLine = os + Helpers.Loc.F("Images_Packages", PackageCount(m));
         }
         else if (outcome is { IsSuccess: false })
         {
             row.Status = ImageDiscoveryStatus.Failed;
-            row.MetaLine = outcome.Message ?? "Probe failed";
+            row.MetaLine = outcome.Message ?? Helpers.Loc.T("Images_ProbeFailed");
         }
         else
         {

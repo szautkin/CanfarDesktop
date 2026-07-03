@@ -74,16 +74,16 @@
 
                 <!-- Row 4: Action buttons -->
                 <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
-                    <Button x:Name="OpenButton" ToolTipService.ToolTip="Open in Browser" Click="OnOpenClick" Padding="6,4">
+                    <Button x:Name="OpenButton" x:Uid="Sessions_OpenBtn" ToolTipService.ToolTip="Open in Browser" Click="OnOpenClick" Padding="6,4">
                         <FontIcon Glyph="&#xE8A7;" FontSize="13" />
                     </Button>
-                    <Button x:Name="RenewButton" ToolTipService.ToolTip="Extend Time" Click="OnRenewClick" Padding="6,4">
+                    <Button x:Name="RenewButton" x:Uid="Sessions_RenewBtn" ToolTipService.ToolTip="Extend Time" Click="OnRenewClick" Padding="6,4">
                         <FontIcon Glyph="&#xE823;" FontSize="13" />
                     </Button>
-                    <Button x:Name="EventsButton" ToolTipService.ToolTip="View Events" Click="OnEventsClick" Padding="6,4">
+                    <Button x:Name="EventsButton" x:Uid="Sessions_EventsBtn" ToolTipService.ToolTip="View Events" Click="OnEventsClick" Padding="6,4">
                         <FontIcon Glyph="&#xE7C1;" FontSize="13" />
                     </Button>
-                    <Button x:Name="DeleteButton" ToolTipService.ToolTip="Delete" Click="OnDeleteClick" Padding="6,4">
+                    <Button x:Name="DeleteButton" x:Uid="Sessions_DeleteBtn" ToolTipService.ToolTip="Delete" Click="OnDeleteClick" Padding="6,4">
                         <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
                     </Button>
                 </StackPanel>

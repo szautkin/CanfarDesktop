@@ -22,15 +22,15 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Recent Launches" Style="{StaticResource SubtitleTextBlockStyle}" />
-                <Button Grid.Column="1" x:Name="ClearButton" Click="OnClearClick"
+                <TextBlock Grid.Column="0" x:Uid="Recent_Header" Text="Recent Launches" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <Button Grid.Column="1" x:Name="ClearButton" x:Uid="Recent_ClearBtn" Click="OnClearClick"
                         ToolTipService.ToolTip="Clear history" Visibility="Collapsed">
                     <FontIcon Glyph="&#xE74D;" FontSize="14" />
                 </Button>
             </Grid>
 
             <!-- Filter box -->
-            <AutoSuggestBox Grid.Row="1" x:Name="FilterBox"
+            <AutoSuggestBox Grid.Row="1" x:Name="FilterBox" x:Uid="Recent_FilterBox"
                             PlaceholderText="Filter by name or type..."
                             QueryIcon="Find"
                             TextChanged="OnFilterChanged"

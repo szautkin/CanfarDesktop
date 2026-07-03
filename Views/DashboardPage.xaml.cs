@@ -152,7 +152,7 @@ public sealed partial class DashboardPage : Page
         var gpus = _sessionLaunchVm.Gpus;
 
         await ShowLaunchDialogAsync(
-            title: "Launch Session",
+            title: Helpers.Loc.T("Launch_DialogTitle"),
             name: name,
             imageLabel: imageLabel,
             resourceType: resourceType,
@@ -170,7 +170,7 @@ public sealed partial class DashboardPage : Page
     {
         var replicas = Math.Clamp(_sessionLaunchVm.HeadlessReplicas, 1, 20);
         await ShowLaunchDialogAsync(
-            title: replicas > 1 ? $"Launch {replicas} Replicas" : "Launch Batch Job",
+            title: replicas > 1 ? Helpers.Loc.F("Launch_LaunchReplicas", replicas) : Helpers.Loc.T("Launch_DialogTitleBatch"),
             name: _sessionLaunchVm.HeadlessSessionName,
             imageLabel: _sessionLaunchVm.HeadlessSelectedImage?.Label ?? "",
             resourceType: _sessionLaunchVm.HeadlessResourceType,
@@ -194,7 +194,7 @@ public sealed partial class DashboardPage : Page
     private async void OnRelaunchRequested(object? sender, RecentLaunch launch)
     {
         await ShowLaunchDialogAsync(
-            title: "Relaunch Session",
+            title: Helpers.Loc.T("Launch_DialogTitleRelaunch"),
             name: launch.Name,
             imageLabel: launch.ImageLabel,
             resourceType: launch.ResourceType,
@@ -211,7 +211,7 @@ public sealed partial class DashboardPage : Page
     {
         var statusText = new TextBlock
         {
-            Text = $"Launching {name}...",
+            Text = Helpers.Loc.F("Launch_Launching", name),
             Style = (Style)Application.Current.Resources["BodyTextBlockStyle"],
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -222,8 +222,9 @@ public sealed partial class DashboardPage : Page
         statusRow.Children.Add(statusText);
 
         var resourceSummary = resourceType == "fixed"
-            ? $"CPU: {cores}  \u00B7  RAM: {ram}GB" + (gpus > 0 ? $"  \u00B7  GPU: {gpus}" : "")
-            : "Flexible resources";
+            ? Helpers.Loc.F("Portal_CpuCount", cores) + "  \u00B7  " + Helpers.Loc.F("Portal_RamGb", ram)
+              + (gpus > 0 ? "  \u00B7  " + Helpers.Loc.F("Portal_GpuCount", gpus) : "")
+            : Helpers.Loc.T("Launch_FlexibleResources");
         var detailText = new TextBlock
         {
             Text = $"{imageLabel}  \u00B7  {resourceSummary}",
@@ -248,7 +249,7 @@ public sealed partial class DashboardPage : Page
             Title = title,
             Content = panel,
             XamlRoot = XamlRoot,
-            CloseButtonText = "Close"
+            CloseButtonText = Helpers.Loc.T("Common_Close")
         };
 
         var launchTask = launchFunc();
@@ -261,10 +262,10 @@ public sealed partial class DashboardPage : Page
 
         if (success)
         {
-            statusText.Text = $"{name} launched successfully!";
+            statusText.Text = Helpers.Loc.F("Launch_Success", name);
             resultBar.Severity = InfoBarSeverity.Success;
-            resultBar.Title = "Session is starting";
-            resultBar.Message = "It will appear in Active Sessions shortly.";
+            resultBar.Title = Helpers.Loc.T("Launch_SessionStartingTitle");
+            resultBar.Message = Helpers.Loc.T("Launch_SessionStartingBody");
             resultBar.IsOpen = true;
 
             _recentLaunches.Refresh();
@@ -277,9 +278,9 @@ public sealed partial class DashboardPage : Page
         }
         else
         {
-            statusText.Text = "Launch failed";
+            statusText.Text = Helpers.Loc.T("Launch_Failed");
             resultBar.Severity = InfoBarSeverity.Error;
-            resultBar.Title = "Error";
+            resultBar.Title = Helpers.Loc.T("Portal_Error");
             resultBar.Message = _sessionLaunchVm.ErrorMessage;
             resultBar.IsOpen = true;
         }
@@ -289,7 +290,7 @@ public sealed partial class DashboardPage : Page
     {
         var statusText = new TextBlock
         {
-            Text = $"Renewing '{sessionName}'...",
+            Text = Helpers.Loc.F("Sessions_Renewing", sessionName),
             Style = (Style)Application.Current.Resources["BodyTextBlockStyle"],
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -312,10 +313,10 @@ public sealed partial class DashboardPage : Page
 
         var dialog = new ContentDialog
         {
-            Title = "Renew Session",
+            Title = Helpers.Loc.T("Sessions_RenewDialogTitle"),
             Content = panel,
             XamlRoot = XamlRoot,
-            CloseButtonText = "Close"
+            CloseButtonText = Helpers.Loc.T("Common_Close")
         };
 
         var renewTask = _sessionListVm.TryRenewSessionAsync(sessionId);
@@ -328,10 +329,10 @@ public sealed partial class DashboardPage : Page
 
         if (success)
         {
-            statusText.Text = $"'{sessionName}' renewed successfully!";
+            statusText.Text = Helpers.Loc.F("Sessions_RenewSuccess", sessionName);
             resultBar.Severity = InfoBarSeverity.Success;
-            resultBar.Title = "Session renewed";
-            resultBar.Message = "The session expiry time has been extended.";
+            resultBar.Title = Helpers.Loc.T("Sessions_RenewedTitle");
+            resultBar.Message = Helpers.Loc.T("Sessions_RenewedBody");
             resultBar.IsOpen = true;
 
             await Task.Delay(2000);
@@ -339,10 +340,10 @@ public sealed partial class DashboardPage : Page
         }
         else
         {
-            statusText.Text = "Renew failed";
+            statusText.Text = Helpers.Loc.T("Sessions_RenewFailed");
             resultBar.Severity = InfoBarSeverity.Error;
-            resultBar.Title = "Error";
-            resultBar.Message = errorMessage ?? "Unknown error";
+            resultBar.Title = Helpers.Loc.T("Portal_Error");
+            resultBar.Message = errorMessage ?? Helpers.Loc.T("Portal_UnknownError");
             resultBar.IsOpen = true;
         }
     }

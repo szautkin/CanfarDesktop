@@ -106,10 +106,10 @@ public sealed partial class AiGuidePage : Page
         if ((sender as FrameworkElement)?.DataContext is not AiGuideGuideRowViewModel row) return;
         var confirm = new ContentDialog
         {
-            Title = "Delete guide tool",
-            Content = $"Delete \"{row.Name}\"? The agent will no longer see it.",
-            PrimaryButtonText = "Delete",
-            CloseButtonText = "Cancel",
+            Title = Helpers.Loc.T("Guide_DeleteTitle"),
+            Content = Helpers.Loc.F("Guide_DeleteBody", row.Name),
+            PrimaryButtonText = Helpers.Loc.T("Guide_DeleteConfirm"),
+            CloseButtonText = Helpers.Loc.T("Guide_Cancel"),
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = XamlRoot,
         };

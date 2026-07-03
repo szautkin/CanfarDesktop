@@ -15,6 +15,7 @@ public sealed partial class LaunchFormControl : UserControl
     {
         ViewModel = viewModel;
         InitializeComponent();
+        HeadlessLaunchLabel.Text = Helpers.Loc.T("Launch_LaunchJob");
         ViewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(ViewModel.IsLaunching) or nameof(ViewModel.IsAtSessionLimit))
@@ -36,8 +37,8 @@ public sealed partial class LaunchFormControl : UserControl
             {
                 DispatcherQueue.TryEnqueue(() =>
                     HeadlessLaunchLabel.Text = ViewModel.HeadlessReplicas > 1
-                        ? $"Launch {ViewModel.HeadlessReplicas} Replicas"
-                        : "Launch Job");
+                        ? Helpers.Loc.F("Launch_LaunchReplicas", ViewModel.HeadlessReplicas)
+                        : Helpers.Loc.T("Launch_LaunchJob"));
             }
             else if (e.PropertyName == nameof(ViewModel.IsLoading))
             {

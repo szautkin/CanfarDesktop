@@ -601,4 +601,2971 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Wizard_Unreachable" xml:space="preserve">
     <value>Impossible de joindre le serveur MCP.</value>
   </data>
+  <data name="AiGuideEditDialog.CloseButtonText" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="AiGuideEditDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Batch_CompletedLabel.Text" xml:space="preserve">
+    <value>Terminées</value>
+  </data>
+  <data name="Batch_CompletedTab" xml:space="preserve">
+    <value>Terminées ({0})</value>
+  </data>
+  <data name="Batch_DeleteBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Batch_DeleteJobConfirm" xml:space="preserve">
+    <value>Supprimer la tâche {0} ?</value>
+  </data>
+  <data name="Batch_DeleteJobTitle" xml:space="preserve">
+    <value>Supprimer la tâche par lots</value>
+  </data>
+  <data name="Batch_Dialog.CloseButtonText" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="Batch_Dialog.Title" xml:space="preserve">
+    <value>Tâches par lots</value>
+  </data>
+  <data name="Batch_EventsBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Événements</value>
+  </data>
+  <data name="Batch_EventsTitle" xml:space="preserve">
+    <value>Événements — {0}</value>
+  </data>
+  <data name="Batch_FailedLabel.Text" xml:space="preserve">
+    <value>Échouées</value>
+  </data>
+  <data name="Batch_FailedTab" xml:space="preserve">
+    <value>Échouées ({0})</value>
+  </data>
+  <data name="Batch_Header.Text" xml:space="preserve">
+    <value>Tâches par lots</value>
+  </data>
+  <data name="Batch_LogsBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Journaux</value>
+  </data>
+  <data name="Batch_LogsTitle" xml:space="preserve">
+    <value>Journaux — {0}</value>
+  </data>
+  <data name="Batch_PendingLabel.Text" xml:space="preserve">
+    <value>En attente</value>
+  </data>
+  <data name="Batch_PendingTab" xml:space="preserve">
+    <value>En attente ({0})</value>
+  </data>
+  <data name="Batch_RunningLabel.Text" xml:space="preserve">
+    <value>En cours</value>
+  </data>
+  <data name="Batch_RunningTab" xml:space="preserve">
+    <value>En cours ({0})</value>
+  </data>
+  <data name="ColSel_Dialog.CloseButtonText" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="ColSel_Dialog.PrimaryButtonText" xml:space="preserve">
+    <value>Appliquer</value>
+  </data>
+  <data name="ColSel_Dialog.Title" xml:space="preserve">
+    <value>Sélectionner les colonnes</value>
+  </data>
+  <data name="Compute_ContactingBody" xml:space="preserve">
+    <value>Communication avec {0}…</value>
+  </data>
+  <data name="Compute_CoresBox.Header" xml:space="preserve">
+    <value>Cœurs</value>
+  </data>
+  <data name="Compute_ImageBox.Header" xml:space="preserve">
+    <value>Image de calcul</value>
+  </data>
+  <data name="Compute_ImageCaption.Text" xml:space="preserve">
+    <value>Une image de surveillance verbinal-execution. Vide désactive run_code / start_compute.</value>
+  </data>
+  <data name="Compute_Intro.Text" xml:space="preserve">
+    <value>Configurez le calcul distant utilisé par l’outil run_code de l’agent. Laissez l’image vide pour désactiver run_code. run_code exécute du code rédigé par l’agent sur votre compte CADC : avec l’application automatique activée, il s’exécute immédiatement ; désactivée, chaque appel est mis en file pour votre approbation.</value>
+  </data>
+  <data name="Compute_NoSecret" xml:space="preserve">
+    <value>Aucun secret enregistré.</value>
+  </data>
+  <data name="Compute_RamBox.Header" xml:space="preserve">
+    <value>RAM (Go)</value>
+  </data>
+  <data name="Compute_RegistryCaption.Text" xml:space="preserve">
+    <value>Utilisés pour récupérer une image de calcul privée. Stockés séparément des identifiants de l’onglet Découverte d’images.</value>
+  </data>
+  <data name="Compute_RegistryHeader.Text" xml:space="preserve">
+    <value>Identifiants de registre</value>
+  </data>
+  <data name="Compute_RegistryHostBox.Header" xml:space="preserve">
+    <value>Hôte du registre</value>
+  </data>
+  <data name="Compute_RegistryRepoBox.Header" xml:space="preserve">
+    <value>Dépôt du registre (projet)</value>
+  </data>
+  <data name="Compute_RemoveSecretButton.Content" xml:space="preserve">
+    <value>Supprimer le secret</value>
+  </data>
+  <data name="Compute_RepoCaption.Text" xml:space="preserve">
+    <value>Projet/espace de noms facultatif servant à développer un nom court d’image de calcul en hôte/projet/nom. Un chemin d’image complet est utilisé tel quel.</value>
+  </data>
+  <data name="Compute_ResetBody" xml:space="preserve">
+    <value>Les paramètres de calcul IA ont été rétablis aux valeurs par défaut (run_code est maintenant désactivé).</value>
+  </data>
+  <data name="Compute_ResetButton.Content" xml:space="preserve">
+    <value>Rétablir les valeurs par défaut</value>
+  </data>
+  <data name="Compute_ResetCancelButton.Content" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Compute_ResetConfirmBody.Text" xml:space="preserve">
+    <value>Réinitialiser l’image de calcul, les cœurs/la RAM, l’hôte/le dépôt/le nom d’utilisateur du registre et le secret enregistré aux valeurs par défaut ? Ceci désactive run_code jusqu’à ce que vous définissiez de nouveau une image.</value>
+  </data>
+  <data name="Compute_ResetConfirmButton.Content" xml:space="preserve">
+    <value>Réinitialiser</value>
+  </data>
+  <data name="Compute_ResetTitle" xml:space="preserve">
+    <value>Réinitialisé</value>
+  </data>
+  <data name="Compute_SaveButton.Content" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Compute_SavedBody" xml:space="preserve">
+    <value>Les paramètres de calcul IA ont été enregistrés.</value>
+  </data>
+  <data name="Compute_SavedTitle" xml:space="preserve">
+    <value>Enregistré</value>
+  </data>
+  <data name="Compute_SecretBox.Header" xml:space="preserve">
+    <value>Secret du registre (secret CLI Harbor)</value>
+  </data>
+  <data name="Compute_SecretRemovedBody" xml:space="preserve">
+    <value>Le secret de registre enregistré a été supprimé.</value>
+  </data>
+  <data name="Compute_SecretRemovedTitle" xml:space="preserve">
+    <value>Secret supprimé</value>
+  </data>
+  <data name="Compute_SecretSaveFailedTitle" xml:space="preserve">
+    <value>Impossible d’enregistrer le secret</value>
+  </data>
+  <data name="Compute_SecretStored" xml:space="preserve">
+    <value>Un secret est enregistré. Saisissez-en un nouveau pour le remplacer, ou laissez vide pour le conserver.</value>
+  </data>
+  <data name="Compute_TestButton.Content" xml:space="preserve">
+    <value>Tester les identifiants</value>
+  </data>
+  <data name="Compute_TestFailed" xml:space="preserve">
+    <value>Échec du test</value>
+  </data>
+  <data name="Compute_TestIncomplete" xml:space="preserve">
+    <value>Configuration incomplète</value>
+  </data>
+  <data name="Compute_TestNetworkError" xml:space="preserve">
+    <value>Erreur réseau</value>
+  </data>
+  <data name="Compute_TestRejected" xml:space="preserve">
+    <value>Identifiants refusés</value>
+  </data>
+  <data name="Compute_TestUnexpected" xml:space="preserve">
+    <value>Réponse inattendue du registre</value>
+  </data>
+  <data name="Compute_TestValid" xml:space="preserve">
+    <value>Identifiants valides</value>
+  </data>
+  <data name="Compute_TestingTitle" xml:space="preserve">
+    <value>Test en cours…</value>
+  </data>
+  <data name="Compute_UsernameBox.Header" xml:space="preserve">
+    <value>Nom d’utilisateur du registre</value>
+  </data>
+  <data name="Cube_AutoOrbitToggle.Header" xml:space="preserve">
+    <value>Orbite automatique au repos</value>
+  </data>
+  <data name="Cube_AutoOrbitToggle.OffContent" xml:space="preserve">
+    <value>Désactivé</value>
+  </data>
+  <data name="Cube_AutoOrbitToggle.OnContent" xml:space="preserve">
+    <value>Activé</value>
+  </data>
+  <data name="Cube_BackgroundLabel.Text" xml:space="preserve">
+    <value>Arrière-plan</value>
+  </data>
+  <data name="Cube_BgBlack.Content" xml:space="preserve">
+    <value>Noir</value>
+  </data>
+  <data name="Cube_BgDark.Content" xml:space="preserve">
+    <value>Sombre</value>
+  </data>
+  <data name="Cube_BgLight.Content" xml:space="preserve">
+    <value>Clair</value>
+  </data>
+  <data name="Cube_CaptionsToggle.Header" xml:space="preserve">
+    <value>Légendes des axes</value>
+  </data>
+  <data name="Cube_CaptionsToggle.OffContent" xml:space="preserve">
+    <value>Désactivé</value>
+  </data>
+  <data name="Cube_CaptionsToggle.OnContent" xml:space="preserve">
+    <value>Activé</value>
+  </data>
+  <data name="Cube_CaptureFailed" xml:space="preserve">
+    <value>Échec de la capture d'exportation (la visionneuse de cubes est-elle visible ?)</value>
+  </data>
+  <data name="Cube_ChannelLabel" xml:space="preserve">
+    <value>CH {0}/{1}{2}</value>
+  </data>
+  <data name="Cube_ColormapLabel.Text" xml:space="preserve">
+    <value>Palette de couleurs</value>
+  </data>
+  <data name="Cube_CoordBarHint" xml:space="preserve">
+    <value>survolez la tranche pour les coordonnées</value>
+  </data>
+  <data name="Cube_DefaultTitle" xml:space="preserve">
+    <value>Cube</value>
+  </data>
+  <data name="Cube_DensityLabel.Text" xml:space="preserve">
+    <value>Densité</value>
+  </data>
+  <data name="Cube_DisplayHeader.Text" xml:space="preserve">
+    <value>AFFICHAGE</value>
+  </data>
+  <data name="Cube_EmptyBody.Text" xml:space="preserve">
+    <value>Ouvrez un cube spectral FITS (NAXIS=3) pour l'explorer en 3D — orbitez autour du volume, parcourez les canaux, sondez les spectres et exportez des figures.</value>
+  </data>
+  <data name="Cube_EmptyTitle.Text" xml:space="preserve">
+    <value>Aucun cube ouvert</value>
+  </data>
+  <data name="Cube_ExpAnnotateToggle.Header" xml:space="preserve">
+    <value>Annotations</value>
+  </data>
+  <data name="Cube_ExpAnnotateToggle.OffContent" xml:space="preserve">
+    <value>Désactivées</value>
+  </data>
+  <data name="Cube_ExpAnnotateToggle.OnContent" xml:space="preserve">
+    <value>Activées</value>
+  </data>
+  <data name="Cube_ExpColorAmber.Content" xml:space="preserve">
+    <value>Ambre</value>
+  </data>
+  <data name="Cube_ExpColorAuto.Content" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="Cube_ExpColorBlack.Content" xml:space="preserve">
+    <value>Noir</value>
+  </data>
+  <data name="Cube_ExpColorCyan.Content" xml:space="preserve">
+    <value>Cyan</value>
+  </data>
+  <data name="Cube_ExpColorWhite.Content" xml:space="preserve">
+    <value>Blanc</value>
+  </data>
+  <data name="Cube_ExpFailed" xml:space="preserve">
+    <value>Échec : {0}</value>
+  </data>
+  <data name="Cube_ExpFontLabel.Text" xml:space="preserve">
+    <value>Police</value>
+  </data>
+  <data name="Cube_ExpFontMono.Content" xml:space="preserve">
+    <value>Mono</value>
+  </data>
+  <data name="Cube_ExpFontSans.Content" xml:space="preserve">
+    <value>Sans-serif</value>
+  </data>
+  <data name="Cube_ExpFontSerif.Content" xml:space="preserve">
+    <value>Serif</value>
+  </data>
+  <data name="Cube_ExpNoWindow" xml:space="preserve">
+    <value>Aucun descripteur de fenêtre.</value>
+  </data>
+  <data name="Cube_ExpPdfButton.Content" xml:space="preserve">
+    <value>Exporter en PDF…</value>
+  </data>
+  <data name="Cube_ExpPdfType" xml:space="preserve">
+    <value>Document PDF</value>
+  </data>
+  <data name="Cube_ExpPngButton.Content" xml:space="preserve">
+    <value>Exporter en PNG…</value>
+  </data>
+  <data name="Cube_ExpPngType" xml:space="preserve">
+    <value>Image PNG</value>
+  </data>
+  <data name="Cube_ExpRenderFailed" xml:space="preserve">
+    <value>Échec du rendu.</value>
+  </data>
+  <data name="Cube_ExpRendering" xml:space="preserve">
+    <value>Rendu en cours…</value>
+  </data>
+  <data name="Cube_ExpResolutionLabel.Text" xml:space="preserve">
+    <value>Résolution</value>
+  </data>
+  <data name="Cube_ExpTextColorLabel.Text" xml:space="preserve">
+    <value>Couleur du texte</value>
+  </data>
+  <data name="Cube_ExpTextScale" xml:space="preserve">
+    <value>Échelle du texte {0:0.00}×</value>
+  </data>
+  <data name="Cube_ExpThemeDark.Content" xml:space="preserve">
+    <value>Cockpit sombre</value>
+  </data>
+  <data name="Cube_ExpThemeLabel.Text" xml:space="preserve">
+    <value>Thème</value>
+  </data>
+  <data name="Cube_ExpThemeLight.Content" xml:space="preserve">
+    <value>Revue claire</value>
+  </data>
+  <data name="Cube_ExpTooLarge" xml:space="preserve">
+    <value>Trop volumineux — essayez 2×.</value>
+  </data>
+  <data name="Cube_ExpTransparentToggle.Header" xml:space="preserve">
+    <value>Arrière-plan transparent</value>
+  </data>
+  <data name="Cube_ExpTransparentToggle.OffContent" xml:space="preserve">
+    <value>Désactivé</value>
+  </data>
+  <data name="Cube_ExpTransparentToggle.OnContent" xml:space="preserve">
+    <value>Activé</value>
+  </data>
+  <data name="Cube_ExportButton.Content" xml:space="preserve">
+    <value>Exporter une figure…</value>
+  </data>
+  <data name="Cube_ExportDialog.CloseButtonText" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="Cube_ExportDialog.Title" xml:space="preserve">
+    <value>Exporter une figure</value>
+  </data>
+  <data name="Cube_ExportFailed" xml:space="preserve">
+    <value>Échec de l'exportation : {0}</value>
+  </data>
+  <data name="Cube_GpuFallback" xml:space="preserve">
+    <value>La visionneuse de cubes 3D nécessite un GPU compatible Direct3D 11.\n\n{0}</value>
+  </data>
+  <data name="Cube_InfoDimsLabel.Text" xml:space="preserve">
+    <value>DIMENSIONS</value>
+  </data>
+  <data name="Cube_InfoMedianLabel.Text" xml:space="preserve">
+    <value>MÉDIANE</value>
+  </data>
+  <data name="Cube_InfoMinMaxLabel.Text" xml:space="preserve">
+    <value>MIN / MAX</value>
+  </data>
+  <data name="Cube_InfoModeLabel.Text" xml:space="preserve">
+    <value>MODE</value>
+  </data>
+  <data name="Cube_InfoRangeLabel.Text" xml:space="preserve">
+    <value>PLAGE</value>
+  </data>
+  <data name="Cube_InfoUnitLabel.Text" xml:space="preserve">
+    <value>UNITÉ</value>
+  </data>
+  <data name="Cube_LoadFailed" xml:space="preserve">
+    <value>Impossible de charger {0} — {1}</value>
+  </data>
+  <data name="Cube_Loading" xml:space="preserve">
+    <value>Chargement de {0}</value>
+  </data>
+  <data name="Cube_ModeSynthetic" xml:space="preserve">
+    <value>Synthétique</value>
+  </data>
+  <data name="Cube_NoD3DDevice" xml:space="preserve">
+    <value>Aucun périphérique Direct3D 11 compatible n'a été trouvé.</value>
+  </data>
+  <data name="Cube_NoSignal" xml:space="preserve">
+    <value>AUCUN SIGNAL</value>
+  </data>
+  <data name="Cube_OpacityLabel.Text" xml:space="preserve">
+    <value>Courbe d'opacité</value>
+  </data>
+  <data name="Cube_OpenFirst" xml:space="preserve">
+    <value>Ouvrez d'abord un cube.</value>
+  </data>
+  <data name="Cube_OpenLabel.Text" xml:space="preserve">
+    <value>Ouvrir un cube…</value>
+  </data>
+  <data name="Cube_OrbitHint.Text" xml:space="preserve">
+    <value>Glissez pour orbiter · Molette pour zoomer</value>
+  </data>
+  <data name="Cube_PlateDims" xml:space="preserve">
+    <value>DIMENSIONS</value>
+  </data>
+  <data name="Cube_PlateMode" xml:space="preserve">
+    <value>MODE</value>
+  </data>
+  <data name="Cube_PlayButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Lecture / Pause (Espace)</value>
+  </data>
+  <data name="Cube_RecentsHeader.Text" xml:space="preserve">
+    <value>Cubes récents</value>
+  </data>
+  <data name="Cube_RenderEmission.Content" xml:space="preserve">
+    <value>Émission</value>
+  </data>
+  <data name="Cube_RenderMip.Content" xml:space="preserve">
+    <value>Intensité maximale</value>
+  </data>
+  <data name="Cube_RenderModeLabel.Text" xml:space="preserve">
+    <value>Mode de rendu</value>
+  </data>
+  <data name="Cube_ResetViewButton.Content" xml:space="preserve">
+    <value>Réinitialiser la vue</value>
+  </data>
+  <data name="Cube_Saved" xml:space="preserve">
+    <value>{0} enregistré</value>
+  </data>
+  <data name="Cube_SliceModeButton.Content" xml:space="preserve">
+    <value>Tranche</value>
+  </data>
+  <data name="Cube_SlicePlaneToggle.Header" xml:space="preserve">
+    <value>Marqueur du plan de tranche</value>
+  </data>
+  <data name="Cube_SlicePlaneToggle.OffContent" xml:space="preserve">
+    <value>Désactivé</value>
+  </data>
+  <data name="Cube_SlicePlaneToggle.OnContent" xml:space="preserve">
+    <value>Activé</value>
+  </data>
+  <data name="Cube_SpectralLabel.Text" xml:space="preserve">
+    <value>Échelle spectrale</value>
+  </data>
+  <data name="Cube_SpectrumTitle" xml:space="preserve">
+    <value>Spectre @ ({0}, {1})</value>
+  </data>
+  <data name="Cube_StepDecode" xml:space="preserve">
+    <value>Décodage des plans</value>
+  </data>
+  <data name="Cube_StepHeader" xml:space="preserve">
+    <value>Lecture de l'en-tête</value>
+  </data>
+  <data name="Cube_StepNormalize" xml:space="preserve">
+    <value>Normalisation</value>
+  </data>
+  <data name="Cube_StepUpload" xml:space="preserve">
+    <value>Téléversement vers le GPU</value>
+  </data>
+  <data name="Cube_StepsLabel.Text" xml:space="preserve">
+    <value>Qualité (pas)</value>
+  </data>
+  <data name="Cube_StretchAsinh.Content" xml:space="preserve">
+    <value>Asinh</value>
+  </data>
+  <data name="Cube_StretchLabel.Text" xml:space="preserve">
+    <value>Étirement</value>
+  </data>
+  <data name="Cube_StretchLinear.Content" xml:space="preserve">
+    <value>Linéaire</value>
+  </data>
+  <data name="Cube_StretchLog.Content" xml:space="preserve">
+    <value>Log</value>
+  </data>
+  <data name="Cube_StretchSqrt.Content" xml:space="preserve">
+    <value>Racine carrée</value>
+  </data>
+  <data name="Cube_StretchSquared.Content" xml:space="preserve">
+    <value>Carré</value>
+  </data>
+  <data name="Cube_Title.Text" xml:space="preserve">
+    <value>Visionneuse de cubes</value>
+  </data>
+  <data name="Cube_TransferHint.Text" xml:space="preserve">
+    <value>Glissez les points · clic pour ajouter · clic droit pour supprimer</value>
+  </data>
+  <data name="Cube_TransferResetButton.Content" xml:space="preserve">
+    <value>Réinitialiser</value>
+  </data>
+  <data name="Cube_VolumeHeader.Text" xml:space="preserve">
+    <value>VOLUME</value>
+  </data>
+  <data name="Cube_VolumeModeButton.Content" xml:space="preserve">
+    <value>Volume</value>
+  </data>
+  <data name="Cube_WindowLabel.Text" xml:space="preserve">
+    <value>Fenêtre</value>
+  </data>
+  <data name="Cube_WindowMinMaxButton.Content" xml:space="preserve">
+    <value>Min/Max</value>
+  </data>
+  <data name="Discovery_ActiveFiltersLabel.Text" xml:space="preserve">
+    <value>Filtres actifs</value>
+  </data>
+  <data name="Discovery_BackButton.Content" xml:space="preserve">
+    <value>Retour</value>
+  </data>
+  <data name="Discovery_BackLabel.Text" xml:space="preserve">
+    <value>Retour</value>
+  </data>
+  <data name="Discovery_CacheClearedBody" xml:space="preserve">
+    <value>Les manifestes d’images découverts ont été effacés.</value>
+  </data>
+  <data name="Discovery_CacheClearedTitle" xml:space="preserve">
+    <value>Cache vidé</value>
+  </data>
+  <data name="Discovery_CacheCountMany" xml:space="preserve">
+    <value>{0} images en cache.</value>
+  </data>
+  <data name="Discovery_CacheCountOne" xml:space="preserve">
+    <value>1 image en cache.</value>
+  </data>
+  <data name="Discovery_CacheEmpty" xml:space="preserve">
+    <value>Aucune image en cache pour l’instant.</value>
+  </data>
+  <data name="Discovery_CacheHeader.Text" xml:space="preserve">
+    <value>Cache de découverte</value>
+  </data>
+  <data name="Discovery_ClearAllFiltersLink.Content" xml:space="preserve">
+    <value>Effacer tous les filtres</value>
+  </data>
+  <data name="Discovery_ClearAllLink.Content" xml:space="preserve">
+    <value>Tout effacer</value>
+  </data>
+  <data name="Discovery_ClearCacheButton.Content" xml:space="preserve">
+    <value>Vider le cache</value>
+  </data>
+  <data name="Discovery_ClearErrorsButton.Content" xml:space="preserve">
+    <value>Effacer les erreurs</value>
+  </data>
+  <data name="Discovery_ContactingBody" xml:space="preserve">
+    <value>Communication avec {0}…</value>
+  </data>
+  <data name="Discovery_CopyJsonButton.Content" xml:space="preserve">
+    <value>Copier en JSON</value>
+  </data>
+  <data name="Discovery_DetailsButton.Content" xml:space="preserve">
+    <value>Détails</value>
+  </data>
+  <data name="Discovery_DismissButton.Content" xml:space="preserve">
+    <value>Ignorer</value>
+  </data>
+  <data name="Discovery_FilterBox.PlaceholderText" xml:space="preserve">
+    <value>Filtrer les paquets, le SE, …</value>
+  </data>
+  <data name="Discovery_ImageSearchBox.PlaceholderText" xml:space="preserve">
+    <value>Rechercher des images…</value>
+  </data>
+  <data name="Discovery_InspectButton.Content" xml:space="preserve">
+    <value>Inspecter</value>
+  </data>
+  <data name="Discovery_InspectorCaption.Text" xml:space="preserve">
+    <value>L’hôte headless qui exécute syft sur une image cible non headless. Doit inclure bash + python3 + curl/wget. Laissez vide pour utiliser la valeur par défaut.</value>
+  </data>
+  <data name="Discovery_InspectorImageBox.Header" xml:space="preserve">
+    <value>Image d’inspection</value>
+  </data>
+  <data name="Discovery_LoadLogsButton.Content" xml:space="preserve">
+    <value>Charger les journaux de la sonde</value>
+  </data>
+  <data name="Discovery_NoMatches.Text" xml:space="preserve">
+    <value>Aucune image ne correspond aux filtres actuels</value>
+  </data>
+  <data name="Discovery_NoSecret" xml:space="preserve">
+    <value>Aucun secret enregistré.</value>
+  </data>
+  <data name="Discovery_RegistryHostBox.Header" xml:space="preserve">
+    <value>Hôte du registre</value>
+  </data>
+  <data name="Discovery_RegistryRepoBox.Header" xml:space="preserve">
+    <value>Dépôt du registre (projet)</value>
+  </data>
+  <data name="Discovery_ReinspectButton.Content" xml:space="preserve">
+    <value>Réinspecter</value>
+  </data>
+  <data name="Discovery_RemoveFilterButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Retirer le filtre</value>
+  </data>
+  <data name="Discovery_RemoveSecretButton.Content" xml:space="preserve">
+    <value>Supprimer le secret</value>
+  </data>
+  <data name="Discovery_RepoCaption.Text" xml:space="preserve">
+    <value>Projet/espace de noms facultatif servant à développer un nom court d’image d’inspection en hôte/projet/nom. Un chemin d’image complet est utilisé tel quel.</value>
+  </data>
+  <data name="Discovery_ResetBody" xml:space="preserve">
+    <value>Les paramètres de découverte d’images ont été rétablis aux valeurs par défaut.</value>
+  </data>
+  <data name="Discovery_ResetButton.Content" xml:space="preserve">
+    <value>Rétablir les valeurs par défaut</value>
+  </data>
+  <data name="Discovery_ResetCancelButton.Content" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Discovery_ResetConfirmBody.Text" xml:space="preserve">
+    <value>Réinitialiser l’hôte du registre, le dépôt, le nom d’utilisateur, l’image d’inspection et le secret enregistré aux valeurs par défaut ? Les manifestes de découverte en cache sur le disque ne sont pas touchés.</value>
+  </data>
+  <data name="Discovery_ResetConfirmButton.Content" xml:space="preserve">
+    <value>Réinitialiser</value>
+  </data>
+  <data name="Discovery_ResetTitle" xml:space="preserve">
+    <value>Réinitialisé</value>
+  </data>
+  <data name="Discovery_SaveButton.Content" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Discovery_SavedBody" xml:space="preserve">
+    <value>Les paramètres de découverte d’images ont été enregistrés.</value>
+  </data>
+  <data name="Discovery_SavedTitle" xml:space="preserve">
+    <value>Enregistré</value>
+  </data>
+  <data name="Discovery_SecretBox.Header" xml:space="preserve">
+    <value>Secret du registre (secret CLI Harbor)</value>
+  </data>
+  <data name="Discovery_SecretRemovedBody" xml:space="preserve">
+    <value>Le secret de registre enregistré a été supprimé.</value>
+  </data>
+  <data name="Discovery_SecretRemovedTitle" xml:space="preserve">
+    <value>Secret supprimé</value>
+  </data>
+  <data name="Discovery_SecretSaveFailedTitle" xml:space="preserve">
+    <value>Impossible d’enregistrer le secret</value>
+  </data>
+  <data name="Discovery_SecretStored" xml:space="preserve">
+    <value>Un secret est enregistré. Saisissez-en un nouveau pour le remplacer, ou laissez vide pour le conserver.</value>
+  </data>
+  <data name="Discovery_SessionTypeCombo.Header" xml:space="preserve">
+    <value>Type de session</value>
+  </data>
+  <data name="Discovery_SettingsIntro.Text" xml:space="preserve">
+    <value>Choisissez l’image hôte utilisée pour inspecter les images non headless et, au besoin, des identifiants de registre pour récupérer des images privées.</value>
+  </data>
+  <data name="Discovery_TestButton.Content" xml:space="preserve">
+    <value>Tester les identifiants</value>
+  </data>
+  <data name="Discovery_TestFailed" xml:space="preserve">
+    <value>Échec du test</value>
+  </data>
+  <data name="Discovery_TestIncomplete" xml:space="preserve">
+    <value>Configuration incomplète</value>
+  </data>
+  <data name="Discovery_TestNetworkError" xml:space="preserve">
+    <value>Erreur réseau</value>
+  </data>
+  <data name="Discovery_TestRejected" xml:space="preserve">
+    <value>Identifiants refusés</value>
+  </data>
+  <data name="Discovery_TestUnexpected" xml:space="preserve">
+    <value>Réponse inattendue du registre</value>
+  </data>
+  <data name="Discovery_TestValid" xml:space="preserve">
+    <value>Identifiants valides</value>
+  </data>
+  <data name="Discovery_TestingTitle" xml:space="preserve">
+    <value>Test en cours…</value>
+  </data>
+  <data name="Discovery_UsernameBox.Header" xml:space="preserve">
+    <value>Nom d’utilisateur du registre</value>
+  </data>
+  <data name="Events_Dialog.CloseButtonText" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="Events_Dialog.Title" xml:space="preserve">
+    <value>Détails de la session</value>
+  </data>
+  <data name="Events_EventsTab.Header" xml:space="preserve">
+    <value>Événements</value>
+  </data>
+  <data name="Events_LoadEventsFailed" xml:space="preserve">
+    <value>Échec du chargement des événements de la session : {0}</value>
+  </data>
+  <data name="Events_LoadLogsFailed" xml:space="preserve">
+    <value>Échec du chargement des journaux de la session : {0}</value>
+  </data>
+  <data name="Events_Loading.Text" xml:space="preserve">
+    <value>Chargement...</value>
+  </data>
+  <data name="Events_LogsTab.Header" xml:space="preserve">
+    <value>Journaux</value>
+  </data>
+  <data name="Events_NoEvents" xml:space="preserve">
+    <value>Aucun événement disponible</value>
+  </data>
+  <data name="Events_NoLogs" xml:space="preserve">
+    <value>Aucun journal disponible</value>
+  </data>
+  <data name="Fits_BlinkButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Comparaison par clignotement</value>
+  </data>
+  <data name="Fits_BlinkButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Comparaison par clignotement entre deux images</value>
+  </data>
+  <data name="Fits_BlinkIntervalSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Vitesse du fondu de clignotement</value>
+  </data>
+  <data name="Fits_BlinkIntervalSlider.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Vitesse du fondu (ms par cycle)</value>
+  </data>
+  <data name="Fits_BlinkNeedsWcs" xml:space="preserve">
+    <value>Les deux images doivent avoir un WCS valide pour le clignotement</value>
+  </data>
+  <data name="Fits_BlinkPaused" xml:space="preserve">
+    <value>Clignotement en pause (Espace pour reprendre)</value>
+  </data>
+  <data name="Fits_BlinkWith" xml:space="preserve">
+    <value>Clignoter avec {0}</value>
+  </data>
+  <data name="Fits_Blinking" xml:space="preserve">
+    <value>Clignotement...</value>
+  </data>
+  <data name="Fits_BlinkingStatus" xml:space="preserve">
+    <value>Clignotement : {0} ↔ {1} (Échap pour arrêter)</value>
+  </data>
+  <data name="Fits_BookmarksHeader.Text" xml:space="preserve">
+    <value>Signets</value>
+  </data>
+  <data name="Fits_ClearCrosshairItem.Text" xml:space="preserve">
+    <value>Effacer le réticule</value>
+  </data>
+  <data name="Fits_CmapCool.Content" xml:space="preserve">
+    <value>Froid</value>
+  </data>
+  <data name="Fits_CmapGrayscale.Content" xml:space="preserve">
+    <value>Niveaux de gris</value>
+  </data>
+  <data name="Fits_CmapHeat.Content" xml:space="preserve">
+    <value>Chaleur</value>
+  </data>
+  <data name="Fits_CmapInverted.Content" xml:space="preserve">
+    <value>Inversé</value>
+  </data>
+  <data name="Fits_CmapViridis.Content" xml:space="preserve">
+    <value>Viridis</value>
+  </data>
+  <data name="Fits_ColormapCombo.Header" xml:space="preserve">
+    <value>Palette de couleurs</value>
+  </data>
+  <data name="Fits_CoordLabelBox.PlaceholderText" xml:space="preserve">
+    <value>Étiquette (facultatif)</value>
+  </data>
+  <data name="Fits_CoordLabelBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Étiquette du signet</value>
+  </data>
+  <data name="Fits_CoordOutsideBounds" xml:space="preserve">
+    <value>Coordonnée hors des limites de l'image (pixel {0:F0}, {1:F0} — l'image fait {2}x{3})</value>
+  </data>
+  <data name="Fits_CoordPanelButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Afficher ou masquer le panneau des coordonnées enregistrées</value>
+  </data>
+  <data name="Fits_CoordPanelButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Panneau des coordonnées enregistrées</value>
+  </data>
+  <data name="Fits_CoordsCopied" xml:space="preserve">
+    <value>Coordonnées copiées dans le presse-papiers</value>
+  </data>
+  <data name="Fits_CopyCoordsItem.Text" xml:space="preserve">
+    <value>Copier AD/Déc</value>
+  </data>
+  <data name="Fits_CrosshairButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Actions du réticule</value>
+  </data>
+  <data name="Fits_CrosshairButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Outils du réticule</value>
+  </data>
+  <data name="Fits_CrosshairLabel.Text" xml:space="preserve">
+    <value>Réticule</value>
+  </data>
+  <data name="Fits_CrosshairReadout" xml:space="preserve">
+    <value>AD  {0}\nDéc {1}</value>
+  </data>
+  <data name="Fits_CurrentCrosshairHeader.Text" xml:space="preserve">
+    <value>Réticule actuel</value>
+  </data>
+  <data name="Fits_DecLabel.Text" xml:space="preserve">
+    <value>Déc</value>
+  </data>
+  <data name="Fits_DeleteCoordButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Supprimer la coordonnée enregistrée</value>
+  </data>
+  <data name="Fits_DeleteCoordButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Fits_EnterValidCoords" xml:space="preserve">
+    <value>Entrez une AD et une Déc valides en degrés</value>
+  </data>
+  <data name="Fits_GoToButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Aller à la coordonnée</value>
+  </data>
+  <data name="Fits_GoToButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Naviguer vers la coordonnée</value>
+  </data>
+  <data name="Fits_GoToHeader.Text" xml:space="preserve">
+    <value>Aller à (degrés)</value>
+  </data>
+  <data name="Fits_GoToLabel.Text" xml:space="preserve">
+    <value>Aller à</value>
+  </data>
+  <data name="Fits_GoToSavedButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Aller à la coordonnée enregistrée</value>
+  </data>
+  <data name="Fits_GoToSavedButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Aller à la coordonnée</value>
+  </data>
+  <data name="Fits_HeaderButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Afficher ou masquer le panneau d'en-tête FITS</value>
+  </data>
+  <data name="Fits_HeaderButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Afficher ou masquer le panneau d'en-tête FITS</value>
+  </data>
+  <data name="Fits_HeaderFilter.PlaceholderText" xml:space="preserve">
+    <value>Rechercher dans l'en-tête...</value>
+  </data>
+  <data name="Fits_LinkedCrosshairToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Lier le réticule entre les onglets</value>
+  </data>
+  <data name="Fits_LinkedCrosshairToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Lier le réticule entre les onglets</value>
+  </data>
+  <data name="Fits_ManualDecBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. 42,1</value>
+  </data>
+  <data name="Fits_ManualDecBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Déclinaison en degrés</value>
+  </data>
+  <data name="Fits_ManualRaBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. 19,8</value>
+  </data>
+  <data name="Fits_ManualRaBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Ascension droite en degrés</value>
+  </data>
+  <data name="Fits_MaxCutLabel.Text" xml:space="preserve">
+    <value>Seuil max</value>
+  </data>
+  <data name="Fits_MinCutLabel.Text" xml:space="preserve">
+    <value>Seuil min</value>
+  </data>
+  <data name="Fits_NoCrosshair" xml:space="preserve">
+    <value>Aucun réticule placé</value>
+  </data>
+  <data name="Fits_NoWcsNav" xml:space="preserve">
+    <value>Aucun WCS disponible pour la navigation par coordonnées</value>
+  </data>
+  <data name="Fits_NoWcsNorth" xml:space="preserve">
+    <value>Aucun WCS — impossible de déterminer la direction du nord</value>
+  </data>
+  <data name="Fits_NorthUpStatus" xml:space="preserve">
+    <value>Nord en haut (rotation de {0:F1}°, {1:F2}"/px)</value>
+  </data>
+  <data name="Fits_NorthUpStatusMirrored" xml:space="preserve">
+    <value>Nord en haut (rotation de {0:F1}°, image miroir, {1:F2}"/px)</value>
+  </data>
+  <data name="Fits_NorthUpToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Basculer l'orientation nord en haut</value>
+  </data>
+  <data name="Fits_NorthUpToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Orienter le nord vers le haut</value>
+  </data>
+  <data name="Fits_OpenAnotherTab" xml:space="preserve">
+    <value>Ouvrez d'abord un autre onglet</value>
+  </data>
+  <data name="Fits_OpenButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Ouvrir un fichier FITS</value>
+  </data>
+  <data name="Fits_OpenButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Ouvrir un fichier FITS</value>
+  </data>
+  <data name="Fits_OriginalOrientation" xml:space="preserve">
+    <value>Orientation d'origine</value>
+  </data>
+  <data name="Fits_PixelReadout" xml:space="preserve">
+    <value>Pixel ({0}, {1}) = {2:G6}</value>
+  </data>
+  <data name="Fits_PlaceCrosshairFirst" xml:space="preserve">
+    <value>Cliquez d'abord avec le bouton droit pour placer le réticule</value>
+  </data>
+  <data name="Fits_RaLabel.Text" xml:space="preserve">
+    <value>AD</value>
+  </data>
+  <data name="Fits_ReadoutDec" xml:space="preserve">
+    <value>Déc {0}</value>
+  </data>
+  <data name="Fits_ReadoutRa" xml:space="preserve">
+    <value>AD  {0}</value>
+  </data>
+  <data name="Fits_ResetButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Réinitialiser l'étirement et la vue</value>
+  </data>
+  <data name="Fits_ResetButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Réinitialiser l'étirement et la vue</value>
+  </data>
+  <data name="Fits_RightClickToPlace" xml:space="preserve">
+    <value>Cliquez d'abord avec le bouton droit sur l'image pour placer le réticule</value>
+  </data>
+  <data name="Fits_SaveBookmarkItem.Text" xml:space="preserve">
+    <value>Enregistrer un signet</value>
+  </data>
+  <data name="Fits_SaveBookmarkLabel.Text" xml:space="preserve">
+    <value>Enregistrer un signet</value>
+  </data>
+  <data name="Fits_SavePanelButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Enregistrer le signet du réticule</value>
+  </data>
+  <data name="Fits_SavePanelButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Enregistrer le réticule comme signet</value>
+  </data>
+  <data name="Fits_SearchAtPositionItem.Text" xml:space="preserve">
+    <value>Rechercher à cette position</value>
+  </data>
+  <data name="Fits_StopBlinkButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Arrêter la comparaison par clignotement</value>
+  </data>
+  <data name="Fits_StopBlinkButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Arrêter le clignotement (Échap)</value>
+  </data>
+  <data name="Fits_StopBlinkLabel.Text" xml:space="preserve">
+    <value>Arrêter le clignotement</value>
+  </data>
+  <data name="Fits_StretchAsinh.Content" xml:space="preserve">
+    <value>Asinh</value>
+  </data>
+  <data name="Fits_StretchCombo.Header" xml:space="preserve">
+    <value>Étirement</value>
+  </data>
+  <data name="Fits_StretchLinear.Content" xml:space="preserve">
+    <value>Linéaire</value>
+  </data>
+  <data name="Fits_StretchLog.Content" xml:space="preserve">
+    <value>Log</value>
+  </data>
+  <data name="Fits_StretchSqrt.Content" xml:space="preserve">
+    <value>Racine carrée</value>
+  </data>
+  <data name="Fits_StretchSquared.Content" xml:space="preserve">
+    <value>Carré</value>
+  </data>
+  <data name="Fits_SyncZoomToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Synchroniser le zoom entre les onglets</value>
+  </data>
+  <data name="Fits_SyncZoomToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Synchroniser le zoom entre les onglets (même étendue angulaire)</value>
+  </data>
+  <data name="Fits_ZoomCombo.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Niveau de zoom</value>
+  </data>
+  <data name="Fits_ZoomCombo.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Niveau de zoom — saisissez une valeur ou choisissez dans la liste</value>
+  </data>
+  <data name="Guide_BodyBox.Header" xml:space="preserve">
+    <value>Instructions (facultatif)</value>
+  </data>
+  <data name="Guide_BodyBox.PlaceholderText" xml:space="preserve">
+    <value>Le texte complet renvoyé lorsque l’agent appelle cet outil</value>
+  </data>
+  <data name="Guide_BuiltInDefault.Text" xml:space="preserve">
+    <value>Description intégrée par défaut</value>
+  </data>
+  <data name="Guide_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Guide_CancelButton.Content" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Guide_ClearSearchButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Effacer le filtre</value>
+  </data>
+  <data name="Guide_CloseFocusButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="Guide_DeleteBody" xml:space="preserve">
+    <value>Supprimer « {0} » ? L’agent ne le verra plus.</value>
+  </data>
+  <data name="Guide_DeleteConfirm" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Guide_DeleteGuideButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Guide_DeleteTitle" xml:space="preserve">
+    <value>Supprimer l’outil guide</value>
+  </data>
+  <data name="Guide_DescriptionBox.Header" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="Guide_DescriptionBox.PlaceholderText" xml:space="preserve">
+    <value>Une ligne que l’agent voit dans la liste d’outils</value>
+  </data>
+  <data name="Guide_EditGuideButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Modifier</value>
+  </data>
+  <data name="Guide_EditIntro.Text" xml:space="preserve">
+    <value>Un outil guide est une consigne en lecture seule que l’agent peut appeler par son nom. Donnez-lui un nom et une description d’une ligne (affichée dans la liste d’outils) ; les instructions facultatives sont renvoyées telles quelles lorsque l’agent l’appelle.</value>
+  </data>
+  <data name="Guide_EditToolTitle" xml:space="preserve">
+    <value>Modifier l’outil guide</value>
+  </data>
+  <data name="Guide_EverythingRadio.Content" xml:space="preserve">
+    <value>Tout afficher</value>
+  </data>
+  <data name="Guide_Intro.Text" xml:space="preserve">
+    <value>Ajustez la façon dont l’agent IA voit chaque outil. Vos modifications remplacent en direct la description intégrée annoncée par le serveur MCP.</value>
+  </data>
+  <data name="Guide_MyGuidesCaption.Text" xml:space="preserve">
+    <value>Outils de consignes en lecture seule que vous rédigez. L’agent voit chacun comme un outil appelable et reçoit votre texte lorsqu’il l’appelle — aucun code n’est exécuté.</value>
+  </data>
+  <data name="Guide_MyGuidesHeader.Text" xml:space="preserve">
+    <value>Mes outils guides</value>
+  </data>
+  <data name="Guide_NameBox.Header" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="Guide_NameBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. Flux de travail de relevé</value>
+  </data>
+  <data name="Guide_NewGuideLabel.Text" xml:space="preserve">
+    <value>Nouveau guide</value>
+  </data>
+  <data name="Guide_NewToolTitle" xml:space="preserve">
+    <value>Nouvel outil guide</value>
+  </data>
+  <data name="Guide_NoGuides.Text" xml:space="preserve">
+    <value>Aucun guide pour l’instant. Ajoutez-en un pour enseigner à l’agent un flux de travail, une convention de nommage ou une règle de projet.</value>
+  </data>
+  <data name="Guide_OverriddenBadge.Text" xml:space="preserve">
+    <value>Remplacée</value>
+  </data>
+  <data name="Guide_ResetButton.Content" xml:space="preserve">
+    <value>Rétablir la valeur par défaut</value>
+  </data>
+  <data name="Guide_SaveButton.Content" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Guide_SearchBox.PlaceholderText" xml:space="preserve">
+    <value>Filtrer les outils…</value>
+  </data>
+  <data name="Guide_SlugEmpty" xml:space="preserve">
+    <value>Nom de l’outil d’agent : (saisissez des lettres ou des chiffres)</value>
+  </data>
+  <data name="Guide_SlugLabel" xml:space="preserve">
+    <value>Nom de l’outil d’agent : {0}</value>
+  </data>
+  <data name="Guide_TilesRadio.Content" xml:space="preserve">
+    <value>Tuiles</value>
+  </data>
+  <data name="Guide_ViewLabel.Text" xml:space="preserve">
+    <value>Affichage :</value>
+  </data>
+  <data name="Guide_YourDescriptionBox.Header" xml:space="preserve">
+    <value>Votre description</value>
+  </data>
+  <data name="Guide_YourDescriptionBox.PlaceholderText" xml:space="preserve">
+    <value>Décrivez cet outil tel que vous voulez que l’agent le lise</value>
+  </data>
+  <data name="ImageDiscoveryDialog.CloseButtonText" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="ImageDiscoveryDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Utiliser cette image</value>
+  </data>
+  <data name="ImageDiscoveryDialog.Title" xml:space="preserve">
+    <value>Trouver des images par paquet</value>
+  </data>
+  <data name="Images_FindByPackageBtn.Content" xml:space="preserve">
+    <value>Trouver par paquet…</value>
+  </data>
+  <data name="Images_FindByPackageBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Rechercher les images découvertes par paquet installé</value>
+  </data>
+  <data name="Images_Header.Text" xml:space="preserve">
+    <value>Images CANFAR</value>
+  </data>
+  <data name="Images_InspectBtn.Content" xml:space="preserve">
+    <value>Inspecter</value>
+  </data>
+  <data name="Images_InspectBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Découvrir les paquets installés dans cette image</value>
+  </data>
+  <data name="Images_Inspecting" xml:space="preserve">
+    <value>Inspection en cours…</value>
+  </data>
+  <data name="Images_Packages" xml:space="preserve">
+    <value>{0} paquets</value>
+  </data>
+  <data name="Images_ProbeFailed" xml:space="preserve">
+    <value>Échec de l'inspection</value>
+  </data>
+  <data name="Images_SettingsBtn.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Réglages de la découverte d'images</value>
+  </data>
+  <data name="Images_SettingsBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Réglages de la découverte d'images (image d'inspection, identifiants de registre)</value>
+  </data>
+  <data name="Images_StatusDiscovered" xml:space="preserve">
+    <value>Manifeste en cache</value>
+  </data>
+  <data name="Images_StatusFailed" xml:space="preserve">
+    <value>Échec de la dernière inspection</value>
+  </data>
+  <data name="Images_StatusUnknown" xml:space="preserve">
+    <value>Pas encore inspectée</value>
+  </data>
+  <data name="Launch_AdvImageTip.Subtitle" xml:space="preserve">
+    <value>Sélectionnez le registre contenant vos images de conteneurs, puis fournissez projet/nom:étiquette.</value>
+  </data>
+  <data name="Launch_AdvImageTip.Title" xml:space="preserve">
+    <value>Image de conteneur</value>
+  </data>
+  <data name="Launch_AdvancedTab.Header" xml:space="preserve">
+    <value>Avancé</value>
+  </data>
+  <data name="Launch_ArgsBox.PlaceholderText" xml:space="preserve">
+    <value>facultatif, séparés par des espaces</value>
+  </data>
+  <data name="Launch_ArgsLabel.Text" xml:space="preserve">
+    <value>Arguments</value>
+  </data>
+  <data name="Launch_ArgsTip.Subtitle" xml:space="preserve">
+    <value>Chaîne unique d'arguments supplémentaires. Skaha la traite comme un seul paramètre et la découpe côté serveur.</value>
+  </data>
+  <data name="Launch_ArgsTip.Title" xml:space="preserve">
+    <value>Arguments</value>
+  </data>
+  <data name="Launch_AuthLabel.Text" xml:space="preserve">
+    <value>Authentification du registre</value>
+  </data>
+  <data name="Launch_AuthTip.Subtitle" xml:space="preserve">
+    <value>Identifiants pour récupérer des images d'un registre privé. Laissez vide pour les images publiques.</value>
+  </data>
+  <data name="Launch_AuthTip.Title" xml:space="preserve">
+    <value>Authentification du registre</value>
+  </data>
+  <data name="Launch_CommandBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. python /arc/home/moi/reduce.py</value>
+  </data>
+  <data name="Launch_CommandLabel.Text" xml:space="preserve">
+    <value>Commande</value>
+  </data>
+  <data name="Launch_CommandTip.Subtitle" xml:space="preserve">
+    <value>La commande exécutée par le conteneur. Obligatoire.</value>
+  </data>
+  <data name="Launch_CommandTip.Title" xml:space="preserve">
+    <value>Commande</value>
+  </data>
+  <data name="Launch_CustomImageBox.PlaceholderText" xml:space="preserve">
+    <value>projet/image-exemple:1.0.0</value>
+  </data>
+  <data name="Launch_CustomImageLabel.Text" xml:space="preserve">
+    <value>Lancer (image personnalisée)</value>
+  </data>
+  <data name="Launch_DialogTitle" xml:space="preserve">
+    <value>Lancer une session</value>
+  </data>
+  <data name="Launch_DialogTitleBatch" xml:space="preserve">
+    <value>Lancer une tâche par lots</value>
+  </data>
+  <data name="Launch_DialogTitleRelaunch" xml:space="preserve">
+    <value>Relancer la session</value>
+  </data>
+  <data name="Launch_Failed" xml:space="preserve">
+    <value>Échec du lancement</value>
+  </data>
+  <data name="Launch_FixedRadio.Content" xml:space="preserve">
+    <value>Fixe</value>
+  </data>
+  <data name="Launch_FlexibleRadio.Content" xml:space="preserve">
+    <value>Flexible (géré par la plateforme)</value>
+  </data>
+  <data name="Launch_FlexibleResources" xml:space="preserve">
+    <value>Ressources flexibles</value>
+  </data>
+  <data name="Launch_FormHeader.Text" xml:space="preserve">
+    <value>Lancer une session</value>
+  </data>
+  <data name="Launch_GenerateNameBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Générer un nom</value>
+  </data>
+  <data name="Launch_HeadlessTab.Header" xml:space="preserve">
+    <value>Sans interface</value>
+  </data>
+  <data name="Launch_ImageLabel.Text" xml:space="preserve">
+    <value>Image de conteneur</value>
+  </data>
+  <data name="Launch_JobNameBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. reduction-nocturne</value>
+  </data>
+  <data name="Launch_JobNameLabel.Text" xml:space="preserve">
+    <value>Nom de la tâche</value>
+  </data>
+  <data name="Launch_LaunchJob" xml:space="preserve">
+    <value>Lancer la tâche</value>
+  </data>
+  <data name="Launch_LaunchLabel.Text" xml:space="preserve">
+    <value>Lancer</value>
+  </data>
+  <data name="Launch_LaunchReplicas" xml:space="preserve">
+    <value>Lancer {0} répliques</value>
+  </data>
+  <data name="Launch_Launching" xml:space="preserve">
+    <value>Lancement de {0}...</value>
+  </data>
+  <data name="Launch_NameLabel.Text" xml:space="preserve">
+    <value>Nom de la session</value>
+  </data>
+  <data name="Launch_NameTip.Subtitle" xml:space="preserve">
+    <value>Nom de la session. Caractères alphanumériques et « - » seulement.</value>
+  </data>
+  <data name="Launch_NameTip.Title" xml:space="preserve">
+    <value>Nom de la session</value>
+  </data>
+  <data name="Launch_NoHeadlessBar.Message" xml:space="preserve">
+    <value>Aucune image sans interface disponible pour ce compte. Contactez le soutien du CADC si vous vous attendiez à voir des images de traitement par lots ici.</value>
+  </data>
+  <data name="Launch_NoHeadlessBar.Title" xml:space="preserve">
+    <value>Aucune image sans interface</value>
+  </data>
+  <data name="Launch_ProjectLabel.Text" xml:space="preserve">
+    <value>Projet</value>
+  </data>
+  <data name="Launch_ProjectTip.Subtitle" xml:space="preserve">
+    <value>Le projet pour lequel l'image est utilisée. Utilisez le projet Skaha pour accéder à la liste d'images CANFAR par défaut.</value>
+  </data>
+  <data name="Launch_ProjectTip.Title" xml:space="preserve">
+    <value>Projet</value>
+  </data>
+  <data name="Launch_RegistryLabel.Text" xml:space="preserve">
+    <value>Registre d'images</value>
+  </data>
+  <data name="Launch_RegistryTip.Subtitle" xml:space="preserve">
+    <value>Le registre d'images de conteneurs hébergeant les images de session.</value>
+  </data>
+  <data name="Launch_RegistryTip.Title" xml:space="preserve">
+    <value>Registre d'images</value>
+  </data>
+  <data name="Launch_ReplicasLabel.Text" xml:space="preserve">
+    <value>Répliques</value>
+  </data>
+  <data name="Launch_ReplicasTip.Subtitle" xml:space="preserve">
+    <value>Nombre de répliques de conteneur en parallèle. REPLICA_ID et REPLICA_COUNT sont injectées automatiquement comme variables d'environnement.</value>
+  </data>
+  <data name="Launch_ReplicasTip.Title" xml:space="preserve">
+    <value>Répliques</value>
+  </data>
+  <data name="Launch_RepoSecretBox.PlaceholderText" xml:space="preserve">
+    <value>jeton ou mot de passe</value>
+  </data>
+  <data name="Launch_RepoUsernameBox.PlaceholderText" xml:space="preserve">
+    <value>nom d'utilisateur</value>
+  </data>
+  <data name="Launch_ResTypeLabel.Text" xml:space="preserve">
+    <value>Type de ressources</value>
+  </data>
+  <data name="Launch_ResTypeTip.Subtitle" xml:space="preserve">
+    <value>Flexible : accès variable aux ressources partagées (jusqu'à 8 cœurs, 32 Go de RAM). Fixe : ressources dédiées garanties, parfois plus difficiles à allouer.</value>
+  </data>
+  <data name="Launch_ResTypeTip.Title" xml:space="preserve">
+    <value>Type de ressources</value>
+  </data>
+  <data name="Launch_SessionLimitBar.Title" xml:space="preserve">
+    <value>Limite de sessions</value>
+  </data>
+  <data name="Launch_SessionStartingBody" xml:space="preserve">
+    <value>Elle apparaîtra sous peu dans les sessions actives.</value>
+  </data>
+  <data name="Launch_SessionStartingTitle" xml:space="preserve">
+    <value>La session démarre</value>
+  </data>
+  <data name="Launch_StandardTab.Header" xml:space="preserve">
+    <value>Standard</value>
+  </data>
+  <data name="Launch_StdImageTip.Subtitle" xml:space="preserve">
+    <value>L'image Docker de la session.</value>
+  </data>
+  <data name="Launch_StdImageTip.Title" xml:space="preserve">
+    <value>Image de conteneur</value>
+  </data>
+  <data name="Launch_Success" xml:space="preserve">
+    <value>{0} lancé avec succès !</value>
+  </data>
+  <data name="Launch_TypeLabel.Text" xml:space="preserve">
+    <value>Type de session</value>
+  </data>
+  <data name="Launch_TypeTip.Subtitle" xml:space="preserve">
+    <value>Choisissez un type de session.</value>
+  </data>
+  <data name="Launch_TypeTip.Title" xml:space="preserve">
+    <value>Type de session</value>
+  </data>
+  <data name="Load_CpuCores" xml:space="preserve">
+    <value>Cœurs CPU</value>
+  </data>
+  <data name="Load_Header.Text" xml:space="preserve">
+    <value>Charge de la plateforme</value>
+  </data>
+  <data name="Load_InstancesLabel.Text" xml:space="preserve">
+    <value>Instances</value>
+  </data>
+  <data name="Load_InstancesLine" xml:space="preserve">
+    <value>{0} au total  ·  {1} sessions  ·  {2} bureau  ·  {3} sans interface</value>
+  </data>
+  <data name="Load_LastUpdated" xml:space="preserve">
+    <value>Dernière mise à jour : {0}</value>
+  </data>
+  <data name="Load_Ram" xml:space="preserve">
+    <value>RAM</value>
+  </data>
+  <data name="Load_UnitCores" xml:space="preserve">
+    <value>cœurs</value>
+  </data>
+  <data name="Load_UnitGb" xml:space="preserve">
+    <value>Go</value>
+  </data>
+  <data name="LocalFiles_CancelButton" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="LocalFiles_DeleteConfirmButton" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="LocalFiles_DeleteFileConfirm" xml:space="preserve">
+    <value>Supprimer « {0} » ?</value>
+  </data>
+  <data name="LocalFiles_DeleteFolderConfirm" xml:space="preserve">
+    <value>Supprimer le dossier « {0} » et tout son contenu ?</value>
+  </data>
+  <data name="LocalFiles_DeleteTitle" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="LocalFiles_FilterBox.PlaceholderText" xml:space="preserve">
+    <value>Filtrer les fichiers...</value>
+  </data>
+  <data name="LocalFiles_HeaderText.Text" xml:space="preserve">
+    <value>Explorateur</value>
+  </data>
+  <data name="LocalFiles_MenuCopyPath.Text" xml:space="preserve">
+    <value>Copier le chemin</value>
+  </data>
+  <data name="LocalFiles_MenuDelete.Text" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="LocalFiles_MenuOpen.Text" xml:space="preserve">
+    <value>Ouvrir</value>
+  </data>
+  <data name="LocalFiles_MenuRename.Text" xml:space="preserve">
+    <value>Renommer</value>
+  </data>
+  <data name="LocalFiles_MenuShowInExplorer.Text" xml:space="preserve">
+    <value>Afficher dans l'Explorateur</value>
+  </data>
+  <data name="LocalFiles_NewFileButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Nouveau fichier</value>
+  </data>
+  <data name="LocalFiles_NewFileButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Nouveau fichier</value>
+  </data>
+  <data name="LocalFiles_NewFolderButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Nouveau dossier</value>
+  </data>
+  <data name="LocalFiles_NewFolderButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Nouveau dossier</value>
+  </data>
+  <data name="LocalFiles_OpenFolderButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Ouvrir un dossier</value>
+  </data>
+  <data name="LocalFiles_OpenFolderButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Ouvrir un dossier</value>
+  </data>
+  <data name="LocalFiles_RefreshButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Actualiser</value>
+  </data>
+  <data name="LocalFiles_RefreshButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Actualiser</value>
+  </data>
+  <data name="LocalFiles_RenameButton" xml:space="preserve">
+    <value>Renommer</value>
+  </data>
+  <data name="LocalFiles_RenameTitle" xml:space="preserve">
+    <value>Renommer</value>
+  </data>
+  <data name="LocalFiles_SortButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Basculer le tri</value>
+  </data>
+  <data name="LocalFiles_SortButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Trier par nom ou par date</value>
+  </data>
+  <data name="LocalFiles_UpButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Monter d'un dossier</value>
+  </data>
+  <data name="LocalFiles_UpButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Monter</value>
+  </data>
+  <data name="McpServerDialog.CloseButtonText" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="McpServerDialog.Title" xml:space="preserve">
+    <value>Serveur MCP</value>
+  </data>
+  <data name="Mcp_ActivityHeader.Text" xml:space="preserve">
+    <value>Activité récente de l’agent</value>
+  </data>
+  <data name="Mcp_AddedToDesktop" xml:space="preserve">
+    <value>Ajouté à Claude Desktop. Redémarrez Claude Desktop pour le prendre en compte.</value>
+  </data>
+  <data name="Mcp_ApproveAction" xml:space="preserve">
+    <value>Approuver</value>
+  </data>
+  <data name="Mcp_ApprovedLabel" xml:space="preserve">
+    <value>approuvé</value>
+  </data>
+  <data name="Mcp_AutoApplyCaption.Text" xml:space="preserve">
+    <value>Lorsque activé, les écritures d’un agent (p. ex. l’enregistrement d’une requête) s’appliquent immédiatement et apparaissent dans le fil d’activité ci-dessous. Lorsque désactivé, elles sont mises en file pour votre révision. Les écritures destructrices (suppressions) sont toujours mises en file, quoi qu’il en soit.</value>
+  </data>
+  <data name="Mcp_AutoApplyToggle.Header" xml:space="preserve">
+    <value>Appliquer automatiquement les écritures de l’agent</value>
+  </data>
+  <data name="Mcp_AutoApplyToggle.OffContent" xml:space="preserve">
+    <value>Désactivé</value>
+  </data>
+  <data name="Mcp_AutoApplyToggle.OnContent" xml:space="preserve">
+    <value>Activé</value>
+  </data>
+  <data name="Mcp_AutoLabel" xml:space="preserve">
+    <value>auto</value>
+  </data>
+  <data name="Mcp_AutonomyHeader.Text" xml:space="preserve">
+    <value>Autonomie de l’agent</value>
+  </data>
+  <data name="Mcp_BridgeNotFound" xml:space="preserve">
+    <value>Le pont MCP (CanfarDesktop.McpBridge.exe) est introuvable. Compilez le projet du pont, puis rouvrez ce panneau.</value>
+  </data>
+  <data name="Mcp_ClaudeCodeLabel.Text" xml:space="preserve">
+    <value>…ou, pour Claude Code, exécutez :</value>
+  </data>
+  <data name="Mcp_ClientSubtitleMany" xml:space="preserve">
+    <value>{0} connexions · dernière {1}</value>
+  </data>
+  <data name="Mcp_ClientSubtitleOne" xml:space="preserve">
+    <value>1 connexion · dernière {0}</value>
+  </data>
+  <data name="Mcp_ClientsHeader.Text" xml:space="preserve">
+    <value>Clients connectés</value>
+  </data>
+  <data name="Mcp_CommandCopied" xml:space="preserve">
+    <value>Commande copiée.</value>
+  </data>
+  <data name="Mcp_CommandLabel.Text" xml:space="preserve">
+    <value>Commande :</value>
+  </data>
+  <data name="Mcp_ConfigWriteFailed" xml:space="preserve">
+    <value>Impossible d’écrire la configuration : {0}</value>
+  </data>
+  <data name="Mcp_ConfirmCancelButton.Content" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Mcp_ConfirmHeader.Text" xml:space="preserve">
+    <value>Confirmer la modification de configuration</value>
+  </data>
+  <data name="Mcp_ConfirmTarget" xml:space="preserve">
+    <value>Verbinal sera ajouté à :</value>
+  </data>
+  <data name="Mcp_ConfirmWriteButton.Content" xml:space="preserve">
+    <value>Écrire la configuration</value>
+  </data>
+  <data name="Mcp_ConnectButton.Content" xml:space="preserve">
+    <value>Ajouter à Claude Desktop…</value>
+  </data>
+  <data name="Mcp_ConnectHeader.Text" xml:space="preserve">
+    <value>Connecter Claude Desktop</value>
+  </data>
+  <data name="Mcp_ConnectIntro.Text" xml:space="preserve">
+    <value>Ajoutez Verbinal à votre configuration Claude Desktop. Vos autres serveurs MCP sont préservés et une copie .bak est conservée. Redémarrez ensuite Claude Desktop.</value>
+  </data>
+  <data name="Mcp_CopyCommandButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Copier</value>
+  </data>
+  <data name="Mcp_CouldntStartServer" xml:space="preserve">
+    <value>Impossible de démarrer le serveur : {0}</value>
+  </data>
+  <data name="Mcp_CouldntStopServer" xml:space="preserve">
+    <value>Impossible d’arrêter le serveur : {0}</value>
+  </data>
+  <data name="Mcp_DiagRunningMessage" xml:space="preserve">
+    <value>Vérification du serveur MCP…</value>
+  </data>
+  <data name="Mcp_DiagRunningTitle" xml:space="preserve">
+    <value>Exécution des diagnostics</value>
+  </data>
+  <data name="Mcp_DiagnosticsCaption.Text" xml:space="preserve">
+    <value>Vérifiez chaque maillon de la chaîne — serveur, écouteur, exécutable du pont, clients Claude et configuration Claude Desktop — avec un correctif en un clic lorsqu’il en existe un.</value>
+  </data>
+  <data name="Mcp_DiagnosticsExpander.Header" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="Mcp_EnableToggle.Header" xml:space="preserve">
+    <value>Activer le serveur MCP</value>
+  </data>
+  <data name="Mcp_EnableToggle.OffContent" xml:space="preserve">
+    <value>Désactivé</value>
+  </data>
+  <data name="Mcp_EnableToggle.OnContent" xml:space="preserve">
+    <value>Activé</value>
+  </data>
+  <data name="Mcp_FixFailed" xml:space="preserve">
+    <value>Échec du correctif : {0}</value>
+  </data>
+  <data name="Mcp_FollowActivityCaption.Text" xml:space="preserve">
+    <value>Naviguer vers la vue pertinente après une écriture appliquée.</value>
+  </data>
+  <data name="Mcp_FollowActivityToggle.Header" xml:space="preserve">
+    <value>Suivre l’activité de l’agent</value>
+  </data>
+  <data name="Mcp_FollowActivityToggle.OffContent" xml:space="preserve">
+    <value>Désactivé</value>
+  </data>
+  <data name="Mcp_FollowActivityToggle.OnContent" xml:space="preserve">
+    <value>Activé</value>
+  </data>
+  <data name="Mcp_Intro.Text" xml:space="preserve">
+    <value>Laissez Claude (Desktop ou Code) lire vos données CADC/CANFAR via un serveur MCP local en lecture seule — recherche d’observations, sessions Skaha, recherches téléchargées, découverte d’images et plus encore. Désactivé par défaut ; rien n’est exposé tant que vous ne l’activez pas.</value>
+  </data>
+  <data name="Mcp_NoActivity.Text" xml:space="preserve">
+    <value>Aucune activité d’agent pour l’instant.</value>
+  </data>
+  <data name="Mcp_NoClients.Text" xml:space="preserve">
+    <value>Aucun client ne s’est encore connecté.</value>
+  </data>
+  <data name="Mcp_PipeLabel" xml:space="preserve">
+    <value>pipe : {0}</value>
+  </data>
+  <data name="Mcp_RequireApprovalCaption.Text" xml:space="preserve">
+    <value>Lorsque activé, seuls les clients approuvés peuvent se connecter — les autres sont refusés jusqu’à ce que vous les approuviez ci-dessous. L’identité de connexion est autodéclarée ; il s’agit donc de visibilité et de révocation. La véritable frontière est que le serveur n’écoute que sur votre canal (pipe) privé par utilisateur.</value>
+  </data>
+  <data name="Mcp_RequireApprovalToggle.Header" xml:space="preserve">
+    <value>Exiger l’approbation des nouveaux clients</value>
+  </data>
+  <data name="Mcp_RequireApprovalToggle.OffContent" xml:space="preserve">
+    <value>Désactivé</value>
+  </data>
+  <data name="Mcp_RequireApprovalToggle.OnContent" xml:space="preserve">
+    <value>Activé</value>
+  </data>
+  <data name="Mcp_RevokeAction" xml:space="preserve">
+    <value>Révoquer</value>
+  </data>
+  <data name="Mcp_RunDiagnosticsButton.Content" xml:space="preserve">
+    <value>Exécuter les diagnostics</value>
+  </data>
+  <data name="Mcp_ShowAiGuideCaption.Text" xml:space="preserve">
+    <value>Ajoute une tuile Guide IA à la page d’accueil — ajustez la description de chaque outil et ajoutez vos propres outils guides en lecture seule. Vos remplacements restent actifs, que la tuile soit affichée ou non.</value>
+  </data>
+  <data name="Mcp_ShowAiGuideToggle.Header" xml:space="preserve">
+    <value>Afficher le Guide IA sur la page d’accueil</value>
+  </data>
+  <data name="Mcp_ShowAiGuideToggle.OffContent" xml:space="preserve">
+    <value>Désactivé</value>
+  </data>
+  <data name="Mcp_ShowAiGuideToggle.OnContent" xml:space="preserve">
+    <value>Activé</value>
+  </data>
+  <data name="Mcp_StatusRunning" xml:space="preserve">
+    <value>En cours d’exécution</value>
+  </data>
+  <data name="Mcp_StatusStopped" xml:space="preserve">
+    <value>Arrêté</value>
+  </data>
+  <data name="Module_AiGuide" xml:space="preserve">
+    <value>Guide IA</value>
+  </data>
+  <data name="Module_Workflows" xml:space="preserve">
+    <value>Flux de travail</value>
+  </data>
+  <data name="Nb_AddCodeCellButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Ajouter une cellule de code</value>
+  </data>
+  <data name="Nb_AddCodeCellButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Ajouter une cellule de code</value>
+  </data>
+  <data name="Nb_AddCodeLabel.Text" xml:space="preserve">
+    <value>Code</value>
+  </data>
+  <data name="Nb_AddMarkdownCellButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Ajouter une cellule Markdown</value>
+  </data>
+  <data name="Nb_AddMarkdownCellButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Ajouter une cellule Markdown</value>
+  </data>
+  <data name="Nb_AddMarkdownLabel.Text" xml:space="preserve">
+    <value>Markdown</value>
+  </data>
+  <data name="Nb_CancelButton" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Nb_CellCount" xml:space="preserve">
+    <value>{0} cellules</value>
+  </data>
+  <data name="Nb_CheckingDeps" xml:space="preserve">
+    <value>Vérification des dépendances...</value>
+  </data>
+  <data name="Nb_ClearOutputsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Effacer toutes les sorties</value>
+  </data>
+  <data name="Nb_ClearOutputsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Effacer toutes les sorties</value>
+  </data>
+  <data name="Nb_ClearOutputsLabel.Text" xml:space="preserve">
+    <value>Effacer</value>
+  </data>
+  <data name="Nb_CodeEditor.PlaceholderText" xml:space="preserve">
+    <value>Saisissez le code Python ici...</value>
+  </data>
+  <data name="Nb_CollapseToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Afficher ou masquer la sortie</value>
+  </data>
+  <data name="Nb_DeleteCellButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Supprimer la cellule</value>
+  </data>
+  <data name="Nb_DeleteCellButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Supprimer la cellule</value>
+  </data>
+  <data name="Nb_DepsAllInstalled" xml:space="preserve">
+    <value>Toutes les dépendances sont installées</value>
+  </data>
+  <data name="Nb_DiscardButton" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Nb_DontSaveButton" xml:space="preserve">
+    <value>Ne pas enregistrer</value>
+  </data>
+  <data name="Nb_DoubleClickToEdit" xml:space="preserve">
+    <value>Double-cliquez pour modifier</value>
+  </data>
+  <data name="Nb_DownloadPython" xml:space="preserve">
+    <value>Télécharger Python</value>
+  </data>
+  <data name="Nb_FileTypeMarkdown" xml:space="preserve">
+    <value>Markdown</value>
+  </data>
+  <data name="Nb_FileTypeNotebook" xml:space="preserve">
+    <value>Carnet Jupyter</value>
+  </data>
+  <data name="Nb_FileTypePython" xml:space="preserve">
+    <value>Script Python</value>
+  </data>
+  <data name="Nb_InstallAllButton" xml:space="preserve">
+    <value>Tout installer</value>
+  </data>
+  <data name="Nb_InstallingPkgs" xml:space="preserve">
+    <value>Installation de {0} paquets...</value>
+  </data>
+  <data name="Nb_InterruptButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Interrompre le noyau</value>
+  </data>
+  <data name="Nb_InterruptButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Interrompre</value>
+  </data>
+  <data name="Nb_KernelBusy" xml:space="preserve">
+    <value>Occupé</value>
+  </data>
+  <data name="Nb_KernelDead" xml:space="preserve">
+    <value>Arrêté</value>
+  </data>
+  <data name="Nb_KernelError" xml:space="preserve">
+    <value>Erreur</value>
+  </data>
+  <data name="Nb_KernelIdle" xml:space="preserve">
+    <value>Inactif</value>
+  </data>
+  <data name="Nb_KernelStarting" xml:space="preserve">
+    <value>Démarrage</value>
+  </data>
+  <data name="Nb_LaterButton" xml:space="preserve">
+    <value>Plus tard</value>
+  </data>
+  <data name="Nb_MarkdownEditor.PlaceholderText" xml:space="preserve">
+    <value>Saisissez le Markdown ici...</value>
+  </data>
+  <data name="Nb_MissingPkgBody" xml:space="preserve">
+    <value>Ce carnet requiert :\n{0}\n\nLes installer maintenant ?</value>
+  </data>
+  <data name="Nb_MissingPkgTitle" xml:space="preserve">
+    <value>{0} paquet(s) manquant(s)</value>
+  </data>
+  <data name="Nb_MoveCellDownButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Déplacer la cellule vers le bas</value>
+  </data>
+  <data name="Nb_MoveCellDownButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Déplacer vers le bas</value>
+  </data>
+  <data name="Nb_MoveCellUpButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Déplacer la cellule vers le haut</value>
+  </data>
+  <data name="Nb_MoveCellUpButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Déplacer vers le haut</value>
+  </data>
+  <data name="Nb_NewNotebookButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Nouveau carnet</value>
+  </data>
+  <data name="Nb_NewNotebookButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Nouveau carnet (Ctrl+N)</value>
+  </data>
+  <data name="Nb_OpenButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Ouvrir un carnet</value>
+  </data>
+  <data name="Nb_OpenButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Ouvrir (Ctrl+O)</value>
+  </data>
+  <data name="Nb_OpenError" xml:space="preserve">
+    <value>Erreur d'ouverture : {0}</value>
+  </data>
+  <data name="Nb_OpenFailed" xml:space="preserve">
+    <value>Échec de l'ouverture : {0}</value>
+  </data>
+  <data name="Nb_OutputCollapsed" xml:space="preserve">
+    <value>Sortie repliée ({0} éléments)</value>
+  </data>
+  <data name="Nb_OutputLabel" xml:space="preserve">
+    <value>Sortie</value>
+  </data>
+  <data name="Nb_PackageNotInstalled" xml:space="preserve">
+    <value>{0} n'est pas installé</value>
+  </data>
+  <data name="Nb_PipInstallHint" xml:space="preserve">
+    <value>Exécutez : %pip install {0}</value>
+  </data>
+  <data name="Nb_PkgInstallFailed" xml:space="preserve">
+    <value>Certains paquets n'ont pas pu être installés</value>
+  </data>
+  <data name="Nb_PkgInstalled" xml:space="preserve">
+    <value>{0} paquets installés</value>
+  </data>
+  <data name="Nb_PythonInstallHint" xml:space="preserve">
+    <value>Installez Python 3.8+ depuis python.org</value>
+  </data>
+  <data name="Nb_PythonNotFound" xml:space="preserve">
+    <value>Python introuvable</value>
+  </data>
+  <data name="Nb_ReadyPkgMissing" xml:space="preserve">
+    <value>Prêt (certains paquets peuvent manquer)</value>
+  </data>
+  <data name="Nb_RecentHeader.Text" xml:space="preserve">
+    <value>Carnets récents</value>
+  </data>
+  <data name="Nb_RecoverBody" xml:space="preserve">
+    <value>{0} carnet(s) non enregistré(s) provenant d'une session précédente.</value>
+  </data>
+  <data name="Nb_RecoverButton" xml:space="preserve">
+    <value>Récupérer</value>
+  </data>
+  <data name="Nb_RecoverTitle" xml:space="preserve">
+    <value>Récupérer les carnets non enregistrés ?</value>
+  </data>
+  <data name="Nb_RecoveredStatus" xml:space="preserve">
+    <value>[Récupéré] {0}</value>
+  </data>
+  <data name="Nb_RestartButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Redémarrer le noyau</value>
+  </data>
+  <data name="Nb_RestartButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Redémarrer le noyau</value>
+  </data>
+  <data name="Nb_RunAllButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Exécuter toutes les cellules</value>
+  </data>
+  <data name="Nb_RunAllButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Tout exécuter</value>
+  </data>
+  <data name="Nb_RunAllLabel.Text" xml:space="preserve">
+    <value>Tout exécuter</value>
+  </data>
+  <data name="Nb_RunCellButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Exécuter la cellule</value>
+  </data>
+  <data name="Nb_RunCellButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Exécuter la cellule (Ctrl+Entrée)</value>
+  </data>
+  <data name="Nb_RunLabel.Text" xml:space="preserve">
+    <value>Exécuter</value>
+  </data>
+  <data name="Nb_SaveAsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Enregistrer sous</value>
+  </data>
+  <data name="Nb_SaveAsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Enregistrer sous (Ctrl+Maj+S)</value>
+  </data>
+  <data name="Nb_SaveAsError" xml:space="preserve">
+    <value>Erreur d'enregistrement sous : {0}</value>
+  </data>
+  <data name="Nb_SaveAsLabel.Text" xml:space="preserve">
+    <value>Enregistrer sous</value>
+  </data>
+  <data name="Nb_SaveButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Nb_SaveButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Enregistrer (Ctrl+S)</value>
+  </data>
+  <data name="Nb_SaveDialogButton" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Nb_SkipButton" xml:space="preserve">
+    <value>Ignorer</value>
+  </data>
+  <data name="Nb_UnsavedBody" xml:space="preserve">
+    <value>Enregistrer les modifications de {0} ?</value>
+  </data>
+  <data name="Nb_UnsavedTitle" xml:space="preserve">
+    <value>Modifications non enregistrées</value>
+  </data>
+  <data name="Nb_WelcomeNewLabel.Text" xml:space="preserve">
+    <value>Nouveau carnet</value>
+  </data>
+  <data name="Nb_WelcomeOpenLabel.Text" xml:space="preserve">
+    <value>Ouvrir un carnet</value>
+  </data>
+  <data name="Nb_WelcomeSubtitle.Text" xml:space="preserve">
+    <value>Éditeur de carnets natif</value>
+  </data>
+  <data name="ObsDetail_AuthBody.Text" xml:space="preserve">
+    <value>Cette observation provient d'une collection propriétaire. Connectez-vous avec votre compte CADC pour accéder aux détails.</value>
+  </data>
+  <data name="ObsDetail_AuthTitle.Text" xml:space="preserve">
+    <value>Connectez-vous pour consulter</value>
+  </data>
+  <data name="ObsDetail_CardEnvironment" xml:space="preserve">
+    <value>Environnement</value>
+  </data>
+  <data name="ObsDetail_CardIdentity" xml:space="preserve">
+    <value>Identité de l'observation</value>
+  </data>
+  <data name="ObsDetail_CardPipeline" xml:space="preserve">
+    <value>Pipeline</value>
+  </data>
+  <data name="ObsDetail_CardPolarization" xml:space="preserve">
+    <value>Polarisation</value>
+  </data>
+  <data name="ObsDetail_CardProposal" xml:space="preserve">
+    <value>Proposition</value>
+  </data>
+  <data name="ObsDetail_CardSpatial" xml:space="preserve">
+    <value>Spatial</value>
+  </data>
+  <data name="ObsDetail_CardSpectral" xml:space="preserve">
+    <value>Spectral</value>
+  </data>
+  <data name="ObsDetail_CardTarget" xml:space="preserve">
+    <value>Cible</value>
+  </data>
+  <data name="ObsDetail_CardTelescope" xml:space="preserve">
+    <value>Télescope + instrument</value>
+  </data>
+  <data name="ObsDetail_CardTemporal" xml:space="preserve">
+    <value>Temporel</value>
+  </data>
+  <data name="ObsDetail_CloseButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Fermer le détail de l'observation</value>
+  </data>
+  <data name="ObsDetail_CloseButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Fermer (retour)</value>
+  </data>
+  <data name="ObsDetail_DownloadFailed" xml:space="preserve">
+    <value>Échec du téléchargement</value>
+  </data>
+  <data name="ObsDetail_DownloadFileName" xml:space="preserve">
+    <value>Télécharger {0}</value>
+  </data>
+  <data name="ObsDetail_DownloadTooltip" xml:space="preserve">
+    <value>Télécharger ce fichier</value>
+  </data>
+  <data name="ObsDetail_Downloaded" xml:space="preserve">
+    <value>{0} téléchargé</value>
+  </data>
+  <data name="ObsDetail_Downloading" xml:space="preserve">
+    <value>Téléchargement de {0}…</value>
+  </data>
+  <data name="ObsDetail_ErrorBar.Title" xml:space="preserve">
+    <value>Impossible de charger l'observation</value>
+  </data>
+  <data name="ObsDetail_FileBadge" xml:space="preserve">
+    <value>fichier</value>
+  </data>
+  <data name="ObsDetail_FileTypeAll" xml:space="preserve">
+    <value>Tous les fichiers</value>
+  </data>
+  <data name="ObsDetail_FileTypeFits" xml:space="preserve">
+    <value>Image FITS</value>
+  </data>
+  <data name="ObsDetail_FootprintName" xml:space="preserve">
+    <value>Empreinte spatiale : polygone à {0} sommets, AD de {1:F2}° à {2:F2}°, Déc de {3:F2}° à {4:F2}°</value>
+  </data>
+  <data name="ObsDetail_HeadingInputs" xml:space="preserve">
+    <value>Entrées</value>
+  </data>
+  <data name="ObsDetail_InputName" xml:space="preserve">
+    <value>Entrée : {0}</value>
+  </data>
+  <data name="ObsDetail_JunkChip" xml:space="preserve">
+    <value>Rebut</value>
+  </data>
+  <data name="ObsDetail_LoadingText.Text" xml:space="preserve">
+    <value>Chargement de l'observation…</value>
+  </data>
+  <data name="ObsDetail_NoFiles" xml:space="preserve">
+    <value>Aucun fichier répertorié pour ce plan.</value>
+  </data>
+  <data name="ObsDetail_NoProvenance" xml:space="preserve">
+    <value>Aucune provenance enregistrée pour ce plan.</value>
+  </data>
+  <data name="ObsDetail_NotFoundBody" xml:space="preserve">
+    <value>L'observation « {0} » est introuvable dans la collection « {1} ». Elle a peut-être été supprimée, ou son ID est incorrect.</value>
+  </data>
+  <data name="ObsDetail_NotFoundTitle.Text" xml:space="preserve">
+    <value>Observation introuvable</value>
+  </data>
+  <data name="ObsDetail_ObservationFallback" xml:space="preserve">
+    <value>Observation</value>
+  </data>
+  <data name="ObsDetail_OpenInCubeViewer" xml:space="preserve">
+    <value>Ouvrir dans la visionneuse de cubes</value>
+  </data>
+  <data name="ObsDetail_PlaneHeader" xml:space="preserve">
+    <value>{0}  —  {1}  —  Niveau d'étal. {2}</value>
+  </data>
+  <data name="ObsDetail_Resolving" xml:space="preserve">
+    <value>Résolution de {0}…</value>
+  </data>
+  <data name="ObsDetail_RetryButton.Content" xml:space="preserve">
+    <value>Réessayer</value>
+  </data>
+  <data name="ObsDetail_RowAlgorithm" xml:space="preserve">
+    <value>Algorithme</value>
+  </data>
+  <data name="ObsDetail_RowAmbientTemp" xml:space="preserve">
+    <value>Temp. ambiante</value>
+  </data>
+  <data name="ObsDetail_RowBand" xml:space="preserve">
+    <value>Bande</value>
+  </data>
+  <data name="ObsDetail_RowBandpass" xml:space="preserve">
+    <value>Bande passante</value>
+  </data>
+  <data name="ObsDetail_RowDimensions" xml:space="preserve">
+    <value>Dimensions</value>
+  </data>
+  <data name="ObsDetail_RowElevation" xml:space="preserve">
+    <value>Élévation</value>
+  </data>
+  <data name="ObsDetail_RowEnd" xml:space="preserve">
+    <value>Fin</value>
+  </data>
+  <data name="ObsDetail_RowExposure" xml:space="preserve">
+    <value>Exposition</value>
+  </data>
+  <data name="ObsDetail_RowFootprint" xml:space="preserve">
+    <value>Empreinte</value>
+  </data>
+  <data name="ObsDetail_RowHumidity" xml:space="preserve">
+    <value>Humidité</value>
+  </data>
+  <data name="ObsDetail_RowId" xml:space="preserve">
+    <value>ID</value>
+  </data>
+  <data name="ObsDetail_RowInstrument" xml:space="preserve">
+    <value>Instrument</value>
+  </data>
+  <data name="ObsDetail_RowIntent" xml:space="preserve">
+    <value>Intention</value>
+  </data>
+  <data name="ObsDetail_RowKeywords" xml:space="preserve">
+    <value>Mots-clés</value>
+  </data>
+  <data name="ObsDetail_RowLastExecuted" xml:space="preserve">
+    <value>Dernière exécution</value>
+  </data>
+  <data name="ObsDetail_RowLocation" xml:space="preserve">
+    <value>Emplacement</value>
+  </data>
+  <data name="ObsDetail_RowMetaRelease" xml:space="preserve">
+    <value>Diffusion des métadonnées</value>
+  </data>
+  <data name="ObsDetail_RowMoving" xml:space="preserve">
+    <value>Mobile</value>
+  </data>
+  <data name="ObsDetail_RowName" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="ObsDetail_RowPhotometric" xml:space="preserve">
+    <value>Photométrique</value>
+  </data>
+  <data name="ObsDetail_RowPi" xml:space="preserve">
+    <value>Chercheur principal</value>
+  </data>
+  <data name="ObsDetail_RowProducer" xml:space="preserve">
+    <value>Producteur</value>
+  </data>
+  <data name="ObsDetail_RowProject" xml:space="preserve">
+    <value>Projet</value>
+  </data>
+  <data name="ObsDetail_RowRedshift" xml:space="preserve">
+    <value>Décalage vers le rouge</value>
+  </data>
+  <data name="ObsDetail_RowReference" xml:space="preserve">
+    <value>Référence</value>
+  </data>
+  <data name="ObsDetail_RowResolution" xml:space="preserve">
+    <value>Résolution</value>
+  </data>
+  <data name="ObsDetail_RowResolvingPower" xml:space="preserve">
+    <value>Pouvoir de résolution</value>
+  </data>
+  <data name="ObsDetail_RowRestWavelength" xml:space="preserve">
+    <value>Longueur d'onde au repos</value>
+  </data>
+  <data name="ObsDetail_RowRunId" xml:space="preserve">
+    <value>ID d'exécution</value>
+  </data>
+  <data name="ObsDetail_RowSampleSize" xml:space="preserve">
+    <value>Taille d'échantillonnage</value>
+  </data>
+  <data name="ObsDetail_RowSeeing" xml:space="preserve">
+    <value>Seeing</value>
+  </data>
+  <data name="ObsDetail_RowSequenceNo" xml:space="preserve">
+    <value>N° de séquence</value>
+  </data>
+  <data name="ObsDetail_RowStandard" xml:space="preserve">
+    <value>Étalon</value>
+  </data>
+  <data name="ObsDetail_RowStart" xml:space="preserve">
+    <value>Début</value>
+  </data>
+  <data name="ObsDetail_RowStates" xml:space="preserve">
+    <value>États</value>
+  </data>
+  <data name="ObsDetail_RowTelescope" xml:space="preserve">
+    <value>Télescope</value>
+  </data>
+  <data name="ObsDetail_RowTitle" xml:space="preserve">
+    <value>Titre</value>
+  </data>
+  <data name="ObsDetail_RowType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="ObsDetail_RowVersion" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="ObsDetail_RowWavelength" xml:space="preserve">
+    <value>Longueur d'onde</value>
+  </data>
+  <data name="ObsDetail_ServiceUnreachable" xml:space="preserve">
+    <value>Le service de métadonnées est inaccessible.</value>
+  </data>
+  <data name="ObsDetail_SignInButton.Content" xml:space="preserve">
+    <value>Se connecter</value>
+  </data>
+  <data name="ObsDetail_SignInButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Se connecter pour consulter l'observation propriétaire</value>
+  </data>
+  <data name="ObsDetail_TabCoverage.Header" xml:space="preserve">
+    <value>Couverture</value>
+  </data>
+  <data name="ObsDetail_TabFiles.Header" xml:space="preserve">
+    <value>Fichiers</value>
+  </data>
+  <data name="ObsDetail_TabOverview.Header" xml:space="preserve">
+    <value>Aperçu</value>
+  </data>
+  <data name="ObsDetail_TabProvenance.Header" xml:space="preserve">
+    <value>Provenance</value>
+  </data>
+  <data name="ObsDetail_TabRaw.Header" xml:space="preserve">
+    <value>Brut</value>
+  </data>
+  <data name="ObsDetail_ViewAllFilesCadc" xml:space="preserve">
+    <value>Voir tous les fichiers sur le CADC</value>
+  </data>
+  <data name="ObsDetail_ViewOnCadcButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Voir l'observation sur le site Web du CADC</value>
+  </data>
+  <data name="ObsDetail_ViewOnCadcButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Voir sur le CADC</value>
+  </data>
+  <data name="ObsDetail_ViewOnCadcText.Text" xml:space="preserve">
+    <value>Voir sur le CADC</value>
+  </data>
+  <data name="Portal_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Portal_CountdownSeconds" xml:space="preserve">
+    <value>{0} s</value>
+  </data>
+  <data name="Portal_CpuCount" xml:space="preserve">
+    <value>CPU : {0}</value>
+  </data>
+  <data name="Portal_Delete" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Portal_Error" xml:space="preserve">
+    <value>Erreur</value>
+  </data>
+  <data name="Portal_ErrorBar.Title" xml:space="preserve">
+    <value>Erreur</value>
+  </data>
+  <data name="Portal_GpuCount" xml:space="preserve">
+    <value>GPU : {0}</value>
+  </data>
+  <data name="Portal_RamGb" xml:space="preserve">
+    <value>RAM : {0} Go</value>
+  </data>
+  <data name="Portal_RefreshBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Actualiser</value>
+  </data>
+  <data name="Portal_UnknownError" xml:space="preserve">
+    <value>Erreur inconnue</value>
+  </data>
+  <data name="Proposals_AutoLabel" xml:space="preserve">
+    <value>auto</value>
+  </data>
+  <data name="Quota_ErrorBar.Title" xml:space="preserve">
+    <value>Erreur</value>
+  </data>
+  <data name="Quota_Gigabytes" xml:space="preserve">
+    <value>{0:F2} Go</value>
+  </data>
+  <data name="Quota_Percent" xml:space="preserve">
+    <value>{0:F1} %</value>
+  </data>
+  <data name="Quota_QuotaLabel.Text" xml:space="preserve">
+    <value>Quota</value>
+  </data>
+  <data name="Quota_TitleText.Text" xml:space="preserve">
+    <value>Stockage</value>
+  </data>
+  <data name="Quota_UsageLabel.Text" xml:space="preserve">
+    <value>Utilisation</value>
+  </data>
+  <data name="Quota_UsedLabel.Text" xml:space="preserve">
+    <value>Utilisé</value>
+  </data>
+  <data name="Recent_ClearBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Effacer l'historique</value>
+  </data>
+  <data name="Recent_Empty" xml:space="preserve">
+    <value>Aucun lancement récent</value>
+  </data>
+  <data name="Recent_FilterBox.PlaceholderText" xml:space="preserve">
+    <value>Filtrer par nom ou type...</value>
+  </data>
+  <data name="Recent_Header.Text" xml:space="preserve">
+    <value>Lancements récents</value>
+  </data>
+  <data name="Recent_NoMatches" xml:space="preserve">
+    <value>Aucun résultat</value>
+  </data>
+  <data name="Recent_Relaunch" xml:space="preserve">
+    <value>Relancer</value>
+  </data>
+  <data name="Recent_Remove" xml:space="preserve">
+    <value>Retirer</value>
+  </data>
+  <data name="Research_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Research_Close" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="Research_CubeViewer" xml:space="preserve">
+    <value>Visionneuse de cubes</value>
+  </data>
+  <data name="Research_DefaultFileName" xml:space="preserve">
+    <value>observation</value>
+  </data>
+  <data name="Research_Delete" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Research_DownloadFits" xml:space="preserve">
+    <value>Télécharger le FITS</value>
+  </data>
+  <data name="Research_DownloadsTitle.Text" xml:space="preserve">
+    <value>Téléchargements</value>
+  </data>
+  <data name="Research_EmptyHint.Text" xml:space="preserve">
+    <value>Les observations téléchargées depuis la recherche dans les archives du CADC s'affichent ici.</value>
+  </data>
+  <data name="Research_EmptyTitle.Text" xml:space="preserve">
+    <value>Sélectionnez une observation</value>
+  </data>
+  <data name="Research_ExportBundleLine" xml:space="preserve">
+    <value>Ensemble : {0}</value>
+  </data>
+  <data name="Research_ExportButton.Content" xml:space="preserve">
+    <value>Exporter…</value>
+  </data>
+  <data name="Research_ExportButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Exporter vos recherches et requêtes sous forme d'ensemble compatible avec Claude</value>
+  </data>
+  <data name="Research_ExportChooseFolder" xml:space="preserve">
+    <value>Choisir un dossier et exporter…</value>
+  </data>
+  <data name="Research_ExportComplete" xml:space="preserve">
+    <value>Exportation terminée</value>
+  </data>
+  <data name="Research_ExportDescription" xml:space="preserve">
+    <value>Exporte vos observations téléchargées, vos notes et vos recherches enregistrées sous forme d'ensemble compatible avec Claude (manifest.json + README + dossiers par module), compressé en zip.</value>
+  </data>
+  <data name="Research_ExportDialogTitle" xml:space="preserve">
+    <value>Exporter les données</value>
+  </data>
+  <data name="Research_ExportFailed" xml:space="preserve">
+    <value>Échec de l'exportation</value>
+  </data>
+  <data name="Research_ExportIncludeFiles" xml:space="preserve">
+    <value>Inclure les fichiers téléchargés (ensemble plus volumineux)</value>
+  </data>
+  <data name="Research_ExportIncludeHistory" xml:space="preserve">
+    <value>Inclure les requêtes enregistrées et l'historique de recherche</value>
+  </data>
+  <data name="Research_ExportIncludeNotes" xml:space="preserve">
+    <value>Inclure les notes de recherche</value>
+  </data>
+  <data name="Research_ExportUploadSkipped" xml:space="preserve">
+    <value>(Téléversement vers VOSpace ignoré — non connecté.)</value>
+  </data>
+  <data name="Research_ExportUploadVoSpace" xml:space="preserve">
+    <value>Téléverser aussi le zip vers VOSpace (Verbinal-Exports/)</value>
+  </data>
+  <data name="Research_ExportUploadedLine" xml:space="preserve">
+    <value>Téléversé vers VOSpace : {0}</value>
+  </data>
+  <data name="Research_ExportZipLine" xml:space="preserve">
+    <value>Zip : {0}</value>
+  </data>
+  <data name="Research_FileInfo" xml:space="preserve">
+    <value>Informations sur le fichier</value>
+  </data>
+  <data name="Research_FileTypeFits" xml:space="preserve">
+    <value>Image FITS</value>
+  </data>
+  <data name="Research_FilterBox.PlaceholderText" xml:space="preserve">
+    <value>Filtrer...</value>
+  </data>
+  <data name="Research_Missing" xml:space="preserve">
+    <value>Manquant</value>
+  </data>
+  <data name="Research_NoteHeader" xml:space="preserve">
+    <value>Note</value>
+  </data>
+  <data name="Research_NotePlaceholder" xml:space="preserve">
+    <value>Ajouter une note…</value>
+  </data>
+  <data name="Research_NotesTitle" xml:space="preserve">
+    <value>Notes de recherche</value>
+  </data>
+  <data name="Research_OpenFile" xml:space="preserve">
+    <value>Ouvrir le fichier</value>
+  </data>
+  <data name="Research_RatingCaption" xml:space="preserve">
+    <value>évaluation</value>
+  </data>
+  <data name="Research_RowCalLevel" xml:space="preserve">
+    <value>Niveau d'étal.</value>
+  </data>
+  <data name="Research_RowCollection" xml:space="preserve">
+    <value>Collection</value>
+  </data>
+  <data name="Research_RowDec" xml:space="preserve">
+    <value>Déc.</value>
+  </data>
+  <data name="Research_RowDownloaded" xml:space="preserve">
+    <value>Téléchargé le</value>
+  </data>
+  <data name="Research_RowFileExists" xml:space="preserve">
+    <value>Fichier présent</value>
+  </data>
+  <data name="Research_RowFilter" xml:space="preserve">
+    <value>Filtre</value>
+  </data>
+  <data name="Research_RowInstrument" xml:space="preserve">
+    <value>Instrument</value>
+  </data>
+  <data name="Research_RowObservationId" xml:space="preserve">
+    <value>ID d'observation</value>
+  </data>
+  <data name="Research_RowPath" xml:space="preserve">
+    <value>Chemin</value>
+  </data>
+  <data name="Research_RowRa" xml:space="preserve">
+    <value>AD</value>
+  </data>
+  <data name="Research_RowSize" xml:space="preserve">
+    <value>Taille</value>
+  </data>
+  <data name="Research_RowStartDate" xml:space="preserve">
+    <value>Date de début</value>
+  </data>
+  <data name="Research_RowTarget" xml:space="preserve">
+    <value>Cible</value>
+  </data>
+  <data name="Research_ShowInExplorer" xml:space="preserve">
+    <value>Afficher dans l'Explorateur</value>
+  </data>
+  <data name="Research_TagsHeader" xml:space="preserve">
+    <value>Étiquettes</value>
+  </data>
+  <data name="Research_TagsPlaceholder" xml:space="preserve">
+    <value>étiquettes séparées par des virgules</value>
+  </data>
+  <data name="Research_Yes" xml:space="preserve">
+    <value>Oui</value>
+  </data>
+  <data name="Search_AdqlBox.PlaceholderText" xml:space="preserve">
+    <value>Saisir une requête ADQL...</value>
+  </data>
+  <data name="Search_AdqlPivot.Header" xml:space="preserve">
+    <value>Éditeur ADQL</value>
+  </data>
+  <data name="Search_ApplyFiltersBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Convertir les filtres actifs en requête ADQL</value>
+  </data>
+  <data name="Search_ApplyFiltersText.Text" xml:space="preserve">
+    <value>Appliquer à l'ADQL</value>
+  </data>
+  <data name="Search_BandpassWidthBox.Header" xml:space="preserve">
+    <value>Largeur de bande passante</value>
+  </data>
+  <data name="Search_CancelButton" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Search_ClearAllButton.Content" xml:space="preserve">
+    <value>Tout effacer</value>
+  </data>
+  <data name="Search_ColumnsButton.Content" xml:space="preserve">
+    <value>Colonnes</value>
+  </data>
+  <data name="Search_ConstraintsExpander.Header" xml:space="preserve">
+    <value>Contraintes supplémentaires</value>
+  </data>
+  <data name="Search_DataReleaseBox.Header" xml:space="preserve">
+    <value>Diffusion des données</value>
+  </data>
+  <data name="Search_DataReleaseBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. &gt; 2023-01-01</value>
+  </data>
+  <data name="Search_DefaultQueryName" xml:space="preserve">
+    <value>Requête {0}</value>
+  </data>
+  <data name="Search_DeleteSavedBtn.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Supprimer la requête enregistrée</value>
+  </data>
+  <data name="Search_DeleteSavedBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Search_DownloadButton" xml:space="preserve">
+    <value>Télécharger</value>
+  </data>
+  <data name="Search_DownloadFailed" xml:space="preserve">
+    <value>Échec du téléchargement</value>
+  </data>
+  <data name="Search_DownloadedFile" xml:space="preserve">
+    <value>{0} téléchargé</value>
+  </data>
+  <data name="Search_DownloadingFile" xml:space="preserve">
+    <value>Téléchargement de {0}...</value>
+  </data>
+  <data name="Search_ErrorBar.Title" xml:space="preserve">
+    <value>Erreur</value>
+  </data>
+  <data name="Search_ExecuteButtonText.Text" xml:space="preserve">
+    <value>Exécuter</value>
+  </data>
+  <data name="Search_ExportFailed" xml:space="preserve">
+    <value>Échec de l'exportation {0}</value>
+  </data>
+  <data name="Search_FileTypeAll" xml:space="preserve">
+    <value>Tous les fichiers</value>
+  </data>
+  <data name="Search_FileTypeFits" xml:space="preserve">
+    <value>Image FITS</value>
+  </data>
+  <data name="Search_FilterPlaceholder" xml:space="preserve">
+    <value>Filtrer...</value>
+  </data>
+  <data name="Search_FirstPageBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Première page</value>
+  </data>
+  <data name="Search_FormPivot.Header" xml:space="preserve">
+    <value>Formulaire de recherche</value>
+  </data>
+  <data name="Search_ImageLoadFailed" xml:space="preserve">
+    <value>Échec du chargement de l'image</value>
+  </data>
+  <data name="Search_IntegrationTimeBox.Header" xml:space="preserve">
+    <value>Temps d'intégration</value>
+  </data>
+  <data name="Search_IntegrationTimeBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. 100..3600</value>
+  </data>
+  <data name="Search_IntentCombo.Header" xml:space="preserve">
+    <value>Intention</value>
+  </data>
+  <data name="Search_KeywordsBox.Header" xml:space="preserve">
+    <value>Mots-clés</value>
+  </data>
+  <data name="Search_LastPageBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Dernière page</value>
+  </data>
+  <data name="Search_LoadRecentBtn.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Charger dans le formulaire de recherche</value>
+  </data>
+  <data name="Search_LoadRecentBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Charger dans le formulaire</value>
+  </data>
+  <data name="Search_LoadSavedBtn.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Charger dans l'éditeur ADQL</value>
+  </data>
+  <data name="Search_LoadSavedBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Charger dans l'éditeur ADQL</value>
+  </data>
+  <data name="Search_MaxRecordsLabel.Text" xml:space="preserve">
+    <value>Nombre max. d'enregistrements</value>
+  </data>
+  <data name="Search_NarrowToValue" xml:space="preserve">
+    <value>Restreindre les résultats à « {0} »</value>
+  </data>
+  <data name="Search_NextPageBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Page suivante</value>
+  </data>
+  <data name="Search_NoPreview" xml:space="preserve">
+    <value>Aucun aperçu disponible</value>
+  </data>
+  <data name="Search_NoResults" xml:space="preserve">
+    <value>Aucun résultat trouvé.</value>
+  </data>
+  <data name="Search_ObsDateBox.Header" xml:space="preserve">
+    <value>Date d'observation</value>
+  </data>
+  <data name="Search_ObsDateBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. 2020..2021</value>
+  </data>
+  <data name="Search_ObservationIdBox.Header" xml:space="preserve">
+    <value>ID d'observation</value>
+  </data>
+  <data name="Search_ObservationIdBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. jw01345*</value>
+  </data>
+  <data name="Search_ObservationSection.Text" xml:space="preserve">
+    <value>Observation</value>
+  </data>
+  <data name="Search_PageNumber" xml:space="preserve">
+    <value>Page {0} / {1}</value>
+  </data>
+  <data name="Search_PiNameBox.Header" xml:space="preserve">
+    <value>Nom du chercheur principal</value>
+  </data>
+  <data name="Search_PiNameBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. Smith</value>
+  </data>
+  <data name="Search_PixelScaleBox.Header" xml:space="preserve">
+    <value>Échelle des pixels</value>
+  </data>
+  <data name="Search_PixelScaleBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. 0.1..1.0</value>
+  </data>
+  <data name="Search_PrevPageBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Page précédente</value>
+  </data>
+  <data name="Search_PreviewButton" xml:space="preserve">
+    <value>Aperçu</value>
+  </data>
+  <data name="Search_PreviewFailed" xml:space="preserve">
+    <value>Échec de l'aperçu</value>
+  </data>
+  <data name="Search_ProposalIdBox.Header" xml:space="preserve">
+    <value>ID de la proposition</value>
+  </data>
+  <data name="Search_ProposalTitleBox.Header" xml:space="preserve">
+    <value>Titre de la proposition</value>
+  </data>
+  <data name="Search_PublicOnlyCheck.Content" xml:space="preserve">
+    <value>Données publiques seulement</value>
+  </data>
+  <data name="Search_RadiusBox.Header" xml:space="preserve">
+    <value>Rayon (deg)</value>
+  </data>
+  <data name="Search_RecentHeader.Text" xml:space="preserve">
+    <value>Recherches récentes</value>
+  </data>
+  <data name="Search_RemoveRecentBtn.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Supprimer de l'historique</value>
+  </data>
+  <data name="Search_RemoveRecentBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Search_ResetButton.Content" xml:space="preserve">
+    <value>Réinitialiser</value>
+  </data>
+  <data name="Search_ResolverCombo.Header" xml:space="preserve">
+    <value>Résolveur</value>
+  </data>
+  <data name="Search_ResolvingPowerBox.Header" xml:space="preserve">
+    <value>Pouvoir de résolution</value>
+  </data>
+  <data name="Search_ResolvingPowerBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. 1000..5000</value>
+  </data>
+  <data name="Search_ResolvingText.Text" xml:space="preserve">
+    <value>Résolution en cours...</value>
+  </data>
+  <data name="Search_RestFrameEnergyBox.Header" xml:space="preserve">
+    <value>Énergie au repos</value>
+  </data>
+  <data name="Search_ResultsPivot.Header" xml:space="preserve">
+    <value>Résultats</value>
+  </data>
+  <data name="Search_ResultsSuffix.Text" xml:space="preserve">
+    <value>résultats</value>
+  </data>
+  <data name="Search_RowsPerPageLabel.Text" xml:space="preserve">
+    <value>Lignes par page</value>
+  </data>
+  <data name="Search_RunSavedBtn.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Exécuter la requête</value>
+  </data>
+  <data name="Search_RunSavedBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Exécuter la requête</value>
+  </data>
+  <data name="Search_RunningQuery" xml:space="preserve">
+    <value>Exécution de « {0} »...</value>
+  </data>
+  <data name="Search_SaveQueryBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Enregistrer la requête ADQL actuelle</value>
+  </data>
+  <data name="Search_SaveQueryNameBox.PlaceholderText" xml:space="preserve">
+    <value>Nom (facultatif)</value>
+  </data>
+  <data name="Search_SaveToResearchFailed" xml:space="preserve">
+    <value>Échec de l'enregistrement dans Recherche</value>
+  </data>
+  <data name="Search_SavedHeader.Text" xml:space="preserve">
+    <value>Requêtes enregistrées</value>
+  </data>
+  <data name="Search_SavedToResearch" xml:space="preserve">
+    <value>Enregistré dans Recherche</value>
+  </data>
+  <data name="Search_SearchButtonText.Text" xml:space="preserve">
+    <value>Rechercher</value>
+  </data>
+  <data name="Search_SelectFileTitle" xml:space="preserve">
+    <value>Sélectionner le fichier à télécharger ({0} disponibles)</value>
+  </data>
+  <data name="Search_SizeB" xml:space="preserve">
+    <value>{0} o</value>
+  </data>
+  <data name="Search_SizeGB" xml:space="preserve">
+    <value>{0:F2} Go</value>
+  </data>
+  <data name="Search_SizeKB" xml:space="preserve">
+    <value>{0:F1} Ko</value>
+  </data>
+  <data name="Search_SizeMB" xml:space="preserve">
+    <value>{0:F1} Mo</value>
+  </data>
+  <data name="Search_SpatialCutoutCheck.Content" xml:space="preserve">
+    <value>Découpe spatiale</value>
+  </data>
+  <data name="Search_SpatialSection.Text" xml:space="preserve">
+    <value>Spatial</value>
+  </data>
+  <data name="Search_SpectralCoverageBox.Header" xml:space="preserve">
+    <value>Couverture spectrale</value>
+  </data>
+  <data name="Search_SpectralCoverageBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. 400..700</value>
+  </data>
+  <data name="Search_SpectralCutoutCheck.Content" xml:space="preserve">
+    <value>Découpe spectrale</value>
+  </data>
+  <data name="Search_SpectralSamplingBox.Header" xml:space="preserve">
+    <value>Échantillonnage spectral</value>
+  </data>
+  <data name="Search_SpectralSection.Text" xml:space="preserve">
+    <value>Spectral</value>
+  </data>
+  <data name="Search_TargetBox.Header" xml:space="preserve">
+    <value>Cible ou coordonnées</value>
+  </data>
+  <data name="Search_TargetBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. M31, NGC 1234</value>
+  </data>
+  <data name="Search_TemporalSection.Text" xml:space="preserve">
+    <value>Temporel</value>
+  </data>
+  <data name="Search_TimeSpanBox.Header" xml:space="preserve">
+    <value>Intervalle de temps</value>
+  </data>
+  <data name="Search_TimeSpanBox.PlaceholderText" xml:space="preserve">
+    <value>p. ex. 1..10</value>
+  </data>
+  <data name="Search_Title.Text" xml:space="preserve">
+    <value>Recherche dans les archives du CADC</value>
+  </data>
+  <data name="Search_TrainBandLabel.Text" xml:space="preserve">
+    <value>Bande</value>
+  </data>
+  <data name="Search_TrainCalLevelLabel.Text" xml:space="preserve">
+    <value>Niveau d'étal.</value>
+  </data>
+  <data name="Search_TrainCollectionLabel.Text" xml:space="preserve">
+    <value>Collection</value>
+  </data>
+  <data name="Search_TrainDataTypeLabel.Text" xml:space="preserve">
+    <value>Type de données</value>
+  </data>
+  <data name="Search_TrainFilterLabel.Text" xml:space="preserve">
+    <value>Filtre</value>
+  </data>
+  <data name="Search_TrainInstrumentLabel.Text" xml:space="preserve">
+    <value>Instrument</value>
+  </data>
+  <data name="Search_TrainObsTypeLabel.Text" xml:space="preserve">
+    <value>Type d'obs.</value>
+  </data>
+  <data name="Search_UnitDefault" xml:space="preserve">
+    <value>Par défaut</value>
+  </data>
+  <data name="Sessions_AutoRefreshing.Text" xml:space="preserve">
+    <value>Actualisation automatique</value>
+  </data>
+  <data name="Sessions_DeleteBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Sessions_DeleteConfirm" xml:space="preserve">
+    <value>Voulez-vous vraiment supprimer la session « {0} » ?</value>
+  </data>
+  <data name="Sessions_DeleteDialog.CloseButtonText" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Sessions_DeleteDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Sessions_DeleteDialog.Title" xml:space="preserve">
+    <value>Supprimer la session</value>
+  </data>
+  <data name="Sessions_DeleteWarning.Text" xml:space="preserve">
+    <value>Cette action est irréversible.</value>
+  </data>
+  <data name="Sessions_Empty" xml:space="preserve">
+    <value>Aucune session active.</value>
+  </data>
+  <data name="Sessions_EventsBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Voir les événements</value>
+  </data>
+  <data name="Sessions_Expires" xml:space="preserve">
+    <value>Expire : {0}</value>
+  </data>
+  <data name="Sessions_Header.Text" xml:space="preserve">
+    <value>Sessions actives</value>
+  </data>
+  <data name="Sessions_NotAvailable" xml:space="preserve">
+    <value>n/d</value>
+  </data>
+  <data name="Sessions_OpenBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Ouvrir dans le navigateur</value>
+  </data>
+  <data name="Sessions_Ram" xml:space="preserve">
+    <value>RAM : {0}</value>
+  </data>
+  <data name="Sessions_RenewBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Prolonger la durée</value>
+  </data>
+  <data name="Sessions_RenewDialogTitle" xml:space="preserve">
+    <value>Renouveler la session</value>
+  </data>
+  <data name="Sessions_RenewFailed" xml:space="preserve">
+    <value>Échec du renouvellement</value>
+  </data>
+  <data name="Sessions_RenewSuccess" xml:space="preserve">
+    <value>« {0} » renouvelée avec succès !</value>
+  </data>
+  <data name="Sessions_RenewedBody" xml:space="preserve">
+    <value>L'échéance de la session a été prolongée.</value>
+  </data>
+  <data name="Sessions_RenewedTitle" xml:space="preserve">
+    <value>Session renouvelée</value>
+  </data>
+  <data name="Sessions_Renewing" xml:space="preserve">
+    <value>Renouvellement de « {0} »...</value>
+  </data>
+  <data name="Sessions_Started" xml:space="preserve">
+    <value>Début : {0}</value>
+  </data>
+  <data name="Sessions_TypeContrib" xml:space="preserve">
+    <value>Contrib</value>
+  </data>
+  <data name="Sessions_TypeDesktop" xml:space="preserve">
+    <value>Bureau</value>
+  </data>
+  <data name="Sessions_TypeHeadless" xml:space="preserve">
+    <value>Sans interface</value>
+  </data>
+  <data name="Sessions_TypeNotebook" xml:space="preserve">
+    <value>Calepin</value>
+  </data>
+  <data name="Storage_AllFiles" xml:space="preserve">
+    <value>Tous les fichiers</value>
+  </data>
+  <data name="Storage_CancelButton" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Storage_ColModifiedButton.Content" xml:space="preserve">
+    <value>Modifié</value>
+  </data>
+  <data name="Storage_ColModifiedButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Trier par date</value>
+  </data>
+  <data name="Storage_ColNameButton.Content" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="Storage_ColNameButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Trier par nom</value>
+  </data>
+  <data name="Storage_ColSizeButton.Content" xml:space="preserve">
+    <value>Taille</value>
+  </data>
+  <data name="Storage_ColSizeButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Trier par taille</value>
+  </data>
+  <data name="Storage_CreateButton" xml:space="preserve">
+    <value>Créer</value>
+  </data>
+  <data name="Storage_DeleteButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Supprimer l'élément sélectionné</value>
+  </data>
+  <data name="Storage_DeleteButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Supprimer l'élément sélectionné</value>
+  </data>
+  <data name="Storage_DeleteConfirmButton" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Storage_DeleteFileConfirm" xml:space="preserve">
+    <value>Supprimer « {0} » ?</value>
+  </data>
+  <data name="Storage_DeleteFolderConfirm" xml:space="preserve">
+    <value>Supprimer le dossier « {0} » ? (Il doit être vide)</value>
+  </data>
+  <data name="Storage_DeleteTitle" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Storage_DownloadButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Télécharger l'élément sélectionné</value>
+  </data>
+  <data name="Storage_DownloadButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Télécharger l'élément sélectionné</value>
+  </data>
+  <data name="Storage_DownloadFailed" xml:space="preserve">
+    <value>Échec du téléchargement : {0}</value>
+  </data>
+  <data name="Storage_DownloadLabel.Text" xml:space="preserve">
+    <value>Télécharger</value>
+  </data>
+  <data name="Storage_Downloading" xml:space="preserve">
+    <value>Téléchargement de {0}...</value>
+  </data>
+  <data name="Storage_DropHintText.Text" xml:space="preserve">
+    <value>Déposez les fichiers ici pour les téléverser</value>
+  </data>
+  <data name="Storage_EmptyFolderText.Text" xml:space="preserve">
+    <value>Ce dossier est vide</value>
+  </data>
+  <data name="Storage_ErrorBar.Title" xml:space="preserve">
+    <value>Erreur</value>
+  </data>
+  <data name="Storage_FolderNamePlaceholder" xml:space="preserve">
+    <value>Nom du dossier</value>
+  </data>
+  <data name="Storage_ItemCount" xml:space="preserve">
+    <value>{0} éléments</value>
+  </data>
+  <data name="Storage_MenuCopyPath.Text" xml:space="preserve">
+    <value>Copier le chemin</value>
+  </data>
+  <data name="Storage_MenuDelete.Text" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Storage_MenuDownload.Text" xml:space="preserve">
+    <value>Télécharger</value>
+  </data>
+  <data name="Storage_MenuOpenCube.Text" xml:space="preserve">
+    <value>Ouvrir dans le visualiseur de cubes</value>
+  </data>
+  <data name="Storage_MenuOpenFits.Text" xml:space="preserve">
+    <value>Ouvrir dans le visualiseur FITS</value>
+  </data>
+  <data name="Storage_NewFolderButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Nouveau dossier</value>
+  </data>
+  <data name="Storage_NewFolderButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Créer un nouveau dossier</value>
+  </data>
+  <data name="Storage_NewFolderLabel.Text" xml:space="preserve">
+    <value>Nouveau dossier</value>
+  </data>
+  <data name="Storage_NewFolderTitle" xml:space="preserve">
+    <value>Nouveau dossier</value>
+  </data>
+  <data name="Storage_OnlyFitsInViewer" xml:space="preserve">
+    <value>Seuls les fichiers FITS peuvent être ouverts dans le visualiseur</value>
+  </data>
+  <data name="Storage_OpenFailed" xml:space="preserve">
+    <value>Échec de l'ouverture : {0}</value>
+  </data>
+  <data name="Storage_RefreshButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Actualiser le dossier</value>
+  </data>
+  <data name="Storage_RefreshButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Actualiser</value>
+  </data>
+  <data name="Storage_Title.Text" xml:space="preserve">
+    <value>Stockage VOSpace</value>
+  </data>
+  <data name="Storage_UpButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Monter d'un niveau</value>
+  </data>
+  <data name="Storage_UpButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Monter</value>
+  </data>
+  <data name="Storage_UploadButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Téléverser des fichiers</value>
+  </data>
+  <data name="Storage_UploadButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Téléverser des fichiers</value>
+  </data>
+  <data name="Storage_UploadFailed" xml:space="preserve">
+    <value>Échec du téléversement : {0}</value>
+  </data>
+  <data name="Storage_UploadLabel.Text" xml:space="preserve">
+    <value>Téléverser</value>
+  </data>
+  <data name="Storage_UploadOfFileFailed" xml:space="preserve">
+    <value>Échec du téléversement de {0} : {1}</value>
+  </data>
+  <data name="Storage_Uploading" xml:space="preserve">
+    <value>Téléversement de {0}...</value>
+  </data>
+  <data name="Wf_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Wf_CancelButton.Content" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Wf_CopyPromptButton.Content" xml:space="preserve">
+    <value>Copier l’invite d’agent</value>
+  </data>
+  <data name="Wf_CopySuffix" xml:space="preserve">
+    <value>{0} (copie)</value>
+  </data>
+  <data name="Wf_CurrentPill.Text" xml:space="preserve">
+    <value>en cours</value>
+  </data>
+  <data name="Wf_DeleteBody" xml:space="preserve">
+    <value>Ceci supprime le fichier local, y compris sa progression. Les modèles dont il a été copié ne sont pas touchés.</value>
+  </data>
+  <data name="Wf_DeleteButton.Content" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Wf_DeleteConfirm" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Wf_DeleteTitle" xml:space="preserve">
+    <value>Supprimer le flux de travail ?</value>
+  </data>
+  <data name="Wf_DuplicateButton.Content" xml:space="preserve">
+    <value>Dupliquer</value>
+  </data>
+  <data name="Wf_EditButton.Content" xml:space="preserve">
+    <value>Modifier</value>
+  </data>
+  <data name="Wf_EditHeader.Text" xml:space="preserve">
+    <value>Modifier le flux de travail (liste de contrôle Markdown — l’aperçu se met à jour en direct)</value>
+  </data>
+  <data name="Wf_EmptyState.Text" xml:space="preserve">
+    <value>Sélectionnez un flux de travail pour voir ses étapes — ou partez d’un modèle.</value>
+  </data>
+  <data name="Wf_ImportButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Importer un fichier .workflow.md</value>
+  </data>
+  <data name="Wf_Loading" xml:space="preserve">
+    <value>Chargement…</value>
+  </data>
+  <data name="Wf_LocalEmptyHint.Text" xml:space="preserve">
+    <value>Choisissez un modèle et appuyez sur « Utiliser ce flux de travail » pour commencer.</value>
+  </data>
+  <data name="Wf_MyWorkflowsHeader.Text" xml:space="preserve">
+    <value>MES FLUX DE TRAVAIL</value>
+  </data>
+  <data name="Wf_NewButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Nouveau flux de travail</value>
+  </data>
+  <data name="Wf_NewWorkflowTitle" xml:space="preserve">
+    <value>Nouveau flux de travail</value>
+  </data>
+  <data name="Wf_PageTitle.Text" xml:space="preserve">
+    <value>Flux de travail</value>
+  </data>
+  <data name="Wf_PromptCopied" xml:space="preserve">
+    <value>Invite d’agent copiée — collez-la dans Claude.</value>
+  </data>
+  <data name="Wf_PublishButton.Content" xml:space="preserve">
+    <value>Publier sur VOSpace</value>
+  </data>
+  <data name="Wf_PublishConfirm" xml:space="preserve">
+    <value>Publier</value>
+  </data>
+  <data name="Wf_PublishFailed" xml:space="preserve">
+    <value>Échec de la publication : {0}</value>
+  </data>
+  <data name="Wf_PublishTitle" xml:space="preserve">
+    <value>Publier sur VOSpace</value>
+  </data>
+  <data name="Wf_PublishUploadsTo" xml:space="preserve">
+    <value>Téléverse vers {0}</value>
+  </data>
+  <data name="Wf_PublishedTo" xml:space="preserve">
+    <value>Publié : {0}</value>
+  </data>
+  <data name="Wf_ReadOnlyToggleTooltip" xml:space="preserve">
+    <value>Source en lecture seule — appuyez sur « Utiliser ce flux de travail » pour suivre la progression</value>
+  </data>
+  <data name="Wf_ResetProgressCheck" xml:space="preserve">
+    <value>Réinitialiser la progression dans la copie publiée</value>
+  </data>
+  <data name="Wf_SaveButton.Content" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Wf_SignInToBrowse" xml:space="preserve">
+    <value>Connectez-vous pour parcourir les flux de travail VOSpace.</value>
+  </data>
+  <data name="Wf_SignInToPublish" xml:space="preserve">
+    <value>Connectez-vous pour publier des flux de travail sur VOSpace.</value>
+  </data>
+  <data name="Wf_SourceBuiltIn" xml:space="preserve">
+    <value>Modèle intégré</value>
+  </data>
+  <data name="Wf_SourceLocal" xml:space="preserve">
+    <value>Local</value>
+  </data>
+  <data name="Wf_SourceVoSpace" xml:space="preserve">
+    <value>VOSpace</value>
+  </data>
+  <data name="Wf_TemplatesHeader.Text" xml:space="preserve">
+    <value>MODÈLES</value>
+  </data>
+  <data name="Wf_ToggleStepTooltip" xml:space="preserve">
+    <value>Marquer cette étape comme terminée / non terminée</value>
+  </data>
+  <data name="Wf_ToolChip.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Outil d’agent — cliquez pour copier le nom</value>
+  </data>
+  <data name="Wf_UseButton.Content" xml:space="preserve">
+    <value>Utiliser ce flux de travail</value>
+  </data>
+  <data name="Wf_VosEmpty" xml:space="preserve">
+    <value>Aucun fichier .workflow.md dans {0} pour l’instant.</value>
+  </data>
+  <data name="Wf_VosHeader.Text" xml:space="preserve">
+    <value>VOSPACE</value>
+  </data>
+  <data name="Wf_VosHintInitial" xml:space="preserve">
+    <value>Appuyez sur Actualiser pour lister vos:&lt;vous&gt;/workflows.</value>
+  </data>
+  <data name="Wf_VosListFailed" xml:space="preserve">
+    <value>Impossible de lister les flux de travail VOSpace : {0}</value>
+  </data>
+  <data name="Wf_VosOpenFailed" xml:space="preserve">
+    <value>Impossible d’ouvrir le flux de travail VOSpace : {0}</value>
+  </data>
+  <data name="Wf_VosRefreshButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Actualiser vos:&lt;vous&gt;/workflows</value>
+  </data>
 </root>
