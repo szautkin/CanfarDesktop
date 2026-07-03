@@ -58,11 +58,6 @@
                         AutomationProperties.Name="Settings" Click="OnOpenSettingsClick">
                     <FontIcon Glyph="&#xE713;" FontSize="16" />
                 </Button>
-                <Button x:Uid="MainWindow_AboutButton" Click="OnAboutClick" ToolTipService.ToolTip="About" Padding="6,4"
-                        Background="Transparent" BorderThickness="0"
-                        AutomationProperties.Name="About Verbinal">
-                    <FontIcon Glyph="&#xE946;" FontSize="16" />
-                </Button>
                 <!-- Agent proposals (visible while the MCP server runs; badge = pending count) -->
                 <Button x:Name="ProposalsButton" x:Uid="MainWindow_ProposalsButton" Click="OnProposalsClick" Padding="6,4"
                         Background="Transparent" BorderThickness="0" Visibility="Collapsed"

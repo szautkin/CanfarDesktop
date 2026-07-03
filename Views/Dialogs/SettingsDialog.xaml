@@ -141,17 +141,27 @@
                     <notebook:NotebookSettingsPanel />
                 </StackPanel>
 
-                <!-- About -->
+                <!-- About: the app's one About surface (the old toolbar dialog was removed).
+                     Everything centered on one axis for a deliberate, aligned composition. -->
                 <StackPanel x:Name="AboutPanel" Spacing="6" Visibility="Collapsed" HorizontalAlignment="Center"
-                            Margin="0,24,0,0">
-                    <FontIcon Glyph="&#xE9A9;" FontSize="44" HorizontalAlignment="Center"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                            Margin="0,32,0,16">
+                    <Image Source="ms-appx:///Assets/Verbinal_icon.png" Width="72" Height="72"
+                           HorizontalAlignment="Center" Margin="0,0,0,4" />
                     <TextBlock Text="Verbinal" Style="{StaticResource TitleTextBlockStyle}" HorizontalAlignment="Center" />
+                    <TextBlock x:Name="AboutSubtitleText" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center"
+                               TextAlignment="Center" TextWrapping="Wrap" MaxWidth="360"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     <TextBlock x:Name="VersionText" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <TextBlock Text="© 2026 Serhii Zautkin" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                     <TextBlock x:Uid="Settings_AboutBody" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360" Margin="0,8,0,0"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                Text="A native Windows client for the Canadian Astronomy Data Centre and CANFAR Science Platform — search, view, compute, and storage." />
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" Margin="0,8,0,0">
+                        <HyperlinkButton x:Uid="Settings_AboutVisitLink" Content="Visit canfar.net" NavigateUri="https://www.canfar.net" />
+                        <HyperlinkButton x:Name="TermsLink" x:Uid="Settings_AboutTermsLink" Content="Terms of Use" Click="OnTermsLinkClick" />
+                    </StackPanel>
                 </StackPanel>
             </Grid>
         </ScrollViewer>

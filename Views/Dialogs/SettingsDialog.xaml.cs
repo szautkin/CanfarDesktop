@@ -18,12 +18,14 @@ public sealed partial class SettingsDialog : ContentDialog
 {
     private readonly ISettingsService _settings;
     private bool _loading;
+    private Func<Task>? _showTerms;
 
     public SettingsDialog()
     {
         InitializeComponent();
         _settings = App.Services.GetRequiredService<ISettingsService>();
         VersionText.Text = Loc.F("About_Version", AppVersion());
+        AboutSubtitleText.Text = Loc.T("About_Subtitle");
         PopulateGeneral();
         PopulatePortal();
         Nav.SelectedItem = Nav.MenuItems.Count > 0 ? Nav.MenuItems[0] : null; // General
@@ -40,8 +42,15 @@ public sealed partial class SettingsDialog : ContentDialog
         };
     }
 
-    public static Task ShowAsync(XamlRoot root)
-        => new SettingsDialog { XamlRoot = root }.ShowAsync().AsTask();
+    public static Task ShowAsync(XamlRoot root, Func<Task>? showTerms = null)
+        => new SettingsDialog { XamlRoot = root, _showTerms = showTerms }.ShowAsync().AsTask();
+
+    // Only one ContentDialog may be open at a time — close Settings before the Terms viewer.
+    private async void OnTermsLinkClick(object sender, RoutedEventArgs e)
+    {
+        Hide();
+        if (_showTerms is not null) await _showTerms();
+    }
 
     private void PopulateGeneral()
     {

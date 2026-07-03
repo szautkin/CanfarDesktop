@@ -1188,7 +1188,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnOpenSettingsClick(object sender, RoutedEventArgs e)
     {
-        await Views.Dialogs.SettingsDialog.ShowAsync(Content.XamlRoot);
+        await Views.Dialogs.SettingsDialog.ShowAsync(Content.XamlRoot, ShowTermsViewerAsync);
     }
 
     private async void OnImageDiscoveryClick(object sender, RoutedEventArgs e)
@@ -1199,96 +1199,6 @@ public sealed partial class MainWindow : Window
     private async void OnAIComputeClick(object sender, RoutedEventArgs e)
     {
         await Views.Dialogs.AIComputeSettingsDialog.ShowAsync(Content.XamlRoot);
-    }
-
-    #endregion
-
-    #region About
-
-    private async void OnAboutClick(object sender, RoutedEventArgs e)
-    {
-        var logo = new Image
-        {
-            Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri("ms-appx:///Assets/Verbinal_icon.png")),
-            Width = 64, Height = 64, HorizontalAlignment = HorizontalAlignment.Center
-        };
-
-        var title = new TextBlock
-        {
-            Text = "Verbinal",
-            Style = (Style)Application.Current.Resources["TitleTextBlockStyle"],
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-
-        var subtitle = new TextBlock
-        {
-            Text = Loc.T("About_Subtitle"),
-            Style = (Style)Application.Current.Resources["BodyTextBlockStyle"],
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
-        };
-
-        var version = new TextBlock
-        {
-            Text = Loc.F("About_Version", GetAppVersion()),
-            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"]
-        };
-
-        var copyright = new TextBlock
-        {
-            Text = "\u00a9 2026 Serhii Zautkin",
-            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorTertiaryBrush"]
-        };
-
-        var link = new HyperlinkButton
-        {
-            Content = Loc.T("About_VisitLink"),
-            NavigateUri = new Uri("https://www.canfar.net"),
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-
-        var termsLink = new HyperlinkButton
-        {
-            Content = Loc.T("About_TermsOfUse"),
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-
-        var panel = new StackPanel { Spacing = 12, MinWidth = 300 };
-        panel.Children.Add(logo);
-        panel.Children.Add(title);
-        panel.Children.Add(subtitle);
-        panel.Children.Add(version);
-        panel.Children.Add(copyright);
-        panel.Children.Add(link);
-        panel.Children.Add(termsLink);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.T("About_Title"),
-            Content = panel,
-            CloseButtonText = Loc.T("Common_Close"),
-            XamlRoot = Content.XamlRoot
-        };
-
-        // Only one ContentDialog may be open at a time — close About before showing Terms.
-        termsLink.Click += async (_, _) =>
-        {
-            dialog.Hide();
-            await ShowTermsViewerAsync();
-        };
-
-        await dialog.ShowAsync();
-    }
-
-    private static string GetAppVersion()
-    {
-        var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-        var version = assembly.GetName().Version;
-        return version is not null ? $"{version.Major}.{version.Minor}.{version.Build}" : "0.0.0";
     }
 
     #endregion
