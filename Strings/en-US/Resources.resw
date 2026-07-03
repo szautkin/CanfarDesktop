@@ -75,7 +75,7 @@
     <value>Accept</value>
   </data>
   <data name="MainWindow_Title" xml:space="preserve">
-    <value>Verbinal - a CANFAR Science Portal and Research Platform</value>
+    <value>Verbinal - a CANFAR Science Portal Companion and Research Platform</value>
   </data>
   <data name="MainWindow_OfflineHint" xml:space="preserve">
     <value>Offline — check your network connection</value>
@@ -132,7 +132,7 @@
     <value>About Verbinal</value>
   </data>
   <data name="About_Subtitle" xml:space="preserve">
-    <value>A CANFAR Science Portal and Research Platform</value>
+    <value>A CANFAR Science Portal Companion and Research Platform</value>
   </data>
   <data name="About_Version" xml:space="preserve">
     <value>Version {0}</value>
@@ -144,7 +144,7 @@
     <value>Terms of Use</value>
   </data>
   <data name="Landing_Subtitle.Text" xml:space="preserve">
-    <value>A CANFAR Science Portal and Research Platform</value>
+    <value>A CANFAR Science Portal Companion and Research Platform</value>
   </data>
   <data name="Tile_Portal_Title" xml:space="preserve">
     <value>Portal</value>

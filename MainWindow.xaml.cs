@@ -55,7 +55,7 @@ public sealed partial class MainWindow : Window
         appWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Verbinal.ico"));
         // Loc.T returns the key when no resources.pri is present (unpackaged dev run) — keep the English title then.
         var locTitle = Loc.T("MainWindow_Title");
-        appWindow.Title = locTitle == "MainWindow_Title" ? "Verbinal - a CANFAR Science Portal and Research Platform" : locTitle;
+        appWindow.Title = locTitle == "MainWindow_Title" ? "Verbinal - a CANFAR Science Portal Companion and Research Platform" : locTitle;
 
         _viewModel = App.Services.GetRequiredService<MainViewModel>();
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
