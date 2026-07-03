@@ -111,19 +111,19 @@
     <value>Session expirée. Veuillez vous reconnecter.</value>
   </data>
   <data name="MainWindow_LoginError" xml:space="preserve">
-    <value>Erreur de connexion : {0}</value>
+    <value>Erreur de connexion : {0}</value>
   </data>
   <data name="MainWindow_StartupError" xml:space="preserve">
-    <value>Erreur au démarrage : {0}</value>
+    <value>Erreur au démarrage : {0}</value>
   </data>
   <data name="MainWindow_NotebookError" xml:space="preserve">
-    <value>Erreur du calepin : {0}</value>
+    <value>Erreur du calepin : {0}</value>
   </data>
   <data name="MainWindow_CubeViewerError" xml:space="preserve">
-    <value>Erreur de la visionneuse de cubes : {0}</value>
+    <value>Erreur de la visionneuse de cubes : {0}</value>
   </data>
   <data name="MainWindow_FitsViewerError" xml:space="preserve">
-    <value>Erreur de la visionneuse FITS : {0}</value>
+    <value>Erreur de la visionneuse FITS : {0}</value>
   </data>
   <data name="MainWindow_AccountOptions" xml:space="preserve">
     <value>{0} — options du compte</value>
@@ -266,6 +266,15 @@
   <data name="Settings_LanguageCaption.Text" xml:space="preserve">
     <value>Verbinal doit redémarrer pour appliquer la nouvelle langue.</value>
   </data>
+  <data name="Settings_LanguageRestartBar.Message" xml:space="preserve">
+    <value>La nouvelle langue prend effet après un redémarrage.</value>
+  </data>
+  <data name="Settings_RestartNowButton.Content" xml:space="preserve">
+    <value>Redémarrer maintenant</value>
+  </data>
+  <data name="Settings_RestartFailed" xml:space="preserve">
+    <value>Redémarrage automatique impossible ({0}) — veuillez fermer puis rouvrir Verbinal.</value>
+  </data>
   <data name="Settings_AdvancedHeader.Text" xml:space="preserve">
     <value>Avancé</value>
   </data>
@@ -371,6 +380,12 @@
   <data name="Welcome_CubeBody.Text" xml:space="preserve">
     <value>Survolez des cubes FITS en 3D grâce à un moteur de rendu volumique Direct3D.</value>
   </data>
+  <data name="Welcome_WorkflowsTitle.Text" xml:space="preserve">
+    <value>Flux de travail</value>
+  </data>
+  <data name="Welcome_WorkflowsBody.Text" xml:space="preserve">
+    <value>Protocoles de recherche pas à pas : partez de modèles intégrés, cochez votre progression, partagez via VOSpace.</value>
+  </data>
   <data name="Welcome_DiscoveryTitle.Text" xml:space="preserve">
     <value>Découverte d'images</value>
   </data>
@@ -381,7 +396,7 @@
     <value>Assistant IA</value>
   </data>
   <data name="Welcome_AssistantBody.Text" xml:space="preserve">
-    <value>Connectez Claude Desktop ou Claude Code (~80 outils) pour piloter Verbinal à votre place.</value>
+    <value>Connectez Claude Desktop ou Claude Code (plus de 115 outils) pour piloter Verbinal à votre place.</value>
   </data>
   <data name="LoginDialog.Title" xml:space="preserve">
     <value>Connexion à Verbinal</value>
@@ -441,7 +456,7 @@
     <value>Les propositions appliquées, les rejets et les opérations en direct apparaissent ici.</value>
   </data>
   <data name="Proposals_FooterHint.Text" xml:space="preserve">
-    <value>Appliquer exécute l'opération sous-jacente ; Rejeter l'annule.</value>
+    <value>Appliquer exécute l'opération sous-jacente ; Rejeter l'annule.</value>
   </data>
   <data name="Proposals_PendingTabLabel" xml:space="preserve">
     <value>En attente</value>
@@ -459,7 +474,7 @@
     <value>{0} en attente</value>
   </data>
   <data name="Proposals_ApplyFailed" xml:space="preserve">
-    <value>Échec de l'application : {0}</value>
+    <value>Échec de l'application : {0}</value>
   </data>
   <data name="Proposals_NoLongerPending" xml:space="preserve">
     <value>Cette proposition n'est plus en attente.</value>
@@ -471,7 +486,7 @@
     <value>Fermer</value>
   </data>
   <data name="Wizard_EnableIntro.Text" xml:space="preserve">
-    <value>Ceci démarre un serveur MCP local afin qu'un agent IA (Claude Desktop ou Claude Code) puisse utiliser les outils de Verbinal — recherche d'observations, observations téléchargées, sessions Skaha, fichiers VOSpace, et plus encore. Il fonctionne sur un tube nommé local, propre à l'utilisateur : rien n'est exposé au réseau. Désactivé par défaut ; les écritures sont contrôlées par vos réglages d'autonomie.</value>
+    <value>Ceci démarre un serveur MCP local afin qu'un agent IA (Claude Desktop ou Claude Code) puisse utiliser les outils de Verbinal — recherche d'observations, observations téléchargées, sessions Skaha, fichiers VOSpace, et plus encore. Il fonctionne sur un tube nommé local, propre à l'utilisateur : rien n'est exposé au réseau. Désactivé par défaut ; les écritures sont contrôlées par vos réglages d'autonomie.</value>
   </data>
   <data name="Wizard_EnableToggle.Header" xml:space="preserve">
     <value>Autoriser les agents IA externes</value>
@@ -486,7 +501,7 @@
     <value>Arrêté</value>
   </data>
   <data name="Wizard_ClientIntro.Text" xml:space="preserve">
-    <value>Quel client IA voulez-vous connecter ? (Les clients détectés sont indiqués — vous pouvez tout de même choisir l'un ou l'autre.)</value>
+    <value>Quel client IA voulez-vous connecter ? (Les clients détectés sont indiqués — vous pouvez tout de même choisir l'un ou l'autre.)</value>
   </data>
   <data name="Wizard_AddToDesktopButton.Content" xml:space="preserve">
     <value>Ajouter à Claude Desktop…</value>
@@ -495,7 +510,7 @@
     <value>Copier</value>
   </data>
   <data name="Wizard_VerifyIntro.Text" xml:space="preserve">
-    <value>Lancez un autotest en direct : Verbinal contacte son propre serveur MCP exactement comme le fera votre client IA, et liste les outils disponibles. Quittez ensuite complètement votre client et rouvrez-le pour prendre en compte la nouvelle connexion.</value>
+    <value>Lancez un autotest en direct : Verbinal contacte son propre serveur MCP exactement comme le fera votre client IA, et liste les outils disponibles. Quittez ensuite complètement votre client et rouvrez-le pour prendre en compte la nouvelle connexion.</value>
   </data>
   <data name="Wizard_SelfTestButton.Content" xml:space="preserve">
     <value>Lancer l'autotest</value>
@@ -531,10 +546,10 @@
     <value>Activez « Autoriser les agents IA externes » pour continuer.</value>
   </data>
   <data name="Wizard_CouldntStart" xml:space="preserve">
-    <value>Impossible de démarrer le serveur : {0}</value>
+    <value>Impossible de démarrer le serveur : {0}</value>
   </data>
   <data name="Wizard_CouldntStop" xml:space="preserve">
-    <value>Impossible d'arrêter le serveur : {0}</value>
+    <value>Impossible d'arrêter le serveur : {0}</value>
   </data>
   <data name="Wizard_Running" xml:space="preserve">
     <value>En cours</value>
@@ -558,7 +573,7 @@
     <value>Le pont MCP (CanfarDesktop.McpBridge.exe) est introuvable. Compilez le projet du pont, puis rouvrez cet assistant.</value>
   </data>
   <data name="Wizard_DesktopIntro" xml:space="preserve">
-    <value>Ajouter Verbinal à la configuration de Claude Desktop :
+    <value>Ajouter Verbinal à la configuration de Claude Desktop :
 {0}
 Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. Redémarrez Claude Desktop ensuite.</value>
   </data>
@@ -569,7 +584,7 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
     <value>Ajouté à Claude Desktop. Redémarrez-le, puis lancez l'autotest à l'étape suivante.</value>
   </data>
   <data name="Wizard_ConfigWriteFailed" xml:space="preserve">
-    <value>Impossible d'écrire la configuration : {0}</value>
+    <value>Impossible d'écrire la configuration : {0}</value>
   </data>
   <data name="Wizard_CommandCopied" xml:space="preserve">
     <value>Commande copiée.</value>

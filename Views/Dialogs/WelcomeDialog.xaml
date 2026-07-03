@@ -13,8 +13,7 @@
         <StackPanel Spacing="18" Width="440">
 
             <StackPanel Spacing="8">
-                <FontIcon Glyph="&#xE9A9;" FontSize="44" HorizontalAlignment="Center"
-                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                <Image Source="ms-appx:///Assets/Verbinal_icon.png" Width="64" Height="64" HorizontalAlignment="Center" />
                 <TextBlock x:Uid="Welcome_Title" Text="Welcome to Verbinal" Style="{StaticResource TitleTextBlockStyle}"
                            HorizontalAlignment="Center" />
                 <TextBlock x:Uid="Welcome_Subtitle" Text="Your native companion for the CANFAR Science Platform."
@@ -89,6 +88,21 @@
                         <ColumnDefinition Width="28" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE9D5;" FontSize="18" VerticalAlignment="Top" Margin="0,2,0,0"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock x:Uid="Welcome_WorkflowsTitle" Text="Workflows" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock x:Uid="Welcome_WorkflowsBody" Text="Step-by-step research protocols: start from built-in templates, check off progress, share via VOSpace."
+                                   Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <FontIcon Glyph="&#xE71D;" FontSize="18" VerticalAlignment="Top" Margin="0,2,0,0"
                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                     <StackPanel Grid.Column="1" Spacing="2">
@@ -108,7 +122,7 @@
                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                     <StackPanel Grid.Column="1" Spacing="2">
                         <TextBlock x:Uid="Welcome_AssistantTitle" Text="AI assistant" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                        <TextBlock x:Uid="Welcome_AssistantBody" Text="Connect Claude Desktop or Claude Code (~80 tools) to drive Verbinal for you."
+                        <TextBlock x:Uid="Welcome_AssistantBody" Text="Connect Claude Desktop or Claude Code (115+ tools) to drive Verbinal for you."
                                    Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>

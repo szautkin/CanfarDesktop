@@ -106,6 +106,21 @@ public sealed partial class SettingsDialog : ContentDialog
         if (_loading) return;
         SaveGeneral();
         ApplyLanguageOverride(_settings.Language);
+        LanguageRestartBar.IsOpen = true; // offer the restart instead of just stating the need
+    }
+
+    private void OnRestartNowClick(object sender, RoutedEventArgs e)
+    {
+        // Flush pending edits first — Restart() does not run the Closing handler.
+        SaveGeneral();
+        SavePortal();
+        if (ComputeSettingsPanel.IsDirty) ComputeSettingsPanel.SaveNow();
+        if (DiscoverySettingsPanel.IsDirty) DiscoverySettingsPanel.SaveNow();
+
+        // Returns only on failure (on success the process is replaced).
+        var reason = Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
+        LanguageRestartBar.Severity = InfoBarSeverity.Warning;
+        LanguageRestartBar.Message = Loc.F("Settings_RestartFailed", reason.ToString());
     }
 
     private void SaveGeneral()

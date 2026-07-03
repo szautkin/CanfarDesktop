@@ -67,6 +67,16 @@
                     <TextBlock x:Uid="Settings_LanguageCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                Text="Verbinal needs to restart to apply the new language." />
+                    <!-- Appears when the user actually changes the language: offers the restart instead
+                         of leaving them to figure out how to apply it. -->
+                    <muxc:InfoBar x:Name="LanguageRestartBar" IsOpen="False" Severity="Informational"
+                                  IsClosable="True" MaxWidth="440" HorizontalAlignment="Left"
+                                  x:Uid="Settings_LanguageRestartBar"
+                                  Message="The new language takes effect after a restart.">
+                        <muxc:InfoBar.ActionButton>
+                            <Button x:Uid="Settings_RestartNowButton" Content="Restart now" Click="OnRestartNowClick" />
+                        </muxc:InfoBar.ActionButton>
+                    </muxc:InfoBar>
 
                     <TextBlock x:Uid="Settings_AdvancedHeader" Text="Advanced" Style="{StaticResource BodyStrongTextBlockStyle}" />
                     <TextBox x:Name="ApiBaseUrlBox" x:Uid="Settings_ApiBaseUrlBox" Header="CADC API base URL" Width="360"

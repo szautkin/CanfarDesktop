@@ -266,6 +266,15 @@
   <data name="Settings_LanguageCaption.Text" xml:space="preserve">
     <value>Verbinal needs to restart to apply the new language.</value>
   </data>
+  <data name="Settings_LanguageRestartBar.Message" xml:space="preserve">
+    <value>The new language takes effect after a restart.</value>
+  </data>
+  <data name="Settings_RestartNowButton.Content" xml:space="preserve">
+    <value>Restart now</value>
+  </data>
+  <data name="Settings_RestartFailed" xml:space="preserve">
+    <value>Could not restart automatically ({0}) — please close and reopen Verbinal.</value>
+  </data>
   <data name="Settings_AdvancedHeader.Text" xml:space="preserve">
     <value>Advanced</value>
   </data>
@@ -371,6 +380,12 @@
   <data name="Welcome_CubeBody.Text" xml:space="preserve">
     <value>Fly through FITS cubes in 3D with a Direct3D volume renderer.</value>
   </data>
+  <data name="Welcome_WorkflowsTitle.Text" xml:space="preserve">
+    <value>Workflows</value>
+  </data>
+  <data name="Welcome_WorkflowsBody.Text" xml:space="preserve">
+    <value>Step-by-step research protocols: start from built-in templates, check off progress, share via VOSpace.</value>
+  </data>
   <data name="Welcome_DiscoveryTitle.Text" xml:space="preserve">
     <value>Image Discovery</value>
   </data>
@@ -381,7 +396,7 @@
     <value>AI assistant</value>
   </data>
   <data name="Welcome_AssistantBody.Text" xml:space="preserve">
-    <value>Connect Claude Desktop or Claude Code (~80 tools) to drive Verbinal for you.</value>
+    <value>Connect Claude Desktop or Claude Code (115+ tools) to drive Verbinal for you.</value>
   </data>
   <data name="LoginDialog.Title" xml:space="preserve">
     <value>Login to Verbinal</value>
