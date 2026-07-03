@@ -42,6 +42,18 @@ public sealed partial class SearchPage : Page
         };
         accelerator.Invoked += (_, e) => { OnSearchClick(this, new RoutedEventArgs()); e.Handled = true; };
         KeyboardAccelerators.Add(accelerator);
+
+        // The facet lists' XAML MaxHeight (180) is a floor for small windows; on tall displays
+        // (1440p/4K full screen) they grow with the viewport so Additional Constraints uses the
+        // available space instead of leaving the lower third of the screen empty.
+        SizeChanged += (_, e) => UpdateFacetHeights(e.NewSize.Height);
+    }
+
+    private void UpdateFacetHeights(double pageHeight)
+    {
+        var h = Math.Max(180, pageHeight * 0.42);
+        foreach (var list in new[] { BandList, CollectionList, InstrumentList, FilterList, CalLevelList, DataTypeList, ObsTypeList })
+            list.MaxHeight = h;
     }
 
     public void LoadAsync()
