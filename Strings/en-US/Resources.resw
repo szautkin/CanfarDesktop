@@ -3748,4 +3748,10 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Module_ObservationDetail" xml:space="preserve">
     <value>Observation</value>
   </data>
+  <data name="ObsDetail_FileTypeOriginal" xml:space="preserve">
+    <value>Original format ({0})</value>
+  </data>
+  <data name="ObsDetail_OpenDownloaded" xml:space="preserve">
+    <value>Open</value>
+  </data>
 </root>

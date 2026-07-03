@@ -209,6 +209,16 @@ public sealed partial class ResearchPage : UserControl
             DetailContent.Children.Add(imageContainer);
             _ = LoadPreviewAsync(obs.PreviewURL ?? obs.ThumbnailURL!, imageContainer, spinner, _previewCts.Token);
         }
+        else if (!string.IsNullOrEmpty(obs.PublisherID))
+        {
+            // Older records (or MCP downloads) saved without preview URLs: look them up via
+            // DataLink once, persist on the record, and show the preview like any other.
+            var imageContainer = new StackPanel { Spacing = 4 };
+            var spinner = new ProgressRing { IsActive = true, Width = 24, Height = 24 };
+            imageContainer.Children.Add(spinner);
+            DetailContent.Children.Add(imageContainer);
+            _ = ResolvePreviewViaDataLinkAsync(obs, imageContainer, spinner, _previewCts.Token);
+        }
 
         // Title
         var title = !string.IsNullOrEmpty(obs.TargetName) ? obs.TargetName : obs.ObservationID;
@@ -410,6 +420,35 @@ public sealed partial class ResearchPage : UserControl
     {
         var row = UIFactory.CreateMetadataRow(label, value, 130);
         if (row is not null) DetailContent.Children.Add(row);
+    }
+
+    /// <summary>DataLink lookup for records saved without preview URLs (older records, MCP-agent
+    /// downloads). Mutates the in-memory record so the session skips repeat lookups; deliberately no
+    /// store.Save here — that fires Changed and would rebuild the list mid-selection.</summary>
+    private async Task ResolvePreviewViaDataLinkAsync(DownloadedObservation obs, StackPanel container, ProgressRing spinner, CancellationToken ct)
+    {
+        try
+        {
+            var links = await ViewModel.DataLink.GetLinksAsync(obs.PublisherID);
+            if (ct.IsCancellationRequested) return;
+            obs.PreviewURL = links.Previews.FirstOrDefault();
+            obs.ThumbnailURL = links.Thumbnails.FirstOrDefault();
+
+            var url = obs.PreviewURL ?? obs.ThumbnailURL;
+            if (url is null)
+            {
+                spinner.IsActive = false;
+                container.Visibility = Visibility.Collapsed; // no preview exists for this observation
+                return;
+            }
+            await LoadPreviewAsync(url, container, spinner, ct);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Preview DataLink lookup failed: {ex.Message}");
+            spinner.IsActive = false;
+            container.Visibility = Visibility.Collapsed;
+        }
     }
 
     private async Task LoadPreviewAsync(string url, StackPanel container, ProgressRing spinner, CancellationToken ct)

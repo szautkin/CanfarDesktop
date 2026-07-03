@@ -3748,4 +3748,10 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Module_ObservationDetail" xml:space="preserve">
     <value>Observation</value>
   </data>
+  <data name="ObsDetail_FileTypeOriginal" xml:space="preserve">
+    <value>Format d'origine ({0})</value>
+  </data>
+  <data name="ObsDetail_OpenDownloaded" xml:space="preserve">
+    <value>Ouvrir</value>
+  </data>
 </root>

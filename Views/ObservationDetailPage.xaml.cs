@@ -25,6 +25,7 @@ public sealed partial class ObservationDetailPage : UserControl
 
     private string _publisherID = string.Empty;
     private CAOM2Observation? _current;
+    private Models.DataLinkResult? _lastLinks;
     private string _collection = string.Empty;
     private string _observationID = string.Empty;
 
@@ -563,6 +564,7 @@ public sealed partial class ObservationDetailPage : UserControl
             DownloadText.Text = string.Empty;
 
             var links = await _dataLink.GetLinksAsync(_publisherID);
+            _lastLinks = links; // reused by RegisterInResearch for preview/thumbnail URLs
             var fileName = Caom2Format.ArtifactFileName(art.Uri);
             var match = links.DirectFiles.FirstOrDefault(f =>
                 f.Filename.Equals(fileName, StringComparison.OrdinalIgnoreCase)
@@ -591,11 +593,13 @@ public sealed partial class ObservationDetailPage : UserControl
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
         if (!System.IO.Path.HasExtension(suggestedName)) suggestedName += ".fits";
         picker.SuggestedFileName = suggestedName;
-        // The picker ENFORCES the selected file type's extension: with only ".fits" offered, an
-        // fpack artifact "x.fits.fz" was silently saved as "x.fits.fz.fits". Offer a choice that
-        // matches the artifact's real extension FIRST so the name is preserved as-is.
-        if (suggestedName.EndsWith(".fz", StringComparison.OrdinalIgnoreCase))
-            picker.FileTypeChoices.Add(Loc.T("ObsDetail_FileTypeFz"), new List<string> { ".fz" });
+        // The picker ENFORCES the selected file type's extension: with only ".fits" offered, a
+        // preview "x_preview_1024.png" became "x_preview_1024.png.fits" and fpack "x.fits.fz"
+        // became "x.fits.fz.fits". Always offer the artifact's REAL extension first so every
+        // file keeps its original name.
+        var actualExt = System.IO.Path.GetExtension(suggestedName).ToLowerInvariant();
+        if (actualExt.Length > 1 && actualExt != ".fits")
+            picker.FileTypeChoices.Add(Loc.F("ObsDetail_FileTypeOriginal", actualExt), new List<string> { actualExt });
         picker.FileTypeChoices.Add(Loc.T("ObsDetail_FileTypeFits"), new List<string> { ".fits" });
         picker.FileTypeChoices.Add(Loc.T("ObsDetail_FileTypeAll"), new List<string> { "." });
 
@@ -640,26 +644,48 @@ public sealed partial class ObservationDetailPage : UserControl
         DownloadProgress.Visibility = Visibility.Collapsed;
 
         var savedPath = file.Path;
+        var ext = System.IO.Path.GetExtension(savedPath).ToLowerInvariant();
+        var isFitsFile = ext is ".fits" or ".fit" or ".fts" or ".fz";
 
-        // Suggest the RIGHT viewer for the data: sniff the FITS header shape — a real third axis
-        // gets the 3D Cube Viewer, everything else (2D imagers like this DAO frame) the FITS viewer.
-        var isCube = FitsSniff.IsLikelyCube(savedPath);
-        var open = new Button
+        if (isFitsFile)
         {
-            Content = Loc.T(isCube ? "ObsDetail_OpenInCubeViewer" : "ObsDetail_OpenInFitsViewer"),
-        };
-        open.Click += (_, _) =>
-        {
-            if (isCube) OpenInCubeRequested?.Invoke(savedPath);
-            else OpenInFitsRequested?.Invoke(savedPath);
-        };
-        DownloadBar.ActionButton = open;
+            // Suggest the RIGHT viewer for the data: sniff the FITS header shape — a real third axis
+            // gets the 3D Cube Viewer, everything else (2D imagers like this DAO frame) the FITS viewer.
+            var isCube = FitsSniff.IsLikelyCube(savedPath);
+            var open = new Button
+            {
+                Content = Loc.T(isCube ? "ObsDetail_OpenInCubeViewer" : "ObsDetail_OpenInFitsViewer"),
+            };
+            open.Click += (_, _) =>
+            {
+                if (isCube) OpenInCubeRequested?.Invoke(savedPath);
+                else OpenInFitsRequested?.Invoke(savedPath);
+            };
+            DownloadBar.ActionButton = open;
 
-        // The download also lands in the Research archive so it is tracked with notes/metadata.
-        RegisterInResearch(savedPath);
-        DownloadResearchText.Text = Loc.T("ObsDetail_AddedToResearch");
-        DownloadResearchLink.Content = Loc.T("ObsDetail_ViewInResearch");
-        DownloadResearchRow.Visibility = Visibility.Visible;
+            // The download also lands in the Research archive so it is tracked with notes/metadata.
+            RegisterInResearch(savedPath);
+            DownloadResearchText.Text = Loc.T("ObsDetail_AddedToResearch");
+            DownloadResearchLink.Content = Loc.T("ObsDetail_ViewInResearch");
+            DownloadResearchRow.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            // Preview PNG / README / other sidecar: shell-open with the OS default app. Never
+            // registered as the observation's Research file — that would clobber the FITS record
+            // (the store replaces by PublisherID).
+            var open = new Button { Content = Loc.T("ObsDetail_OpenDownloaded") };
+            open.Click += (_, _) =>
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(
+                        new System.Diagnostics.ProcessStartInfo { FileName = savedPath, UseShellExecute = true });
+                }
+                catch { }
+            };
+            DownloadBar.ActionButton = open;
+        }
     }
 
     private void OnViewInResearchClick(object sender, RoutedEventArgs e) => ViewInResearchRequested?.Invoke();
@@ -685,6 +711,12 @@ public sealed partial class ObservationDetailPage : UserControl
                 ProposalTitle = _current?.Proposal?.Title ?? string.Empty,
                 LocalPath = localPath,
                 FileSize = size,
+                // Preview URLs so Research can show the image by default (falls back to the
+                // record this one replaces — the store swaps by PublisherID).
+                ThumbnailURL = _lastLinks?.Thumbnails.FirstOrDefault()
+                               ?? store.Observations.FirstOrDefault(o => o.PublisherID == _publisherID)?.ThumbnailURL,
+                PreviewURL = _lastLinks?.Previews.FirstOrDefault()
+                             ?? store.Observations.FirstOrDefault(o => o.PublisherID == _publisherID)?.PreviewURL,
             });
         }
         catch (Exception ex)
