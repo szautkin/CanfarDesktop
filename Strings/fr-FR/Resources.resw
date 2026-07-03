@@ -3610,4 +3610,16 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Settings_EndpointsResetButton.Content" xml:space="preserve">
     <value>Réinitialiser aux valeurs par défaut</value>
   </data>
+  <data name="Settings_TestConnectionsButton.Content" xml:space="preserve">
+    <value>Tester les connexions</value>
+  </data>
+  <data name="Settings_ProbeRunning" xml:space="preserve">
+    <value>Test de tous les points de service…</value>
+  </data>
+  <data name="Settings_ProbeOk" xml:space="preserve">
+    <value>✓ {0} — joignable ({1} ms)</value>
+  </data>
+  <data name="Settings_ProbeFail" xml:space="preserve">
+    <value>✗ {0} — injoignable ({1})</value>
+  </data>
 </root>

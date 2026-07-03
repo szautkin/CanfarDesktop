@@ -82,6 +82,38 @@ public sealed partial class SettingsDialog : ContentDialog
         SaveGeneral();
     }
 
+    private bool _probing;
+
+    /// <summary>Self-test: probe every configured endpoint in parallel (5s cap each, headers only) —
+    /// proves whether a "the app is broken" report is really a host/edit problem, without any risk of
+    /// blocking the UI.</summary>
+    private async void OnTestConnectionsClick(object sender, RoutedEventArgs e)
+    {
+        if (_probing) return;
+        _probing = true;
+        TestConnectionsButton.IsEnabled = false;
+        ProbeResultsList.ItemsSource = new[] { Loc.T("Settings_ProbeRunning") };
+        try
+        {
+            SaveGeneral(); // probe what the user is looking at, including unsaved edits
+            var factory = App.Services.GetRequiredService<System.Net.Http.IHttpClientFactory>();
+            var endpoints = App.Services.GetRequiredService<Helpers.ApiEndpoints>();
+            var results = await Services.ServiceHealthProbe.ProbeAllAsync(factory, endpoints);
+            ProbeResultsList.ItemsSource = results.Select(r => r.Reachable
+                ? Loc.F("Settings_ProbeOk", r.Name, r.LatencyMs)
+                : Loc.F("Settings_ProbeFail", r.Name, r.Error ?? "?")).ToList();
+        }
+        catch (Exception ex)
+        {
+            ProbeResultsList.ItemsSource = new[] { Loc.F("Settings_ProbeFail", "probe", ex.Message) };
+        }
+        finally
+        {
+            _probing = false;
+            TestConnectionsButton.IsEnabled = true;
+        }
+    }
+
     private void PopulatePortal()
     {
         _loading = true;

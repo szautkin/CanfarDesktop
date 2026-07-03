@@ -101,7 +101,18 @@
                                      PlaceholderText="https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops" LostFocus="OnGeneralChanged" />
                             <TextBox x:Name="EpResolverBox" x:Uid="Settings_EpResolverBox" Header="Target resolver" Width="420" HorizontalAlignment="Left"
                                      PlaceholderText="https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cadc-target-resolver" LostFocus="OnGeneralChanged" />
-                            <Button x:Uid="Settings_EndpointsResetButton" Content="Reset to defaults" Click="OnResetEndpointsClick" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:Uid="Settings_EndpointsResetButton" Content="Reset to defaults" Click="OnResetEndpointsClick" />
+                                <Button x:Name="TestConnectionsButton" x:Uid="Settings_TestConnectionsButton"
+                                        Content="Test connections" Click="OnTestConnectionsClick" />
+                            </StackPanel>
+                            <ItemsControl x:Name="ProbeResultsList" Margin="0,4,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Text="{x:Bind}" Style="{StaticResource CaptionTextBlockStyle}" FontFamily="Consolas" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </Expander>
                     <TextBlock x:Uid="Settings_AutoSaveCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"

@@ -526,34 +526,9 @@ public static class McpToolCatalog
 
     /// <summary>Probe the upstream services concurrently: any HTTP response = host reachable.</summary>
     private static async Task<IReadOnlyList<ServiceHealthEntry>> ProbeServicesAsync(IHttpClientFactory factory, ApiEndpoints endpoints)
-    {
-        var targets = new[]
-        {
-            ("CADC TAP (search)", endpoints.TapBaseUrl),
-            ("Skaha (sessions)", endpoints.SkahaBaseUrl),
-            ("ARC/VOSpace (storage)", endpoints.StorageBaseUrl),
-            ("CADC auth", endpoints.LoginBaseUrl),
-        };
-        return await Task.WhenAll(targets.Select(t => ProbeOneAsync(factory, t.Item1, t.Item2)));
-    }
-
-    private static async Task<ServiceHealthEntry> ProbeOneAsync(IHttpClientFactory factory, string name, string url)
-    {
-        var sw = Stopwatch.StartNew();
-        try
-        {
-            var client = factory.CreateClient();
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
-            sw.Stop();
-            return new ServiceHealthEntry(name, url, Reachable: true, (int)response.StatusCode, sw.ElapsedMilliseconds, null);
-        }
-        catch (Exception ex)
-        {
-            sw.Stop();
-            return new ServiceHealthEntry(name, url, Reachable: false, null, sw.ElapsedMilliseconds, ex.GetType().Name);
-        }
-    }
+        => (await CanfarDesktop.Services.ServiceHealthProbe.ProbeCoreAsync(factory, endpoints))
+            .Select(r => new ServiceHealthEntry(r.Name, r.Url, r.Reachable, r.StatusCode, r.LatencyMs, r.Error))
+            .ToList();
 
     /// <summary>A safe Skaha session name (lowercase, hyphenated) — generated when the agent omits one.</summary>
     private static string SessionName(string? name, string type)

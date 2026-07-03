@@ -177,17 +177,19 @@ public partial class App : Application
         // AuthTokenHandler and picks up the current bearer token.
         services.AddTransient<TransientRetryHandler>();
 
-        // HttpClients — all use AuthTokenHandler to inject Bearer token
-        services.AddHttpClient<IAuthService, AuthService>()
+        // HttpClients — all use AuthTokenHandler to inject Bearer token. Interactive metadata calls
+        // get a 30s timeout so a dead host surfaces as an error, not a 100s spinner-that-feels-hung;
+        // Storage keeps the framework default (uploads/downloads stream large payloads).
+        services.AddHttpClient<IAuthService, AuthService>(c => c.Timeout = TimeSpan.FromSeconds(30))
             .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
-        services.AddHttpClient<ISessionService, SessionService>()
+        services.AddHttpClient<ISessionService, SessionService>(c => c.Timeout = TimeSpan.FromSeconds(30))
             .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
-        services.AddHttpClient<IImageService, ImageService>()
+        services.AddHttpClient<IImageService, ImageService>(c => c.Timeout = TimeSpan.FromSeconds(30))
             .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
-        services.AddHttpClient<IPlatformService, PlatformService>()
+        services.AddHttpClient<IPlatformService, PlatformService>(c => c.Timeout = TimeSpan.FromSeconds(30))
             .AddHttpMessageHandler<TransientRetryHandler>()
             .AddHttpMessageHandler<AuthTokenHandler>();
         services.AddHttpClient<IStorageService, StorageService>()

@@ -3610,4 +3610,16 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Settings_EndpointsResetButton.Content" xml:space="preserve">
     <value>Reset to defaults</value>
   </data>
+  <data name="Settings_TestConnectionsButton.Content" xml:space="preserve">
+    <value>Test connections</value>
+  </data>
+  <data name="Settings_ProbeRunning" xml:space="preserve">
+    <value>Testing all endpoints…</value>
+  </data>
+  <data name="Settings_ProbeOk" xml:space="preserve">
+    <value>✓ {0} — reachable ({1} ms)</value>
+  </data>
+  <data name="Settings_ProbeFail" xml:space="preserve">
+    <value>✗ {0} — unreachable ({1})</value>
+  </data>
 </root>
