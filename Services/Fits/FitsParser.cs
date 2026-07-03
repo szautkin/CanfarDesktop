@@ -35,15 +35,45 @@ public static class FitsParser
 
             if (header.GetBool("ZIMAGE"))
             {
-                // fpack/tile-compressed image: the pixels live in a compressed BINTABLE whose
-                // NAXIS1×NAXIS2 are row-bytes×rows (and satisfy the NAxis>=2 image test below).
-                // We cannot decompress it, so never read it as raw image data (that renders garbage) —
-                // record that we saw it and skip its data; surface a clear error after the scan if no
-                // plain image HDU exists.
-                sawCompressedImage = true;
-                compressionType ??= header.GetString("ZCMPTYPE");
-                if (dataBytes > 0)
-                    SkipBytes(stream, AlignToBlock(dataBytes));
+                // fpack/tile-compressed image: the pixels live as Rice-coded tiles in a BINTABLE
+                // heap. RICE_1/16-bit (the CFHT norm) decompresses in-app (FitsRice, macOS parity);
+                // other variants are recorded + skipped, surfacing the funpack advice after the
+                // scan if no readable image HDU exists.
+                const long maxCompressedBytes = 512L * 1024 * 1024;
+                if (FitsRice.CanDecompress(header) && dataBytes > 0 && dataBytes <= maxCompressedBytes)
+                {
+                    var aligned = AlignToBlock(dataBytes);
+                    var buffer = new byte[aligned];
+                    var read = 0;
+                    while (read < aligned)
+                    {
+                        var n = stream.Read(buffer, read, (int)(aligned - read));
+                        if (n == 0) break;
+                        read += n;
+                    }
+                    if (read < dataBytes)
+                        throw new InvalidDataException($"FITS data truncated: expected {dataBytes} bytes, got {read}");
+
+                    try
+                    {
+                        imageData = FitsRice.Decompress(header, buffer);
+                        hasReadableImage = true;
+                    }
+                    catch (Exception ex) when (ex is not OutOfMemoryException)
+                    {
+                        // Corrupt tiles / unexpected geometry: fall back to the funpack advice.
+                        System.Diagnostics.Debug.WriteLine($"fpack decompression failed: {ex.Message}");
+                        sawCompressedImage = true;
+                        compressionType ??= header.GetString("ZCMPTYPE");
+                    }
+                }
+                else
+                {
+                    sawCompressedImage = true;
+                    compressionType ??= header.GetString("ZCMPTYPE");
+                    if (dataBytes > 0)
+                        SkipBytes(stream, AlignToBlock(dataBytes));
+                }
             }
             else if (header.NAxis >= 2 && header.NAxis1 > 0 && header.NAxis2 > 0)
             {

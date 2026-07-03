@@ -254,6 +254,7 @@
     <Compile Include="..\Models\Fits\FitsImageData.cs" Link="Linked\Fits\FitsImageData.cs" />
     <Compile Include="..\Models\Fits\FitsHdu.cs" Link="Linked\Fits\FitsHdu.cs" />
     <Compile Include="..\Services\Fits\FitsParser.cs" Link="Linked\Fits\FitsParser.cs" />
+    <Compile Include="..\Services\Fits\FitsRice.cs" Link="Linked\Fits\FitsRice.cs" />
     <Compile Include="..\Services\Fits\FitsContainer.cs" Link="Linked\Fits\FitsContainer.cs" />
     <Compile Include="..\Services\Fits\ImageStretcher.cs" Link="Linked\Fits\ImageStretcher.cs" />
     <Compile Include="..\Services\Fits\ColormapProvider.cs" Link="Linked\Fits\ColormapProvider.cs" />
