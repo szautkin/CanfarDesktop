@@ -28,22 +28,25 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Verbinal branded logos (all scales auto-selected by Windows) -->
-    <Content Include="Assets\Square44x44Logo.scale-*.png" />
-    <Content Include="Assets\Square44x44Logo.targetsize-*.png" />
-    <Content Include="Assets\Square150x150Logo.scale-*.png" />
-    <Content Include="Assets\Square310x310Logo.scale-*.png" />
-    <Content Include="Assets\Wide310x150Logo.scale-*.png" />
-    <Content Include="Assets\SplashScreen.scale-*.png" />
-    <Content Include="Assets\StoreLogo.scale-*.png" />
-    <Content Include="Assets\Verbinal.ico" />
-    <Content Include="Assets\Verbinal_icon.png" />
+    <!-- Verbinal branded logos (all scales auto-selected by Windows).
+         CopyToOutputDirectory matters: without it these only enter the MSIX payload, and an
+         unpackaged/loose-layout run has NO Assets folder — ms-appx image loads and
+         AppWindow.SetIcon then fail silently (invisible icons). -->
+    <Content Include="Assets\Square44x44Logo.scale-*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Square44x44Logo.targetsize-*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Square150x150Logo.scale-*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Square310x310Logo.scale-*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Wide310x150Logo.scale-*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\SplashScreen.scale-*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\StoreLogo.scale-*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Verbinal.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Verbinal_icon.png" CopyToOutputDirectory="PreserveNewest" />
     <!-- Session type images -->
-    <Content Include="Assets\session-notebook.jpg" />
-    <Content Include="Assets\session-desktop.png" />
-    <Content Include="Assets\session-carta.png" />
-    <Content Include="Assets\session-contributed.png" />
-    <Content Include="Assets\session-firefly.png" />
+    <Content Include="Assets\session-notebook.jpg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\session-desktop.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\session-carta.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\session-contributed.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\session-firefly.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
