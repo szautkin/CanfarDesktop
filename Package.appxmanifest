@@ -35,7 +35,7 @@
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
         DisplayName="Verbinal"
-        Description="Verbinal - a CANFAR Science Portal"
+        Description="Verbinal - a CANFAR Science Portal and Research Platform"
         BackgroundColor="#0F172A"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

@@ -12,7 +12,7 @@
                 <Image Source="Assets/Verbinal_icon.png" Width="80" Height="80" HorizontalAlignment="Center" />
                 <TextBlock Text="Verbinal" Style="{StaticResource TitleLargeTextBlockStyle}"
                            HorizontalAlignment="Center" FontWeight="Bold" />
-                <TextBlock x:Uid="Landing_Subtitle" Text="A CANFAR Science Portal Companion"
+                <TextBlock x:Uid="Landing_Subtitle" Text="A CANFAR Science Portal and Research Platform"
                            Style="{StaticResource SubtitleTextBlockStyle}"
                            HorizontalAlignment="Center"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
