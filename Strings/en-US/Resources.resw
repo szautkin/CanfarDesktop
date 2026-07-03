@@ -3568,4 +3568,46 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Wf_VosRefreshButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Refresh vos:&lt;you&gt;/workflows</value>
   </data>
+  <data name="ObsDetail_OpenInFitsViewer" xml:space="preserve">
+    <value>Open in FITS Viewer</value>
+  </data>
+  <data name="ObsDetail_ViewInResearch" xml:space="preserve">
+    <value>View in Research</value>
+  </data>
+  <data name="ObsDetail_AddedToResearch" xml:space="preserve">
+    <value>Added to your Research archive.</value>
+  </data>
+  <data name="Settings_EndpointsExpander.Header" xml:space="preserve">
+    <value>Service endpoints</value>
+  </data>
+  <data name="Settings_EndpointsCaption.Text" xml:space="preserve">
+    <value>Every CANFAR/CADC service host the app talks to. Defaults are the standard public hosts from the CADC registry (ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg) — change them only to target a mirror or staging deployment. New requests use the updated hosts immediately; invalid values fall back to the default.</value>
+  </data>
+  <data name="Settings_EpLoginBox.Header" xml:space="preserve">
+    <value>CADC login (ac)</value>
+  </data>
+  <data name="Settings_EpSkahaBox.Header" xml:space="preserve">
+    <value>Skaha sessions</value>
+  </data>
+  <data name="Settings_EpAcBox.Header" xml:space="preserve">
+    <value>User info (ac)</value>
+  </data>
+  <data name="Settings_EpArcNodesBox.Header" xml:space="preserve">
+    <value>ARC nodes (VOSpace listing)</value>
+  </data>
+  <data name="Settings_EpArcFilesBox.Header" xml:space="preserve">
+    <value>ARC files (VOSpace transfer)</value>
+  </data>
+  <data name="Settings_EpTapBox.Header" xml:space="preserve">
+    <value>TAP (archive search)</value>
+  </data>
+  <data name="Settings_EpCaom2OpsBox.Header" xml:space="preserve">
+    <value>CAOM2 ops (metadata + downloads)</value>
+  </data>
+  <data name="Settings_EpResolverBox.Header" xml:space="preserve">
+    <value>Target resolver</value>
+  </data>
+  <data name="Settings_EndpointsResetButton.Content" xml:space="preserve">
+    <value>Reset to defaults</value>
+  </data>
 </root>

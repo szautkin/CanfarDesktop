@@ -28,6 +28,15 @@ public partial class App : Application
         InitializeComponent();
         UnhandledException += OnUnhandledException;
         Services = ConfigureServices();
+
+        // Route every service call through the user's endpoint overrides (standard CANFAR hosts by
+        // default; editable in Settings ▸ General ▸ Service endpoints).
+        try
+        {
+            Services.GetRequiredService<ISettingsService>()
+                .ApplyEndpointsTo(Services.GetRequiredService<Helpers.ApiEndpoints>());
+        }
+        catch { /* defaults remain */ }
     }
 
     /// <summary>

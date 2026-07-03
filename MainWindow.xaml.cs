@@ -764,6 +764,8 @@ public sealed partial class MainWindow : Window
             _obsDetailPage.SignInRequested += OnObsDetailSignIn;
             _obsDetailPage.CloseRequested += () => OnBackClick(this, new RoutedEventArgs());
             _obsDetailPage.OpenInCubeRequested += path => OpenCubeViewer(path);
+            _obsDetailPage.OpenInFitsRequested += path => _ = OpenFitsViewerAsync(path);
+            _obsDetailPage.ViewInResearchRequested += () => { EnsureResearchPage(); NavigateTo(AppMode.Research); };
             ObsDetailContainer.Child = _obsDetailPage;
         }
         NavigateTo(AppMode.ObservationDetail);

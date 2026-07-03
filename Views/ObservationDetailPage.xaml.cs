@@ -1,4 +1,5 @@
 using System.IO;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
@@ -23,6 +24,7 @@ public sealed partial class ObservationDetailPage : UserControl
     private readonly DataLinkService _dataLink;
 
     private string _publisherID = string.Empty;
+    private CAOM2Observation? _current;
     private string _collection = string.Empty;
     private string _observationID = string.Empty;
 
@@ -105,6 +107,7 @@ public sealed partial class ObservationDetailPage : UserControl
 
     private void Populate(CAOM2Observation obs)
     {
+        _current = obs;
         HeaderObsId.Text = obs.ObservationID;
         HeaderCollection.Text = obs.Collection;
 
@@ -622,11 +625,70 @@ public sealed partial class ObservationDetailPage : UserControl
         DownloadBar.Title = Loc.F("ObsDetail_Downloaded", file.Name);
         DownloadProgress.Visibility = Visibility.Collapsed;
 
-        // Offer to open it in the 3D Cube Viewer (it reports gracefully if not a NAXIS3 cube).
-        var openCube = new Button { Content = Loc.T("ObsDetail_OpenInCubeViewer") };
         var savedPath = file.Path;
-        openCube.Click += (_, _) => OpenInCubeRequested?.Invoke(savedPath);
-        DownloadBar.ActionButton = openCube;
+
+        // Suggest the RIGHT viewer for the data: sniff the FITS header shape — a real third axis
+        // gets the 3D Cube Viewer, everything else (2D imagers like this DAO frame) the FITS viewer.
+        var isCube = FitsSniff.IsLikelyCube(savedPath);
+        var open = new Button
+        {
+            Content = Loc.T(isCube ? "ObsDetail_OpenInCubeViewer" : "ObsDetail_OpenInFitsViewer"),
+        };
+        open.Click += (_, _) =>
+        {
+            if (isCube) OpenInCubeRequested?.Invoke(savedPath);
+            else OpenInFitsRequested?.Invoke(savedPath);
+        };
+        DownloadBar.ActionButton = open;
+
+        // The download also lands in the Research archive so it is tracked with notes/metadata.
+        RegisterInResearch(savedPath);
+        var viewResearch = new HyperlinkButton { Content = Loc.T("ObsDetail_ViewInResearch"), Padding = new Thickness(2, 0, 2, 0) };
+        viewResearch.Click += (_, _) => ViewInResearchRequested?.Invoke();
+        DownloadBar.Content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = Loc.T("ObsDetail_AddedToResearch"),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+                },
+                viewResearch,
+            },
+        };
+    }
+
+    /// <summary>Track the downloaded file in the Research archive (updates the existing record when
+    /// this observation was downloaded before).</summary>
+    private void RegisterInResearch(string localPath)
+    {
+        try
+        {
+            var store = App.Services.GetRequiredService<Services.ObservationStore>();
+            long? size = null;
+            try { size = new FileInfo(localPath).Length; } catch { }
+            store.Save(new Models.DownloadedObservation
+            {
+                PublisherID = _publisherID,
+                Collection = _collection,
+                ObservationID = _observationID,
+                TargetName = _current?.Target?.Name ?? string.Empty,
+                Instrument = _current?.Instrument?.Name ?? string.Empty,
+                ProposalId = _current?.Proposal?.Id ?? string.Empty,
+                ProposalPi = _current?.Proposal?.Pi ?? string.Empty,
+                ProposalTitle = _current?.Proposal?.Title ?? string.Empty,
+                LocalPath = localPath,
+                FileSize = size,
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Research registration failed: {ex.Message}");
+        }
     }
 
     private async void OnViewOnCadc(object sender, RoutedEventArgs e)
@@ -654,6 +716,8 @@ public sealed partial class ObservationDetailPage : UserControl
 
     /// <summary>Raised to open a just-downloaded FITS spectral cube in the 3D Cube Viewer.</summary>
     public event Action<string>? OpenInCubeRequested;
+    public event Action<string>? OpenInFitsRequested;
+    public event Action? ViewInResearchRequested;
 
     private void OnClose(object sender, RoutedEventArgs e) => CloseRequested?.Invoke();
 

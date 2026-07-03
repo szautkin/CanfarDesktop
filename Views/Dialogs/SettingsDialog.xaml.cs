@@ -57,8 +57,29 @@ public sealed partial class SettingsDialog : ContentDialog
         _loading = true;
         SelectByTag(ThemeCombo, _settings.Theme);
         SelectByTag(LanguageCombo, _settings.Language);
-        ApiBaseUrlBox.Text = _settings.ApiBaseUrl;
+        PopulateEndpoints();
         _loading = false;
+    }
+
+    private void PopulateEndpoints()
+    {
+        EpLoginBox.Text = _settings.EndpointLoginBase;
+        EpSkahaBox.Text = _settings.EndpointSkahaBase;
+        EpAcBox.Text = _settings.EndpointAcBase;
+        EpArcNodesBox.Text = _settings.EndpointArcNodes;
+        EpArcFilesBox.Text = _settings.EndpointArcFiles;
+        EpTapBox.Text = _settings.EndpointTapBase;
+        EpCaom2OpsBox.Text = _settings.EndpointCaom2OpsBase;
+        EpResolverBox.Text = _settings.EndpointResolverBase;
+    }
+
+    private void OnResetEndpointsClick(object sender, RoutedEventArgs e)
+    {
+        _settings.ResetEndpoints();
+        _loading = true;
+        PopulateEndpoints();
+        _loading = false;
+        SaveGeneral();
     }
 
     private void PopulatePortal()
@@ -126,9 +147,24 @@ public sealed partial class SettingsDialog : ContentDialog
     private void SaveGeneral()
     {
         if (_loading) return;
-        _settings.ApiBaseUrl = string.IsNullOrWhiteSpace(ApiBaseUrlBox.Text) ? _settings.ApiBaseUrl : ApiBaseUrlBox.Text.Trim();
         _settings.Language = SelectedTag(LanguageCombo) ?? _settings.Language;
+
+        static string Keep(string edited, string current)
+            => string.IsNullOrWhiteSpace(edited) ? current : edited.Trim();
+        _settings.EndpointLoginBase = Keep(EpLoginBox.Text, _settings.EndpointLoginBase);
+        _settings.EndpointSkahaBase = Keep(EpSkahaBox.Text, _settings.EndpointSkahaBase);
+        _settings.EndpointAcBase = Keep(EpAcBox.Text, _settings.EndpointAcBase);
+        _settings.EndpointArcNodes = Keep(EpArcNodesBox.Text, _settings.EndpointArcNodes);
+        _settings.EndpointArcFiles = Keep(EpArcFilesBox.Text, _settings.EndpointArcFiles);
+        _settings.EndpointTapBase = Keep(EpTapBox.Text, _settings.EndpointTapBase);
+        _settings.EndpointCaom2OpsBase = Keep(EpCaom2OpsBox.Text, _settings.EndpointCaom2OpsBase);
+        _settings.EndpointResolverBase = Keep(EpResolverBox.Text, _settings.EndpointResolverBase);
+
         _settings.Save();
+
+        // Live-apply: URLs are built per request, so the next call already uses the new hosts.
+        try { _settings.ApplyEndpointsTo(App.Services.GetRequiredService<Helpers.ApiEndpoints>()); }
+        catch { /* endpoints singleton unavailable in test slices */ }
     }
 
     /// <summary>

@@ -79,8 +79,31 @@
                     </muxc:InfoBar>
 
                     <TextBlock x:Uid="Settings_AdvancedHeader" Text="Advanced" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    <TextBox x:Name="ApiBaseUrlBox" x:Uid="Settings_ApiBaseUrlBox" Header="CADC API base URL" Width="360"
-                             PlaceholderText="https://ws-cadc.canfar.net" LostFocus="OnGeneralChanged" />
+                    <Expander x:Uid="Settings_EndpointsExpander" Header="Service endpoints" HorizontalAlignment="Stretch"
+                              HorizontalContentAlignment="Stretch">
+                        <StackPanel Spacing="10">
+                            <TextBlock x:Uid="Settings_EndpointsCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="Every CANFAR/CADC service host the app talks to. The defaults are the standard public hosts — change them only to target a mirror or staging deployment. New requests use the updated hosts immediately; invalid values fall back to the default." />
+                            <TextBox x:Name="EpLoginBox" x:Uid="Settings_EpLoginBox" Header="CADC login (ac)" Width="420" HorizontalAlignment="Left"
+                                     PlaceholderText="https://ws-cadc.canfar.net/ac" LostFocus="OnGeneralChanged" />
+                            <TextBox x:Name="EpSkahaBox" x:Uid="Settings_EpSkahaBox" Header="Skaha sessions" Width="420" HorizontalAlignment="Left"
+                                     PlaceholderText="https://ws-uv.canfar.net/skaha" LostFocus="OnGeneralChanged" />
+                            <TextBox x:Name="EpAcBox" x:Uid="Settings_EpAcBox" Header="User info (ac)" Width="420" HorizontalAlignment="Left"
+                                     PlaceholderText="https://ws-uv.canfar.net/ac" LostFocus="OnGeneralChanged" />
+                            <TextBox x:Name="EpArcNodesBox" x:Uid="Settings_EpArcNodesBox" Header="ARC nodes (VOSpace listing)" Width="420" HorizontalAlignment="Left"
+                                     PlaceholderText="https://ws-uv.canfar.net/arc/nodes" LostFocus="OnGeneralChanged" />
+                            <TextBox x:Name="EpArcFilesBox" x:Uid="Settings_EpArcFilesBox" Header="ARC files (VOSpace transfer)" Width="420" HorizontalAlignment="Left"
+                                     PlaceholderText="https://ws-uv.canfar.net/arc/files" LostFocus="OnGeneralChanged" />
+                            <TextBox x:Name="EpTapBox" x:Uid="Settings_EpTapBox" Header="TAP (archive search)" Width="420" HorizontalAlignment="Left"
+                                     PlaceholderText="https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus" LostFocus="OnGeneralChanged" />
+                            <TextBox x:Name="EpCaom2OpsBox" x:Uid="Settings_EpCaom2OpsBox" Header="CAOM2 ops (metadata + downloads)" Width="420" HorizontalAlignment="Left"
+                                     PlaceholderText="https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops" LostFocus="OnGeneralChanged" />
+                            <TextBox x:Name="EpResolverBox" x:Uid="Settings_EpResolverBox" Header="Target resolver" Width="420" HorizontalAlignment="Left"
+                                     PlaceholderText="https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cadc-target-resolver" LostFocus="OnGeneralChanged" />
+                            <Button x:Uid="Settings_EndpointsResetButton" Content="Reset to defaults" Click="OnResetEndpointsClick" />
+                        </StackPanel>
+                    </Expander>
                     <TextBlock x:Uid="Settings_AutoSaveCaption" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                Text="Changes are saved automatically." />

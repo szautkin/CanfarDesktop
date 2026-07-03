@@ -67,7 +67,8 @@ public class ApiEndpoints
     // CADC TAP / Search (public, no auth)
     public string TapBaseUrl { get; set; } = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus";
     public string TapSyncUrl => $"{TapBaseUrl}/sync";
-    public string ResolverUrl => "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cadc-target-resolver/find";
+    public string ResolverBaseUrl { get; set; } = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cadc-target-resolver";
+    public string ResolverUrl => $"{ResolverBaseUrl}/find";
 
     // CADC DataLink / Download
     public string Caom2OpsBaseUrl { get; set; } = "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops";

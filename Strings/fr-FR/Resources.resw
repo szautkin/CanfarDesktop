@@ -3568,4 +3568,46 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Wf_VosRefreshButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Actualiser vos:&lt;vous&gt;/workflows</value>
   </data>
+  <data name="ObsDetail_OpenInFitsViewer" xml:space="preserve">
+    <value>Ouvrir dans la visionneuse FITS</value>
+  </data>
+  <data name="ObsDetail_ViewInResearch" xml:space="preserve">
+    <value>Voir dans Recherche</value>
+  </data>
+  <data name="ObsDetail_AddedToResearch" xml:space="preserve">
+    <value>Ajouté à votre archive de recherche.</value>
+  </data>
+  <data name="Settings_EndpointsExpander.Header" xml:space="preserve">
+    <value>Points de service</value>
+  </data>
+  <data name="Settings_EndpointsCaption.Text" xml:space="preserve">
+    <value>Tous les hôtes de services CANFAR/CADC utilisés par l'application. Les valeurs par défaut sont les hôtes publics standards du registre du CADC (ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/reg) — ne les modifiez que pour cibler un miroir ou un déploiement de test. Les nouvelles requêtes utilisent immédiatement les hôtes mis à jour ; une valeur invalide retombe sur la valeur par défaut.</value>
+  </data>
+  <data name="Settings_EpLoginBox.Header" xml:space="preserve">
+    <value>Connexion CADC (ac)</value>
+  </data>
+  <data name="Settings_EpSkahaBox.Header" xml:space="preserve">
+    <value>Sessions Skaha</value>
+  </data>
+  <data name="Settings_EpAcBox.Header" xml:space="preserve">
+    <value>Infos utilisateur (ac)</value>
+  </data>
+  <data name="Settings_EpArcNodesBox.Header" xml:space="preserve">
+    <value>Nœuds ARC (liste VOSpace)</value>
+  </data>
+  <data name="Settings_EpArcFilesBox.Header" xml:space="preserve">
+    <value>Fichiers ARC (transfert VOSpace)</value>
+  </data>
+  <data name="Settings_EpTapBox.Header" xml:space="preserve">
+    <value>TAP (recherche d'archives)</value>
+  </data>
+  <data name="Settings_EpCaom2OpsBox.Header" xml:space="preserve">
+    <value>CAOM2 ops (métadonnées + téléchargements)</value>
+  </data>
+  <data name="Settings_EpResolverBox.Header" xml:space="preserve">
+    <value>Résolveur de cibles</value>
+  </data>
+  <data name="Settings_EndpointsResetButton.Content" xml:space="preserve">
+    <value>Réinitialiser aux valeurs par défaut</value>
+  </data>
 </root>
