@@ -82,6 +82,11 @@ public sealed partial class FitsViewerPage : UserControl
             };
             // Exit blink on resize — transforms become stale
             if (_isBlinkMode) ExitBlinkMode();
+            // The image (Stretch=Uniform, centered) reflows into the new canvas size — e.g. when the
+            // coordinate panel opens/closes and shrinks the view. The crosshair is locked to an image
+            // PIXEL, so redraw it from that pixel; otherwise it keeps its old screen coords and
+            // appears to slide off the star it was on.
+            RedrawCrosshairFromImage();
         };
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
