@@ -83,23 +83,33 @@ public partial class MainViewModel : ObservableObject
     }
 
     private bool _isReAuthInProgress;
+    private DateTimeOffset _lastReauthFailure = DateTimeOffset.MinValue;
 
     /// <summary>
-    /// Called when a 401 is detected mid-session (e.g. from batch jobs polling).
-    /// Attempts silent re-auth, raises TokenExpired if it fails.
-    /// Guards against concurrent re-auth attempts.
+    /// The ONE owner of mid-session 401 handling (every authenticated HttpClient funnels here via
+    /// AuthTokenHandler → MainWindow). Attempts silent re-auth with stored credentials; raises
+    /// TokenExpired when that fails so the shell can show the persistent sign-in bar.
+    /// Deliberately NOT gated on IsAuthenticated: after one failed attempt flipped it false,
+    /// widgets kept polling with the dead token and every later 401 became a no-op — the user
+    /// stared at raw 401s with no way back in. A cooldown keeps failed attempts from hammering
+    /// the login endpoint on every poll tick; the sign-in bar owns the UX between attempts.
     /// </summary>
     public async Task HandleTokenExpiredAsync()
     {
-        if (!IsAuthenticated || _isReAuthInProgress) return;
+        if (_isReAuthInProgress) return;
+        if (DateTimeOffset.UtcNow - _lastReauthFailure < TimeSpan.FromSeconds(60)) return;
         _isReAuthInProgress = true;
 
         try
         {
             if (await TrySilentReauthAsync())
+            {
+                _lastReauthFailure = DateTimeOffset.MinValue;
                 return;
+            }
 
             // Silent re-auth failed — reset state and notify UI
+            _lastReauthFailure = DateTimeOffset.UtcNow;
             IsAuthenticated = false;
             Username = string.Empty;
             UserInfo = null;

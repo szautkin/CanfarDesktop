@@ -1077,6 +1077,8 @@ public sealed partial class MainWindow : Window
             {
                 UpdateAuthUI();
                 _landingView.StatusMessage = _viewModel.StatusMessage;
+                // Any successful sign-in (dialog, silent re-auth, tile-gated login) clears the bar.
+                if (_viewModel.IsAuthenticated) SessionExpiredBar.IsOpen = false;
             }
         });
     }
@@ -1159,11 +1161,21 @@ public sealed partial class MainWindow : Window
     {
         DispatcherQueue.TryEnqueue(() =>
         {
+            // Invalidate the auth-bound Portal so it rebuilds fresh after the next sign-in.
             _dashboardPage = null;
             PortalContainer.Child = null;
-            NavigateTo(AppMode.Landing);
+            // Only move the user if they're sitting on the now-dead Portal; anywhere else keep
+            // their context — the persistent sign-in bar carries the message and the way back in.
+            if (_currentMode == AppMode.Portal) NavigateTo(AppMode.Landing);
             _landingView.StatusMessage = Loc.T("MainWindow_SessionExpired");
+            SessionExpiredBar.IsOpen = true;
         });
+    }
+
+    private async void OnSessionExpiredSignInClick(object sender, RoutedEventArgs e)
+    {
+        if (await ShowLoginDialogAsync())
+            SessionExpiredBar.IsOpen = false;
     }
 
     #endregion

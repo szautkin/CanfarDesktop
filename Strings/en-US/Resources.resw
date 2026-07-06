@@ -3754,4 +3754,13 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="MainWindow_SectionFormat" xml:space="preserve">
     <value>·  {0}</value>
   </data>
+  <data name="MainWindow_SessionExpiredBar.Title" xml:space="preserve">
+    <value>Session expired</value>
+  </data>
+  <data name="MainWindow_SessionExpiredBar.Message" xml:space="preserve">
+    <value>Your CADC sign-in has expired. Sign in again to keep using Portal, Storage, and downloads.</value>
+  </data>
+  <data name="MainWindow_SessionExpiredSignIn.Content" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
 </root>

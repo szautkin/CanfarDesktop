@@ -3754,4 +3754,13 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="MainWindow_SectionFormat" xml:space="preserve">
     <value>·  {0}</value>
   </data>
+  <data name="MainWindow_SessionExpiredBar.Title" xml:space="preserve">
+    <value>Session expirée</value>
+  </data>
+  <data name="MainWindow_SessionExpiredBar.Message" xml:space="preserve">
+    <value>Votre connexion au CADC a expiré. Reconnectez-vous pour continuer à utiliser le Portail, le Stockage et les téléchargements.</value>
+  </data>
+  <data name="MainWindow_SessionExpiredSignIn.Content" xml:space="preserve">
+    <value>Se connecter</value>
+  </data>
 </root>

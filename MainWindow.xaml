@@ -118,6 +118,19 @@
                 <Border x:Name="CubeViewerContainer" Visibility="Collapsed" />
                 <Border x:Name="AiGuideContainer" Visibility="Collapsed" />
                 <Border x:Name="WorkflowsContainer" Visibility="Collapsed" />
+
+                <!-- Session-expired sign-in bar: overlays whatever view the user is in (no forced
+                     navigation) and stays until they sign back in or dismiss it. -->
+                <InfoBar x:Name="SessionExpiredBar" Severity="Warning" IsOpen="False" IsClosable="True"
+                         VerticalAlignment="Top" Margin="16,8,16,0"
+                         x:Uid="MainWindow_SessionExpiredBar"
+                         Title="Session expired"
+                         Message="Your CADC sign-in has expired. Sign in again to keep using Portal, Storage, and downloads.">
+                    <InfoBar.ActionButton>
+                        <Button x:Uid="MainWindow_SessionExpiredSignIn" Content="Sign in"
+                                Click="OnSessionExpiredSignInClick" />
+                    </InfoBar.ActionButton>
+                </InfoBar>
             </Grid>
         </Grid>
 
