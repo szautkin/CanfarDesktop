@@ -32,6 +32,20 @@ public sealed partial class FitsViewerPage : UserControl
     /// </summary>
     public void SetCrosshairAtImagePixel(double imgX, double imgY)
     {
+        // The linked/shared sky position often falls OUTSIDE this image when comparing a wide-field
+        // and a narrow-field frame (a TESS FFI vs a DAO cutout): the point exists on the sky but not
+        // in THIS photo. Drawing it anyway leaves the crosshair floating off the image — hide it.
+        if (ViewModel.ImageData is { } img &&
+            (imgX < 0 || imgX >= img.Width || imgY < 0 || imgY >= img.Height))
+        {
+            _crosshairImagePos = null;
+            _crosshairScreenPos = null;
+            CrosshairH.Visibility = Visibility.Collapsed;
+            CrosshairV.Visibility = Visibility.Collapsed;
+            CrosshairLabel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
         _crosshairImagePos = new Windows.Foundation.Point(imgX, imgY);
 
         if (ImageCanvas.ActualWidth > 0)
