@@ -142,6 +142,7 @@ public sealed partial class FitsViewerPage : UserControl
     {
         await ViewModel.OpenFileCommand.ExecuteAsync(filePath);
         UpdateHeaderList();
+        UpdateImageInfo();
         ComputeSliderRange();
     }
 
@@ -403,6 +404,90 @@ public sealed partial class FitsViewerPage : UserControl
     {
         if (ViewModel.CurrentHeader is null) return;
         HeaderList.ItemsSource = ViewModel.CurrentHeader.OrderedCards;
+    }
+
+    /// <summary>One row of the Image Info summary (label + value).</summary>
+    public sealed record InfoRow(string Label, string Value);
+
+    /// <summary>
+    /// Build the at-a-glance image summary shown above the raw header: dimensions, data type, the
+    /// WCS solution and its precision, pixel scale, field of view, sky center, orientation, and the
+    /// key provenance keywords. Everything is derived from the loaded image + its header, so it
+    /// works for any file — and makes differences between frames (a coarse survey vs a TESS FFI vs
+    /// a raw un-solved frame) obvious at a glance.
+    /// </summary>
+    private void UpdateImageInfo()
+    {
+        var rows = new List<InfoRow>();
+        var img = ViewModel.ImageData;
+        var hdr = ViewModel.CurrentHeader;
+        if (img is null) { ImageInfoList.ItemsSource = rows; return; }
+
+        void Add(string label, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value)) rows.Add(new InfoRow(label, value!));
+        }
+
+        Add(Loc.T("Fits_InfoDimensions"), $"{img.Width} × {img.Height} px");
+        var bitpix = hdr?.GetInt("BITPIX") ?? 0;
+        if (bitpix != 0) Add(Loc.T("Fits_InfoDataType"), DescribeBitpix(bitpix));
+
+        var wcs = img.Wcs;
+        if (wcs is { IsValid: true })
+        {
+            var kind = wcs.IsApproximate
+                ? Loc.T("Fits_InfoWcsApprox")
+                : wcs.Proj == WcsInfo.Projection.Linear
+                    ? Loc.T("Fits_InfoWcsLinear")
+                    : wcs.CType1.Contains("SIP", StringComparison.OrdinalIgnoreCase)
+                        ? $"{wcs.Proj.ToString().ToUpperInvariant()} + SIP"
+                        : wcs.Proj.ToString().ToUpperInvariant();
+            Add(Loc.T("Fits_InfoWcs"), kind);
+            Add(Loc.T("Fits_InfoPixelScale"), $"{wcs.PixelScaleArcsec:0.##} ″/px");
+            Add(Loc.T("Fits_InfoFov"),
+                FormatFov(img.Width * wcs.PixelScaleArcsec / 60.0, img.Height * wcs.PixelScaleArcsec / 60.0));
+            var (ra, dec) = wcs.PixelToWorld((img.Width + 1) / 2.0, (img.Height + 1) / 2.0);
+            Add(Loc.T("Fits_InfoCenter"), $"{WcsInfo.FormatRa(ra)}  {WcsInfo.FormatDec(dec)}");
+            var orient = $"N {wcs.NorthAngle:0.#}°";
+            if (wcs.HasParityFlip) orient += "  " + Loc.T("Fits_InfoParityFlip");
+            Add(Loc.T("Fits_InfoOrientation"), orient);
+        }
+        else
+        {
+            Add(Loc.T("Fits_InfoWcs"), Loc.T("Fits_InfoWcsNone"));
+        }
+
+        Add(Loc.T("Fits_InfoObject"), hdr?.GetString("OBJECT"));
+        Add(Loc.T("Fits_InfoTelescope"), hdr?.GetString("TELESCOP"));
+        Add(Loc.T("Fits_InfoInstrument"), hdr?.GetString("INSTRUME"));
+        Add(Loc.T("Fits_InfoFilter"), hdr?.GetString("FILTER") ?? hdr?.GetString("FILTER1"));
+        Add(Loc.T("Fits_InfoDate"), hdr?.GetString("DATE-OBS"));
+        var exp = hdr?.GetDouble("EXPTIME") ?? 0;
+        if (exp > 0) Add(Loc.T("Fits_InfoExposure"), $"{exp:0.###} s");
+        var unit = string.IsNullOrWhiteSpace(img.Unit) ? "" : $" {img.Unit}";
+        Add(Loc.T("Fits_InfoPixelRange"), $"{img.Min:0.###} … {img.Max:0.###}{unit}");
+
+        ImageInfoList.ItemsSource = rows;
+    }
+
+    private static string DescribeBitpix(int b) => b switch
+    {
+        8 => "8-bit int",
+        16 => "16-bit int",
+        32 => "32-bit int",
+        64 => "64-bit int",
+        -32 => "32-bit float",
+        -64 => "64-bit float",
+        _ => $"BITPIX {b}",
+    };
+
+    /// <summary>Format a field of view given each axis in arcminutes, picking °/′/″ per magnitude.</summary>
+    private static string FormatFov(double arcminX, double arcminY)
+    {
+        static string One(double am) => am >= 120 ? $"{am / 60:0.##}°"
+            : am >= 1 ? $"{am:0.#}′"
+            : $"{am * 60:0.#}″";
+        return $"{One(arcminX)} × {One(arcminY)}";
     }
 
     private void OnHeaderFilterChanged(object sender, TextChangedEventArgs e)

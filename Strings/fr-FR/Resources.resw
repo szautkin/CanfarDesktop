@@ -3769,4 +3769,61 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Fits_WcsSyncWarningBar.Message" xml:space="preserve">
     <value>Une ou plusieurs images n'ont pas de solution WCS précise ; la synchronisation du réticule et du zoom est donc approximative.</value>
   </data>
+  <data name="Fits_ImageInfoHeader.Text" xml:space="preserve">
+    <value>Infos image</value>
+  </data>
+  <data name="Fits_InfoDimensions" xml:space="preserve">
+    <value>Dimensions</value>
+  </data>
+  <data name="Fits_InfoDataType" xml:space="preserve">
+    <value>Type de données</value>
+  </data>
+  <data name="Fits_InfoWcs" xml:space="preserve">
+    <value>WCS</value>
+  </data>
+  <data name="Fits_InfoWcsApprox" xml:space="preserve">
+    <value>approximatif (pointage)</value>
+  </data>
+  <data name="Fits_InfoWcsLinear" xml:space="preserve">
+    <value>linéaire (sans projection)</value>
+  </data>
+  <data name="Fits_InfoWcsNone" xml:space="preserve">
+    <value>aucun</value>
+  </data>
+  <data name="Fits_InfoPixelScale" xml:space="preserve">
+    <value>Échelle pixel</value>
+  </data>
+  <data name="Fits_InfoFov" xml:space="preserve">
+    <value>Champ de vue</value>
+  </data>
+  <data name="Fits_InfoCenter" xml:space="preserve">
+    <value>Centre</value>
+  </data>
+  <data name="Fits_InfoOrientation" xml:space="preserve">
+    <value>Orientation</value>
+  </data>
+  <data name="Fits_InfoParityFlip" xml:space="preserve">
+    <value>(inversé)</value>
+  </data>
+  <data name="Fits_InfoObject" xml:space="preserve">
+    <value>Objet</value>
+  </data>
+  <data name="Fits_InfoTelescope" xml:space="preserve">
+    <value>Télescope</value>
+  </data>
+  <data name="Fits_InfoInstrument" xml:space="preserve">
+    <value>Instrument</value>
+  </data>
+  <data name="Fits_InfoFilter" xml:space="preserve">
+    <value>Filtre</value>
+  </data>
+  <data name="Fits_InfoDate" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="Fits_InfoExposure" xml:space="preserve">
+    <value>Exposition</value>
+  </data>
+  <data name="Fits_InfoPixelRange" xml:space="preserve">
+    <value>Plage pixels</value>
+  </data>
 </root>

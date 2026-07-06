@@ -3769,4 +3769,61 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Fits_WcsSyncWarningBar.Message" xml:space="preserve">
     <value>One or more images have no precise WCS solution, so crosshair and zoom sync are approximate.</value>
   </data>
+  <data name="Fits_ImageInfoHeader.Text" xml:space="preserve">
+    <value>Image info</value>
+  </data>
+  <data name="Fits_InfoDimensions" xml:space="preserve">
+    <value>Dimensions</value>
+  </data>
+  <data name="Fits_InfoDataType" xml:space="preserve">
+    <value>Data type</value>
+  </data>
+  <data name="Fits_InfoWcs" xml:space="preserve">
+    <value>WCS</value>
+  </data>
+  <data name="Fits_InfoWcsApprox" xml:space="preserve">
+    <value>approximate (from pointing)</value>
+  </data>
+  <data name="Fits_InfoWcsLinear" xml:space="preserve">
+    <value>linear (no projection)</value>
+  </data>
+  <data name="Fits_InfoWcsNone" xml:space="preserve">
+    <value>none</value>
+  </data>
+  <data name="Fits_InfoPixelScale" xml:space="preserve">
+    <value>Pixel scale</value>
+  </data>
+  <data name="Fits_InfoFov" xml:space="preserve">
+    <value>Field of view</value>
+  </data>
+  <data name="Fits_InfoCenter" xml:space="preserve">
+    <value>Center</value>
+  </data>
+  <data name="Fits_InfoOrientation" xml:space="preserve">
+    <value>Orientation</value>
+  </data>
+  <data name="Fits_InfoParityFlip" xml:space="preserve">
+    <value>(flipped)</value>
+  </data>
+  <data name="Fits_InfoObject" xml:space="preserve">
+    <value>Object</value>
+  </data>
+  <data name="Fits_InfoTelescope" xml:space="preserve">
+    <value>Telescope</value>
+  </data>
+  <data name="Fits_InfoInstrument" xml:space="preserve">
+    <value>Instrument</value>
+  </data>
+  <data name="Fits_InfoFilter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="Fits_InfoDate" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="Fits_InfoExposure" xml:space="preserve">
+    <value>Exposure</value>
+  </data>
+  <data name="Fits_InfoPixelRange" xml:space="preserve">
+    <value>Pixel range</value>
+  </data>
 </root>
