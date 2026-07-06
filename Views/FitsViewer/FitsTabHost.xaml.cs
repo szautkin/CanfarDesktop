@@ -523,7 +523,15 @@ public sealed partial class FitsTabHost : UserControl
 
         var ct = _activePage.GetCurrentTransform();
         var zoomA = Math.Abs(ct.scaleX);
-        var matchedZoom = ViewportMath.ComputeMatchedZoom(zoomA, wcsA.PixelScaleArcsec, wcsB.PixelScaleArcsec);
+        // Match the ANGULAR FIELD, not just the pixel scale: B is Fill-stretched into A's box, so the
+        // zoom ratio is (widthB·scaleB)/(widthA·scaleA). Using pixel scale alone (and inverted)
+        // rendered B as a tiny square inside A.
+        var imgDataA = tabA.ViewModel.ImageData!;
+        var imgDataB = tabB.ViewModel.ImageData!;
+        var matchedZoom = ViewportMath.ComputeMatchedZoom(
+            zoomA,
+            imgDataA.Width * wcsA.PixelScaleArcsec,
+            imgDataB.Width * wcsB.PixelScaleArcsec);
 
         // Match A's sky orientation: rotB = rotA + NorthAngleA - NorthAngleB
         var rotationB = ct.rotation + wcsA.NorthAngle - wcsB.NorthAngle;
@@ -534,7 +542,6 @@ public sealed partial class FitsTabHost : UserControl
         var (canvasW, canvasH) = _activePage.GetCanvasSize();
         // Use FitsImage's display size (BlinkImage will be forced to match via Stretch=Fill)
         var (fitsDisplayW, fitsDisplayH) = _activePage.GetImageDisplaySize();
-        var imgDataB = tabB.ViewModel.ImageData!;
 
         // Map B's reference pixel to FitsImage's display space (Stretch=Fill)
         var pixelB = wcsB.WorldToPixel(refRa, refDec);

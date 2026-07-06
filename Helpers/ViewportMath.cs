@@ -134,12 +134,17 @@ public static class ViewportMath
     }
 
     /// <summary>
-    /// Compute zoom for image B that matches the angular extent of image A.
-    /// If B has coarser pixels (larger arcsec/px), it needs less zoom.
+    /// Matched zoom for the blink overlay. Image B is stretched into A's display box (Stretch=Fill),
+    /// so both images' full frames span the same screen width at zoom 1. To render the SAME sky at
+    /// the same apparent scale, B's zoom scales by the ratio of the two images' ANGULAR FIELD widths
+    /// (pixels × arcsec/px): a wider-field B is zoomed IN more so its centre fills the view; a
+    /// narrower-field B less. (The earlier version used only the pixel-scale ratio, inverted — which
+    /// rendered B as a tiny square inside A when the fields differed.) Falls back to zoomA on a
+    /// degenerate field.
     /// </summary>
-    public static double ComputeMatchedZoom(double zoomA, double pixelScaleA, double pixelScaleB)
+    public static double ComputeMatchedZoom(double zoomA, double angularFieldA, double angularFieldB)
     {
-        if (pixelScaleB <= 0) return zoomA;
-        return zoomA * (pixelScaleA / pixelScaleB);
+        if (angularFieldA <= 0 || angularFieldB <= 0) return zoomA;
+        return zoomA * (angularFieldB / angularFieldA);
     }
 }
