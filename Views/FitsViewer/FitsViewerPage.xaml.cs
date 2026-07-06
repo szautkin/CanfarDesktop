@@ -601,7 +601,8 @@ public sealed partial class FitsViewerPage : UserControl
         var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(
             Windows.System.VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
-        if (ctrl)
+        // Wheel = zoom by default; Ctrl+wheel = move up/down; Shift+wheel = move left/right.
+        if (!ctrl && !shift)
         {
             var factor = delta > 0 ? 1.15 : 1.0 / 1.15;
             var oldMag = Math.Abs(ImageTransform.ScaleX);
@@ -636,11 +637,13 @@ public sealed partial class FitsViewerPage : UserControl
         }
         else if (shift)
         {
+            // Shift+wheel → pan left/right
             ImageTransform.TranslateX += delta;
             RedrawCrosshairFromImage();
         }
         else
         {
+            // Ctrl+wheel → pan up/down
             ImageTransform.TranslateY += delta;
             RedrawCrosshairFromImage();
         }
