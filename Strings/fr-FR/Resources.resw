@@ -3763,4 +3763,10 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="MainWindow_SessionExpiredSignIn.Content" xml:space="preserve">
     <value>Se connecter</value>
   </data>
+  <data name="Fits_WcsSyncWarningBar.Title" xml:space="preserve">
+    <value>WCS approximatif</value>
+  </data>
+  <data name="Fits_WcsSyncWarningBar.Message" xml:space="preserve">
+    <value>Une ou plusieurs images n'ont pas de solution WCS précise ; la synchronisation du réticule et du zoom est donc approximative.</value>
+  </data>
 </root>

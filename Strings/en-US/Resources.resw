@@ -3763,4 +3763,10 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="MainWindow_SessionExpiredSignIn.Content" xml:space="preserve">
     <value>Sign in</value>
   </data>
+  <data name="Fits_WcsSyncWarningBar.Title" xml:space="preserve">
+    <value>Approximate WCS</value>
+  </data>
+  <data name="Fits_WcsSyncWarningBar.Message" xml:space="preserve">
+    <value>One or more images have no precise WCS solution, so crosshair and zoom sync are approximate.</value>
+  </data>
 </root>

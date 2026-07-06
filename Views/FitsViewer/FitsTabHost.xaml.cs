@@ -53,6 +53,7 @@ public sealed partial class FitsTabHost : UserControl
         var page = CreateTabViewItem(tabItem);
         await page.OpenFileAsync(filePath);
         SyncToolbarToActiveTab();
+        UpdateWcsSyncWarning(); // WCS is loaded now — re-check if opening this file made sync approximate
         return page;
     }
 
@@ -187,6 +188,7 @@ public sealed partial class FitsTabHost : UserControl
                     ApplySharedViewToActivePage();
 
                 SyncToolbarToActiveTab();
+                UpdateWcsSyncWarning();
             });
         }
     }
@@ -386,6 +388,28 @@ public sealed partial class FitsTabHost : UserControl
         ViewModel.IsSyncZoomEnabled = SyncZoomToggle.IsChecked == true;
         if (ViewModel.IsSyncZoomEnabled)
             UpdateSharedAngularZoom();
+        UpdateWcsSyncWarning();
+    }
+
+    /// <summary>
+    /// Show the "approximate WCS" banner when a sync mode is active but at least one open image
+    /// lacks a precise WCS solution (missing/invalid, or reconstructed from legacy pointing keywords
+    /// like a raw DAO frame). Sync maps positions through each image's WCS, so an approximate one
+    /// makes the linked crosshair and matched zoom unreliable — the user should know why.
+    /// </summary>
+    private void UpdateWcsSyncWarning()
+    {
+        var syncing = ViewModel.IsSyncZoomEnabled || ViewModel.IsLinkedCrosshairEnabled;
+        var anyImprecise = false;
+        if (syncing)
+        {
+            foreach (var tab in ViewModel.Tabs)
+            {
+                var wcs = tab.ViewModel.ImageData?.Wcs;
+                if (wcs is null || !wcs.IsValid || wcs.IsApproximate) { anyImprecise = true; break; }
+            }
+        }
+        WcsSyncWarningBar.IsOpen = syncing && anyImprecise;
     }
 
     /// <summary>
@@ -642,6 +666,7 @@ public sealed partial class FitsTabHost : UserControl
             ViewModel.LinkedCrosshairPosition = null;
             _activePage?.ClearLinkedCrosshair();
         }
+        UpdateWcsSyncWarning();
     }
 
     // ── Coordinate panel ─────────────────────────────────────────────────────
