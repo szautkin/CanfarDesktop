@@ -193,13 +193,22 @@ public static class VoSpaceParser
         if (groupWrite is not null) props.Append(AclProperty("ivo://ivoa.net/vospace/core#groupwrite", JoinGroups(groupWrite)));
         if (isPublic is bool pub) props.Append(AclProperty("ivo://ivoa.net/vospace/core#ispublic", pub ? "true" : "false"));
 
+        // CADC's cavern validator returns 400 on a ContainerNode document that omits the child
+        // element sequence — the exact quirk that broke create_vospace_folder (commit 8837987) and
+        // now setNode. DataNode tolerates the short form, which is why file ACLs worked and folder
+        // ACLs did not. Match the known-good create body: accepts/provides/capabilities/nodes are
+        // schema filler; setNode ignores them and never touches the container's children.
+        var containerTail = nodeType == VoSpaceNodeType.Container
+            ? "\n  <vos:accepts/>\n  <vos:provides/>\n  <vos:capabilities/>\n  <vos:nodes/>"
+            : string.Empty;
+
         return $"""
             <?xml version="1.0" encoding="UTF-8"?>
             <vos:node xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0"
                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                       uri="{escapedUri}"
                       xsi:type="{type}">
-              <vos:properties>{props}</vos:properties>
+              <vos:properties>{props}</vos:properties>{containerTail}
             </vos:node>
             """;
     }

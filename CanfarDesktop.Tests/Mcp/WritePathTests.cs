@@ -103,8 +103,11 @@ public class WritePathTests
     }
 
     [Fact]
-    public async Task Router_AutoApplyFailure_LeavesProposalQueued()
+    public async Task Router_AutoApplyFailure_WithdrawsProposal()
     {
+        // QA 1.3.0.0 criterion #4: an auto-apply that already failed at the backend must NOT leave a
+        // doomed proposal in the queue — applying it from the strip can only reproduce the failure.
+        // The error is returned to the agent; the proposal is withdrawn.
         var (ctx, store, _) = Context();
         var hook = new AutoApplyHook(
             (verb, proposal) => Task.FromResult(true),
@@ -114,7 +117,7 @@ public class WritePathTests
         var result = await router.DispatchAsync("fake_write", Args("""{"name":"x"}"""), ctx, default);
 
         Assert.IsType<BackendError>(Assert.IsType<FailedResult>(result).Reason);
-        Assert.Single(store.List()); // still queued for retry/reject
+        Assert.Empty(store.List()); // withdrawn — no doomed item left behind
     }
 
     [Fact]

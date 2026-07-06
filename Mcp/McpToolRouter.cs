@@ -123,7 +123,11 @@ public sealed class McpToolRouter
             }
             catch (Exception ex)
             {
-                // Leave the proposal queued so the user can retry/reject from the strip.
+                // Withdraw the proposal: an auto-apply that already failed at the backend can only
+                // fail identically when applied from the strip — leaving it queued just hands the
+                // user a doomed item to clean up. The error goes back to the agent, which can fix
+                // the arguments and re-invoke the tool.
+                context.Proposals?.Withdraw(proposal.Id);
                 Audit(context, name, verb, AuditOutcome.Failed, sw, hash);
                 return ToolResult.Fail(new BackendError($"auto-apply failed: {ex.Message}"));
             }
