@@ -577,7 +577,14 @@ public sealed partial class FitsViewerPage : UserControl
 
             if (ViewModel.ImageData.Wcs is { IsValid: true } wcs)
             {
-                var (ra, dec) = wcs.PixelToWorld(ix + 1, fitsY + 1);
+                // RA/Dec from the EXACT sub-pixel crosshair position, not the truncated integer
+                // pixel used for the pixel-value lookup. Snapping to the pixel grid first shifts the
+                // readout by up to half a pixel — ~10" on a coarse TESS frame (20.5"/px) — so the
+                // same sky point read differently across two linked images. The pixel value stays
+                // per-integer-pixel; only the coordinate uses the fractional position.
+                var fracX = _crosshairImagePos.Value.X;
+                var fracFitsY = (h - 1) - _crosshairImagePos.Value.Y;
+                var (ra, dec) = wcs.PixelToWorld(fracX + 1, fracFitsY + 1);
                 lines.Add(Loc.F("Fits_ReadoutRa", WcsInfo.FormatRa(ra)));
                 lines.Add(Loc.F("Fits_ReadoutDec", WcsInfo.FormatDec(dec)));
                 ViewModel.CrosshairPosition = new WorldCoordinate(ra, dec);
