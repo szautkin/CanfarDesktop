@@ -84,8 +84,16 @@ public static class FitsParser
             }
             else if (header.NAxis >= 2 && header.NAxis1 > 0 && header.NAxis2 > 0)
             {
+                var dataStart = stream.Position;
+                // The 2D viewer reads only the FIRST plane (e.g. plane 1 of a WFPC2 c0f 4-chip cube);
+                // the cube viewer handles the rest. But the parser must still advance past ALL planes
+                // so the next HDU starts at the right offset — otherwise planes 2..N are misread as a
+                // header and blow the max-header-size guard.
                 imageData = ReadImageData(stream, header);
                 hasReadableImage = true;
+                var hduDataBytes = AlignToBlock(CalculateDataSize(header));
+                var consumed = stream.Position - dataStart;
+                if (hduDataBytes > consumed) SkipBytes(stream, hduDataBytes - consumed);
             }
             else if (dataBytes > 0)
             {
