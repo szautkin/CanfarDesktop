@@ -3826,4 +3826,10 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Fits_InfoPixelRange" xml:space="preserve">
     <value>Plage pixels</value>
   </data>
+  <data name="Fits_HduHeader.Text" xml:space="preserve">
+    <value>Extensions (HDU)</value>
+  </data>
+  <data name="Fits_HduNoImage" xml:space="preserve">
+    <value>sans image</value>
+  </data>
 </root>

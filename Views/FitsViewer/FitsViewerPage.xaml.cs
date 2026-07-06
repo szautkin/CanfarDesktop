@@ -141,6 +141,7 @@ public sealed partial class FitsViewerPage : UserControl
     public async Task OpenFileAsync(string filePath)
     {
         await ViewModel.OpenFileCommand.ExecuteAsync(filePath);
+        UpdateHduList();
         UpdateHeaderList();
         UpdateImageInfo();
         ComputeSliderRange();
@@ -421,6 +422,72 @@ public sealed partial class FitsViewerPage : UserControl
 
     /// <summary>One row of the Image Info summary (label + value).</summary>
     public sealed record InfoRow(string Label, string Value);
+
+    /// <summary>One row of the HDU/extension selector. Non-image HDUs are dimmed and not viewable.</summary>
+    public sealed record HduRow(int Index, string Label, bool IsImage)
+    {
+        public double DimOpacity => IsImage ? 1.0 : 0.45;
+    }
+
+    private bool _suppressHduSelect;
+
+    /// <summary>Populate the HDU selector (shown only for multi-extension files). The ViewModel
+    /// already parses every HDU and can switch the displayed one via SelectHdu.</summary>
+    private void UpdateHduList()
+    {
+        var hdus = ViewModel.Hdus;
+        if (hdus is null || hdus.Count <= 1)
+        {
+            HduSection.Visibility = Visibility.Collapsed;
+            HduList.ItemsSource = null;
+            return;
+        }
+
+        var rows = new List<HduRow>();
+        foreach (var hdu in hdus)
+        {
+            var name = hdu.Index == 0
+                ? "Primary"
+                : (hdu.Header.GetString("EXTNAME")?.Trim() is { Length: > 0 } en
+                    ? en
+                    : hdu.Header.GetString("XTENSION")?.Trim().Trim('\'').Trim() ?? $"HDU {hdu.Index}");
+            string shape;
+            if (hdu.HasImage)
+            {
+                var n3 = hdu.Header.GetInt("NAXIS3");
+                shape = n3 > 1
+                    ? $"{hdu.Header.NAxis1}×{hdu.Header.NAxis2}×{n3}"
+                    : $"{hdu.Header.NAxis1}×{hdu.Header.NAxis2}";
+            }
+            else
+            {
+                shape = Loc.T("Fits_HduNoImage");
+            }
+            rows.Add(new HduRow(hdu.Index, $"{hdu.Index} · {name} · {shape}", hdu.HasImage));
+        }
+
+        _suppressHduSelect = true;
+        HduList.ItemsSource = rows;
+        HduList.SelectedIndex = ViewModel.SelectedHduIndex;
+        _suppressHduSelect = false;
+        HduSection.Visibility = Visibility.Visible;
+    }
+
+    private void OnHduSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressHduSelect || HduList.SelectedItem is not HduRow row) return;
+        if (!row.IsImage)
+        {
+            // Non-image HDU (a table) can't be displayed — revert to the shown image HDU.
+            _suppressHduSelect = true;
+            HduList.SelectedIndex = ViewModel.SelectedHduIndex;
+            _suppressHduSelect = false;
+            return;
+        }
+        ViewModel.SelectHdu(row.Index);
+        UpdateImageInfo();
+        UpdateHeaderList();
+    }
 
     /// <summary>
     /// Build the at-a-glance image summary shown above the raw header: dimensions, data type, the

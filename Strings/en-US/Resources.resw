@@ -3826,4 +3826,10 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Fits_InfoPixelRange" xml:space="preserve">
     <value>Pixel range</value>
   </data>
+  <data name="Fits_HduHeader.Text" xml:space="preserve">
+    <value>Extensions (HDUs)</value>
+  </data>
+  <data name="Fits_HduNoImage" xml:space="preserve">
+    <value>no image</value>
+  </data>
 </root>
