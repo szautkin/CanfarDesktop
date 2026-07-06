@@ -21,6 +21,9 @@ public sealed partial class FitsTabHost : UserControl
     private bool _coordPanelVisible;
     private BlinkSession? _blinkSession;
     private DispatcherTimer? _blinkTimer;
+    /// <summary>Image A's transform before blink reframed it — restored on Stop.</summary>
+    private (FitsViewerPage page,
+             (double rotation, double scaleX, double scaleY, double translateX, double translateY) transform)? _blinkRestore;
 
     public FitsTabHost(FitsTabHostViewModel viewModel)
     {
@@ -522,26 +525,42 @@ public sealed partial class FitsTabHost : UserControl
         var refDec = pos?.Dec ?? wcsA.CrVal2;
 
         var ct = _activePage.GetCurrentTransform();
-        var zoomA = Math.Abs(ct.scaleX);
-        // Match the ANGULAR FIELD, not just the pixel scale: B is Fill-stretched into A's box, so the
-        // zoom ratio is (widthB·scaleB)/(widthA·scaleA). Using pixel scale alone (and inverted)
-        // rendered B as a tiny square inside A.
         var imgDataA = tabA.ViewModel.ImageData!;
         var imgDataB = tabB.ViewModel.ImageData!;
-        var matchedZoom = ViewportMath.ComputeMatchedZoom(
-            zoomA,
-            imgDataA.Width * wcsA.PixelScaleArcsec,
-            imgDataB.Width * wcsB.PixelScaleArcsec);
-
-        // Match A's sky orientation: rotB = rotA + NorthAngleA - NorthAngleB
-        var rotationB = ct.rotation + wcsA.NorthAngle - wcsB.NorthAngle;
-        var flipB = wcsB.HasParityFlip != (ct.scaleX < 0);
-        var scaleXB = flipB ? -matchedZoom : matchedZoom;
 
         // Use CANVAS dimensions (not page — page includes header panel)
         var (canvasW, canvasH) = _activePage.GetCanvasSize();
         // Use FitsImage's display size (BlinkImage will be forced to match via Stretch=Fill)
         var (fitsDisplayW, fitsDisplayH) = _activePage.GetImageDisplaySize();
+
+        // Frame the SHARED (smaller) field so BOTH images are comparable. The two frames usually
+        // cover very different angular fields (a wide OMM frame vs a narrow HST cutout); whichever
+        // is wider is zoomed IN to the overlap and centred on the reference, so the narrower one
+        // fills the view instead of rendering as a tiny square. A's view is restored on Stop.
+        var fieldA = imgDataA.Width * wcsA.PixelScaleArcsec;
+        var fieldB = imgDataB.Width * wcsB.PixelScaleArcsec;
+        var minField = Math.Min(fieldA, fieldB);
+        if (minField <= 0) return;
+
+        _blinkRestore = (_activePage, ct);
+        var signA = ct.scaleX < 0 ? -1.0 : 1.0;
+        var zoomA = fieldA / minField; // A frames the overlap (1.0 when A is already the narrower)
+        var pixelA = wcsA.WorldToPixel(refRa, refDec);
+        if (pixelA is null) return;
+        var displayXA = (pixelA.Value.Px - 1) / imgDataA.Width * fitsDisplayW;
+        var displayYA = (imgDataA.Height - 1 - (pixelA.Value.Py - 1)) / imgDataA.Height * fitsDisplayH;
+        var (txA, tyA) = ViewportMath.ComputeCenterTranslate(
+            displayXA, displayYA, signA * zoomA, zoomA, ct.rotation,
+            fitsDisplayW, fitsDisplayH, canvasW, canvasH);
+        _activePage.SetRawTransform(ct.rotation, signA * zoomA, zoomA, txA, tyA);
+
+        // B's matched zoom = zoomA · fieldB/fieldA = fieldB/minField (also frames the overlap).
+        var matchedZoom = ViewportMath.ComputeMatchedZoom(zoomA, fieldA, fieldB);
+
+        // Match A's sky orientation: rotB = rotA + NorthAngleA - NorthAngleB
+        var rotationB = ct.rotation + wcsA.NorthAngle - wcsB.NorthAngle;
+        var flipB = wcsB.HasParityFlip != (signA < 0);
+        var scaleXB = flipB ? -matchedZoom : matchedZoom;
 
         // Map B's reference pixel to FitsImage's display space (Stretch=Fill)
         var pixelB = wcsB.WorldToPixel(refRa, refDec);
@@ -588,6 +607,13 @@ public sealed partial class FitsTabHost : UserControl
         _blinkTimer = null;
         _blinkSession = null;
         _activePage?.ExitBlinkMode();
+        // Restore image A's pre-blink view (blink zoomed/centred it to frame the overlap).
+        if (_blinkRestore is { } r)
+        {
+            r.page.SetRawTransform(r.transform.rotation, r.transform.scaleX, r.transform.scaleY,
+                r.transform.translateX, r.transform.translateY);
+            _blinkRestore = null;
+        }
         BlinkIntervalSlider.Visibility = Visibility.Collapsed;
         StopBlinkButton.Visibility = Visibility.Collapsed;
     }

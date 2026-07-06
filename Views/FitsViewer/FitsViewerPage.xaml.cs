@@ -355,6 +355,19 @@ public sealed partial class FitsViewerPage : UserControl
         => (ImageTransform.Rotation, ImageTransform.ScaleX, ImageTransform.ScaleY,
             ImageTransform.TranslateX, ImageTransform.TranslateY);
 
+    /// <summary>Apply an exact CompositeTransform (used by blink to frame the overlap on image A,
+    /// and to restore the user's view when blink stops).</summary>
+    public void SetRawTransform(double rotation, double scaleX, double scaleY, double translateX, double translateY)
+    {
+        ImageTransform.Rotation = rotation;
+        ImageTransform.ScaleX = scaleX;
+        ImageTransform.ScaleY = scaleY;
+        ImageTransform.TranslateX = translateX;
+        ImageTransform.TranslateY = translateY;
+        ZoomLabel.Text = $"{Math.Abs(scaleX) * 100:F0}%";
+        RedrawCrosshairFromImage();
+    }
+
     /// <summary>Set zoom level from the toolbar slider (preserves mirror sign).</summary>
     public void SetZoomLevel(double magnitude)
     {
