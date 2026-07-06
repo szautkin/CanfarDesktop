@@ -22,6 +22,17 @@ public record WcsInfo
     public string CType2 { get; init; } = string.Empty;
 
     /// <summary>
+    /// SIP distortion coefficients (Shupe et al. 2005), indexed [p, q] = coefficient of uᵖvᵍ.
+    /// Forward (A/B): pixel offset → distortion, applied before the CD matrix in PixelToWorld.
+    /// Inverse (AP/BP): applied after the inverse CD matrix in WorldToPixel. Null = no SIP.
+    /// Matters enormously for wide-field mosaics — a TESS FFI's corner is ~22′ off without it.
+    /// </summary>
+    public double[,]? SipA { get; init; }
+    public double[,]? SipB { get; init; }
+    public double[,]? SipAp { get; init; }
+    public double[,]? SipBp { get; init; }
+
+    /// <summary>
     /// True when the WCS was reconstructed from legacy (non-standard) RA/DEC keywords
     /// rather than a real CD/CDELT solution. Spatial operations (crosshair, Go To,
     /// Search Here) are approximate and the UI should warn the user.
@@ -83,11 +94,28 @@ public record WcsInfo
         }
     }
 
-    /// <summary>Trailing 3-char projection code from a CTYPE string ("RA---TAN" → "TAN").</summary>
+    /// <summary>
+    /// Projection algorithm code from a CTYPE string. Per FITS WCS Paper II, CTYPE is
+    /// "&lt;coord&gt;-&lt;ALGO&gt;" so the algorithm is the token AFTER the coordinate name
+    /// ("RA---TAN" → "TAN"), and a further token is a distortion suffix, NOT the projection
+    /// ("RA---TAN-SIP" → "TAN", never "SIP"). Taking the last token misread every SIP image as
+    /// linear — catastrophic for wide TAN fields like TESS FFIs.
+    /// </summary>
     private static string ProjectionCode(string ctype)
     {
         var parts = ctype.Split('-', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length > 0 ? parts[^1] : string.Empty;
+        return parts.Length >= 2 ? parts[1] : string.Empty;
+    }
+
+    /// <summary>Evaluate a SIP polynomial Σ c[p,q]·uᵖ·vᵍ.</summary>
+    private static double SipPoly(double[,] c, double u, double v)
+    {
+        var order = c.GetLength(0) - 1;
+        double sum = 0;
+        for (var p = 0; p <= order; p++)
+            for (var q = 0; q <= order - p; q++)
+                if (c[p, q] != 0) sum += c[p, q] * Math.Pow(u, p) * Math.Pow(v, q);
+        return sum;
     }
 
     #endregion
@@ -100,6 +128,15 @@ public record WcsInfo
     {
         var dx = px - CrPix1;
         var dy = py - CrPix2;
+        // SIP forward distortion (before the CD matrix): the true intermediate pixel offset is
+        // (u + f(u,v), v + g(u,v)).
+        if (SipA is not null && SipB is not null)
+        {
+            var fx = dx + SipPoly(SipA, dx, dy);
+            var fy = dy + SipPoly(SipB, dx, dy);
+            dx = fx;
+            dy = fy;
+        }
         // Intermediate world coordinates (ξ, η) in degrees via the CD matrix.
         var xi = Cd1_1 * dx + Cd1_2 * dy;
         var eta = Cd2_1 * dx + Cd2_2 * dy;
@@ -139,6 +176,15 @@ public record WcsInfo
 
         var dx = (Cd2_2 * xi - Cd1_2 * eta) / det;
         var dy = (-Cd2_1 * xi + Cd1_1 * eta) / det;
+        // SIP inverse distortion (after the inverse CD matrix): AP/BP map the corrected offset
+        // back to the true pixel offset.
+        if (SipAp is not null && SipBp is not null)
+        {
+            var u = dx + SipPoly(SipAp, dx, dy);
+            var v = dy + SipPoly(SipBp, dx, dy);
+            dx = u;
+            dy = v;
+        }
         return (CrPix1 + dx, CrPix2 + dy);
     }
 
@@ -354,6 +400,19 @@ public record WcsInfo
             };
         }
 
+        // SIP polynomial distortion (CTYPE "…-SIP"): read the A/B forward and AP/BP inverse
+        // coefficient sets. Without these a wide TAN field (TESS FFI) is off by many arcminutes.
+        if (wcs.CType1.Contains("SIP", StringComparison.OrdinalIgnoreCase))
+        {
+            wcs = wcs with
+            {
+                SipA = ReadSipCoefficients(header, "A"),
+                SipB = ReadSipCoefficients(header, "B"),
+                SipAp = ReadSipCoefficients(header, "AP"),
+                SipBp = ReadSipCoefficients(header, "BP"),
+            };
+        }
+
         // Degenerate/half-zero CD (e.g. CDELT1=0 with CDELT2≠0) is non-invertible for WCS;
         // try an approximate reconstruction from legacy RA/DEC keywords.
         if (wcs.Cd1_1 == 0 || wcs.Cd2_2 == 0)
@@ -362,6 +421,29 @@ public record WcsInfo
             if (legacy is not null) return legacy;
         }
         return wcs;
+    }
+
+    /// <summary>Read a SIP coefficient set (&lt;prefix&gt;_ORDER + &lt;prefix&gt;_p_q) into a
+    /// [p, q] array, or null when absent.</summary>
+    private static double[,]? ReadSipCoefficients(FitsHeader header, string prefix)
+    {
+        if (!header.Contains(prefix + "_ORDER")) return null;
+        var order = (int)header.GetDouble(prefix + "_ORDER");
+        if (order < 1 || order > 9) return null; // sane cap (FITS SIP orders are small)
+
+        var c = new double[order + 1, order + 1];
+        var any = false;
+        for (var p = 0; p <= order; p++)
+            for (var q = 0; q <= order - p; q++)
+            {
+                var key = $"{prefix}_{p}_{q}";
+                if (header.Contains(key))
+                {
+                    c[p, q] = header.GetDouble(key);
+                    any = true;
+                }
+            }
+        return any ? c : null;
     }
 
     /// <summary>

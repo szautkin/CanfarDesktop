@@ -24,8 +24,79 @@ public class WcsProjectionTests
     [InlineData("RA---CAR", "DEC--CAR", WcsInfo.Projection.Linear)] // unknown code
     [InlineData("RA---TAN", "DEC--SIN", WcsInfo.Projection.Linear)] // mismatched axes
     [InlineData("", "", WcsInfo.Projection.Linear)]                 // empty CTYPE
+    // Regression: a "-SIP" distortion suffix must not be mistaken for the projection — the
+    // projection is the token AFTER the coordinate name. Taking the last token read every SIP
+    // image (TESS FFIs) as Linear, off by many arcminutes across the field.
+    [InlineData("RA---TAN-SIP", "DEC--TAN-SIP", WcsInfo.Projection.Tan)]
+    [InlineData("RA---SIN-SIP", "DEC--SIN-SIP", WcsInfo.Projection.Sin)]
     public void ProjectionCodeParsing(string c1, string c2, WcsInfo.Projection expected)
         => Assert.Equal(expected, Make(c1, c2).Proj);
+
+    [Fact]
+    public void PixelToWorld_AppliesSipForwardDistortion()
+    {
+        // 1″/px TAN at CRPIX/CRVAL, plus a pure A_2_0 quadratic: f(u,v) = A_2_0·u².
+        var a = new double[3, 3]; a[2, 0] = 1e-4;
+        var b = new double[3, 3]; // g = 0
+        var sip = new WcsInfo
+        {
+            CrPix1 = 100, CrPix2 = 100, CrVal1 = 10, CrVal2 = 20,
+            Cd1_1 = 1.0 / 3600, Cd1_2 = 0, Cd2_1 = 0, Cd2_2 = 1.0 / 3600,
+            CType1 = "RA---TAN-SIP", CType2 = "DEC--TAN-SIP", SipA = a, SipB = b,
+        };
+        var noSip = sip with { SipA = null, SipB = null };
+
+        // u = 100 (px=200): forward SIP maps offset 100 → 100 + 1e-4·100² = 101.
+        // So SIP@px=200 must equal the undistorted mapping at px=201 (both offset 101).
+        var (raSip, decSip) = sip.PixelToWorld(200, 100);
+        var (raRef, decRef) = noSip.PixelToWorld(201, 100);
+        Assert.Equal(raRef, raSip, 9);
+        Assert.Equal(decRef, decSip, 9);
+        // …and it actually differs from the undistorted mapping at the same pixel.
+        var (raPlain, _) = noSip.PixelToWorld(200, 100);
+        Assert.NotEqual(raPlain, raSip);
+    }
+
+    /// <summary>End-to-end SIP+TAN against astropy gold values (all_pix2world, origin=1) for real
+    /// TESS FFIs. Guarded on the local files (skips elsewhere) — the same pattern as the fpack test.</summary>
+    [Theory]
+    [InlineData(@"C:\Users\szaut\OneDrive\Documents\tess2025233124603-s0096-3-3-0293-s_ffic.fits",
+        42.763231, -71.818999, 36.008492, -63.976789)]
+    [InlineData(@"C:\Users\szaut\OneDrive\Documents\tess2018262165941-s0002-3-3-0121-s_ffic.fits",
+        37.874313, -70.826946, 33.762986, -62.750826)]
+    public void TessFfi_SipWcs_MatchesAstropyReference_WhenAvailable(
+        string path, double centerRa, double centerDec, double cornerRa, double cornerDec)
+    {
+        if (!System.IO.File.Exists(path)) return;
+
+        using var stream = System.IO.File.OpenRead(path);
+        var hdus = CanfarDesktop.Services.Fits.FitsParser.Parse(stream);
+        var wcs = System.Linq.Enumerable.FirstOrDefault(
+            System.Linq.Enumerable.Select(hdus, h => h.ImageData?.Wcs),
+            w => w is { IsValid: true });
+        Assert.NotNull(wcs);
+        Assert.Equal(WcsInfo.Projection.Tan, wcs!.Proj); // was misread as Linear
+        Assert.NotNull(wcs.SipA);
+        Assert.NotNull(wcs.SipAp);
+
+        AssertRaDec(wcs, 1068, 1039, centerRa, centerDec, 1.0); // center
+        AssertRaDec(wcs, 2086, 2028, cornerRa, cornerDec, 2.0); // corner (SIP ~16′)
+
+        // WorldToPixel round-trip closes via the AP/BP inverse SIP.
+        var back = wcs.WorldToPixel(cornerRa, cornerDec);
+        Assert.NotNull(back);
+        Assert.Equal(2086, back!.Value.Px, 0);
+        Assert.Equal(2028, back.Value.Py, 0);
+    }
+
+    private static void AssertRaDec(WcsInfo wcs, double px, double py, double ra, double dec, double tolArcsec)
+    {
+        var (r, d) = wcs.PixelToWorld(px, py);
+        var off = System.Math.Sqrt(
+            System.Math.Pow((r - ra) * System.Math.Cos(dec * System.Math.PI / 180), 2) +
+            System.Math.Pow(d - dec, 2)) * 3600;
+        Assert.True(off < tolArcsec, $"({px},{py}) off by {off:F2}\" — got RA={r:F5} Dec={d:F5}");
+    }
 
     [Theory]
     [InlineData(WcsInfo.Projection.Tan)]
