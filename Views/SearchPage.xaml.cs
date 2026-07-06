@@ -253,6 +253,14 @@ public sealed partial class SearchPage : Page
 
     #endregion
 
+    /// <summary>
+    /// Bring the Search Form tab (pivot index 0) forward. Callers that populate the form from
+    /// elsewhere — the FITS crosshair "Search Here", the MCP set-search-focus tool — must call this;
+    /// otherwise the page stays on whatever tab it was last left on (Results after a prior search,
+    /// or ADQL) and the user never sees the coordinates that were just filled into the form.
+    /// </summary>
+    public void ShowSearchForm() => MainPivot.SelectedIndex = 0;
+
     #region Recent searches + saved queries
 
     private void OnLoadRecentSearch(object sender, RoutedEventArgs e)
