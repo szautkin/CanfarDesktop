@@ -71,6 +71,27 @@ public sealed partial class ResearchPage : UserControl
         CountText.Text = $"({ViewModel.ObservationCount})";
     }
 
+    /// <summary>Dropdown offering BOTH in-app viewers for a file with a real third axis; the label
+    /// reflects the recommendation (spectral cube -> Cube Viewer, detector stack -> FITS Viewer) but
+    /// the user can always pick either.</summary>
+    private Microsoft.UI.Xaml.Controls.DropDownButton BuildResearchViewerDropdown(Helpers.FitsShape shape)
+    {
+        var fitsItem = new MenuFlyoutItem { Text = Loc.T("Research_FitsViewer") };
+        fitsItem.Click += (_, _) => ViewModel.OpenInFitsViewerCommand.Execute(null);
+        var cubeItem = new MenuFlyoutItem { Text = Loc.T("Research_CubeViewer") };
+        cubeItem.Click += (_, _) => ViewModel.OpenInCubeViewerCommand.Execute(null);
+
+        var flyout = new MenuFlyout();
+        if (shape.RecommendCube) { flyout.Items.Add(cubeItem); flyout.Items.Add(fitsItem); }
+        else { flyout.Items.Add(fitsItem); flyout.Items.Add(cubeItem); }
+
+        return new Microsoft.UI.Xaml.Controls.DropDownButton
+        {
+            Content = Loc.T(shape.RecommendCube ? "Research_CubeViewer" : "Research_FitsViewer"),
+            Flyout = flyout,
+        };
+    }
+
     private void OnFilterChanged(object sender, TextChangedEventArgs e)
     {
         ViewModel.FilterText = FilterBox.Text;
@@ -239,25 +260,24 @@ public sealed partial class ResearchPage : UserControl
 
         if (obs.FileExists)
         {
-            // Suggest the RIGHT in-app viewer for the data (header sniff, same rule as the
-            // observation-detail download banner): a real third axis → Cube Viewer, else the
-            // 2D FITS viewer. The sniff is file I/O, so it runs OFF the UI thread (OneDrive
-            // hydration / AV scans can block the open for seconds) — FITS viewer shows first,
-            // upgraded to Cube Viewer when the sniff says so and the selection hasn't moved.
+            // Open-in-viewer. Default to the FITS-viewer button; once the (off-UI-thread) header
+            // sniff resolves, a file with a real third axis becomes a dropdown offering BOTH viewers
+            // (recommendation reflected in the label — spectral cube → Cube Viewer, detector
+            // stack → FITS Viewer), so the user is never restricted. The sniff is file I/O, run
+            // off-thread because a OneDrive/AV-scanned path can block the open for seconds.
             var fitsBtn = UIFactory.CreateIconButton("", Loc.T("Research_FitsViewer"), (_, _) => ViewModel.OpenInFitsViewerCommand.Execute(null));
             btnPanel.Children.Add(fitsBtn);
             var sniffPath = obs.LocalPath;
             var sniffCt = _previewCts.Token;
-            _ = Task.Run(() => Helpers.FitsSniff.IsLikelyCube(sniffPath)).ContinueWith(t =>
+            _ = Task.Run(() => Helpers.FitsSniff.Inspect(sniffPath)).ContinueWith(t =>
             {
-                if (t.Status != TaskStatus.RanToCompletion || !t.Result || sniffCt.IsCancellationRequested) return;
+                if (t.Status != TaskStatus.RanToCompletion || sniffCt.IsCancellationRequested || !t.Result.HasCubeAxis) return;
+                var shape = t.Result;
                 DispatcherQueue.TryEnqueue(() =>
                 {
                     if (sniffCt.IsCancellationRequested) return;
                     var idx = btnPanel.Children.IndexOf(fitsBtn);
-                    if (idx < 0) return;
-                    btnPanel.Children[idx] = UIFactory.CreateIconButton("", Loc.T("Research_CubeViewer"),
-                        (_, _) => ViewModel.OpenInCubeViewerCommand.Execute(null));
+                    if (idx >= 0) btnPanel.Children[idx] = BuildResearchViewerDropdown(shape);
                 });
             });
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8E5", Loc.T("Research_OpenFile"), (_, _) => ViewModel.OpenFileCommand.Execute(null)));

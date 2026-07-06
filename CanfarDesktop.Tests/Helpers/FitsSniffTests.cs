@@ -58,6 +58,48 @@ public class FitsSniffTests
             Header("XTENSION= 'IMAGE   '", "NAXIS   =                    3",
                    "NAXIS1  =                  300", "NAXIS2  =                  300", "NAXIS3  =                   40")));
 
+    private static FitsShape Shape(params byte[][] blocks)
+    {
+        using var ms = new MemoryStream();
+        foreach (var b in blocks) ms.Write(b);
+        ms.Position = 0;
+        return FitsSniff.Inspect(ms);
+    }
+
+    [Fact]
+    public void SpectralCube_RecommendsCubeViewer()
+    {
+        // CTYPE3 = VELO-LSR (CGPS-style): a real spectral cube → recommend the Cube Viewer.
+        var s = Shape(Header(
+            "SIMPLE  =                    T", "NAXIS   =                    3",
+            "NAXIS1  =                  512", "NAXIS2  =                  512", "NAXIS3  =                  272",
+            "CTYPE3  = 'VELO-LSR'"));
+        Assert.True(s.HasCubeAxis);
+        Assert.True(s.RecommendCube);
+    }
+
+    [Fact]
+    public void DetectorStackCube_HasAxisButRecommendsFits()
+    {
+        // NAXIS3=4, no CTYPE3 (WFPC2 c0f, 4 chips): a cube by shape, but best viewed 2D — the Cube
+        // Viewer is still OFFERABLE (HasCubeAxis) but not recommended.
+        var s = Shape(Header(
+            "SIMPLE  =                    T", "NAXIS   =                    3",
+            "NAXIS1  =                  800", "NAXIS2  =                  800", "NAXIS3  =                    4"));
+        Assert.True(s.HasCubeAxis);
+        Assert.False(s.RecommendCube);
+    }
+
+    [Fact]
+    public void TwoDImage_NoCubeAxis()
+    {
+        var s = Shape(Header(
+            "SIMPLE  =                    T", "NAXIS   =                    2",
+            "NAXIS1  =                 2048", "NAXIS2  =                 2048"));
+        Assert.False(s.HasCubeAxis);
+        Assert.False(s.RecommendCube);
+    }
+
     [Fact]
     public void GarbageAndMissingFiles_AreSafelyNotCubes()
     {
