@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.3.1] - Unreleased
+
+Patch: FITS-viewer accuracy fixes and new tools, plus folder-sharing and search fixes.
+
+### Added
+- **Image Info panel** — at-a-glance summary above the raw header (dimensions, WCS solution + precision, pixel scale, field of view, sky centre, orientation, instrument/filter/date/exposure)
+- **Extension (HDU) selector** in the FITS-viewer left panel for multi-extension files
+- **Viewer choice** — files with a third axis get a dropdown to open in the 2D FITS or 3D Cube viewer (spectral cubes default to Cube, detector stacks to FITS)
+- **Multi-plane cube support** (e.g. HST WFPC2) that previously failed with a "header size" error
+
+### Changed
+- **Mouse-wheel zoom** by default; Ctrl+wheel pans up/down, Shift+wheel left/right
+- **"Search here"** from the FITS viewer opens the search form with coordinates pre-filled
+
+### Fixed
+- **SIP distortion** now applied — crosshair, Go To, and cross-tab sync land correctly on wide-field/TESS data (was off by arcminutes near the edges); readout uses the exact sub-pixel position
+- **Blink comparison** frames the shared field so both images are comparable (the second image no longer renders as a tiny square)
+- **Folder sharing** — VOSpace folders can be made public or shared with a group (`set_vospace_acl` 400 on containers)
+- Crosshair stays on its star through panel resizes; hides when a linked position is off-image; warns when a synced image has only an approximate WCS
+- `set_vospace_acl` no longer leaves a doomed proposal queued on a deterministic backend failure
+
+## [1.3.0] - 2026-07-06
+
+First release of the Workflows / AI-assistant generation.
+
+### Added
+- **Workflows** — research-protocols tile with markdown-checklist protocols, local + VOSpace storage, and Canada-first templates
+- **AI assistant** — guided connect wizard to pair an AI agent (Claude Desktop) over MCP, plus an **AI Guide** for tuning how the agent sees each tool
+- **Cube viewer** — 3D spectral-cube volume renderer with spectrum probing and figure export
+- **Editable service endpoints** in Settings (all CANFAR/CADC hosts) with a connection self-test
+- **In-app fpack (RICE_1) decompression** — `.fits.fz` files open directly
+- **Full French localization** across the app
+
+### Fixed
+- Expired-session handling: a mid-session 401 now always leads back to sign-in
+- Numerous macOS-parity, 4K-layout, notebook, and MCP reliability fixes
+
 ## [1.1.0] - 2026-04-05
 
 ### Added
