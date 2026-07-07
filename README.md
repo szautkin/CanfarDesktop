@@ -1,6 +1,6 @@
 # Verbinal for Windows
 
-A native Windows desktop companion for the [CANFAR Science Portal](https://www.canfar.net/), built with C#, WinUI 3, and the Windows App SDK.
+**A CANFAR Science Portal companion and research platform** — a native Windows companion for the Canadian Astronomy Data Centre (CADC) and the [CANFAR Science Platform](https://www.canfar.net/), built with C#, WinUI 3, and the Windows App SDK. It brings the everyday work of an astronomer — finding archival data, inspecting images, running analysis, managing cloud storage and compute — into one fast, keyboard-friendly desktop app.
 
 This is the Windows counterpart of [Verbinal for macOS](https://github.com/szautkin/canfar-macos) (SwiftUI), [Verbinal for Linux](https://github.com/szautkin/CanfarDesktopUbuntu) (Rust/GTK 4), and [Verbinal for Android](https://github.com/szautkin/canfar-android) (Kotlin/Jetpack Compose).
 
@@ -10,31 +10,46 @@ This is the Windows counterpart of [Verbinal for macOS](https://github.com/szaut
 
 ![Landing Page](docs/images/landing.png)
 
+| 3D Cube Viewer | Workflows |
+|:---:|:---:|
+| ![Cube Viewer](docs/images/cube-viewer.png) | ![Workflows](docs/images/workflows.png) |
+
 ## Features
 
-### [Portal](docs/02-portal.md) — Session Management
-Launch, monitor, and manage CANFAR science sessions (JupyterLab, CARTA, NoVNC). View platform load, batch jobs, and session events/logs.
-
 ### [Search](docs/03-search.md) — CADC Archive
-Query the Canadian Astronomy Data Centre archive with form-based search, ADQL editor, cascading data train filters, and download with real-time progress.
+Query the CADC archive (CFHT, JCMT, DAO, Gemini, HST and more) with coordinate or target-name cone searches, a filterable data train (collection, instrument, filter, calibration level, dates), previews, saved ADQL queries, VizieR catalogue cone search, and one-click downloads into your local research archive.
 
-### [Research](docs/04-research.md) — Downloaded Observations
-Browse downloaded FITS files with metadata cards, preview images, and one-click routing to the FITS Viewer.
-
-### [Storage](docs/05-storage.md) — VOSpace Browser
-Browse and manage VOSpace cloud files. Upload via drag-and-drop, download, create folders, and open FITS files directly in the viewer.
-
-### [Notebook](docs/06-notebook.md) — Jupiter
-A native WinUI Jupyter notebook engine. Multi-tab, local Python execution, Jupyter keyboard shortcuts, magic commands, matplotlib inline, autosave with crash recovery.
+### [Research](docs/04-research.md) — Archive & Notes
+Downloaded observations are organized automatically, with previews, per-observation notes, and an exportable research bundle you can hand to collaborators.
 
 ### [FITS Viewer](docs/07-fits-viewer.md) — Astronomical Images
-Native FITS image viewer with WCS coordinates, multiple stretch modes and colormaps, North Up orientation, multi-tab comparison with linked crosshair, sync zoom, and blink comparison.
+A hardware-accelerated 2D FITS viewer with WCS readout, coordinate go-to, pixel probing, bookmarks, multiple stretch modes and colormaps, North Up orientation, and multi-tab comparison (linked crosshair, sync zoom, blink). Opens fpack (`.fits.fz`) files directly.
+
+### Cube Viewer — 3D Spectral Cubes
+A Direct3D volume renderer for spectral cubes: fly around position-position-velocity space, scrub channels against an intensity waveform, shape the transfer function, probe spectra at any point, and export publication figures.
+
+### [Notebook](docs/06-notebook.md) — Native Jupyter
+Edit and run `.ipynb` files natively with a local Python kernel — no browser, no server setup. Seed ready-to-run analysis notebooks (quick-look imaging, aperture photometry, cube moment maps) directly from a downloaded observation.
+
+### Workflows — Research Protocols
+Step-by-step research protocols rendered as check-off step cards. Start from seven built-in astronomy templates or write your own in simple markdown with a live-preview editor. Store them locally or share them with your team via VOSpace.
+
+### [Storage](docs/05-storage.md) — VOSpace Browser
+Browse, upload, download, organize, and share your VOSpace/ARC files with quota tracking.
+
+### [Portal](docs/02-portal.md) — Sessions & Batch Compute
+Launch and manage CANFAR sessions (Jupyter, Desktop, CARTA, Firefly) and submit headless batch jobs with replicas; follow logs and events live. Image Discovery shows which software packages a container image carries before you launch it.
+
+### AI Assistant (optional)
+Connect Claude Desktop or Claude Code through a guided wizard and let an AI agent drive Verbinal with 115+ tools: search, download, open viewers, run notebooks, manage storage and sessions, and follow or author Workflows. You stay in control — a proposal review strip gates every consequential action, destructive operations always require explicit approval, and every agent change is badged.
 
 ### Cross-Module Integration
-- **Search to FITS** — Download from archive, view in FITS Viewer, crosshair back to Search
-- **Storage to FITS** — Right-click a .fits file in VOSpace, open directly in the viewer
-- **File Browser** — Side panel with local file navigation, routes .fits/.ipynb to the correct module
-- **Back Navigation** — Navigate between modules without losing context
+- **Search to FITS** — download from the archive, view in the FITS viewer, crosshair back to Search
+- **Storage to FITS** — right-click a `.fits` file in VOSpace, open directly in the viewer
+- **File Browser** — side panel with local navigation, routes `.fits`/`.ipynb` to the right module
+- **Back Navigation** — move between modules without losing context
+
+Authenticated features (Portal, Storage, compute) require a free CADC account; Search and the viewers work without signing in. The interface is available in **English and French** (Settings → General → Language).
 
 ## Installation
 
@@ -71,7 +86,7 @@ Or open `CanfarDesktop.slnx` in Visual Studio 2022 and run.
 dotnet test CanfarDesktop.Tests
 ```
 
-529 tests covering: FITS parser, WCS coordinate transforms, viewport math, blink alignment, notebook parser, dirty tracking, autosave, recovery, ADQL builder, data train, VOTable parsing, and more.
+1,500+ tests covering: FITS parser and RICE decompression, WCS coordinate transforms, viewport math, blink alignment, notebook parser, dirty tracking, autosave, recovery, ADQL builder, data train, VOTable parsing, VOSpace, MCP tool routing, and more.
 
 ## Architecture
 
