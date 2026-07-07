@@ -10,6 +10,10 @@ This is the Windows counterpart of [Verbinal for macOS](https://github.com/szaut
 
 ![Landing Page](docs/images/landing.png)
 
+| Cube Viewer | Workflows |
+|:---:|:---:|
+| ![Cube Viewer](docs/images/cube-viewer.png) | ![Workflows](docs/images/workflows.png) |
+
 ## Features
 
 ### [Portal](docs/02-portal.md) — Session Management
@@ -28,7 +32,16 @@ Browse and manage VOSpace cloud files. Upload via drag-and-drop, download, creat
 A native WinUI Jupyter notebook engine. Multi-tab, local Python execution, Jupyter keyboard shortcuts, magic commands, matplotlib inline, autosave with crash recovery.
 
 ### [FITS Viewer](docs/07-fits-viewer.md) — Astronomical Images
-Native FITS image viewer with WCS coordinates, multiple stretch modes and colormaps, North Up orientation, multi-tab comparison with linked crosshair, sync zoom, and blink comparison.
+Native FITS image viewer with WCS coordinates (including SIP distortion for wide-field data), an Image Info summary, HDU/extension selector, multiple stretch modes and colormaps, North Up orientation, multi-tab comparison with linked crosshair, sync zoom, and blink comparison. Opens fpack (`.fits.fz`) files directly.
+
+### Cube Viewer — 3D Spectral Cubes
+Volume-render FITS spectral cubes with GPU raymarching, probe the spectrum at any pixel, scrub through channels, and export figures.
+
+### Workflows — Research Protocols
+Author and follow step-by-step research protocols as markdown checklists — stored locally or in VOSpace — with Canada-first templates.
+
+### AI Assistant — Agent Integration
+Pair an AI agent (Claude Desktop) with the app over MCP through a guided connect wizard, and tune how the agent sees each tool with the AI Guide.
 
 ### Cross-Module Integration
 - **Search to FITS** — Download from archive, view in FITS Viewer, crosshair back to Search
