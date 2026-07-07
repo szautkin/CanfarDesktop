@@ -25,13 +25,13 @@ Downloaded observations are organized automatically, with previews, per-observat
 ### [FITS Viewer](docs/07-fits-viewer.md) — Astronomical Images
 A hardware-accelerated 2D FITS viewer with WCS readout, coordinate go-to, pixel probing, bookmarks, multiple stretch modes and colormaps, North Up orientation, and multi-tab comparison (linked crosshair, sync zoom, blink). Opens fpack (`.fits.fz`) files directly.
 
-### Cube Viewer — 3D Spectral Cubes
+### [Cube Viewer](docs/08-cube-viewer.md) — 3D Spectral Cubes
 A Direct3D volume renderer for spectral cubes: fly around position-position-velocity space, scrub channels against an intensity waveform, shape the transfer function, probe spectra at any point, and export publication figures.
 
 ### [Notebook](docs/06-notebook.md) — Native Jupyter
 Edit and run `.ipynb` files natively with a local Python kernel — no browser, no server setup. Seed ready-to-run analysis notebooks (quick-look imaging, aperture photometry, cube moment maps) directly from a downloaded observation.
 
-### Workflows — Research Protocols
+### [Workflows](docs/09-workflows.md) — Research Protocols
 Step-by-step research protocols rendered as check-off step cards. Start from seven built-in astronomy templates or write your own in simple markdown with a live-preview editor. Store them locally or share them with your team via VOSpace.
 
 ### [Storage](docs/05-storage.md) — VOSpace Browser
@@ -40,7 +40,7 @@ Browse, upload, download, organize, and share your VOSpace/ARC files with quota 
 ### [Portal](docs/02-portal.md) — Sessions & Batch Compute
 Launch and manage CANFAR sessions (Jupyter, Desktop, CARTA, Firefly) and submit headless batch jobs with replicas; follow logs and events live. Image Discovery shows which software packages a container image carries before you launch it.
 
-### AI Assistant (optional)
+### [AI Assistant](docs/10-ai-assistant.md) (optional)
 Connect Claude Desktop or Claude Code through a guided wizard and let an AI agent drive Verbinal with 115+ tools: search, download, open viewers, run notebooks, manage storage and sessions, and follow or author Workflows. You stay in control — a proposal review strip gates every consequential action, destructive operations always require explicit approval, and every agent change is badged.
 
 ### Cross-Module Integration
