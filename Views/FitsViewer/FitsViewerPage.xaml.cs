@@ -32,6 +32,20 @@ public sealed partial class FitsViewerPage : UserControl
     /// </summary>
     public void SetCrosshairAtImagePixel(double imgX, double imgY)
     {
+        // The linked/shared sky position often falls OUTSIDE this image when comparing a wide-field
+        // and a narrow-field frame (a TESS FFI vs a DAO cutout): the point exists on the sky but not
+        // in THIS photo. Drawing it anyway leaves the crosshair floating off the image — hide it.
+        if (ViewModel.ImageData is { } img &&
+            (imgX < 0 || imgX >= img.Width || imgY < 0 || imgY >= img.Height))
+        {
+            _crosshairImagePos = null;
+            _crosshairScreenPos = null;
+            CrosshairH.Visibility = Visibility.Collapsed;
+            CrosshairV.Visibility = Visibility.Collapsed;
+            CrosshairLabel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
         _crosshairImagePos = new Windows.Foundation.Point(imgX, imgY);
 
         if (ImageCanvas.ActualWidth > 0)
@@ -68,6 +82,11 @@ public sealed partial class FitsViewerPage : UserControl
             };
             // Exit blink on resize — transforms become stale
             if (_isBlinkMode) ExitBlinkMode();
+            // The image (Stretch=Uniform, centered) reflows into the new canvas size — e.g. when the
+            // coordinate panel opens/closes and shrinks the view. The crosshair is locked to an image
+            // PIXEL, so redraw it from that pixel; otherwise it keeps its old screen coords and
+            // appears to slide off the star it was on.
+            RedrawCrosshairFromImage();
         };
 
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -122,7 +141,9 @@ public sealed partial class FitsViewerPage : UserControl
     public async Task OpenFileAsync(string filePath)
     {
         await ViewModel.OpenFileCommand.ExecuteAsync(filePath);
+        UpdateHduList();
         UpdateHeaderList();
+        UpdateImageInfo();
         ComputeSliderRange();
     }
 
@@ -335,6 +356,19 @@ public sealed partial class FitsViewerPage : UserControl
         => (ImageTransform.Rotation, ImageTransform.ScaleX, ImageTransform.ScaleY,
             ImageTransform.TranslateX, ImageTransform.TranslateY);
 
+    /// <summary>Apply an exact CompositeTransform (used by blink to frame the overlap on image A,
+    /// and to restore the user's view when blink stops).</summary>
+    public void SetRawTransform(double rotation, double scaleX, double scaleY, double translateX, double translateY)
+    {
+        ImageTransform.Rotation = rotation;
+        ImageTransform.ScaleX = scaleX;
+        ImageTransform.ScaleY = scaleY;
+        ImageTransform.TranslateX = translateX;
+        ImageTransform.TranslateY = translateY;
+        ZoomLabel.Text = $"{Math.Abs(scaleX) * 100:F0}%";
+        RedrawCrosshairFromImage();
+    }
+
     /// <summary>Set zoom level from the toolbar slider (preserves mirror sign).</summary>
     public void SetZoomLevel(double magnitude)
     {
@@ -386,6 +420,156 @@ public sealed partial class FitsViewerPage : UserControl
         HeaderList.ItemsSource = ViewModel.CurrentHeader.OrderedCards;
     }
 
+    /// <summary>One row of the Image Info summary (label + value).</summary>
+    public sealed record InfoRow(string Label, string Value);
+
+    /// <summary>One row of the HDU/extension selector. Non-image HDUs are dimmed and not viewable.</summary>
+    public sealed record HduRow(int Index, string Label, bool IsImage)
+    {
+        public double DimOpacity => IsImage ? 1.0 : 0.45;
+    }
+
+    private bool _suppressHduSelect;
+
+    /// <summary>Populate the HDU selector (shown only for multi-extension files). The ViewModel
+    /// already parses every HDU and can switch the displayed one via SelectHdu.</summary>
+    private void UpdateHduList()
+    {
+        var hdus = ViewModel.Hdus;
+        if (hdus is null || hdus.Count <= 1)
+        {
+            HduSection.Visibility = Visibility.Collapsed;
+            HduList.ItemsSource = null;
+            return;
+        }
+
+        var rows = new List<HduRow>();
+        foreach (var hdu in hdus)
+        {
+            var name = hdu.Index == 0
+                ? "Primary"
+                : (hdu.Header.GetString("EXTNAME")?.Trim() is { Length: > 0 } en
+                    ? en
+                    : hdu.Header.GetString("XTENSION")?.Trim().Trim('\'').Trim() ?? $"HDU {hdu.Index}");
+            string shape;
+            if (hdu.HasImage)
+            {
+                var n3 = hdu.Header.GetInt("NAXIS3");
+                shape = n3 > 1
+                    ? $"{hdu.Header.NAxis1}×{hdu.Header.NAxis2}×{n3}"
+                    : $"{hdu.Header.NAxis1}×{hdu.Header.NAxis2}";
+            }
+            else
+            {
+                shape = Loc.T("Fits_HduNoImage");
+            }
+            rows.Add(new HduRow(hdu.Index, $"{hdu.Index} · {name} · {shape}", hdu.HasImage));
+        }
+
+        _suppressHduSelect = true;
+        HduList.ItemsSource = rows;
+        HduList.SelectedIndex = ViewModel.SelectedHduIndex;
+        _suppressHduSelect = false;
+        HduSection.Visibility = Visibility.Visible;
+    }
+
+    private void OnHduSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressHduSelect || HduList.SelectedItem is not HduRow row) return;
+        if (!row.IsImage)
+        {
+            // Non-image HDU (a table) can't be displayed — revert to the shown image HDU.
+            _suppressHduSelect = true;
+            HduList.SelectedIndex = ViewModel.SelectedHduIndex;
+            _suppressHduSelect = false;
+            return;
+        }
+        ViewModel.SelectHdu(row.Index);
+        UpdateImageInfo();
+        UpdateHeaderList();
+    }
+
+    /// <summary>
+    /// Build the at-a-glance image summary shown above the raw header: dimensions, data type, the
+    /// WCS solution and its precision, pixel scale, field of view, sky center, orientation, and the
+    /// key provenance keywords. Everything is derived from the loaded image + its header, so it
+    /// works for any file — and makes differences between frames (a coarse survey vs a TESS FFI vs
+    /// a raw un-solved frame) obvious at a glance.
+    /// </summary>
+    private void UpdateImageInfo()
+    {
+        var rows = new List<InfoRow>();
+        var img = ViewModel.ImageData;
+        var hdr = ViewModel.CurrentHeader;
+        if (img is null) { ImageInfoList.ItemsSource = rows; return; }
+
+        void Add(string label, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value)) rows.Add(new InfoRow(label, value!));
+        }
+
+        Add(Loc.T("Fits_InfoDimensions"), $"{img.Width} × {img.Height} px");
+        var bitpix = hdr?.GetInt("BITPIX") ?? 0;
+        if (bitpix != 0) Add(Loc.T("Fits_InfoDataType"), DescribeBitpix(bitpix));
+
+        var wcs = img.Wcs;
+        if (wcs is { IsValid: true })
+        {
+            var kind = wcs.IsApproximate
+                ? Loc.T("Fits_InfoWcsApprox")
+                : wcs.Proj == WcsInfo.Projection.Linear
+                    ? Loc.T("Fits_InfoWcsLinear")
+                    : wcs.CType1.Contains("SIP", StringComparison.OrdinalIgnoreCase)
+                        ? $"{wcs.Proj.ToString().ToUpperInvariant()} + SIP"
+                        : wcs.Proj.ToString().ToUpperInvariant();
+            Add(Loc.T("Fits_InfoWcs"), kind);
+            Add(Loc.T("Fits_InfoPixelScale"), $"{wcs.PixelScaleArcsec:0.##} ″/px");
+            Add(Loc.T("Fits_InfoFov"),
+                FormatFov(img.Width * wcs.PixelScaleArcsec / 60.0, img.Height * wcs.PixelScaleArcsec / 60.0));
+            var (ra, dec) = wcs.PixelToWorld((img.Width + 1) / 2.0, (img.Height + 1) / 2.0);
+            Add(Loc.T("Fits_InfoCenter"), $"{WcsInfo.FormatRa(ra)}  {WcsInfo.FormatDec(dec)}");
+            var orient = $"N {wcs.NorthAngle:0.#}°";
+            if (wcs.HasParityFlip) orient += "  " + Loc.T("Fits_InfoParityFlip");
+            Add(Loc.T("Fits_InfoOrientation"), orient);
+        }
+        else
+        {
+            Add(Loc.T("Fits_InfoWcs"), Loc.T("Fits_InfoWcsNone"));
+        }
+
+        Add(Loc.T("Fits_InfoObject"), hdr?.GetString("OBJECT"));
+        Add(Loc.T("Fits_InfoTelescope"), hdr?.GetString("TELESCOP"));
+        Add(Loc.T("Fits_InfoInstrument"), hdr?.GetString("INSTRUME"));
+        Add(Loc.T("Fits_InfoFilter"), hdr?.GetString("FILTER") ?? hdr?.GetString("FILTER1"));
+        Add(Loc.T("Fits_InfoDate"), hdr?.GetString("DATE-OBS"));
+        var exp = hdr?.GetDouble("EXPTIME") ?? 0;
+        if (exp > 0) Add(Loc.T("Fits_InfoExposure"), $"{exp:0.###} s");
+        var unit = string.IsNullOrWhiteSpace(img.Unit) ? "" : $" {img.Unit}";
+        Add(Loc.T("Fits_InfoPixelRange"), $"{img.Min:0.###} … {img.Max:0.###}{unit}");
+
+        ImageInfoList.ItemsSource = rows;
+    }
+
+    private static string DescribeBitpix(int b) => b switch
+    {
+        8 => "8-bit int",
+        16 => "16-bit int",
+        32 => "32-bit int",
+        64 => "64-bit int",
+        -32 => "32-bit float",
+        -64 => "64-bit float",
+        _ => $"BITPIX {b}",
+    };
+
+    /// <summary>Format a field of view given each axis in arcminutes, picking °/′/″ per magnitude.</summary>
+    private static string FormatFov(double arcminX, double arcminY)
+    {
+        static string One(double am) => am >= 120 ? $"{am / 60:0.##}°"
+            : am >= 1 ? $"{am:0.#}′"
+            : $"{am * 60:0.#}″";
+        return $"{One(arcminX)} × {One(arcminY)}";
+    }
+
     private void OnHeaderFilterChanged(object sender, TextChangedEventArgs e)
     {
         if (ViewModel.CurrentHeader is null) return;
@@ -417,7 +601,8 @@ public sealed partial class FitsViewerPage : UserControl
         var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(
             Windows.System.VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
-        if (ctrl)
+        // Wheel = zoom by default; Ctrl+wheel = move up/down; Shift+wheel = move left/right.
+        if (!ctrl && !shift)
         {
             var factor = delta > 0 ? 1.15 : 1.0 / 1.15;
             var oldMag = Math.Abs(ImageTransform.ScaleX);
@@ -452,11 +637,13 @@ public sealed partial class FitsViewerPage : UserControl
         }
         else if (shift)
         {
+            // Shift+wheel → pan left/right
             ImageTransform.TranslateX += delta;
             RedrawCrosshairFromImage();
         }
         else
         {
+            // Ctrl+wheel → pan up/down
             ImageTransform.TranslateY += delta;
             RedrawCrosshairFromImage();
         }
@@ -558,7 +745,14 @@ public sealed partial class FitsViewerPage : UserControl
 
             if (ViewModel.ImageData.Wcs is { IsValid: true } wcs)
             {
-                var (ra, dec) = wcs.PixelToWorld(ix + 1, fitsY + 1);
+                // RA/Dec from the EXACT sub-pixel crosshair position, not the truncated integer
+                // pixel used for the pixel-value lookup. Snapping to the pixel grid first shifts the
+                // readout by up to half a pixel — ~10" on a coarse TESS frame (20.5"/px) — so the
+                // same sky point read differently across two linked images. The pixel value stays
+                // per-integer-pixel; only the coordinate uses the fractional position.
+                var fracX = _crosshairImagePos.Value.X;
+                var fracFitsY = (h - 1) - _crosshairImagePos.Value.Y;
+                var (ra, dec) = wcs.PixelToWorld(fracX + 1, fracFitsY + 1);
                 lines.Add(Loc.F("Fits_ReadoutRa", WcsInfo.FormatRa(ra)));
                 lines.Add(Loc.F("Fits_ReadoutDec", WcsInfo.FormatDec(dec)));
                 ViewModel.CrosshairPosition = new WorldCoordinate(ra, dec);

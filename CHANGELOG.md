@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.3.1] - Unreleased
+## [1.3.1] - 2026-07-07
 
 Patch: FITS-viewer accuracy fixes and new tools, plus folder-sharing and search fixes.
 

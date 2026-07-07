@@ -185,6 +185,15 @@
                      TabCloseRequested="OnTabCloseRequested"
                      SelectionChanged="OnTabSelectionChanged" />
 
+            <!-- Warns when crosshair/zoom sync is on but a file lacks a precise WCS (e.g. a raw
+                 DAO frame with only a pointing): the linked position/zoom will be approximate. -->
+            <InfoBar x:Name="WcsSyncWarningBar" Grid.Column="0"
+                     Severity="Warning" IsOpen="False" IsClosable="True"
+                     VerticalAlignment="Top" Margin="8,8,8,0"
+                     x:Uid="Fits_WcsSyncWarningBar"
+                     Title="Approximate WCS"
+                     Message="One or more images have no precise WCS solution, so crosshair and zoom sync are approximate." />
+
             <!-- Saved coordinates panel (collapsible) -->
             <Border Grid.Column="1"
                     Background="{ThemeResource LayerFillColorDefaultBrush}"

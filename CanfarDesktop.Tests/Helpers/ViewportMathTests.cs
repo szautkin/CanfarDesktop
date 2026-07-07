@@ -203,35 +203,44 @@ public class ViewportMathTests
 
     // ── ComputeMatchedZoom ──────────────────────────────────────────────────
 
+    // Args are ANGULAR FIELD widths (pixels × arcsec/px), not pixel scale: B is Fill-stretched into
+    // A's box, so the zoom ratio is fieldB/fieldA. A wider-field B zooms IN more to match A's view.
+
     [Fact]
-    public void ComputeMatchedZoom_SameScale_SameZoom()
+    public void ComputeMatchedZoom_SameField_SameZoom()
     {
-        Assert.Equal(2.0, ViewportMath.ComputeMatchedZoom(2.0, 0.5, 0.5), Tolerance);
+        Assert.Equal(2.0, ViewportMath.ComputeMatchedZoom(2.0, 500.0, 500.0), Tolerance);
     }
 
     [Fact]
-    public void ComputeMatchedZoom_DoubleScale_HalfZoom()
+    public void ComputeMatchedZoom_WiderFieldB_MoreZoom()
     {
-        // B has 2x coarser pixels → half the zoom to match angular extent
-        Assert.Equal(1.0, ViewportMath.ComputeMatchedZoom(2.0, 0.5, 1.0), Tolerance);
+        // B covers 2x the sky → zoom in 2x more so its centre fills A's view
+        Assert.Equal(4.0, ViewportMath.ComputeMatchedZoom(2.0, 500.0, 1000.0), Tolerance);
     }
 
     [Fact]
-    public void ComputeMatchedZoom_FinerPixels_MoreZoom()
+    public void ComputeMatchedZoom_NarrowerFieldB_LessZoom()
     {
-        // B has 2x finer pixels → double the zoom
-        Assert.Equal(4.0, ViewportMath.ComputeMatchedZoom(2.0, 1.0, 0.5), Tolerance);
+        // B covers half the sky → half the zoom
+        Assert.Equal(1.0, ViewportMath.ComputeMatchedZoom(2.0, 1000.0, 500.0), Tolerance);
     }
 
     [Fact]
-    public void ComputeMatchedZoom_ZeroScaleB_FallbackToZoomA()
+    public void ComputeMatchedZoom_ZeroFieldB_FallbackToZoomA()
     {
-        Assert.Equal(3.0, ViewportMath.ComputeMatchedZoom(3.0, 0.5, 0.0), Tolerance);
+        Assert.Equal(3.0, ViewportMath.ComputeMatchedZoom(3.0, 500.0, 0.0), Tolerance);
     }
 
     [Fact]
-    public void ComputeMatchedZoom_NegativeScaleB_FallbackToZoomA()
+    public void ComputeMatchedZoom_ZeroFieldA_FallbackToZoomA()
     {
-        Assert.Equal(3.0, ViewportMath.ComputeMatchedZoom(3.0, 0.5, -1.0), Tolerance);
+        Assert.Equal(3.0, ViewportMath.ComputeMatchedZoom(3.0, 0.0, 500.0), Tolerance);
+    }
+
+    [Fact]
+    public void ComputeMatchedZoom_NegativeField_FallbackToZoomA()
+    {
+        Assert.Equal(3.0, ViewportMath.ComputeMatchedZoom(3.0, 500.0, -1.0), Tolerance);
     }
 }

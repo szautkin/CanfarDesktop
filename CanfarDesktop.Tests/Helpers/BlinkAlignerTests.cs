@@ -46,8 +46,10 @@ public class BlinkAlignerTests
         var wcsA = CreateWcs(180, 45, 0.001); // 3.6"/px
         var wcsB = CreateWcs(180, 45, 0.002); // 7.2"/px
 
-        // If A is at zoom 2.0, B should be at zoom 1.0 to match angular extent
-        var matchedZoom = ViewportMath.ComputeMatchedZoom(2.0, wcsA.PixelScaleArcsec, wcsB.PixelScaleArcsec);
+        // Same 1024² dims, so B's angular field is 2× A's → matched zoom 4.0 (verifies the aligner
+        // applies whatever zoom it is given; the value itself is covered in ViewportMathTests).
+        var matchedZoom = ViewportMath.ComputeMatchedZoom(
+            2.0, 1024 * wcsA.PixelScaleArcsec, 1024 * wcsB.PixelScaleArcsec);
 
         var result = BlinkAligner.ComputeAlignedTransform(
             wcsB, 1024, 1024, 180, 45, matchedZoom, 1200, 900, 1024, 1024);

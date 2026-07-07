@@ -154,6 +154,35 @@ public class VoSpaceParserTests
     }
 
     [Fact]
+    public void BuildSetAclNodeXml_Container_IncludesChildElementSequence()
+    {
+        // Regression (QA 1.3.0.0): cavern returns 400 on a ContainerNode setNode document that omits
+        // the accepts/provides/capabilities/nodes tail — the same quirk that broke folder CREATION
+        // (commit 8837987). File ACLs (DataNode) worked because DataNode tolerates the short form.
+        var xml = VoSpaceParser.BuildSetAclNodeXml(
+            "vos://cadc.nrc.ca~arc/home/me/folder", VoSpaceNodeType.Container, null, null, true);
+
+        System.Xml.Linq.XDocument.Parse(xml); // well-formed
+        Assert.Contains("xsi:type=\"vos:ContainerNode\"", xml);
+        Assert.Contains("<vos:accepts/>", xml);
+        Assert.Contains("<vos:provides/>", xml);
+        Assert.Contains("<vos:capabilities/>", xml);
+        Assert.Contains("<vos:nodes/>", xml);
+    }
+
+    [Fact]
+    public void BuildSetAclNodeXml_DataNode_OmitsContainerChildElements()
+    {
+        // The DataNode body must stay lean — it works today and the tail is container-only.
+        var xml = VoSpaceParser.BuildSetAclNodeXml(
+            "vos://cadc.nrc.ca~arc/home/me/file.fits", VoSpaceNodeType.DataNode, null, null, true);
+
+        Assert.Contains("xsi:type=\"vos:DataNode\"", xml);
+        Assert.DoesNotContain("<vos:nodes/>", xml);
+        Assert.DoesNotContain("<vos:capabilities/>", xml);
+    }
+
+    [Fact]
     public void BuildSetAclNodeXml_NullDimensions_AreOmitted()
     {
         // CRITICAL: a null dimension emits NO property, so setNode leaves it untouched on the server.

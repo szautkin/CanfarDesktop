@@ -700,23 +700,14 @@ public sealed partial class ObservationDetailPage : UserControl
         // Classify by CONTENT, not extension — a mis-served download can put FITS bytes in a
         // ".png" (and vice versa), and that is exactly the case the suggestion must survive.
         // Off the UI thread: the file was just written, so AV on-write scans can hold the open.
-        var kind = await Task.Run(() => FitsSniff.ClassifyFile(savedPath));
+        var shape = await Task.Run(() => FitsSniff.Inspect(savedPath));
 
-        if (kind != FitsKind.NotFits)
+        if (shape.Kind != FitsKind.NotFits)
         {
-            // Suggest the RIGHT viewer for the data: a real third axis gets the 3D Cube Viewer,
-            // everything else (2D imagers like this DAO frame) the FITS viewer.
-            var isCube = kind == FitsKind.Cube;
-            var open = new Button
-            {
-                Content = Loc.T(isCube ? "ObsDetail_OpenInCubeViewer" : "ObsDetail_OpenInFitsViewer"),
-            };
-            open.Click += (_, _) =>
-            {
-                if (isCube) OpenInCubeRequested?.Invoke(savedPath);
-                else OpenInFitsRequested?.Invoke(savedPath);
-            };
-            DownloadBar.ActionButton = open;
+            // Recommend the right viewer but never restrict: a spectral cube defaults to the 3D Cube
+            // Viewer, a 2D image / detector stack to the FITS viewer — and whenever a 3rd axis exists
+            // the user can pick the other from the dropdown.
+            DownloadBar.ActionButton = BuildViewerButton(savedPath, shape);
 
             // Only the SCIENCE file lands in the Research archive: a calibration/aux FITS would
             // clobber the science record (the store replaces by PublisherID).
@@ -746,6 +737,34 @@ public sealed partial class ObservationDetailPage : UserControl
     }
 
     private void OnViewInResearchClick(object sender, RoutedEventArgs e) => ViewInResearchRequested?.Invoke();
+
+    /// <summary>Build the "open in viewer" action. Pure 2D → a single FITS-viewer button. A file with
+    /// a real third axis → a dropdown offering BOTH viewers (recommendation reflected in the label:
+    /// spectral cube → Cube Viewer, detector stack → FITS Viewer), so the user is never restricted.</summary>
+    private Microsoft.UI.Xaml.Controls.Primitives.ButtonBase BuildViewerButton(string path, FitsShape shape)
+    {
+        if (!shape.HasCubeAxis)
+        {
+            var b = new Button { Content = Loc.T("ObsDetail_OpenInFitsViewer") };
+            b.Click += (_, _) => OpenInFitsRequested?.Invoke(path);
+            return b;
+        }
+
+        var fitsItem = new MenuFlyoutItem { Text = Loc.T("ObsDetail_OpenInFitsViewer") };
+        fitsItem.Click += (_, _) => OpenInFitsRequested?.Invoke(path);
+        var cubeItem = new MenuFlyoutItem { Text = Loc.T("ObsDetail_OpenInCubeViewer") };
+        cubeItem.Click += (_, _) => OpenInCubeRequested?.Invoke(path);
+
+        var flyout = new MenuFlyout();
+        if (shape.RecommendCube) { flyout.Items.Add(cubeItem); flyout.Items.Add(fitsItem); }
+        else { flyout.Items.Add(fitsItem); flyout.Items.Add(cubeItem); }
+
+        return new DropDownButton
+        {
+            Content = Loc.T(shape.RecommendCube ? "ObsDetail_OpenInCubeViewer" : "ObsDetail_OpenInFitsViewer"),
+            Flyout = flyout,
+        };
+    }
 
     /// <summary>Track the downloaded file in the Research archive (updates the existing record when
     /// this observation was downloaded before). Uses the context captured at download START.</summary>

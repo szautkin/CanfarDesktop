@@ -493,6 +493,45 @@ public class FitsParserTests
     /// as a "header" and died with "FITS header exceeds maximum allowed size".
     /// </summary>
     [Fact]
+    public void Parse_MultiPlaneCube_SkipsAllPlanes_ThenReadsTrailingHdu()
+    {
+        // Regression (WFPC2 c0f, w1lm060bt): a NAXIS=3 cube followed by another HDU. The 2D viewer
+        // reads only plane 1, but the parser must skip ALL planes so the trailing HDU is found —
+        // otherwise planes 2..N are misread as a header and blow the max-header-size guard.
+        var ms = new MemoryStream();
+        const int w = 4, h = 3, planes = 4;
+        WriteHeaderBlock(ms,
+            FormatCard("SIMPLE", "T"), FormatCard("BITPIX", "16"),
+            FormatCard("NAXIS", "3"), FormatCard("NAXIS1", w.ToString()),
+            FormatCard("NAXIS2", h.ToString()), FormatCard("NAXIS3", planes.ToString()));
+        // Cube data: w*h*planes int16, block-padded.
+        var cubeBytes = ((w * h * planes * 2 + 2879) / 2880) * 2880;
+        ms.Write(new byte[cubeBytes]);
+        // A trailing IMAGE extension only reachable if the whole cube was skipped.
+        WriteHeaderBlock(ms,
+            FormatCard("XTENSION", "'IMAGE   '"), FormatCard("BITPIX", "16"),
+            FormatCard("NAXIS", "2"), FormatCard("NAXIS1", "5"), FormatCard("NAXIS2", "2"),
+            FormatCard("PCOUNT", "0"), FormatCard("GCOUNT", "1"));
+        ms.Write(new byte[2880]);
+        ms.Position = 0;
+
+        var hdus = FitsParser.Parse(ms);
+        // Primary cube read as plane 1 (NAXIS1=4) + the trailing 5x2 extension both present.
+        Assert.Contains(hdus, hd => hd.Header.NAxis == 3 && hd.ImageData is not null);
+        Assert.Contains(hdus, hd => hd.Header.NAxis1 == 5 && hd.Header.NAxis2 == 2);
+    }
+
+    [Fact]
+    public void Parse_RealWfpc2Cube_WhenAvailable()
+    {
+        const string path = @"C:\Users\szaut\OneDrive\Documents\w1lm060bt_c0f.fits";
+        if (!File.Exists(path)) return;
+        using var stream = File.OpenRead(path);
+        var hdus = FitsParser.Parse(stream); // must not throw "header exceeds maximum size"
+        Assert.Contains(hdus, hd => hd.ImageData is { Width: 800, Height: 800 });
+    }
+
+    [Fact]
     public void Parse_FpackBintableWithHeap_SkipsHeapAndReportsFunpackError()
     {
         var ms = new MemoryStream();

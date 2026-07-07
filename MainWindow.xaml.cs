@@ -240,6 +240,7 @@ public sealed partial class MainWindow : Window
                 EnsureSearchPage();
                 _searchPage!.ViewModel.ResolvedRA = ra;
                 _searchPage.ViewModel.ResolvedDec = dec;
+                _searchPage.ShowSearchForm();
                 NavigateTo(AppMode.Search);
                 tcs.SetResult();
             }
@@ -1012,6 +1013,9 @@ public sealed partial class MainWindow : Window
             vm.ResolvedDec = dec;
             vm.ResolverStatus = "From FITS crosshair";
             vm.ResolverService = prevService;
+            // Surface the form with the filled coordinates — the page may have been left on the
+            // Results or ADQL tab, which is where the user was otherwise landing.
+            _searchPage.ShowSearchForm();
         }
         NavigateTo(AppMode.Search);
     }

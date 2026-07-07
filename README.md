@@ -23,7 +23,7 @@ Query the CADC archive (CFHT, JCMT, DAO, Gemini, HST and more) with coordinate o
 Downloaded observations are organized automatically, with previews, per-observation notes, and an exportable research bundle you can hand to collaborators.
 
 ### [FITS Viewer](docs/07-fits-viewer.md) — Astronomical Images
-A hardware-accelerated 2D FITS viewer with WCS readout, coordinate go-to, pixel probing, bookmarks, multiple stretch modes and colormaps, North Up orientation, and multi-tab comparison (linked crosshair, sync zoom, blink). Opens fpack (`.fits.fz`) files directly.
+A hardware-accelerated 2D FITS viewer with WCS readout (including SIP distortion for wide-field data), coordinate go-to, pixel probing, bookmarks, an Image Info summary, an HDU/extension selector, multiple stretch modes and colormaps, North Up orientation, mouse-wheel zoom, and multi-tab comparison (linked crosshair, sync zoom, blink). Opens fpack (`.fits.fz`) files directly.
 
 ### [Cube Viewer](docs/08-cube-viewer.md) — 3D Spectral Cubes
 A Direct3D volume renderer for spectral cubes: fly around position-position-velocity space, scrub channels against an intensity waveform, shape the transfer function, probe spectra at any point, and export publication figures.

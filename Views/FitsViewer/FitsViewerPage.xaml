@@ -17,11 +17,51 @@
             <Border Grid.Column="0" Background="{ThemeResource LayerFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="0,0,1,0">
-                <Grid RowDefinitions="Auto,*">
-                    <TextBox Grid.Row="0" x:Name="HeaderFilter" x:Uid="Fits_HeaderFilter"
+                <Grid RowDefinitions="Auto,Auto,Auto,*">
+                    <!-- HDU selector (multi-extension files only): pick which HDU/extension to view -->
+                    <StackPanel x:Name="HduSection" Grid.Row="0" Spacing="2" Margin="6,6,6,2" Visibility="Collapsed">
+                        <TextBlock x:Uid="Fits_HduHeader" Text="Extensions (HDUs)"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}" FontSize="12" />
+                        <ListView x:Name="HduList" SelectionMode="Single" MaxHeight="140"
+                                  SelectionChanged="OnHduSelectionChanged" Padding="0,2">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="MinHeight" Value="0" />
+                                    <Setter Property="Padding" Value="6,3" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Label}" FontSize="11" FontFamily="Consolas"
+                                               Opacity="{Binding DimOpacity}" TextTrimming="CharacterEllipsis" />
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4,0,2" />
+                    </StackPanel>
+
+                    <!-- Synthesized image summary (WCS, scale, field, instrument…) above the raw header -->
+                    <StackPanel Grid.Row="1" Spacing="2" Margin="6,6,6,2">
+                        <TextBlock x:Uid="Fits_ImageInfoHeader" Text="Image info"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}" FontSize="12" />
+                        <ItemsControl x:Name="ImageInfoList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="104,*" Padding="0,1">
+                                        <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="11"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11"
+                                                   FontFamily="Consolas" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <TextBox Grid.Row="2" x:Name="HeaderFilter" x:Uid="Fits_HeaderFilter"
                              PlaceholderText="Search headers..."
                              Margin="4" TextChanged="OnHeaderFilterChanged" />
-                    <ListView Grid.Row="1" x:Name="HeaderList" SelectionMode="None"
+                    <ListView Grid.Row="3" x:Name="HeaderList" SelectionMode="None"
                               Padding="4">
                         <ListView.ItemTemplate>
                             <DataTemplate>
