@@ -21,19 +21,19 @@ public sealed class OpenFitsFileTool : JsonReadTool<OpenFitsFileTool.Args, OpenF
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "open_fits_file",
-        "Open a DOWNLOADED observation's FITS file in the viewer (by its local id or publisher id from " +
-        "list_downloaded_observations) and switch the app to the FITS viewer. The observation must already " +
-        "be downloaded — use download_observation first. Live-applied (no proposal).",
-        """{"type":"object","properties":{"observationId":{"type":"string"}},"required":["observationId"],"additionalProperties":false}""");
+        "Open a FITS file in the 2D viewer and switch the app to it — by local file path, or by the " +
+        "id/publisher id of a DOWNLOADED observation (from list_downloaded_observations; " +
+        "download_observation first if needed). Live-applied (no proposal).",
+        """{"type":"object","properties":{"observationId":{"type":"string"},"path":{"type":"string"}},"additionalProperties":false}""");
 
     protected override async Task<OpenFitsOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
-        var id = (args.ObservationId ?? string.Empty).Trim();
-        if (id.Length == 0) throw new McpToolException(new InvalidArgument("observationId is required"));
-        return await _open(id);
+        var target = (args.Path ?? args.ObservationId ?? string.Empty).Trim();
+        if (target.Length == 0) throw new McpToolException(new InvalidArgument("path or observationId is required"));
+        return await _open(target);
     }
 
-    public sealed record Args { public string? ObservationId { get; init; } }
+    public sealed record Args { public string? ObservationId { get; init; } public string? Path { get; init; } }
 }
 
 /// <summary>

@@ -2038,6 +2038,10 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Mcp_ConfigWriteFailed" xml:space="preserve">
     <value>Impossible d’écrire la configuration : {0}</value>
   </data>
+  <data name="Mcp_ManualConfigCopied" xml:space="preserve">
+    <value>Verbinal ne peut pas modifier ce fichier directement (les applications du Store en sont isolées). La configuration complète mise à jour a été copiée dans le presse-papiers — ouvrez le fichier ci-dessous dans un éditeur de texte, remplacez son contenu, puis redémarrez Claude Desktop :
+{0}</value>
+  </data>
   <data name="Mcp_ConfirmCancelButton.Content" xml:space="preserve">
     <value>Annuler</value>
   </data>
@@ -3662,13 +3666,13 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
     <value>Visionneuse FITS</value>
   </data>
   <data name="AiGuideCat_fits_Summary" xml:space="preserve">
-    <value>Lisez les en-têtes FITS/WCS, ouvrez des fichiers, pilotez la visionneuse 2D, marquez des coordonnées.</value>
+    <value>Lisez les en-têtes FITS/WCS, ouvrez des fichiers, pilotez la visionneuse 2D (HDU, réticule, comparaison par clignotement, onglets), marquez des coordonnées.</value>
   </data>
   <data name="AiGuideCat_cube_Title" xml:space="preserve">
     <value>Visionneuse de cubes</value>
   </data>
   <data name="AiGuideCat_cube_Summary" xml:space="preserve">
-    <value>Ouvrez et pilotez la visionneuse 3D de cubes spectraux ; sondez des spectres ; exportez des figures.</value>
+    <value>Ouvrez et pilotez la visionneuse 3D de cubes spectraux ; ajustez la courbe d'opacité ; sondez ou affichez des spectres ; gérez les onglets ; exportez des figures.</value>
   </data>
   <data name="AiGuideCat_notebook_Title" xml:space="preserve">
     <value>Calepin</value>

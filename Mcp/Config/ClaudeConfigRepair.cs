@@ -13,10 +13,10 @@ public sealed class ClaudeConfigRepair
     public ClaudeConfigRepair(string? configPath = null)
         => ConfigPath = configPath ?? DefaultConfigPath();
 
-    /// <summary>The Claude Desktop config location: <c>%APPDATA%\Claude\claude_desktop_config.json</c>.</summary>
+    /// <summary>The Claude Desktop config location: the real <c>%APPDATA%\Claude\claude_desktop_config.json</c> (un-redirected — see <see cref="Helpers.PackagePaths"/>).</summary>
     public static string DefaultConfigPath()
         => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            Helpers.PackagePaths.RealRoamingAppData(),
             "Claude", "claude_desktop_config.json");
 
     /// <summary>The current config text, or null when absent/unreadable.</summary>
@@ -40,9 +40,24 @@ public sealed class ClaudeConfigRepair
     /// <summary>The merged config that <see cref="Apply"/> would write — for a confirmation preview.</summary>
     public string Preview(string command) => ClaudeConfigMerge.MergedRoot(ReadExisting(), command);
 
+    /// <summary>
+    /// True when a direct write can't work and the user must edit the file themselves: MSIX write
+    /// virtualization would CoW-sandbox this process's write (it would look successful to us but be
+    /// invisible to Claude Desktop). Store-container Claude configs live under the exempt
+    /// <c>Packages\</c> tree and are writable; a traditional install's real <c>%APPDATA%\Claude\</c>
+    /// is not. Must be decided BEFORE writing — a read-back check would falsely pass (merged view).
+    /// </summary>
+    public bool RequiresManualEdit => Helpers.PackagePaths.IsWriteVirtualized(ConfigPath);
+
     /// <summary>Atomically write the merged config, backing up any existing file to <c>.bak</c> first.</summary>
     public void Apply(string command)
     {
+        if (RequiresManualEdit)
+            throw new InvalidOperationException(
+                $"A write to '{ConfigPath}' would be sandboxed by MSIX virtualization and invisible " +
+                "to Claude Desktop. Edit the file manually (callers should check RequiresManualEdit " +
+                "and offer the merged JSON instead).");
+
         var merged = Preview(command);
         Directory.CreateDirectory(Path.GetDirectoryName(ConfigPath)!);
 

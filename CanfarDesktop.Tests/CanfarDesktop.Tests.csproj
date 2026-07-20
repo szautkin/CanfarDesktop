@@ -170,6 +170,9 @@
     <Compile Include="..\Services\CubeViewer\CubeChannelProfile.cs" Link="Linked\CubeViewer\CubeChannelProfile.cs" />
     <Compile Include="..\Services\CubeViewer\TransferFunctionModel.cs" Link="Linked\CubeViewer\TransferFunctionModel.cs" />
     <Compile Include="..\Services\CubeViewer\RecentCubesService.cs" Link="Linked\CubeViewer\RecentCubesService.cs" />
+    <Compile Include="..\Services\CubeViewer\VolumeData.cs" Link="Linked\CubeViewer\VolumeData.cs" />
+    <Compile Include="..\Services\CubeViewer\CubeSliceRenderer.cs" Link="Linked\CubeViewer\CubeSliceRenderer.cs" />
+    <Compile Include="..\Services\CubeViewer\CubeSpectrumProber.cs" Link="Linked\CubeViewer\CubeSpectrumProber.cs" />
     <Compile Include="..\Mcp\Tools\Write\CubeViewerTools.cs" Link="Linked\Mcp\CubeViewerTools.cs" />
     <!-- 2D FITS Viewer MCP DTOs + tools (pure; no WinUI) -->
     <Compile Include="..\Services\Fits\FitsViewState.cs" Link="Linked\Fits\FitsViewState.cs" />

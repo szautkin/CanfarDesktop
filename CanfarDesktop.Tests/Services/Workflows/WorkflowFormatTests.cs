@@ -78,6 +78,18 @@ public class WorkflowFormatTests
     }
 
     [Fact]
+    public void WithStepDone_PreservesLineEndings_CrlfAndLf()
+    {
+        // The byte-preservation contract must hold regardless of the file's line-ending flavour —
+        // the old implementation rewrote every CRLF as LF (reformatting Windows-authored files).
+        const string crlf = "# T\r\n\r\n## Steps\r\n\r\n- [ ] **A** — first\r\n- [ ] **B** — second\r\n";
+        Assert.Equal(crlf.Replace("- [ ] **B**", "- [x] **B**"), WorkflowFormat.WithStepDone(crlf, 1, true));
+
+        const string lf = "# T\n\n## Steps\n\n- [ ] **A** — first\n- [x] **B** — second\n";
+        Assert.Equal(lf.Replace("- [x] **B**", "- [ ] **B**"), WorkflowFormat.WithStepDone(lf, 1, false));
+    }
+
+    [Fact]
     public void WithStepDone_RoundTrips_ThroughParse()
     {
         var doc = WorkflowFormat.Parse(WorkflowFormat.WithStepDone(Sample, 2, true));

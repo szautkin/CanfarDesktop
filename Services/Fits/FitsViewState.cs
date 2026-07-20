@@ -15,13 +15,36 @@ public sealed record FitsViewState(
     bool HasWcs,
     bool CrosshairPlaced,
     double CrosshairRa,    // degrees (0 when no crosshair is placed)
-    double CrosshairDec);
+    double CrosshairDec,
+    // ── Full read parity: everything else the UI shows (image-info panel, HDUs, toggles, blink,
+    //    panels, crosshair pixel) so get_fits_view is a complete mirror of what the user sees. ──
+    string Path = "",                          // full local path (feed get_fits_header / get_fits_wcs)
+    int HduIndex = 0,                          // displayed HDU/extension
+    IReadOnlyList<FitsHduInfo>? Hdus = null,   // all HDUs (multi-extension files; null/1-entry otherwise)
+    string Unit = "",                          // BUNIT ("" when absent)
+    double DataMin = 0,                        // pixel value range of the displayed image
+    double DataMax = 0,
+    double PixelScaleArcsec = 0,               // 0 when no valid WCS
+    double NorthAngleDeg = 0,
+    bool ParityFlip = false,
+    bool WcsApproximate = false,               // reconstructed/approximate solution (sync warning basis)
+    bool SyncZoom = false,                     // the two host toggles
+    bool LinkedCrosshair = false,
+    bool BlinkActive = false,                  // a blink comparison is running
+    bool HeaderPanelOpen = false,
+    bool BookmarksPanelOpen = false,
+    int? CrosshairX = null,                    // crosshair display pixel (null when not placed)
+    int? CrosshairY = null,
+    string Status = "");                       // the status-bar message
+
+/// <summary>One HDU/extension of the loaded FITS (the viewer's extension selector rows).</summary>
+public sealed record FitsHduInfo(int Index, string Name, string Shape, bool IsImage);
 
 /// <summary>The pixel value + sky coordinate at a 0-based display pixel, returned by probe_fits_pixel.</summary>
 public sealed record FitsPixelResult(
     int X,
     int Y,
-    double Value,
+    double? Value,         // null = blanked pixel (NaN/Inf in the data — raw NaN would crash the JSON serializer)
     bool HasWcs,
     double Ra,             // degrees (0 if no WCS)
     double Dec,

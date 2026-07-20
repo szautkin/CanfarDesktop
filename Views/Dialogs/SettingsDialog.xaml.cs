@@ -99,9 +99,10 @@ public sealed partial class SettingsDialog : ContentDialog
             var factory = App.Services.GetRequiredService<System.Net.Http.IHttpClientFactory>();
             var endpoints = App.Services.GetRequiredService<Helpers.ApiEndpoints>();
             var results = await Services.ServiceHealthProbe.ProbeAllAsync(factory, endpoints);
-            ProbeResultsList.ItemsSource = results.Select(r => r.Reachable
+            // A host that answers 404/5xx is reachable but NOT healthy — show the status, not "OK" (QA F3).
+            ProbeResultsList.ItemsSource = results.Select(r => r.Reachable && r.Ok
                 ? Loc.F("Settings_ProbeOk", r.Name, r.LatencyMs)
-                : Loc.F("Settings_ProbeFail", r.Name, r.Error ?? "?")).ToList();
+                : Loc.F("Settings_ProbeFail", r.Name, r.Error ?? $"HTTP {r.StatusCode}")).ToList();
         }
         catch (Exception ex)
         {

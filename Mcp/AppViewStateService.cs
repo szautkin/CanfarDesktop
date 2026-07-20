@@ -94,22 +94,40 @@ public sealed class AppViewStateService
     private volatile Func<string, Task<CubeOpenOutcome>>? _openCube;
     private volatile Func<Task<CubeViewState?>>? _getCube;
     private volatile Func<CubeViewArgs, Task<CubeViewState?>>? _setCube;
-    private volatile Func<string, string, int, bool, Task<CubeExportOutcome>>? _exportCube;
-    private volatile Func<int, int, Task<CubeSpectrumResult?>>? _probeCube;
+    private volatile Func<CubeExportRequest, Task<CubeExportOutcome>>? _exportCube;
+    private volatile Func<int, int, Task<CubeSpectrumProbe?>>? _probeCube;
+    private volatile Func<int, int, Task<CubeSpectrumProbe?>>? _showSpectrum;
+    private volatile Func<Task<bool>>? _closeSpectrum;
+    private volatile Func<IReadOnlyList<CubeTransferPoint>?, bool, Task<CubeViewState?>>? _setTransfer;
+    private volatile Func<Task<CubeChannelProfileResult?>>? _channelProfile;
+    private volatile Func<int, Task<CubeTabSwitchOutcome>>? _switchCubeTab;
+    private volatile Func<Task<IReadOnlyList<RecentCubeInfo>>>? _listRecentCubes;
 
     /// <summary>The UI registers the cube viewer actions (each marshals to the UI thread).</summary>
     public void SetCubeActions(
         Func<string, Task<CubeOpenOutcome>> openCube,
         Func<Task<CubeViewState?>> getCube,
         Func<CubeViewArgs, Task<CubeViewState?>> setCube,
-        Func<string, string, int, bool, Task<CubeExportOutcome>> exportCube,
-        Func<int, int, Task<CubeSpectrumResult?>> probeCube)
+        Func<CubeExportRequest, Task<CubeExportOutcome>> exportCube,
+        Func<int, int, Task<CubeSpectrumProbe?>> probeCube,
+        Func<int, int, Task<CubeSpectrumProbe?>> showSpectrum,
+        Func<Task<bool>> closeSpectrum,
+        Func<IReadOnlyList<CubeTransferPoint>?, bool, Task<CubeViewState?>> setTransfer,
+        Func<Task<CubeChannelProfileResult?>> channelProfile,
+        Func<int, Task<CubeTabSwitchOutcome>> switchCubeTab,
+        Func<Task<IReadOnlyList<RecentCubeInfo>>> listRecentCubes)
     {
         _openCube = openCube;
         _getCube = getCube;
         _setCube = setCube;
         _exportCube = exportCube;
         _probeCube = probeCube;
+        _showSpectrum = showSpectrum;
+        _closeSpectrum = closeSpectrum;
+        _setTransfer = setTransfer;
+        _channelProfile = channelProfile;
+        _switchCubeTab = switchCubeTab;
+        _listRecentCubes = listRecentCubes;
     }
 
     public Task<CubeOpenOutcome> OpenCubeAsync(string target)
@@ -121,11 +139,32 @@ public sealed class AppViewStateService
     public Task<CubeViewState?> SetCubeAsync(CubeViewArgs args)
         => _setCube?.Invoke(args) ?? Task.FromResult<CubeViewState?>(null);
 
-    public Task<CubeExportOutcome> ExportCubeAsync(string path, string format, int scale, bool dark)
-        => _exportCube?.Invoke(path, format, scale, dark) ?? Task.FromResult(new CubeExportOutcome(false, path, "cube viewer unavailable"));
+    public Task<CubeExportOutcome> ExportCubeAsync(CubeExportRequest request)
+        => _exportCube?.Invoke(request) ?? Task.FromResult(new CubeExportOutcome(false, request.Path, "cube viewer unavailable"));
 
-    public Task<CubeSpectrumResult?> ProbeCubeAsync(int x, int y)
-        => _probeCube?.Invoke(x, y) ?? Task.FromResult<CubeSpectrumResult?>(null);
+    public Task<CubeSpectrumProbe?> ProbeCubeAsync(int x, int y)
+        => _probeCube?.Invoke(x, y)
+           ?? Task.FromResult<CubeSpectrumProbe?>(new(CubeProbeStatus.NoCube, null)); // viewer never registered
+
+    public Task<CubeSpectrumProbe?> ShowCubeSpectrumAsync(int x, int y)
+        => _showSpectrum?.Invoke(x, y)
+           ?? Task.FromResult<CubeSpectrumProbe?>(new(CubeProbeStatus.NoCube, null));
+
+    public Task<bool> CloseCubeSpectrumAsync()
+        => _closeSpectrum?.Invoke() ?? Task.FromResult(false);
+
+    public Task<CubeViewState?> SetCubeTransferAsync(IReadOnlyList<CubeTransferPoint>? points, bool reset)
+        => _setTransfer?.Invoke(points, reset) ?? Task.FromResult<CubeViewState?>(null);
+
+    public Task<CubeChannelProfileResult?> GetCubeChannelProfileAsync()
+        => _channelProfile?.Invoke() ?? Task.FromResult<CubeChannelProfileResult?>(null);
+
+    public Task<CubeTabSwitchOutcome> SwitchCubeTabAsync(int index)
+        => _switchCubeTab?.Invoke(index)
+           ?? Task.FromResult(new CubeTabSwitchOutcome(false, index, 0, null, "cube viewer unavailable"));
+
+    public Task<IReadOnlyList<RecentCubeInfo>> ListRecentCubesAsync()
+        => _listRecentCubes?.Invoke() ?? Task.FromResult<IReadOnlyList<RecentCubeInfo>>(Array.Empty<RecentCubeInfo>());
 
     // ── 2D FITS Viewer actions (registered by the UI; invoked by the FITS MCP tools) ─────────────
 
@@ -133,18 +172,24 @@ public sealed class AppViewStateService
     private volatile Func<FitsViewArgs, Task<FitsViewState?>>? _setFits;
     private volatile Func<int, int, Task<FitsPixelResult?>>? _probeFits;
     private volatile Func<double, double, Task<FitsGotoOutcome>>? _gotoFits;
+    private volatile Func<string, int?, int?, Task<FitsBlinkOutcome?>>? _blinkFits;
+    private volatile Func<int, Task<FitsTabSwitchOutcome>>? _switchFitsTab;
 
     /// <summary>The UI registers the FITS viewer actions (each marshals to the UI thread).</summary>
     public void SetFitsActions(
         Func<Task<FitsViewState?>> getFits,
         Func<FitsViewArgs, Task<FitsViewState?>> setFits,
         Func<int, int, Task<FitsPixelResult?>> probeFits,
-        Func<double, double, Task<FitsGotoOutcome>> gotoFits)
+        Func<double, double, Task<FitsGotoOutcome>> gotoFits,
+        Func<string, int?, int?, Task<FitsBlinkOutcome?>> blinkFits,
+        Func<int, Task<FitsTabSwitchOutcome>> switchFitsTab)
     {
         _getFits = getFits;
         _setFits = setFits;
         _probeFits = probeFits;
         _gotoFits = gotoFits;
+        _blinkFits = blinkFits;
+        _switchFitsTab = switchFitsTab;
     }
 
     public Task<FitsViewState?> GetFitsAsync()
@@ -158,6 +203,13 @@ public sealed class AppViewStateService
 
     public Task<FitsGotoOutcome> GotoFitsAsync(double ra, double dec)
         => _gotoFits?.Invoke(ra, dec) ?? Task.FromResult(new FitsGotoOutcome(false, ra, dec, "FITS viewer unavailable"));
+
+    public Task<FitsBlinkOutcome?> BlinkFitsAsync(string action, int? withTabIndex, int? intervalMs)
+        => _blinkFits?.Invoke(action, withTabIndex, intervalMs) ?? Task.FromResult<FitsBlinkOutcome?>(null);
+
+    public Task<FitsTabSwitchOutcome> SwitchFitsTabAsync(int index)
+        => _switchFitsTab?.Invoke(index)
+           ?? Task.FromResult(new FitsTabSwitchOutcome(false, index, 0, null, "FITS viewer unavailable"));
 
     // ── FITS coordinate bookmarks (persisted; routed through the host VM to keep the panel in sync) ──
 

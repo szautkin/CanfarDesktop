@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using CanfarDesktop.Services.CubeViewer;
 using CanfarDesktop.Services.Fits;
 using CanfarDesktop.ViewModels.CubeViewer;
@@ -19,9 +20,12 @@ public sealed partial class CubeViewerPage
         // header NAXIS3 — so the reported nz matches the channel slider's max and the spectral axis maps
         // 1:1 to the data planes the viewer scrubs (QA/SCI-4: header said 1936 but only ~242 render).
         int nz = _volume?.Nz ?? _meta?.Nz ?? 0;
+        // The channel index is in RENDER space; map through the stride so a z-downsampled cube
+        // reports the true world value (SpecText evaluates the native-resolution spectral WCS).
         string spec = (_meta is not null && _meta.Wcs.HasSpectral)
-            ? (_meta.Wcs.SpecText(ViewModel.Channel) + " " + _meta.Wcs.SpecUnitDisplay()).Trim()
+            ? (_meta.Wcs.SpecText(_meta.NativeChannel(ViewModel.Channel)) + " " + _meta.Wcs.SpecUnitDisplay()).Trim()
             : "";
+        var center = SliceCenterNative();
         return new CubeViewState(
             _volume is not null,
             _cubeName,
@@ -50,7 +54,25 @@ public sealed partial class CubeViewerPage
             ViewModel.ShowSlicePlane,
             _captionsOn,
             ViewModel.AutoOrbit,
-            ViewModel.IsPlaying);
+            ViewModel.IsPlaying,
+            // Full read parity: the info panel, slice view, spectrum panel, and opacity curve.
+            Instrument: _meta?.Instrument ?? "",
+            Median: _meta?.Median ?? 0,
+            NanFraction: _meta?.NanFraction ?? 0,
+            CutLo: _meta?.NormLo ?? 0,
+            CutHi: _meta?.NormHi ?? 0,
+            RenderNx: _volume?.Nx ?? 0,
+            RenderNy: _volume?.Ny ?? 0,
+            NativeNz: _meta?.Nz ?? nz,
+            Downsampled: _meta?.IsDownsampled ?? false,
+            Path: _cubePath ?? "",
+            SliceZoom: _sliceZoom,
+            SliceCenterX: center?.X,
+            SliceCenterY: center?.Y,
+            SpectrumPanelOpen: SpectrumPanel.Visibility == Visibility.Visible,
+            SpectrumX: _probeX >= 0 ? _probeX : null,
+            SpectrumY: _probeY >= 0 ? _probeY : null,
+            TransferPoints: _transfer.Points.Select(p => new CubeTransferPoint(p.X, p.Y)).ToList());
     }
 
     private string BackgroundName() => BackgroundCombo.SelectedIndex switch { 1 => "black", 2 => "light", _ => "dark" };
@@ -67,7 +89,9 @@ public sealed partial class CubeViewerPage
         double? azimuth = null, double? elevation = null, double? distance = null,
         double? density = null, double? spectralScale = null, int? steps = null,
         string? background = null, bool? showSlicePlane = null, bool? showCaptions = null,
-        bool? autoOrbit = null, bool? playing = null, bool? resetCamera = null)
+        bool? autoOrbit = null, bool? playing = null, bool? resetCamera = null,
+        string? windowPreset = null, double? sliceZoom = null,
+        int? sliceCenterX = null, int? sliceCenterY = null, bool? resetSliceView = null)
     {
         if (!string.IsNullOrEmpty(mode))
             SetViewMode(mode.Equals("slice", StringComparison.OrdinalIgnoreCase) ? CubeViewMode.Slice : CubeViewMode.Volume);
@@ -83,6 +107,14 @@ public sealed partial class CubeViewerPage
 
         if (windowLo is not null || windowHi is not null)
             SetWindow((float)(windowLo ?? ViewModel.WindowLo), (float)(windowHi ?? ViewModel.WindowHi));
+
+        // Window presets — the Min/Max and 99% buttons.
+        if (!string.IsNullOrEmpty(windowPreset))
+            SetWindow(0f, windowPreset.Equals("p99", StringComparison.OrdinalIgnoreCase) ? 0.99f : 1f);
+
+        // Slice navigation — the wheel-zoom / drag-pan / double-tap gestures.
+        if (resetSliceView == true || sliceZoom is not null || sliceCenterX is not null || sliceCenterY is not null)
+            SetSliceViewFromMcp(sliceZoom, sliceCenterX, sliceCenterY, resetSliceView == true);
 
         // Camera — gesture-driven in the UI, so write the model directly (render loop applies it). Use the
         // same clamps as the orbit/zoom gestures so an agent can't push the camera into an invalid pose.
@@ -121,29 +153,81 @@ public sealed partial class CubeViewerPage
         }
     }
 
-    /// <summary>Extract the spectrum (flux vs channel) at a 0-based spaxel, or null if out of range.</summary>
-    public CubeSpectrumResult? ProbeCubeSpectrum(int x, int y)
-    {
-        if (_volume is null) return null;
-        var flux = CubeSliceRenderer.Spectrum(_volume, x, y, _meta?.NormLo ?? 0, _meta?.NormHi ?? 1);
-        if (flux is null) return null;
+    /// <summary>Probe the spectrum at a 0-based NATIVE spaxel — typed outcome, never a bare null.</summary>
+    public CubeSpectrumProbe ProbeCubeSpectrum(int x, int y)
+        => CubeSpectrumProber.Probe(_volume, x, y);
 
-        int nz = flux.Length;
+    /// <summary>
+    /// The agent-side spaxel CLICK (show_cube_spectrum): switch to slice mode, probe the NATIVE pixel,
+    /// and open the on-screen spectrum panel exactly as a user click would.
+    /// </summary>
+    public CubeSpectrumProbe ShowCubeSpectrum(int x, int y)
+    {
+        var probe = CubeSpectrumProber.Probe(_volume, x, y);
+        if (probe.Status != CubeProbeStatus.Ok || _volume is null) return probe;
+
+        SetViewMode(CubeViewMode.Slice);
+        // Native pixel → display pixel (the slice may draw at native res or the down-sampled volume's).
+        int nativeNx = _meta?.Nx ?? _volume.Nx, nativeNy = _meta?.Ny ?? _volume.Ny;
+        int nxDisp = _sliceDispNx > 0 ? _sliceDispNx : _volume.Nx;
+        int nyDisp = _sliceDispNy > 0 ? _sliceDispNy : _volume.Ny;
+        _probeX = Math.Clamp((int)((long)x * nxDisp / nativeNx), 0, Math.Max(0, nxDisp - 1));
+        _probeY = Math.Clamp((int)((long)y * nyDisp / nativeNy), 0, Math.Max(0, nyDisp - 1));
+        int sx = MapDispToVolume(_probeX, nxDisp, _volume.Nx);
+        int sy = MapDispToVolume(_probeY, nyDisp, _volume.Ny);
+        _probeSpectrum = CubeSliceRenderer.Spectrum(_volume, sx, sy, _meta?.NormLo ?? 0, _meta?.NormHi ?? 1);
+        SpectrumTitle.Text = Helpers.Loc.F("Cube_SpectrumTitle", _probeX, _probeY);
+        SpectrumPanel.Visibility = Visibility.Visible;
+        DrawSpectrum();
+        return probe;
+    }
+
+    /// <summary>Dismiss the spectrum panel (the panel's ✕). True even when it was already closed.</summary>
+    public bool CloseCubeSpectrum()
+    {
+        SpectrumPanel.Visibility = Visibility.Collapsed;
+        _probeSpectrum = null;
+        _probeX = _probeY = -1;
+        return true;
+    }
+
+    /// <summary>
+    /// Set or reset the opacity transfer function (set_cube_transfer) and return the updated state.
+    /// Points arrive validated (>= 2); the model clamps values and pins the min/max-x endpoints.
+    /// </summary>
+    public CubeViewState ApplyCubeTransfer(IReadOnlyList<CubeTransferPoint>? points, bool reset)
+    {
+        if (reset)
+            _transfer.Reset();
+        else if (points is not null)
+            _transfer.Replace(points.Select(p => new System.Numerics.Vector2((float)p.X, (float)p.Y)).ToList());
+        ApplyTransferFunction();
+        DrawTransferEditor();
+        return GetCubeState();
+    }
+
+    /// <summary>The channel scrubber's waveform data in physical units, or null when there is no
+    /// scrubbable cube (not loaded / single channel).</summary>
+    public CubeChannelProfileResult? GetChannelProfile()
+    {
+        var prof = _channelProfile;
+        if (_volume is null || prof is null) return null;
+
+        int nz = prof.Length;
+        var mean = new double?[nz];
         var axis = new double[nz];
-        var fl = new double[nz];
         bool hasSpec = _meta?.Wcs.HasSpectral == true;
+        double lo = _meta?.NormLo ?? 0, hi = _meta?.NormHi ?? 1;
+        double range = hi - lo;
         for (int z = 0; z < nz; z++)
         {
-            axis[z] = hasSpec ? _meta!.Wcs.SpectralValue(z) : z;
-            fl[z] = flux[z];
+            float v = prof[z];
+            mean[z] = float.IsFinite(v) ? lo + v * range : null;   // NaN (all-blank channel) → null
+            int nativeZ = _meta?.NativeChannel(z) ?? z;
+            double a = hasSpec ? _meta!.Wcs.SpectralValue(nativeZ) : nativeZ;
+            axis[z] = double.IsFinite(a) ? a : nativeZ;
         }
-        var w = _meta?.Wcs;
-        return new CubeSpectrumResult(x, y, axis, fl, _meta?.Bunit ?? "",
-            hasSpec ? w!.SpecUnitDisplay() : "channel",
-            SpectralFrame: string.IsNullOrEmpty(w?.SpectralFrame) ? null : w!.SpectralFrame,
-            RestFrequencyGHz: w?.RestFrequencyGHz,
-            BeamMajorArcsec: w?.BeamMajorDeg is double bmaj ? bmaj * 3600.0 : null,
-            BeamMinorArcsec: w?.BeamMinorDeg is double bmin ? bmin * 3600.0 : null,
-            BeamPaDeg: w?.BeamPaDeg);
+        return new CubeChannelProfileResult(nz, mean, _meta?.Bunit ?? "", axis,
+            hasSpec ? _meta!.Wcs.SpecUnitDisplay() : "channel");
     }
 }

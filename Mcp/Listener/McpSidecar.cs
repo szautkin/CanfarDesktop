@@ -1,9 +1,13 @@
 namespace CanfarDesktop.Mcp.Listener;
 
 /// <summary>
-/// The sidecar file the packaged app writes the live pipe NAME to, at a NON-virtualized absolute path
-/// (<c>%LOCALAPPDATA%\Verbinal\mcp.pipe-name</c>) so the unpackaged bridge process can read it. Atomic
-/// (temp + replace). The directory is injectable so the path/serialization logic is unit-testable.
+/// A diagnostic breadcrumb: the app writes the live pipe NAME here so a human (or external tooling)
+/// can see what was advertised. The bridge does NOT need it — both sides compute the same
+/// deterministic per-user pipe name (<see cref="McpPipeName"/>). The default directory is
+/// <see cref="Helpers.PackagePaths.WritableInteropRoot"/>, where a packaged app's writes land at
+/// their literal on-disk path (a write to the real %LOCALAPPDATA% would be silently CoW-sandboxed by
+/// MSIX virtualization). Atomic (temp + replace). The directory is injectable so the
+/// path/serialization logic is unit-testable.
 /// </summary>
 public sealed class McpSidecar
 {
@@ -13,7 +17,7 @@ public sealed class McpSidecar
         => FilePath = Path.Combine(directory ?? DefaultDirectory(), McpConstants.SidecarFileName);
 
     public static string DefaultDirectory()
-        => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), McpConstants.SidecarFolderName);
+        => Path.Combine(Helpers.PackagePaths.WritableInteropRoot(), McpConstants.SidecarFolderName);
 
     /// <summary>Atomically write the current pipe name (temp file + replace).</summary>
     public void Write(string pipeName)

@@ -147,10 +147,64 @@ public sealed partial class FitsViewerPage : UserControl
         ComputeSliderRange();
     }
 
-    public void ToggleHeader()
+    public void ToggleHeader() => SetHeaderPanelVisible(!_headerVisible);
+
+    /// <summary>Deterministic header-panel visibility (the MCP showHeaderPanel arg + the toolbar toggle).</summary>
+    public void SetHeaderPanelVisible(bool visible)
     {
-        _headerVisible = !_headerVisible;
+        _headerVisible = visible;
         HeaderColumn.Width = _headerVisible ? new GridLength(320) : new GridLength(0);
+    }
+
+    /// <summary>Whether the header + image-info panel is open (for get_fits_view).</summary>
+    public bool HeaderPanelVisible => _headerVisible;
+
+    /// <summary>The crosshair's 0-based display pixel, or null when none is placed (for get_fits_view).</summary>
+    public (int X, int Y)? CrosshairDisplayPixel
+        => _crosshairImagePos is { } p ? ((int)p.X, (int)p.Y) : null;
+
+    /// <summary>
+    /// MCP crosshair placement at a 0-based display pixel — the right-click equivalent (computes the
+    /// WCS readout + updates the view model, so a linked crosshair propagates). Works without WCS.
+    /// </summary>
+    public bool PlaceCrosshairAtPixel(double imgX, double imgY)
+    {
+        if (ViewModel.ImageData is not { } img || imgX < 0 || imgX >= img.Width || imgY < 0 || imgY >= img.Height)
+            return false;
+        _crosshairImagePos = new Windows.Foundation.Point(imgX, imgY);
+        if (ImageCanvas.ActualWidth > 0)
+        {
+            // Match the click behaviour: when zoomed in, center the viewport on the point.
+            if (Math.Abs(ImageTransform.ScaleX) > 1.05) CenterOnImagePixel(imgX, imgY);
+            else RedrawCrosshairFromImage();
+        }
+        else
+        {
+            ComputeCrosshairWcs(); // hidden/not laid out — still record the readout + VM position
+        }
+        return true;
+    }
+
+    /// <summary>Center the viewport on a 0-based display pixel WITHOUT moving the crosshair (the MCP
+    /// centerX/Y pan — the drag-pan equivalent, aimed at a pixel).</summary>
+    public bool CenterViewportOnPixel(double imgPixelX, double imgPixelY)
+    {
+        if (ViewModel.ImageData is not { } img
+            || imgPixelX < 0 || imgPixelX >= img.Width || imgPixelY < 0 || imgPixelY >= img.Height)
+            return false;
+        var p = GetTransformParams();
+        double localX = imgPixelX, localY = imgPixelY;
+        if (p.imgW > 0)
+        {
+            localX = imgPixelX / img.Width * p.imgW;
+            localY = imgPixelY / img.Height * p.imgH;
+        }
+        var (tx, ty) = ViewportMath.ComputeCenterTranslate(localX, localY,
+            p.scaleX, p.scaleY, p.rotation, p.imgW, p.imgH, p.canvasW, p.canvasH);
+        ImageTransform.TranslateX = tx;
+        ImageTransform.TranslateY = ty;
+        RedrawCrosshairFromImage();
+        return true;
     }
 
     public void ClearCrosshair()
@@ -424,26 +478,21 @@ public sealed partial class FitsViewerPage : UserControl
     public sealed record InfoRow(string Label, string Value);
 
     /// <summary>One row of the HDU/extension selector. Non-image HDUs are dimmed and not viewable.</summary>
-    public sealed record HduRow(int Index, string Label, bool IsImage)
+    public sealed record HduRow(int Index, string Name, string Shape, bool IsImage)
     {
+        public string Label => $"{Index} · {Name} · {Shape}";
         public double DimOpacity => IsImage ? 1.0 : 0.45;
     }
 
     private bool _suppressHduSelect;
 
-    /// <summary>Populate the HDU selector (shown only for multi-extension files). The ViewModel
-    /// already parses every HDU and can switch the displayed one via SelectHdu.</summary>
-    private void UpdateHduList()
+    /// <summary>Every HDU of the loaded file as selector rows (also the MCP get_fits_view hdus source).</summary>
+    public IReadOnlyList<HduRow> HduInfos()
     {
         var hdus = ViewModel.Hdus;
-        if (hdus is null || hdus.Count <= 1)
-        {
-            HduSection.Visibility = Visibility.Collapsed;
-            HduList.ItemsSource = null;
-            return;
-        }
+        if (hdus is null) return Array.Empty<HduRow>();
 
-        var rows = new List<HduRow>();
+        var rows = new List<HduRow>(hdus.Count);
         foreach (var hdu in hdus)
         {
             var name = hdu.Index == 0
@@ -463,8 +512,44 @@ public sealed partial class FitsViewerPage : UserControl
             {
                 shape = Loc.T("Fits_HduNoImage");
             }
-            rows.Add(new HduRow(hdu.Index, $"{hdu.Index} · {name} · {shape}", hdu.HasImage));
+            rows.Add(new HduRow(hdu.Index, name, shape, hdu.HasImage));
         }
+        return rows;
+    }
+
+    /// <summary>
+    /// MCP HDU switch (set_fits_view hdu) — same path as clicking a selector row: image HDUs only,
+    /// re-renders + refreshes the info/header panels and the selector selection.
+    /// </summary>
+    public bool SelectHduByIndex(int index)
+    {
+        var hdus = ViewModel.Hdus;
+        if (hdus is null || index < 0 || index >= hdus.Count || !hdus[index].HasImage) return false;
+        ViewModel.SelectHdu(index);
+        if (HduList.ItemsSource is not null)
+        {
+            _suppressHduSelect = true;
+            HduList.SelectedIndex = index;
+            _suppressHduSelect = false;
+        }
+        UpdateImageInfo();
+        UpdateHeaderList();
+        return true;
+    }
+
+    /// <summary>Populate the HDU selector (shown only for multi-extension files). The ViewModel
+    /// already parses every HDU and can switch the displayed one via SelectHdu.</summary>
+    private void UpdateHduList()
+    {
+        var hdus = ViewModel.Hdus;
+        if (hdus is null || hdus.Count <= 1)
+        {
+            HduSection.Visibility = Visibility.Collapsed;
+            HduList.ItemsSource = null;
+            return;
+        }
+
+        var rows = HduInfos();
 
         _suppressHduSelect = true;
         HduList.ItemsSource = rows;

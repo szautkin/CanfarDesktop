@@ -10,8 +10,13 @@ namespace CanfarDesktop.Mcp.Tools.Write;
 /// <summary>Outcome of close_active_tab.</summary>
 public sealed record TabCloseOutcome(bool Closed, string Kind, string? Message);
 
-/// <summary>Count of open viewer tabs, returned by list_open_tabs.</summary>
-public sealed record OpenTabsState(int Notebooks, int FitsViewers, int Cubes);
+/// <summary>One open viewer tab (index for switch_cube_tab/switch_fits_tab, name, active flag).</summary>
+public sealed record ViewerTabInfo(int Index, string Name, bool Active);
+
+/// <summary>Count of open viewer tabs, returned by list_open_tabs (+ per-tab cube/FITS detail).</summary>
+public sealed record OpenTabsState(int Notebooks, int FitsViewers, int Cubes,
+    IReadOnlyList<ViewerTabInfo>? CubeTabs = null,
+    IReadOnlyList<ViewerTabInfo>? FitsTabs = null);
 
 /// <summary><c>close_active_tab</c> — close the active tab of a viewer. Verb class ViewState (live).</summary>
 public sealed class CloseActiveTabTool : JsonReadTool<CloseActiveTabTool.Args, TabCloseOutcome>
@@ -47,8 +52,9 @@ public sealed class ListOpenTabsTool : JsonReadTool<EmptyArgs, OpenTabsState>
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_open_tabs",
-        "Count the viewer tabs currently open (notebooks, FITS viewers, cubes). Use with close_active_tab "
-        + "to clean up tabs an automated run accumulated.",
+        "Count the viewer tabs currently open (notebooks, FITS viewers, cubes). cubeTabs / fitsTabs list "
+        + "each open cube/FITS tab's index/name/active flag for switch_cube_tab / switch_fits_tab. Use "
+        + "with close_active_tab to clean up tabs an automated run accumulated.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<OpenTabsState> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct) => _list();

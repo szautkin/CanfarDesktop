@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.3.3] - 2026-07-20
+
+Patch: full MCP UI coverage for the FITS and Cube viewers, plus QA fixes (masked-cube spectra, service-health honesty, UI-busy tool hangs, workflow CRLF preservation).
+
+### Added
+- **FITS Viewer MCP: 100% UI coverage** — an agent can now drive everything a user can. New tools: `blink_fits_tabs` (the WCS-aligned blink comparison: start with a partner tab, fade interval, pause/resume, stop) and `switch_fits_tab`. Extended: `open_fits_file` accepts a local file path (like `open_cube`); `set_fits_view` gains HDU/extension switching, pixel crosshair placement and pixel centering (both work without WCS), the sync-zoom and linked-crosshair toggles, and the header/bookmarks panel controls; `get_fits_view` now mirrors the full UI state (local path, HDU list + selection, pixel unit + data range, pixel scale / north angle / parity / approximate-WCS flag, blink status, panel visibility, crosshair pixel, status message); `list_open_tabs` lists each FITS tab with its index/name/active flag
+- **Cube Viewer MCP: 100% UI coverage** — an agent can now drive everything a user can. New tools: `set_cube_transfer` (the opacity-curve editor: set/reset control points), `show_cube_spectrum` (the visible spaxel click — opens the on-screen spectrum panel, not just data), `get_cube_channel_profile` (the scrubber waveform: per-channel means + spectral axis), `switch_cube_tab` and `list_recent_cubes`. Extended: `set_cube_view` gains slice zoom/center/reset and the Min-Max / 99% window presets; `export_cube_figure` gains the export dialog's style options (font, text color, text scale, annotations, transparent background); `get_cube_view` now mirrors the full UI state (info-panel stats, native vs render dims, slice view, spectrum panel, transfer curve); `list_open_tabs` lists each cube tab with its index/name/active flag
+
+### Fixed
+- **`probe_cube_spectrum` on real (masked) cubes** (QA F10) — blanked voxels (NaN/Inf) crashed the JSON serializer; they now arrive as `null` flux entries with a `blankedChannels` count. Coordinates are native cube pixels (they were checked against the GPU-downsampled volume, so valid pixels read as out-of-range), the spectral axis maps strided channels to true world values, and "no cube" / "out of range" / "UI busy" are distinct typed errors instead of one null
+- **Spectral channel labels on downsampled cubes** — the slice label, hover chip, exported figure plate, and `get_cube_view` showed the world value of the *rendered* channel index instead of the native channel it represents
+- **`probe_fits_pixel` on blanked pixels** — a NaN pixel value crashed the JSON serializer; `value` is now omitted for blanked pixels
+- **`get_service_health` honesty** (QA F3) — a 404/5xx answer was reported as a healthy service (CADC auth was probed at its base URL, which always 404s). The auth probe now targets `/whoami`, each entry carries `ok` alongside `reachable`, the summary adds `healthyCount`, and the Settings connection test shows the failing HTTP status instead of "OK"
+- **MCP tool hangs when the UI thread is busy** (QA F5) — UI-marshaled tool calls now fail after 30 s with a descriptive "UI busy" error instead of hanging behind a saturated dispatcher queue
+- **Cube notebook template without `spectral-cube`** (QA F11) — the generated cell guards the import and prints the exact `%pip install` fix instead of dying with a bare `ModuleNotFoundError`
+- **Workflow step toggle reformatted files** — flipping a `[ ]`/`[x]` marker rewrote every CRLF line ending as LF, violating the "only one byte changes" contract on Windows-authored workflow files; the marker is now flipped in place
+
+## [1.3.2] - 2026-07-16
+
+Patch: reliability fixes for packaged (Microsoft Store) installs — notebook kernel startup and the AI-assistant connection — plus a landing-page layout fix.
+
+### Fixed
+- **Notebook kernel start on packaged installs** — `python.exe` couldn't see the execution harness ("file not found": MSIX write virtualization sandboxes AppData writes); the harness now lives in the package's LocalCache, which both the app and Python see
+- **Kernel restart race** — rapid interrupt/restart can no longer overlap two starts (one could delete the other's in-use harness file); unexpected kernel exits now log stderr for diagnosis
+- **AI-assistant connection on packaged installs** — the MCP bridge is copied to the package LocalCache (a real path Claude Desktop can launch, surviving app updates), and the Store package now actually ships the bridge exe
+- **Claude Desktop config writes** — Store-installed Claude configs are written directly; a traditional install's config (which MSIX would silently sandbox) now gets an honest guided step instead: the merged JSON is copied to the clipboard with the exact file path shown (EN + FR)
+- **Landing page on small windows** — vertical scrollbar when the window is too short (the second tile row was unreachable); tiles reflow to fewer columns on narrow windows
+
+### Changed
+- **Windows App SDK 2.2** (from 1.8) plus updated runtime components (SQLite, MVVM Toolkit, DI/HTTP extensions)
+- Packaging: publish profiles restored so Release/Store packaging (ReadyToRun) builds again
+
 ## [1.3.1] - 2026-07-07
 
 Patch: FITS-viewer accuracy fixes and new tools, plus folder-sharing and search fixes.

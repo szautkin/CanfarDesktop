@@ -96,6 +96,26 @@ public class ViewStateWriteToolsTests
     }
 
     [Fact]
+    public async Task OpenFits_AcceptsLocalPath_PathWins()
+    {
+        // UI-parity with the file picker (and open_cube): a local path opens directly.
+        string? seen = null;
+        var tool = new OpenFitsFileTool(t => { seen = t; return Task.FromResult(new OpenFitsOutcome(true, t, t, null)); });
+        await tool.InvokeAsync(Args("""{"path":"C:/data/m51.fits"}"""), Ctx, default);
+        Assert.Equal("C:/data/m51.fits", seen);
+        await tool.InvokeAsync(Args("""{"path":"C:/data/a.fits","observationId":"obs-1"}"""), Ctx, default);
+        Assert.Equal("C:/data/a.fits", seen); // path takes precedence when both are given
+    }
+
+    [Fact]
+    public async Task OpenFits_NoTarget_InvalidArgument()
+    {
+        var tool = new OpenFitsFileTool(_ => Task.FromResult(new OpenFitsOutcome(false, "", null, null)));
+        var r = await tool.InvokeAsync(Args("""{}"""), Ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(r).Reason);
+    }
+
+    [Fact]
     public void OpenFits_IsViewStateVerb()
         => Assert.Equal(McpVerbClass.ViewState, new OpenFitsFileTool(_ => Task.FromResult(new OpenFitsOutcome(true, "x", null, null))).VerbClass);
 }

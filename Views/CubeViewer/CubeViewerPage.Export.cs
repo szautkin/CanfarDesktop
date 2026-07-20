@@ -147,8 +147,12 @@ public sealed partial class CubeViewerPage
         return null;
     }
 
-    /// <summary>MCP entry: export the current view to a PNG/PDF path (no modal), default style.</summary>
-    public async Task<string?> ExportCubeToPathAsync(string path, string format, int scale, bool dark)
+    /// <summary>MCP entry: export the current view to a PNG/PDF path (no modal). The style params
+    /// mirror the export dialog's controls (font sans/mono/serif, textColor auto/white/black/cyan/amber,
+    /// textScale 0.75–1.5, annotations line, transparent background).</summary>
+    public async Task<string?> ExportCubeToPathAsync(string path, string format, int scale, bool dark,
+        string font = "sans", string textColor = "auto", double textScale = 1.0,
+        bool annotate = true, bool transparent = false)
     {
         if (_exporting) return "an export is already in progress";
         if (_volume is null) return "no cube is loaded";
@@ -171,7 +175,15 @@ public sealed partial class CubeViewerPage
 
             plate = new CubeExportPlate();
             plate.Populate(cap.Value.Frame, cap.Value.W, cap.Value.H, BuildPlateData(),
-                new CubeExportPlate.PlateStyle { Dark = dark, Font = "sans", TextColor = "auto", TextScale = 1.0, Annotate = true, Transparent = false });
+                new CubeExportPlate.PlateStyle
+                {
+                    Dark = dark,
+                    Font = font,
+                    TextColor = textColor,
+                    TextScale = Math.Clamp(textScale, 0.75, 1.5),
+                    Annotate = annotate,
+                    Transparent = transparent,
+                });
             ExportHost.Children.Add(plate);
             Canvas.SetLeft(plate, -100000);
             plate.UpdateLayout();
@@ -262,7 +274,8 @@ public sealed partial class CubeViewerPage
             int nz = _volume?.Nz ?? w.Nz;
             if (nz > 1)
             {
-                string spec = w.HasSpectral ? $" · {w.SpecText(ViewModel.Channel)} {w.SpecUnitDisplay()}".TrimEnd() : "";
+                // ViewModel.Channel is RENDER-space; map through the stride for the true world value.
+                string spec = w.HasSpectral ? $" · {w.SpecText(_meta.NativeChannel(ViewModel.Channel))} {w.SpecUnitDisplay()}".TrimEnd() : "";
                 d.ChannelText = Helpers.Loc.F("Cube_ChannelLabel", ViewModel.Channel, Math.Max(0, nz - 1), spec);
             }
         }

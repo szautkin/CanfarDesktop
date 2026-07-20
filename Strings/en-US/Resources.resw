@@ -2038,6 +2038,10 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Mcp_ConfigWriteFailed" xml:space="preserve">
     <value>Couldn't write the config: {0}</value>
   </data>
+  <data name="Mcp_ManualConfigCopied" xml:space="preserve">
+    <value>Verbinal can't edit this file directly (Store apps are sandboxed from it). The full updated config was copied to your clipboard — open the file below in a text editor, replace its contents, then restart Claude Desktop:
+{0}</value>
+  </data>
   <data name="Mcp_ConfirmCancelButton.Content" xml:space="preserve">
     <value>Cancel</value>
   </data>
@@ -3662,13 +3666,13 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
     <value>FITS Viewer</value>
   </data>
   <data name="AiGuideCat_fits_Summary" xml:space="preserve">
-    <value>Read FITS headers/WCS, open files, steer the 2D viewer, bookmark coordinates.</value>
+    <value>Read FITS headers/WCS, open files, steer the 2D viewer (HDUs, crosshair, blink comparison, tabs), bookmark coordinates.</value>
   </data>
   <data name="AiGuideCat_cube_Title" xml:space="preserve">
     <value>Cube Viewer</value>
   </data>
   <data name="AiGuideCat_cube_Summary" xml:space="preserve">
-    <value>Open and steer the 3D spectral cube viewer; probe spectra; export figures.</value>
+    <value>Open and steer the 3D spectral cube viewer; shape the opacity curve; probe or show spectra; manage tabs; export figures.</value>
   </data>
   <data name="AiGuideCat_notebook_Title" xml:space="preserve">
     <value>Notebook</value>

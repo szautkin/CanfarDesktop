@@ -215,7 +215,8 @@ public sealed partial class CubeViewerPage
         if (_meta is not null && _meta.Wcs.HasSpectral)
         {
             string unit = _meta.Wcs.SpecUnitDisplay();
-            spec = " · " + _meta.Wcs.SpecText(c) + (string.IsNullOrEmpty(unit) ? "" : " " + unit);
+            // c is a RENDER-space channel; map through the stride so the label shows the true world value.
+            spec = " · " + _meta.Wcs.SpecText(_meta.NativeChannel(c)) + (string.IsNullOrEmpty(unit) ? "" : " " + unit);
         }
         ChannelLabel.Text = Helpers.Loc.F("Cube_ChannelLabel", c, Math.Max(0, nz - 1), spec);
     }

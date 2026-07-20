@@ -170,18 +170,25 @@ public static class McpToolCatalog
             new SetSearchFocusTool((ra, dec) => viewState.SetSearchFocusActionAsync(ra, dec)),
             new OpenFitsFileTool(id => viewState.OpenFitsAsync(id)),
 
-            // 3D Cube Viewer: open + steer + read + probe + export figure
+            // 3D Cube Viewer: open + steer + read + probe + export figure + transfer curve + tabs/recents
             new OpenCubeTool(target => viewState.OpenCubeAsync(target)),
             new SetCubeViewTool(args => viewState.SetCubeAsync(args)),
             new GetCubeViewTool(() => viewState.GetCubeAsync()),
             new ProbeCubeSpectrumTool((x, y) => viewState.ProbeCubeAsync(x, y)),
-            new ExportCubeFigureTool((path, format, scale, dark) => viewState.ExportCubeAsync(path, format, scale, dark)),
+            new ShowCubeSpectrumTool((x, y) => viewState.ShowCubeSpectrumAsync(x, y), () => viewState.CloseCubeSpectrumAsync()),
+            new SetCubeTransferTool((points, reset) => viewState.SetCubeTransferAsync(points, reset)),
+            new GetCubeChannelProfileTool(() => viewState.GetCubeChannelProfileAsync()),
+            new SwitchCubeTabTool(index => viewState.SwitchCubeTabAsync(index)),
+            new ListRecentCubesTool(() => viewState.ListRecentCubesAsync()),
+            new ExportCubeFigureTool(req => viewState.ExportCubeAsync(req)),
 
-            // 2D FITS Viewer: steer + read + probe pixel + go-to coordinate (active tab)
+            // 2D FITS Viewer: steer + read + probe pixel + go-to coordinate + blink + tabs (active tab)
             new SetFitsViewTool(args => viewState.SetFitsAsync(args)),
             new GetFitsViewTool(() => viewState.GetFitsAsync()),
             new ProbeFitsPixelTool((x, y) => viewState.ProbeFitsAsync(x, y)),
             new FitsGotoCoordinateTool((ra, dec) => viewState.GotoFitsAsync(ra, dec)),
+            new BlinkFitsTabsTool((action, tab, interval) => viewState.BlinkFitsAsync(action, tab, interval)),
+            new SwitchFitsTabTool(index => viewState.SwitchFitsTabAsync(index)),
             // FITS coordinate bookmarks (persisted saved coordinates)
             new ListFitsBookmarksTool(() => viewState.ListFitsBookmarksAsync()),
             new SaveFitsBookmarkTool((ra, dec, label, src) => viewState.SaveFitsBookmarkAsync(ra, dec, label, src)),
@@ -527,7 +534,7 @@ public static class McpToolCatalog
     /// <summary>Probe the upstream services concurrently: any HTTP response = host reachable.</summary>
     private static async Task<IReadOnlyList<ServiceHealthEntry>> ProbeServicesAsync(IHttpClientFactory factory, ApiEndpoints endpoints)
         => (await CanfarDesktop.Services.ServiceHealthProbe.ProbeCoreAsync(factory, endpoints))
-            .Select(r => new ServiceHealthEntry(r.Name, r.Url, r.Reachable, r.StatusCode, r.LatencyMs, r.Error))
+            .Select(r => new ServiceHealthEntry(r.Name, r.Url, r.Reachable, r.Ok, r.StatusCode, r.LatencyMs, r.Error))
             .ToList();
 
     /// <summary>A safe Skaha session name (lowercase, hyphenated) — generated when the agent omits one.</summary>

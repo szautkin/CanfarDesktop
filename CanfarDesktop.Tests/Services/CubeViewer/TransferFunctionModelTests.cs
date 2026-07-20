@@ -32,6 +32,32 @@ public class TransferFunctionModelTests
         Assert.False(m.IsEndpoint(0));
     }
 
+    // ── Replace (the MCP set_cube_transfer path) ──
+
+    [Fact]
+    public void Replace_SwapsTheWholeCurve_Clamped()
+    {
+        var m = TransferFunctionModel.CreateDefault();
+
+        Assert.True(m.Replace([new Vector2(-0.5f, 2f), new Vector2(0.4f, 0.9f), new Vector2(1f, 1f)]));
+        Assert.Equal(3, m.Points.Count);
+        Assert.Equal(new Vector2(0f, 1f), m.Points[0]);     // clamped to [0,1]
+        Assert.Equal(new Vector2(0.4f, 0.9f), m.Points[1]);
+        Assert.True(m.IsEndpoint(0));                        // min/max-X of the NEW curve are the endpoints
+        Assert.True(m.IsEndpoint(2));
+    }
+
+    [Fact]
+    public void Replace_FewerThanTwoPoints_RefusedCurveUntouched()
+    {
+        var m = TransferFunctionModel.CreateDefault();
+        var before = m.Points.ToArray();
+
+        Assert.False(m.Replace([new Vector2(0.5f, 0.5f)]));
+        Assert.False(m.Replace([]));
+        Assert.Equal(before, m.Points);
+    }
+
     // ── HitTest ──
 
     [Fact]

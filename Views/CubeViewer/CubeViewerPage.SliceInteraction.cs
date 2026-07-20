@@ -133,6 +133,56 @@ public sealed partial class CubeViewerPage
         ApplySliceTransform();
     }
 
+    /// <summary>
+    /// MCP slice navigation (set_cube_view sliceZoom/sliceCenterX/Y/resetSliceView) — the agent
+    /// equivalents of wheel-zoom, drag-pan, and double-tap. Center coordinates are NATIVE cube pixels.
+    /// </summary>
+    internal void SetSliceViewFromMcp(double? zoom, int? centerX, int? centerY, bool reset)
+    {
+        if (_volume is null) return;
+        if (reset) { ResetSliceView(); return; }
+
+        double aw = SliceViewport.ActualWidth, ah = SliceViewport.ActualHeight;
+        if (zoom is { } z)
+        {
+            double target = Math.Clamp(z, 1.0, MaxSliceZoom);
+            if (aw > 0 && ah > 0 && centerX is null && centerY is null)
+                ZoomSliceToward(new Point(aw / 2, ah / 2), target / _sliceZoom); // keep the current center
+            else
+                _sliceZoom = target; // centering below (or viewport not laid out) sets the pan itself
+        }
+
+        if ((centerX is not null || centerY is not null) && aw > 0 && ah > 0)
+        {
+            int nativeNx = _meta?.Nx ?? _volume.Nx, nativeNy = _meta?.Ny ?? _volume.Ny;
+            int nxDisp = _sliceDispNx > 0 ? _sliceDispNx : _volume.Nx;
+            int nyDisp = _sliceDispNy > 0 ? _sliceDispNy : _volume.Ny;
+            // Native pixel center → display pixel → fit-space point; solve the pan that puts it
+            // at the viewport center (view = c + (fit − c)·zoom + pan, want view == c).
+            double px = (Math.Clamp(centerX ?? nativeNx / 2, 0, nativeNx - 1) + 0.5) * nxDisp / nativeNx;
+            double py = (Math.Clamp(centerY ?? nativeNy / 2, 0, nativeNy - 1) + 0.5) * nyDisp / nativeNy;
+            double scale = Math.Min(aw / nxDisp, ah / nyDisp);
+            double ox = (aw - nxDisp * scale) / 2, oy = (ah - nyDisp * scale) / 2;
+            double cx = aw / 2, cy = ah / 2;
+            _slicePanX = -(ox + px * scale - cx) * _sliceZoom;
+            _slicePanY = -(oy + py * scale - cy) * _sliceZoom;
+        }
+        ApplySliceTransform();
+    }
+
+    /// <summary>The NATIVE cube pixel at the slice viewport center (for get_cube_view), or null
+    /// when the center is off-image / the viewport isn't laid out.</summary>
+    internal (int X, int Y)? SliceCenterNative()
+    {
+        if (_volume is null) return null;
+        var px = MapToPixel(new Point(SliceViewport.ActualWidth / 2, SliceViewport.ActualHeight / 2));
+        if (px is null) return null;
+        int nativeNx = _meta?.Nx ?? _volume.Nx, nativeNy = _meta?.Ny ?? _volume.Ny;
+        int nxDisp = _sliceDispNx > 0 ? _sliceDispNx : _volume.Nx;
+        int nyDisp = _sliceDispNy > 0 ? _sliceDispNy : _volume.Ny;
+        return ((int)((long)px.Value.x * nativeNx / nxDisp), (int)((long)px.Value.y * nativeNy / nyDisp));
+    }
+
     // ── Hover readout (cursor chip + coordinate bar) ───────────────────────────
 
     /// <summary>Update the floating chip + coordinate bar for a viewport pointer position.</summary>
@@ -173,7 +223,8 @@ public sealed partial class CubeViewerPage
         if (_meta is not null && _meta.Wcs.HasSpectral)
         {
             string su = _meta.Wcs.SpecUnitDisplay();
-            spec = _meta.Wcs.SpecText(ViewModel.Channel) + (string.IsNullOrEmpty(su) ? "" : " " + su);
+            // ViewModel.Channel is RENDER-space; map through the stride for the true world value.
+            spec = _meta.Wcs.SpecText(_meta.NativeChannel(ViewModel.Channel)) + (string.IsNullOrEmpty(su) ? "" : " " + su);
         }
 
         // Chip lines (empty lines collapse).

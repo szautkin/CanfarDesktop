@@ -142,17 +142,14 @@ public sealed class McpHost : IAsyncDisposable
             aiGuide.KnownToolNames = router.ToolNames.ToHashSet(StringComparer.Ordinal);
         Func<AiGuideSnapshot>? aiGuideSnapshot = aiGuide is null ? null : aiGuide.Snapshot;
 
-        // Write the sidecar to the REAL %LOCALAPPDATA% (un-redirected) so the UNPACKAGED bridge can find
-        // it — a packaged app's default AppData is sandboxed to its package container (PackagePaths).
-        var sidecar = new McpSidecar(Path.Combine(PackagePaths.RealLocalAppData(), McpConstants.SidecarFolderName));
-
         // The wired approval gate: records connecting clients and (when the user requires approval) admits
         // only allow-listed ones. Shared across connections + the settings UI. Absent → allow-all fallback.
         var approvalGate = _services.GetService<McpClientApprovalStore>();
 
+        // Default sidecar: a diagnostic breadcrumb at a location whose writes land at their literal
+        // path even under MSIX virtualization (see McpSidecar / PackagePaths.WritableInteropRoot).
         _listener = new McpListenerService(
             () => new McpServerService(router, identity, gate: approvalGate, proposals: proposals, budget: budget, aiGuide: aiGuideSnapshot),
-            sidecar: sidecar,
             log: CrashLogger.Info);
         _listener.Start(Guid.NewGuid());
         CrashLogger.Info($"MCP host started; pipe={_listener.PipeName}");

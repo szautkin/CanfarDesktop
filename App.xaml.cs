@@ -84,6 +84,14 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        try
+        {
+            NotebookLogger.Info($"Package identity: {Windows.ApplicationModel.Package.Current.Id.FullName}");
+        }
+        catch (Exception ex)
+        {
+            NotebookLogger.Info($"NO package identity — running unpackaged. ({ex.GetType().Name}: {ex.Message})");
+        }
         // Single instance: if another instance exists, forward activation and exit
         var appInstance = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey("VerbinalMain");
         if (!appInstance.IsCurrent)

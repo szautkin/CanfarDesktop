@@ -256,6 +256,13 @@ public sealed class CubeMetadata
     public int RenderNy { get; init; }
     public int RenderNz { get; init; }
 
+    /// <summary>Down-sample stride: rendered voxel i on any axis is native sample i·Stride (1 = full res).</summary>
+    public int Stride { get; init; } = 1;
+
+    /// <summary>The native (NAXIS3) channel a rendered channel corresponds to — required wherever a
+    /// slider/volume channel index meets the native-resolution spectral WCS (CRPIX3/CDELT3).</summary>
+    public int NativeChannel(int renderChannel) => Math.Min(renderChannel * Stride, Math.Max(0, Nz - 1));
+
     public double DataMin { get; init; }
     public double DataMax { get; init; }
     public double Median { get; init; }

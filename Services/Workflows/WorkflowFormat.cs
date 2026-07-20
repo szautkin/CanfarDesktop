@@ -163,20 +163,24 @@ public static partial class WorkflowFormat
     /// </summary>
     public static string WithStepDone(string text, int stepIndex, bool done)
     {
-        var normalizedProbe = 0;
-        var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
-        for (var i = 0; i < lines.Length; i++)
+        // Scan lines IN PLACE (no split/rejoin): normalizing line endings here rewrote every CRLF in
+        // a Windows-authored file as LF, breaking the only-one-byte-changes contract above.
+        var probe = 0;
+        var i = 0;
+        while (i <= text.Length)
         {
-            var m = StepStart().Match(lines[i].TrimEnd());
-            if (!m.Success) continue;
-            if (normalizedProbe++ == stepIndex)
+            var end = i;
+            while (end < text.Length && text[end] is not ('\n' or '\r')) end++;
+            var line = text.AsSpan(i, end - i);
+            if (StepStart().IsMatch(line) && probe++ == stepIndex)
             {
-                var open = lines[i].IndexOf('[');
-                lines[i] = lines[i][..(open + 1)] + (done ? "x" : " ") + lines[i][(open + 2)..];
-                return string.Join("\n", lines);
+                var open = i + line.IndexOf('[');
+                return string.Concat(text.AsSpan(0, open + 1), done ? "x" : " ", text.AsSpan(open + 2));
             }
+            if (end >= text.Length) break;
+            i = text[end] == '\r' && end + 1 < text.Length && text[end + 1] == '\n' ? end + 2 : end + 1;
         }
-        throw new ArgumentOutOfRangeException(nameof(stepIndex), $"workflow has {normalizedProbe} steps; step {stepIndex} does not exist.");
+        throw new ArgumentOutOfRangeException(nameof(stepIndex), $"workflow has {probe} steps; step {stepIndex} does not exist.");
     }
 
     /// <summary>A starter document for the "New workflow" action.</summary>

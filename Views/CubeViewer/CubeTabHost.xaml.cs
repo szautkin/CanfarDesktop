@@ -88,6 +88,29 @@ public sealed partial class CubeTabHost : UserControl
     /// <summary>Number of open cube tabs.</summary>
     public int OpenTabCount => TabViewControl.TabItems.Count;
 
+    /// <summary>Every open cube tab's index/name/active flag (the MCP list_open_tabs detail).</summary>
+    public IReadOnlyList<(int Index, string Name, bool Active)> TabInfos()
+    {
+        var infos = new List<(int, string, bool)>(TabViewControl.TabItems.Count);
+        for (int i = 0; i < TabViewControl.TabItems.Count; i++)
+        {
+            var tab = TabViewControl.TabItems[i] as TabViewItem;
+            infos.Add((i, tab?.Header as string ?? "", ReferenceEquals(tab, TabViewControl.SelectedItem)));
+        }
+        return infos;
+    }
+
+    /// <summary>Make the tab at a 0-based index active (the MCP switch_cube_tab tool).</summary>
+    public bool SwitchToTab(int index)
+    {
+        if (index < 0 || index >= TabViewControl.TabItems.Count) return false;
+        TabViewControl.SelectedItem = TabViewControl.TabItems[index];
+        return true;
+    }
+
+    /// <summary>The persisted recently-opened cubes (the MCP list_recent_cubes tool).</summary>
+    public IReadOnlyList<RecentCubeEntry> RecentCubes => _recents.Entries;
+
     private void CloseTabItem(TabViewItem tab)
     {
         if (tab.Content is CubeViewerPage page) page.CleanupForClose();

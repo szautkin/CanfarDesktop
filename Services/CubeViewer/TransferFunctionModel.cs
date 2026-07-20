@@ -85,4 +85,18 @@ internal sealed class TransferFunctionModel
         _points.Clear();
         _points.AddRange(CubeColormaps.DefaultTransferFunction);
     }
+
+    /// <summary>
+    /// Replace the whole curve (the MCP <c>set_cube_transfer</c> path). Points are clamped to
+    /// [0,1]; refused (false) with the curve untouched when fewer than two points are given —
+    /// the min/max-X points become the new pinned endpoints, so two suffice to span the domain.
+    /// </summary>
+    public bool Replace(IReadOnlyList<Vector2> points)
+    {
+        if (points is null || points.Count < 2) return false;
+        _points.Clear();
+        foreach (var p in points)
+            _points.Add(new Vector2(Math.Clamp(p.X, 0f, 1f), Math.Clamp(p.Y, 0f, 1f)));
+        return true;
+    }
 }

@@ -50,4 +50,19 @@ public class TabToolsTests
         Assert.Equal(1, json.GetProperty("fitsViewers").GetInt32());
         Assert.Equal(3, json.GetProperty("cubes").GetInt32());
     }
+
+    [Fact]
+    public async Task ListOpenTabs_SurfacesPerTabDetail()
+    {
+        // The cube/FITS tab lists feed switch_cube_tab / switch_fits_tab.
+        var tool = new ListOpenTabsTool(() => Task.FromResult(new OpenTabsState(0, 2, 1,
+            CubeTabs: new[] { new ViewerTabInfo(0, "M31 cube", true) },
+            FitsTabs: new[] { new ViewerTabInfo(0, "m51.fits", false), new ViewerTabInfo(1, "hst.fits", true) })));
+        var result = await tool.InvokeAsync(JsonValue.Null, Ctx(), default);
+        var json = JsonDocument.Parse(Assert.IsType<DataResult>(result).Json).RootElement;
+
+        Assert.Equal("M31 cube", json.GetProperty("cubeTabs")[0].GetProperty("name").GetString());
+        Assert.True(json.GetProperty("fitsTabs")[1].GetProperty("active").GetBoolean());
+        Assert.Equal(1, json.GetProperty("fitsTabs")[1].GetProperty("index").GetInt32());
+    }
 }
