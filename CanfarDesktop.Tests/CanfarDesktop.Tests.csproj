@@ -153,6 +153,9 @@
     <Compile Include="..\Mcp\Tools\Write\ProposalLifecycleTools.cs" Link="Linked\Mcp\ProposalLifecycleTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ViewStateWriteTools.cs" Link="Linked\Mcp\ViewStateWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\SavedQueryWriteTools.cs" Link="Linked\Mcp\SavedQueryWriteTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\SearchUiTools.cs" Link="Linked\Mcp\SearchUiTools.cs" />
+    <Compile Include="..\Mcp\Tools\Read\SearchUiReadTools.cs" Link="Linked\Mcp\SearchUiReadTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\RecentSearchWriteTools.cs" Link="Linked\Mcp\RecentSearchWriteTools.cs" />
     <Compile Include="..\Mcp\Agents\AgentActivity.cs" Link="Linked\Mcp\AgentActivity.cs" />
     <Compile Include="..\Models\AgentAttribution.cs" Link="Linked\AgentAttribution.cs" />
     <Compile Include="..\Mcp\Agents\AgentAttribution.cs" Link="Linked\Mcp\AgentAttributionStamp.cs" />

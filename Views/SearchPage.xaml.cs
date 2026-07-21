@@ -266,36 +266,40 @@ public sealed partial class SearchPage : Page
     private void OnLoadRecentSearch(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: RecentSearch search })
-        {
-            ViewModel.LoadFromRecentSearch(search);
-            // Sync data train UI if loaded
-            if (_dataTrainUIBuilt)
-            {
-                _dataTrainMgr.ClearAll();
-                // Restore data train manager selections from ViewModel
-                foreach (var v in ViewModel.SelectedBands) _dataTrainMgr.SelectedBands.Add(v);
-                foreach (var v in ViewModel.SelectedCollections) _dataTrainMgr.SelectedCollections.Add(v);
-                foreach (var v in ViewModel.SelectedInstruments) _dataTrainMgr.SelectedInstruments.Add(v);
-                foreach (var v in ViewModel.SelectedFilters) _dataTrainMgr.SelectedFilters.Add(v);
-                foreach (var v in ViewModel.SelectedCalLevels) _dataTrainMgr.SelectedCalLevels.Add(v);
-                foreach (var v in ViewModel.SelectedDataTypes) _dataTrainMgr.SelectedDataTypes.Add(v);
-                foreach (var v in ViewModel.SelectedObsTypes) _dataTrainMgr.SelectedObsTypes.Add(v);
-                _dataTrainMgr.Refresh();
-                SyncAllTrainLists();
-            }
-            MainPivot.SelectedIndex = 0;
+            LoadRecentSearchCore(search);
+    }
 
-            // The pick may have restored facet selections that live inside the collapsed
-            // Additional Constraints expander — open it so the restored state is VISIBLE,
-            // and confirm the load so the form change doesn't pass silently.
-            var facetsRestored =
-                ViewModel.SelectedBands.Count + ViewModel.SelectedCollections.Count +
-                ViewModel.SelectedInstruments.Count + ViewModel.SelectedFilters.Count +
-                ViewModel.SelectedCalLevels.Count + ViewModel.SelectedDataTypes.Count +
-                ViewModel.SelectedObsTypes.Count;
-            if (facetsRestored > 0) ConstraintsExpander.IsExpanded = true;
-            ShowLoadedFeedback(Loc.F("Search_LoadedRecent", search.Summary));
+    /// <summary>Load a recent search into the form + facet UI (shared by the panel button and MCP).</summary>
+    private void LoadRecentSearchCore(RecentSearch search)
+    {
+        ViewModel.LoadFromRecentSearch(search);
+        // Sync data train UI if loaded
+        if (_dataTrainUIBuilt)
+        {
+            _dataTrainMgr.ClearAll();
+            // Restore data train manager selections from ViewModel
+            foreach (var v in ViewModel.SelectedBands) _dataTrainMgr.SelectedBands.Add(v);
+            foreach (var v in ViewModel.SelectedCollections) _dataTrainMgr.SelectedCollections.Add(v);
+            foreach (var v in ViewModel.SelectedInstruments) _dataTrainMgr.SelectedInstruments.Add(v);
+            foreach (var v in ViewModel.SelectedFilters) _dataTrainMgr.SelectedFilters.Add(v);
+            foreach (var v in ViewModel.SelectedCalLevels) _dataTrainMgr.SelectedCalLevels.Add(v);
+            foreach (var v in ViewModel.SelectedDataTypes) _dataTrainMgr.SelectedDataTypes.Add(v);
+            foreach (var v in ViewModel.SelectedObsTypes) _dataTrainMgr.SelectedObsTypes.Add(v);
+            _dataTrainMgr.Refresh();
+            SyncAllTrainLists();
         }
+        MainPivot.SelectedIndex = 0;
+
+        // The pick may have restored facet selections that live inside the collapsed
+        // Additional Constraints expander — open it so the restored state is VISIBLE,
+        // and confirm the load so the form change doesn't pass silently.
+        var facetsRestored =
+            ViewModel.SelectedBands.Count + ViewModel.SelectedCollections.Count +
+            ViewModel.SelectedInstruments.Count + ViewModel.SelectedFilters.Count +
+            ViewModel.SelectedCalLevels.Count + ViewModel.SelectedDataTypes.Count +
+            ViewModel.SelectedObsTypes.Count;
+        if (facetsRestored > 0) ConstraintsExpander.IsExpanded = true;
+        ShowLoadedFeedback(Loc.F("Search_LoadedRecent", search.Summary));
     }
 
     /// <summary>Transient "we loaded your pick" confirmation in the shared info bar.</summary>

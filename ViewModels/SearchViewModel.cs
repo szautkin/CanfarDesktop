@@ -192,6 +192,40 @@ public partial class SearchViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Load the data train and WAIT for rows: cache first, then a synchronous network fetch when the
+    /// cache is empty (unlike <see cref="LoadDataTrainAsync"/>, whose network refresh is fire-and-forget
+    /// — on a first run with no cache that leaves the facets empty until the next launch). Used by the
+    /// MCP constraints tools so "Additional Constraints" is never silently unloaded.
+    /// </summary>
+    public async Task EnsureDataTrainAsync()
+    {
+        if (_allDataTrainRows.Count > 0) return;
+        IsLoadingDataTrain = true;
+        try
+        {
+            var cached = await Task.Run(LoadDataTrainFromCache);
+            if (cached.Count > 0)
+            {
+                _allDataTrainRows = cached;
+                RefreshDataTrainOptions();
+                return;
+            }
+
+            var fresh = await _tapService.GetDataTrainAsync();
+            if (fresh.Count > 0)
+            {
+                _allDataTrainRows = fresh;
+                SaveDataTrainToCache(fresh);
+                RefreshDataTrainOptions();
+            }
+        }
+        finally
+        {
+            IsLoadingDataTrain = false;
+        }
+    }
+
     private static List<DataTrainRow> LoadDataTrainFromCache()
     {
         if (DataTrainCachePath is null || !File.Exists(DataTrainCachePath)) return [];
@@ -563,6 +597,22 @@ public partial class SearchViewModel : ObservableObject
 
     public string GetColumnFilter(string columnKey) =>
         _columnFilters.TryGetValue(columnKey, out var v) ? v : string.Empty;
+
+    /// <summary>Snapshot of the active per-column filters (column key → filter text).</summary>
+    public IReadOnlyDictionary<string, string> ActiveColumnFilters
+        => new Dictionary<string, string>(_columnFilters, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Row count after the active filters (equals TotalRows when none are set).</summary>
+    public int FilteredRowCount => GetProcessedRows().Count;
+
+    /// <summary>Set an explicit sort (unlike <see cref="SortBy"/>, which toggles on repeat).</summary>
+    public void SetSort(string columnKey, bool ascending)
+    {
+        _sortColumnKey = columnKey;
+        _sortAscending = ascending;
+        CurrentPage = 1;
+        InvalidateFilterCache();
+    }
 
     public void InvalidateFilterCache() => _filteredRowsCache = null;
 

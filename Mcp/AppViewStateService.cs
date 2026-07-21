@@ -89,6 +89,96 @@ public sealed class AppViewStateService
     public Task<OpenFitsOutcome> OpenFitsAsync(string id)
         => _openFits?.Invoke(id) ?? Task.FromResult(new OpenFitsOutcome(false, id, null, "FITS viewer unavailable"));
 
+    // ── Search page actions (registered by the UI; invoked by the search MCP tools) ──────────────
+
+    private volatile Func<Task<SearchFormSnapshot?>>? _getSearchForm;
+    private volatile Func<SearchFormPatch, Task<SearchFormSnapshot?>>? _setSearchForm;
+    private volatile Func<Task<SearchFacetsSnapshot?>>? _getSearchConstraints;
+    private volatile Func<SearchFacetSelections, Task<SearchConstraintsOutcome?>>? _setSearchConstraints;
+    private volatile Func<Task<SearchFormSnapshot?>>? _resetSearchForm;
+    private volatile Func<Task<SearchRunOutcome>>? _runSearch;
+    private volatile Func<string, Task<AdqlStageOutcome?>>? _setAdqlQuery;
+    private volatile Func<string?, Task<SearchRunOutcome>>? _executeAdqlQuery;
+    private volatile Func<bool, int, Task<SearchResultsSnapshot?>>? _getSearchResults;
+    private volatile Func<SearchResultsCommand, Task<SearchResultsSnapshot?>>? _setSearchResultsView;
+    private volatile Func<string, string?, Task<SearchExportOutcome>>? _exportSearchResults;
+    private volatile Func<int, Task<LoadRecentSearchOutcome?>>? _loadRecentSearch;
+    private volatile Func<string, Task<SearchRunOutcome>>? _runSavedQuery;
+
+    /// <summary>The UI registers the Search page actions (each marshals to the UI thread).</summary>
+    public void SetSearchActions(
+        Func<Task<SearchFormSnapshot?>> getForm,
+        Func<SearchFormPatch, Task<SearchFormSnapshot?>> setForm,
+        Func<Task<SearchFacetsSnapshot?>> getConstraints,
+        Func<SearchFacetSelections, Task<SearchConstraintsOutcome?>> setConstraints,
+        Func<Task<SearchFormSnapshot?>> resetForm,
+        Func<Task<SearchRunOutcome>> runSearch,
+        Func<string, Task<AdqlStageOutcome?>> setAdql,
+        Func<string?, Task<SearchRunOutcome>> executeAdql,
+        Func<bool, int, Task<SearchResultsSnapshot?>> getResults,
+        Func<SearchResultsCommand, Task<SearchResultsSnapshot?>> setResultsView,
+        Func<string, string?, Task<SearchExportOutcome>> exportResults,
+        Func<int, Task<LoadRecentSearchOutcome?>> loadRecent,
+        Func<string, Task<SearchRunOutcome>> runSavedQuery)
+    {
+        _getSearchForm = getForm;
+        _setSearchForm = setForm;
+        _getSearchConstraints = getConstraints;
+        _setSearchConstraints = setConstraints;
+        _resetSearchForm = resetForm;
+        _runSearch = runSearch;
+        _setAdqlQuery = setAdql;
+        _executeAdqlQuery = executeAdql;
+        _getSearchResults = getResults;
+        _setSearchResultsView = setResultsView;
+        _exportSearchResults = exportResults;
+        _loadRecentSearch = loadRecent;
+        _runSavedQuery = runSavedQuery;
+    }
+
+    private static readonly SearchRunOutcome SearchUnavailableRun =
+        new(false, null, 0, null, "Search page unavailable");
+
+    public Task<SearchFormSnapshot?> GetSearchFormAsync()
+        => _getSearchForm?.Invoke() ?? Task.FromResult<SearchFormSnapshot?>(null);
+
+    public Task<SearchFormSnapshot?> SetSearchFormAsync(SearchFormPatch patch)
+        => _setSearchForm?.Invoke(patch) ?? Task.FromResult<SearchFormSnapshot?>(null);
+
+    public Task<SearchFacetsSnapshot?> GetSearchConstraintsAsync()
+        => _getSearchConstraints?.Invoke() ?? Task.FromResult<SearchFacetsSnapshot?>(null);
+
+    public Task<SearchConstraintsOutcome?> SetSearchConstraintsAsync(SearchFacetSelections selections)
+        => _setSearchConstraints?.Invoke(selections) ?? Task.FromResult<SearchConstraintsOutcome?>(null);
+
+    public Task<SearchFormSnapshot?> ResetSearchFormAsync()
+        => _resetSearchForm?.Invoke() ?? Task.FromResult<SearchFormSnapshot?>(null);
+
+    public Task<SearchRunOutcome> RunSearchAsync()
+        => _runSearch?.Invoke() ?? Task.FromResult(SearchUnavailableRun);
+
+    public Task<AdqlStageOutcome?> SetAdqlQueryAsync(string adql)
+        => _setAdqlQuery?.Invoke(adql) ?? Task.FromResult<AdqlStageOutcome?>(null);
+
+    public Task<SearchRunOutcome> ExecuteAdqlQueryAsync(string? adql)
+        => _executeAdqlQuery?.Invoke(adql) ?? Task.FromResult(SearchUnavailableRun);
+
+    public Task<SearchResultsSnapshot?> GetSearchResultsAsync(bool includeRows, int maxRows)
+        => _getSearchResults?.Invoke(includeRows, maxRows) ?? Task.FromResult<SearchResultsSnapshot?>(null);
+
+    public Task<SearchResultsSnapshot?> SetSearchResultsViewAsync(SearchResultsCommand command)
+        => _setSearchResultsView?.Invoke(command) ?? Task.FromResult<SearchResultsSnapshot?>(null);
+
+    public Task<SearchExportOutcome> ExportSearchResultsAsync(string format, string? path)
+        => _exportSearchResults?.Invoke(format, path)
+           ?? Task.FromResult(new SearchExportOutcome(false, null, 0, "Search page unavailable"));
+
+    public Task<LoadRecentSearchOutcome?> LoadRecentSearchAsync(int index)
+        => _loadRecentSearch?.Invoke(index) ?? Task.FromResult<LoadRecentSearchOutcome?>(null);
+
+    public Task<SearchRunOutcome> RunSavedQueryAsync(string name)
+        => _runSavedQuery?.Invoke(name) ?? Task.FromResult(SearchUnavailableRun);
+
     // ── Cube Viewer actions (registered by the UI; invoked by the cube MCP tools) ────────────────
 
     private volatile Func<string, Task<CubeOpenOutcome>>? _openCube;

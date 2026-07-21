@@ -167,6 +167,13 @@ public sealed partial class MainWindow : Window
         _fitsHostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
         _fitsHostVm.Tabs.CollectionChanged += (_, _) => PublishOpenFits(_fitsHostVm);
         _viewState.SetActions(NavigateByKeyAsync, SetSearchFocusActionAsync, OpenFitsActionAsync);
+        _viewState.SetSearchActions(GetSearchFormActionAsync, SetSearchFormActionAsync,
+                                    GetSearchConstraintsActionAsync, SetSearchConstraintsActionAsync,
+                                    ResetSearchFormActionAsync, RunSearchActionAsync,
+                                    SetAdqlQueryActionAsync, ExecuteAdqlQueryActionAsync,
+                                    GetSearchResultsActionAsync, SetSearchResultsViewActionAsync,
+                                    ExportSearchResultsActionAsync, LoadRecentSearchActionAsync,
+                                    RunSavedQueryActionAsync);
         _viewState.SetCubeActions(OpenCubeActionAsync, GetCubeActionAsync, SetCubeActionAsync,
                                   ExportCubeActionAsync, ProbeCubeActionAsync,
                                   ShowCubeSpectrumActionAsync, CloseCubeSpectrumActionAsync,
@@ -282,6 +289,113 @@ public sealed partial class MainWindow : Window
             tcs.SetResult();
         return tcs.Task;
     }
+
+    // ── Search page actions (each ensures the page exists; writes also bring Search into view) ────
+
+    private Task<SearchFormSnapshot?> GetSearchFormActionAsync()
+        => OnUi<SearchFormSnapshot?>(() => { EnsureSearchPage(); return _searchPage!.McpGetForm(); }, null);
+
+    private Task<SearchFormSnapshot?> SetSearchFormActionAsync(SearchFormPatch patch)
+        => OnUi<SearchFormSnapshot?>(() =>
+        {
+            EnsureSearchPage();
+            var snapshot = _searchPage!.McpSetForm(patch);
+            NavigateTo(AppMode.Search);
+            return snapshot;
+        }, null);
+
+    private Task<SearchFacetsSnapshot?> GetSearchConstraintsActionAsync()
+        => OnUiAsync<SearchFacetsSnapshot?>(async () =>
+        {
+            EnsureSearchPage();
+            return await _searchPage!.McpGetConstraintsAsync();
+        }, null);
+
+    private Task<SearchConstraintsOutcome?> SetSearchConstraintsActionAsync(SearchFacetSelections selections)
+        => OnUiAsync<SearchConstraintsOutcome?>(async () =>
+        {
+            EnsureSearchPage();
+            var outcome = await _searchPage!.McpSetConstraintsAsync(selections);
+            NavigateTo(AppMode.Search);
+            return outcome;
+        }, null);
+
+    private Task<SearchFormSnapshot?> ResetSearchFormActionAsync()
+        => OnUi<SearchFormSnapshot?>(() =>
+        {
+            EnsureSearchPage();
+            var snapshot = _searchPage!.McpResetForm();
+            NavigateTo(AppMode.Search);
+            return snapshot;
+        }, null);
+
+    private static readonly CanfarDesktop.Mcp.Tools.Write.SearchRunOutcome SearchUiUnavailableRun =
+        new(false, null, 0, null, "the app UI is not ready");
+
+    private Task<SearchRunOutcome> RunSearchActionAsync()
+        => OnUiAsync(async () =>
+        {
+            EnsureSearchPage();
+            NavigateTo(AppMode.Search);
+            return await _searchPage!.McpRunSearchAsync();
+        }, SearchUiUnavailableRun);
+
+    private Task<AdqlStageOutcome?> SetAdqlQueryActionAsync(string adql)
+        => OnUi<AdqlStageOutcome?>(() =>
+        {
+            EnsureSearchPage();
+            var outcome = _searchPage!.McpSetAdql(adql);
+            NavigateTo(AppMode.Search);
+            return outcome;
+        }, null);
+
+    private Task<SearchRunOutcome> ExecuteAdqlQueryActionAsync(string? adql)
+        => OnUiAsync(async () =>
+        {
+            EnsureSearchPage();
+            NavigateTo(AppMode.Search);
+            return await _searchPage!.McpExecuteAdqlAsync(adql);
+        }, SearchUiUnavailableRun);
+
+    private Task<SearchResultsSnapshot?> GetSearchResultsActionAsync(bool includeRows, int maxRows)
+        => OnUi<SearchResultsSnapshot?>(() =>
+        {
+            EnsureSearchPage();
+            return _searchPage!.McpGetResults(includeRows, maxRows);
+        }, null);
+
+    private Task<SearchResultsSnapshot?> SetSearchResultsViewActionAsync(SearchResultsCommand command)
+        => OnUi<SearchResultsSnapshot?>(() =>
+        {
+            EnsureSearchPage();
+            var snapshot = _searchPage!.McpApplyResultsView(command);
+            NavigateTo(AppMode.Search);
+            return snapshot;
+        }, null);
+
+    private Task<SearchExportOutcome> ExportSearchResultsActionAsync(string format, string? path)
+        => OnUiAsync(async () =>
+        {
+            EnsureSearchPage();
+            return await _searchPage!.McpExportResultsAsync(format, path);
+        }, new SearchExportOutcome(false, null, 0, "the app UI is not ready"));
+
+    private Task<LoadRecentSearchOutcome?> LoadRecentSearchActionAsync(int index)
+        => OnUi<LoadRecentSearchOutcome?>(() =>
+        {
+            EnsureSearchPage();
+            var outcome = _searchPage!.McpLoadRecentSearch(index);
+            if (outcome.Loaded) NavigateTo(AppMode.Search);
+            return outcome;
+        }, null);
+
+    private Task<SearchRunOutcome> RunSavedQueryActionAsync(string name)
+        => OnUiAsync(async () =>
+        {
+            EnsureSearchPage();
+            NavigateTo(AppMode.Search);
+            return await _searchPage!.McpRunSavedQueryAsync(name);
+        }, SearchUiUnavailableRun);
 
     private Task<CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome> OpenFitsActionAsync(string id)
         => OnUiAsync(async () =>

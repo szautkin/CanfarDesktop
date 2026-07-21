@@ -18,8 +18,13 @@ public class AiGuideCatalogTests
         // Search & Archive
         "search_observations", "vizier_cone_search", "resolve_target", "get_observation_caom2",
         "get_data_links", "get_preview_image", "list_recent_searches",
+        // Search UI steering (form, facets, results table, exports, side panel)
+        "get_search_form", "set_search_form", "get_search_constraints", "set_search_constraints",
+        "reset_search_form", "run_search", "set_adql_query", "execute_adql_query",
+        "get_search_results", "set_search_results_view", "export_search_results",
+        "load_recent_search", "remove_recent_search", "clear_recent_searches",
         // Saved Queries
-        "list_saved_queries", "get_saved_query", "save_query", "delete_saved_query",
+        "list_saved_queries", "get_saved_query", "save_query", "delete_saved_query", "run_saved_query",
         // Research & Notes
         "list_downloaded_observations", "get_downloaded_observation", "get_observation_notes",
         "update_observation_note", "bulk_update_observation_notes", "export_research_bundle",

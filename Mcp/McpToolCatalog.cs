@@ -83,6 +83,26 @@ public static class McpToolCatalog
                 (adql, max, ct) => tap.ExecuteQueryAsync(adql, max, ct),
                 (target, service, ct) => tap.ResolveTargetAsync(target, service, ct)),
             new ResolveTargetTool((target, service, ct) => tap.ResolveTargetAsync(target, service, ct)),
+
+            // Live Search-page steering: the full Search UI surface — form fields, Additional
+            // Constraints facets, run/reset, the ADQL editor, the results table, exports, and the
+            // side-panel pickers (ViewState; routed to the page on the UI thread via AppViewStateService).
+            new GetSearchFormTool(() => viewState.GetSearchFormAsync()),
+            new SetSearchFormTool(patch => viewState.SetSearchFormAsync(patch)),
+            new GetSearchConstraintsTool(() => viewState.GetSearchConstraintsAsync()),
+            new SetSearchConstraintsTool(sel => viewState.SetSearchConstraintsAsync(sel)),
+            new ResetSearchFormTool(() => viewState.ResetSearchFormAsync()),
+            new RunSearchTool(() => viewState.RunSearchAsync()),
+            new SetAdqlQueryTool(adql => viewState.SetAdqlQueryAsync(adql)),
+            new ExecuteAdqlQueryTool(adql => viewState.ExecuteAdqlQueryAsync(adql)),
+            new GetSearchResultsTool((includeRows, maxRows) => viewState.GetSearchResultsAsync(includeRows, maxRows)),
+            new SetSearchResultsViewTool(cmd => viewState.SetSearchResultsViewAsync(cmd)),
+            new ExportSearchResultsTool((format, path) => viewState.ExportSearchResultsAsync(format, path)),
+            new LoadRecentSearchTool(index => viewState.LoadRecentSearchAsync(index)),
+            new RunSavedQueryTool(name => viewState.RunSavedQueryAsync(name)),
+            // Recent-search history deletes (Destructive proposals)
+            new RemoveRecentSearchTool(() => searchStore.LoadRecentSearches()),
+            new ClearRecentSearchesTool(() => searchStore.LoadRecentSearches()),
             new VizierConeSearchTool((req, ct) => vizier.ConeSearchAsync(
                 req.Catalogue, req.RaDeg, req.DecDeg, req.RadiusDeg, req.RaColumn, req.DecColumn, req.MaxRec, ct)),
 
@@ -330,6 +350,21 @@ public static class McpToolCatalog
             new DeleteSavedQueryApplier(payload =>
             {
                 searchStore.DeleteQuery(payload.Name);
+                return Task.CompletedTask;
+            }),
+            new RemoveRecentSearchApplier(payload =>
+            {
+                // Keyed by (searchedAt, summary), not index, so the right entry is removed even if the
+                // history shifted between the proposal and the user's approval.
+                var remaining = searchStore.LoadRecentSearches()
+                    .Where(s => s.SearchedAt != payload.SearchedAt || !string.Equals(s.Summary, payload.Summary, StringComparison.Ordinal))
+                    .ToList();
+                searchStore.SaveAllRecentSearches(remaining);
+                return Task.CompletedTask;
+            }),
+            new ClearRecentSearchesApplier(() =>
+            {
+                searchStore.ClearRecentSearches();
                 return Task.CompletedTask;
             }),
             new UpdateObservationNoteApplier((payload, attribution) =>
