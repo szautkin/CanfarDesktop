@@ -99,6 +99,10 @@
     <Compile Include="..\Helpers\VoSpaceParser.cs" Link="Linked\VoSpaceParser.cs" />
     <Compile Include="..\Models\VoSpaceNode.cs" Link="Linked\VoSpaceNode.cs" />
     <Compile Include="..\Services\TAPService.cs" Link="Linked\TAPService.cs" />
+    <!-- The service's own schema, and the ADQL pre-flight that reads it. -->
+    <Compile Include="..\Services\TapSchemaService.cs" Link="Linked\TapSchemaService.cs" />
+    <Compile Include="..\Helpers\AdqlValidator.cs" Link="Linked\AdqlValidator.cs" />
+    <Compile Include="..\Mcp\Tools\Read\TapSchemaTools.cs" Link="Linked\Mcp\TapSchemaTools.cs" />
     <Compile Include="..\Services\DataLinkService.cs" Link="Linked\DataLinkService.cs" />
     <!-- CAOM2 metadata (M2c) -->
     <Compile Include="..\Models\Caom2\CAOM2Observation.cs" Link="Linked\Caom2\CAOM2Observation.cs" />
@@ -152,6 +156,9 @@
     <Compile Include="..\Mcp\Tools\JsonWriteTool.cs" Link="Linked\Mcp\JsonWriteTool.cs" />
     <Compile Include="..\Mcp\Tools\Write\ProposalLifecycleTools.cs" Link="Linked\Mcp\ProposalLifecycleTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ViewStateWriteTools.cs" Link="Linked\Mcp\ViewStateWriteTools.cs" />
+    <!-- Search page steering: contracts first — AppViewStateService forwards to ISearchUiBridge. -->
+    <Compile Include="..\Mcp\Tools\Write\SearchUiContracts.cs" Link="Linked\Mcp\SearchUiContracts.cs" />
+    <Compile Include="..\Mcp\Tools\Write\SearchUiTools.cs" Link="Linked\Mcp\SearchUiTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\SavedQueryWriteTools.cs" Link="Linked\Mcp\SavedQueryWriteTools.cs" />
     <Compile Include="..\Mcp\Agents\AgentActivity.cs" Link="Linked\Mcp\AgentActivity.cs" />
     <Compile Include="..\Models\AgentAttribution.cs" Link="Linked\AgentAttribution.cs" />

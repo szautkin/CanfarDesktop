@@ -38,6 +38,7 @@ public static class McpToolCatalog
         var notes = sp.GetRequiredService<ObservationNoteStore>();
         var searchStore = sp.GetRequiredService<ISearchStoreService>();
         var tap = sp.GetRequiredService<ITAPService>();
+        var tapSchema = sp.GetRequiredService<ITapSchemaService>();
         var sessions = sp.GetRequiredService<ISessionService>();
         var imageCatalog = sp.GetRequiredService<IImageService>();
         var recentLaunches = sp.GetRequiredService<IRecentLaunchService>();
@@ -83,6 +84,11 @@ public static class McpToolCatalog
                 (adql, max, ct) => tap.ExecuteQueryAsync(adql, max, ct),
                 (target, service, ct) => tap.ResolveTargetAsync(target, service, ct)),
             new ResolveTargetTool((target, service, ct) => tap.ResolveTargetAsync(target, service, ct)),
+
+            // The service's own schema, and the check that reads it. Both fetch on first use and share
+            // one cached copy (TapSchemaService is a singleton).
+            new DescribeTapSchemaTool(ct => tapSchema.GetSchemaAsync(ct)),
+            new ValidateAdqlQueryTool(ct => tapSchema.GetSchemaAsync(ct)),
             new VizierConeSearchTool((req, ct) => vizier.ConeSearchAsync(
                 req.Catalogue, req.RaDeg, req.DecDeg, req.RadiusDeg, req.RaColumn, req.DecColumn, req.MaxRec, ct)),
 
@@ -169,6 +175,23 @@ public static class McpToolCatalog
             new NavigateToTool(mode => viewState.NavigateAsync(mode)),
             new SetSearchFocusTool((ra, dec) => viewState.SetSearchFocusActionAsync(ra, dec)),
             new OpenFitsFileTool(id => viewState.OpenFitsAsync(id)),
+
+            // Search page: the form, the facets, the query, and the results grid the user is looking at.
+            // search_observations (above) stays the headless way to run a query; these are for when the
+            // point is that the USER ends up seeing it.
+            new GetSearchFormTool(() => viewState.GetSearchFormAsync()),
+            new SetSearchFormTool(patch => viewState.SetSearchFormAsync(patch)),
+            new GetSearchConstraintsTool(() => viewState.GetSearchConstraintsAsync()),
+            new SetSearchConstraintsTool(patch => viewState.SetSearchConstraintsAsync(patch)),
+            new RunSearchTool(() => viewState.RunSearchAsync()),
+            new SetAdqlQueryTool((adql, execute) => viewState.SetAdqlQueryAsync(adql, execute)),
+            new RunSavedQueryTool(name => viewState.RunSavedQueryAsync(name)),
+            new GetSearchResultsTool(query => viewState.GetSearchResultsAsync(query)),
+            new SetSearchResultsViewTool(patch => viewState.SetSearchResultsViewAsync(patch)),
+            new ExportSearchResultsTool((format, path) => viewState.ExportSearchResultsAsync(format, path)),
+            new ShowSearchRowDetailTool(row => viewState.ShowSearchRowDetailAsync(row)),
+            new ShowObservationDetailTool(id => viewState.ShowObservationDetailAsync(id)),
+            new RemoveRecentSearchTool(match => viewState.RemoveRecentSearchAsync(match)),
 
             // 3D Cube Viewer: open + steer + read + probe + export figure
             new OpenCubeTool(target => viewState.OpenCubeAsync(target)),

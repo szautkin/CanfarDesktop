@@ -371,11 +371,21 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBox Grid.Row="0" x:Uid="Search_AdqlBox" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
+                        <TextBox Grid.Row="0" x:Name="AdqlBox" x:Uid="Search_AdqlBox" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
                                  Text="{x:Bind ViewModel.AdqlText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 TextChanged="OnAdqlTextChanged"
                                  PlaceholderText="Enter ADQL query..." />
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                        <!-- What the checker found, before the query is sent. Each entry selects the
+                             text it is about: a TextBox cannot draw the wavy underline the GTK build
+                             uses, but it can take you to the word. -->
+                        <InfoBar Grid.Row="1" x:Name="AdqlProblemsBar" IsOpen="False" IsClosable="False" Severity="Warning">
+                            <InfoBar.Content>
+                                <StackPanel x:Name="AdqlProblemsList" Spacing="2" Margin="0,0,0,12" />
+                            </InfoBar.Content>
+                        </InfoBar>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
                             <Button x:Name="ExecuteAdqlButton" Style="{StaticResource AccentButtonStyle}" Click="OnExecuteAdqlClick">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE768;" FontSize="14" />

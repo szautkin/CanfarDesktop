@@ -253,4 +253,60 @@ public sealed class AppViewStateService
 
     public Task<OpenTabsState> ListTabsAsync()
         => _listTabs?.Invoke() ?? Task.FromResult(new OpenTabsState(0, 0, 0));
+
+    // ── Search page (resolved lazily: the page is built the first time anyone asks for it) ───────
+
+    private volatile Func<Task<ISearchUiBridge?>>? _searchHost;
+
+    /// <summary>
+    /// The host registers how to REACH the Search page, not the page itself. The page is created on
+    /// first use — often by the agent call that needs it — so a bridge captured at startup would be
+    /// either permanently null or a page built before anyone asked for one. The resolver runs on the
+    /// UI thread and may create the page as a side effect.
+    /// </summary>
+    public void SetSearchHost(Func<Task<ISearchUiBridge?>> resolve) => _searchHost = resolve;
+
+    private const string SearchUnavailable = "the Search page is not available";
+
+    private Task<ISearchUiBridge?> ResolveSearchAsync()
+        => _searchHost?.Invoke() ?? Task.FromResult<ISearchUiBridge?>(null);
+
+    public async Task<SearchFormView> GetSearchFormAsync()
+        => await ResolveSearchAsync() is { } b ? await b.GetFormAsync() : SearchFormView.Unavailable(SearchUnavailable);
+
+    public async Task<SearchFormApplied> SetSearchFormAsync(SearchFormPatch patch)
+        => await ResolveSearchAsync() is { } b ? await b.SetFormAsync(patch) : SearchFormApplied.Unavailable(SearchUnavailable);
+
+    public async Task<SearchConstraintsView> GetSearchConstraintsAsync()
+        => await ResolveSearchAsync() is { } b ? await b.GetConstraintsAsync() : SearchConstraintsView.Unavailable(SearchUnavailable);
+
+    public async Task<SearchConstraintsApplied> SetSearchConstraintsAsync(SearchConstraintsPatch patch)
+        => await ResolveSearchAsync() is { } b ? await b.SetConstraintsAsync(patch) : SearchConstraintsApplied.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRunOutcome> RunSearchAsync()
+        => await ResolveSearchAsync() is { } b ? await b.RunSearchAsync() : SearchRunOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchAdqlOutcome> SetAdqlQueryAsync(string adql, bool execute)
+        => await ResolveSearchAsync() is { } b ? await b.SetAdqlAsync(adql, execute) : SearchAdqlOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchResultsView> GetSearchResultsAsync(SearchResultsQuery query)
+        => await ResolveSearchAsync() is { } b ? await b.GetResultsAsync(query) : SearchResultsView.Unavailable(SearchUnavailable);
+
+    public async Task<SearchResultsViewApplied> SetSearchResultsViewAsync(SearchResultsViewPatch patch)
+        => await ResolveSearchAsync() is { } b ? await b.SetResultsViewAsync(patch) : SearchResultsViewApplied.Unavailable(SearchUnavailable);
+
+    public async Task<SearchExportOutcome> ExportSearchResultsAsync(string format, string path)
+        => await ResolveSearchAsync() is { } b ? await b.ExportResultsAsync(format, path) : SearchExportOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRowDetailOutcome> ShowSearchRowDetailAsync(int? row)
+        => await ResolveSearchAsync() is { } b ? await b.ShowRowDetailAsync(row) : SearchRowDetailOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRowDetailOutcome> ShowObservationDetailAsync(string publisherId)
+        => await ResolveSearchAsync() is { } b ? await b.ShowObservationDetailAsync(publisherId) : SearchRowDetailOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRunOutcome> RunSavedQueryAsync(string name)
+        => await ResolveSearchAsync() is { } b ? await b.RunSavedQueryAsync(name) : SearchRunOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRecentRemoved> RemoveRecentSearchAsync(string match)
+        => await ResolveSearchAsync() is { } b ? await b.RemoveRecentSearchAsync(match) : SearchRecentRemoved.Unavailable(SearchUnavailable);
 }

@@ -564,6 +564,29 @@ public partial class SearchViewModel : ObservableObject
     public string GetColumnFilter(string columnKey) =>
         _columnFilters.TryGetValue(columnKey, out var v) ? v : string.Empty;
 
+    /// <summary>Every column filter currently set, keyed by column key. Read-only view of the live state.</summary>
+    public IReadOnlyDictionary<string, string> ActiveColumnFilters => _columnFilters;
+
+    /// <summary>
+    /// The rows the grid would show across ALL pages — the user's filters and sort applied, paging not.
+    /// The same list <see cref="GetCurrentPageRows"/> pages through, so a reader and the screen can
+    /// never disagree about what "the results" are.
+    /// </summary>
+    public IReadOnlyList<SearchResultRow> ProcessedRows => GetProcessedRows();
+
+    /// <summary>
+    /// Sort by a column in a stated direction. <see cref="SortBy"/> TOGGLES, which is what a header
+    /// click means and not what "sort ascending by exposure" means — a caller that has to click twice
+    /// to find out which way it went cannot ask for a direction at all.
+    /// </summary>
+    public void SetSort(string? columnKey, bool ascending)
+    {
+        _sortColumnKey = string.IsNullOrWhiteSpace(columnKey) ? null : columnKey;
+        _sortAscending = ascending;
+        CurrentPage = 1;
+        InvalidateFilterCache();
+    }
+
     public void InvalidateFilterCache() => _filteredRowsCache = null;
 
     public void ResetFiltersAndSort()

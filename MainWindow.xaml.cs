@@ -174,6 +174,7 @@ public sealed partial class MainWindow : Window
         _viewState.SetNotebookActions(NotebookMutateActionAsync, GetNotebookActionAsync, GetCellOutputActionAsync,
                                       GetKernelStateActionAsync, ListNotebooksActionAsync, ListOpenNotebooksActionAsync);
         _viewState.SetTabActions(CloseTabActionAsync, ListOpenTabsActionAsync);
+        _viewState.SetSearchHost(ResolveSearchBridgeAsync);
         _viewState.SetCreateAnalysisNotebookAction(CreateAnalysisNotebookActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
@@ -229,6 +230,21 @@ public sealed partial class MainWindow : Window
             default: return new(false, mode, mode);
         }
     }
+
+    /// <summary>
+    /// Reach the Search page for the <c>search_*</c> tools, creating it if this is the first anyone has
+    /// asked. Runs on the UI thread because building the page is XAML work; the tools then call the
+    /// bridge, which marshals each of its own operations.
+    ///
+    /// The page is NOT brought to the front here: reading the form should not yank the user off what
+    /// they are looking at. The tools that change something do the navigating.
+    /// </summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.ISearchUiBridge?> ResolveSearchBridgeAsync()
+        => OnUi<CanfarDesktop.Mcp.Tools.Write.ISearchUiBridge?>(() =>
+        {
+            EnsureSearchPage();
+            return _searchPage;
+        }, null);
 
     private Task SetSearchFocusActionAsync(double ra, double dec)
     {

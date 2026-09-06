@@ -26,12 +26,14 @@ public sealed partial class SearchPage : Page
     /// <summary>Raised when the user opens a result row's full CAOM2 detail (publisher ID).</summary>
     public event Action<string>? ObservationDetailRequested;
 
-    public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService, ObservationStore observationStore, ObservationDownloadService downloads)
+    public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService, ObservationStore observationStore,
+                      ObservationDownloadService downloads, ITapSchemaService tapSchema)
     {
         ViewModel = viewModel;
         _dataLinkService = dataLinkService;
         _observationStore = observationStore;
         _downloads = downloads;
+        _tapSchema = tapSchema;
         InitializeComponent();
 
         // Ctrl+Enter to search
@@ -60,6 +62,7 @@ public sealed partial class SearchPage : Page
     {
         ViewModel.LoadRecentSearchesFromStore();
         ViewModel.LoadSavedQueriesFromStore();
+        BeginSchemaWarmup();
 
         if (!_dataTrainLoaded)
         {
@@ -143,6 +146,11 @@ public sealed partial class SearchPage : Page
     private async void OnExecuteAdqlClick(object sender, RoutedEventArgs e)
     {
         if (ViewModel.IsSearching) return;
+
+        // The debounce may not have fired yet — Ctrl+Enter after a paste arrives before it does — so
+        // the check runs here too rather than trusting the button's enabled state.
+        if (RecheckAdql().Count > 0) return;
+
         ExecuteAdqlButton.IsEnabled = false;
         try
         {
@@ -160,7 +168,9 @@ public sealed partial class SearchPage : Page
         }
         finally
         {
-            ExecuteAdqlButton.IsEnabled = true;
+            // Through the checker, not straight to true: an unconditional re-enable here would undo a
+            // refusal the checker had just made, and hand back a button that runs a doomed query.
+            RecheckAdql();
         }
     }
 
@@ -390,6 +400,12 @@ public sealed partial class SearchPage : Page
         var restoreH = DataScroll.HorizontalOffset;
         var restoreV = resetScroll ? 0 : DataScroll.VerticalOffset;
 
+        // The selection is page-relative, so it belongs to the page that is going away: a new result
+        // set, a new page, or a new page size all leave index 3 pointing at a different observation.
+        // Every one of those renders with resetScroll — the in-place refinements (filter, sort, unit,
+        // the selection itself) do not — so this is the one condition that means "different rows".
+        if (resetScroll) ClearRowSelection();
+
         if (rebuildHeader)
         {
             DisposeFilterTimers();
@@ -425,26 +441,50 @@ public sealed partial class SearchPage : Page
 
         var altBg = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
         var hoverBg = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+        var selectedBg = ThemeBrush("AccentFillColorSelectedTextBackgroundBrush", hoverBg);
 
+        // Rows are rebuilt on every render, so the selection cannot live on the Border. It is held by
+        // page-relative index and re-applied here; a selection past the end of a shorter page (fewer
+        // rows after a filter) is dropped rather than pointing at the wrong observation.
+        _rowBorders.Clear();
         var pageRows = ViewModel.GetCurrentPageRows();
+        if (_primaryRow >= pageRows.Count) _primaryRow = null;
+        _selectedRows.RemoveWhere(ix => ix >= pageRows.Count);
+
         for (var i = 0; i < pageRows.Count; i++)
         {
             var row = pageRows[i];
             var rowBorder = BuildRow(keys, isHeader: false, row: row, rowIndex: i);
             var capturedRow = row;
             var capturedIndex = i;
-            var originalBg = capturedIndex % 2 == 1 ? altBg : null;
+            var stripeBg = capturedIndex % 2 == 1 ? altBg : null;
+            Microsoft.UI.Xaml.Media.Brush? RestingBg() => _selectedRows.Contains(capturedIndex) ? selectedBg : stripeBg;
 
-            rowBorder.Tapped += (_, e) =>
+            rowBorder.Background = RestingBg();
+
+            rowBorder.Tapped += (s, e) =>
             {
                 if (e.OriginalSource is FrameworkElement fe &&
                     (fe.Tag as string == "action" || FrameworkElementExtensions.FindParentWithTag(fe, "action") is not null))
                     return;
+
+                // Ctrl-click adds or removes a row from the selection; a plain click means "show me
+                // this one", which is what it has always meant.
+                var ctrl = Microsoft.UI.Input.InputKeyboardSource
+                    .GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
+                    .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+                if (ctrl)
+                {
+                    ToggleRowSelection(capturedIndex);
+                    return;
+                }
+                SetPrimaryRow(capturedIndex);
                 ShowRowDetail(capturedRow);
             };
             rowBorder.PointerEntered += (s, _) => ((Border)s).Background = hoverBg;
-            rowBorder.PointerExited += (s, _) => ((Border)s).Background = originalBg;
+            rowBorder.PointerExited += (s, _) => ((Border)s).Background = RestingBg();
             ResultsPanel.Children.Add(rowBorder);
+            _rowBorders.Add(rowBorder);
         }
 
         UpdatePaginationUI();
@@ -836,6 +876,71 @@ public sealed partial class SearchPage : Page
         var publisherID = row.Get(ViewModel.GetColumnHeader("publisherid"));
         if (!string.IsNullOrEmpty(publisherID))
             ObservationDetailRequested?.Invoke(publisherID);
+    }
+
+    #endregion
+
+    #region Row selection
+
+    /// <summary>The row Borders currently on screen, in page order. Rebuilt by every render.</summary>
+    private readonly List<Border> _rowBorders = [];
+
+    /// <summary>Page-relative indices of the highlighted rows.</summary>
+    private readonly HashSet<int> _selectedRows = [];
+
+    /// <summary>The row a detail request means when none is named. Always also in <see cref="_selectedRows"/>.</summary>
+    private int? _primaryRow;
+
+    /// <summary>The highlighted row, if any (page-relative).</summary>
+    internal int? PrimaryRow => _primaryRow;
+
+    /// <summary>
+    /// A theme brush by key, or <paramref name="fallback"/> when the key is not in the merged
+    /// dictionaries. A missing resource key throws on indexer access, and a row highlight is not worth
+    /// taking the page down for.
+    /// </summary>
+    private static Microsoft.UI.Xaml.Media.Brush? ThemeBrush(string key, Microsoft.UI.Xaml.Media.Brush? fallback)
+        => Application.Current.Resources.TryGetValue(key, out var v) && v is Microsoft.UI.Xaml.Media.Brush b ? b : fallback;
+
+    private void ToggleRowSelection(int index)
+    {
+        if (_selectedRows.Add(index))
+        {
+            // Newly selected: this is now the row a detail request without an index means.
+            _primaryRow = index;
+        }
+        else
+        {
+            _selectedRows.Remove(index);
+            if (_primaryRow == index)
+                _primaryRow = _selectedRows.Count > 0 ? _selectedRows.Min() : null;
+        }
+        RenderResultsPage(rebuildHeader: false);
+    }
+
+    /// <summary>Make one row the only selected row (a plain click, or an agent's selectRow).</summary>
+    private void SetPrimaryRow(int index)
+    {
+        _selectedRows.Clear();
+        _selectedRows.Add(index);
+        _primaryRow = index;
+        RenderResultsPage(rebuildHeader: false);
+    }
+
+    /// <summary>Highlight a row and scroll it into view. False when the page has no such row.</summary>
+    internal bool SelectRow(int index)
+    {
+        if (index < 0 || index >= ViewModel.GetCurrentPageRows().Count) return false;
+        SetPrimaryRow(index);
+        if (index < _rowBorders.Count) _rowBorders[index].StartBringIntoView();
+        return true;
+    }
+
+    /// <summary>Drop the selection — a new result set has nothing to do with the old highlighted row.</summary>
+    private void ClearRowSelection()
+    {
+        _selectedRows.Clear();
+        _primaryRow = null;
     }
 
     #endregion

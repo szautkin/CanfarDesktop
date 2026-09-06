@@ -235,6 +235,9 @@ public partial class App : Application
             .AddHttpMessageHandler<TransientRetryHandler>();
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddSingleton<IColumnUnitStore, LocalSettingsColumnUnitStore>(); // per-column display units
+        // Singleton so the cache is a cache: the schema is ~400 columns over three queries, and built
+        // per call it would be re-read from CADC on every describe_tap_schema and every ADQL check.
+        services.AddSingleton<ITapSchemaService, TapSchemaService>();
         services.AddHttpClient<DataLinkService>();
         services.AddTransient<ObservationDownloadService>(); // shared resolve-URL + atomic download core
 
