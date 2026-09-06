@@ -264,6 +264,11 @@
     <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />
     <!-- The FITS projection. No XAML in it: it takes the transform as a function, so it can be tested. -->
     <Compile Include="..\Views\FitsViewer\FitsAnnotationSurface.cs" Link="Linked\Fits\FitsAnnotationSurface.cs" />
+    <!-- The cube's projections. CubeProjector was pulled out of the axes overlay so the marks and the
+         wireframe land on the same box — and so both can be tested without a GPU. -->
+    <Compile Include="..\Services\CubeViewer\CubeMath.cs" Link="Linked\CubeViewer\CubeMath.cs" />
+    <Compile Include="..\Services\CubeViewer\CubeProjector.cs" Link="Linked\CubeViewer\CubeProjector.cs" />
+    <Compile Include="..\Views\CubeViewer\CubeAnnotationSurfaces.cs" Link="Linked\CubeViewer\CubeAnnotationSurfaces.cs" />
     <Compile Include="..\Models\Fits\FitsCard.cs" Link="Linked\Fits\FitsCard.cs" />
     <Compile Include="..\Models\Fits\FitsHeader.cs" Link="Linked\Fits\FitsHeader.cs" />
     <Compile Include="..\Models\Fits\WcsInfo.cs" Link="Linked\Fits\WcsInfo.cs" />

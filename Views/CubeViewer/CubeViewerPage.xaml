@@ -2,7 +2,8 @@
 <UserControl
     x:Class="CanfarDesktop.Views.CubeViewer.CubeViewerPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CanfarDesktop.Views.Controls">
 
     <Grid Background="#FF050810" RequestedTheme="Dark">
         <Grid.KeyboardAccelerators>
@@ -24,6 +25,10 @@
         <!-- Wireframe box + WCS axis captions, projected to match the GPU render.
              Hit-test transparent so it never steals orbit/zoom input. -->
         <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
+
+        <!-- Marks in the volume. Above the wireframe: a mark inside the box would otherwise be lost
+             behind an edge crossing it, and the box is chrome while the mark is the point. -->
+        <controls:AnnotationLayer x:Name="VolumeAnnotationCanvas" IsHitTestVisible="False" />
 
         <!-- Off-screen host: the export figure plate is parented here, laid out, and
              rasterized via RenderTargetBitmap, then removed. Children are positioned
@@ -49,6 +54,10 @@
                     <CompositeTransform x:Name="SliceTransform" />
                 </Image.RenderTransform>
             </Image>
+            <!-- Marks on this channel's slice. Inside the viewport, so it shares the coordinate
+                 space the pointer handlers already work in. -->
+            <controls:AnnotationLayer x:Name="SliceAnnotationCanvas" IsHitTestVisible="False" />
+
             <!-- Floating cursor readout (sky + spectral + value), positioned near the pointer -->
             <Canvas IsHitTestVisible="False">
                 <Border x:Name="CursorChip" Visibility="Collapsed"
@@ -84,6 +93,39 @@
                               MinWidth="84" Click="OnVolumeModeClick" />
                 <ToggleButton x:Name="SliceModeButton" x:Uid="Cube_SliceModeButton" Content="Slice"
                               MinWidth="84" Click="OnSliceModeClick" />
+
+                <!-- Marks. Drawing happens on the SLICE: placing one in a perspective view means
+                     guessing a depth from a flat press, while a slice already has its channel. The
+                     pencil therefore switches to Slice rather than being disabled in Volume, which
+                     would leave a control that does nothing and does not say why. -->
+                <AppBarSeparator Margin="4,0" />
+                <ToggleButton x:Name="DrawMarksToggle" Click="OnToggleDrawMarks"
+                              ToolTipService.ToolTip="Draw marks on the slice"
+                              AutomationProperties.Name="Draw marks">
+                    <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                </ToggleButton>
+                <DropDownButton AutomationProperties.Name="Mark options"
+                                ToolTipService.ToolTip="Mark shape and actions">
+                    <FontIcon Glyph="&#xE71E;" FontSize="14" />
+                    <DropDownButton.Flyout>
+                        <MenuFlyout>
+                            <RadioMenuFlyoutItem x:Name="MarkKindCircle" Text="Circle" GroupName="CubeMarkKind"
+                                                 IsChecked="True" Click="OnMarkKindChanged" Tag="circle" />
+                            <RadioMenuFlyoutItem x:Name="MarkKindRect" Text="Box" GroupName="CubeMarkKind"
+                                                 Click="OnMarkKindChanged" Tag="rect" />
+                            <RadioMenuFlyoutItem x:Name="MarkKindCallout" Text="Callout" GroupName="CubeMarkKind"
+                                                 Click="OnMarkKindChanged" Tag="callout" />
+                            <RadioMenuFlyoutItem x:Name="MarkKindText" Text="Label" GroupName="CubeMarkKind"
+                                                 Click="OnMarkKindChanged" Tag="text" />
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Text="Delete selected mark" Click="OnDeleteSelectedMark">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE74D;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </DropDownButton.Flyout>
+                </DropDownButton>
             </StackPanel>
         </Border>
 

@@ -36,6 +36,12 @@ public sealed partial class CubeTabHost : UserControl
     public async Task<CubeViewerPage> AddTabForFileAsync(string filePath)
     {
         var page = new CubeViewerPage();
+
+        // One store for every tab: the marks are keyed by the cube file, and the page works out which
+        // file is its own.
+        page.AttachAnnotationStore(
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetRequiredService<CanfarDesktop.Services.Fits.IAnnotationStore>(App.Services));
         var tab = new TabViewItem
         {
             Content = page,

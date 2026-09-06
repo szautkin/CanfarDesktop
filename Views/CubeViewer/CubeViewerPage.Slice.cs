@@ -144,6 +144,9 @@ public sealed partial class CubeViewerPage
 
     private void RenderSlice()
     {
+        // A new channel is a different set of marks: each one belongs to its own.
+        RenderAnnotations();
+
         if (_volume is null || _sliceBitmap is null || _sliceBuf is null) return;
         if (_sliceLut is null || _sliceLutKey != _currentColormap)
         {

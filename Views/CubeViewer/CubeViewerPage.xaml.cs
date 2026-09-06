@@ -341,6 +341,10 @@ public sealed partial class CubeViewerPage : UserControl
     /// <summary>Recompute the projected box + captions for the current camera and lay them out.</summary>
     private void UpdateOverlay()
     {
+        // Marks first, and outside the _overlayBuilt guard: the wireframe can be switched off, and the
+        // marks are not chrome — they should not disappear with it.
+        RenderAnnotations();
+
         if (!_overlayBuilt) return;
         double w = RenderPanel.ActualWidth, h = RenderPanel.ActualHeight;
 

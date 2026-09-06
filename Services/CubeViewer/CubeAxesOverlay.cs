@@ -75,25 +75,15 @@ internal static class CubeAxesOverlay
         frame.Captions.Clear();
         if (widthDip < 1 || heightDip < 1) return;
 
-        float m = Math.Max(volNx, volNy);
-        if (m <= 0) m = 1;
-        float sx = volNx / m, sy = volNy / m, sz = spectralScale;
-
-        float aspect = (float)(widthDip / heightDip);
-        Vector3 eye = CubeMath.OrbitEye(az, el, dist);
-        Matrix4x4 view = CubeMath.LookAt(eye, Vector3.Zero, new Vector3(0, 1, 0));
-        Matrix4x4 proj = CubeMath.Perspective(38f * MathF.PI / 180f, aspect, 0.01f, 50f);
-        Matrix4x4 vp = CubeMath.Mul(proj, view);
+        // The same projector the marks use. Two copies of this arithmetic would agree until someone
+        // changed the field of view in one of them, and then a mark would sit off the box it is inside.
+        var projector = CubeProjector.Create(az, el, dist, spectralScale, volNx, volNy, widthDip, heightDip);
+        if (projector is null) return;
 
         ScreenPoint Project(float bx, float by, float bz)
         {
-            // Box (model) coords → world via the diagonal box scale → clip space.
-            var clip = CubeMath.TransformPoint(vp, new Vector4(bx * sx, by * sy, bz * sz, 1f));
-            if (clip.W <= 1e-4f) return new ScreenPoint(0, 0, false);
-            double ndcX = clip.X / clip.W, ndcY = clip.Y / clip.W;
-            double px = (ndcX * 0.5 + 0.5) * widthDip;
-            double py = (1.0 - (ndcY * 0.5 + 0.5)) * heightDip; // clip-space y-up → screen y-down
-            return new ScreenPoint(px, py, true);
+            var at = projector.ProjectBox(bx, by, bz);
+            return new ScreenPoint(at.X, at.Y, at.Visible);
         }
 
         // Box wireframe (scratch corners on the stack — no heap allocation per frame).

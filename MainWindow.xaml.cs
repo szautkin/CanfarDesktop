@@ -241,7 +241,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     Task<string?> CanfarDesktop.Mcp.Tools.Write.IAnnotationHost.ActiveTargetAsync(
         CanfarDesktop.Mcp.Tools.Write.AnnotationViewer viewer)
         => OnUi<string?>(() => viewer == CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
-            ? null                                  // the cube viewer does not draw marks yet
+            ? _cubeTabHost?.ActivePage?.AnnotationTarget
             : _fitsTabHost?.ActiveAnnotationTarget, null);
 
     /// <summary>
@@ -250,8 +250,9 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     /// </summary>
     Task<bool> CanfarDesktop.Mcp.Tools.Write.IAnnotationHost.RefreshAsync(
         CanfarDesktop.Mcp.Tools.Write.AnnotationViewer viewer, string target, string? selectId)
-        => OnUi(() => viewer != CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
-            && (_fitsTabHost?.RefreshAnnotations(target, selectId) ?? false), false);
+        => OnUi(() => viewer == CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
+            ? _cubeTabHost?.ActivePage?.RefreshAnnotations(target, selectId) ?? false
+            : _fitsTabHost?.RefreshAnnotations(target, selectId) ?? false, false);
 
     /// <summary>
     /// Reach the Search page for the <c>search_*</c> tools, creating it if this is the first anyone has
