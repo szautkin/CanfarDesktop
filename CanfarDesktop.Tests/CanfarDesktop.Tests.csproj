@@ -264,6 +264,9 @@
     <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />
     <!-- The FITS projection. No XAML in it: it takes the transform as a function, so it can be tested. -->
     <Compile Include="..\Views\FitsViewer\FitsAnnotationSurface.cs" Link="Linked\Fits\FitsAnnotationSurface.cs" />
+    <!-- Figure export: the region a figure is of, and the plate the marks land on. -->
+    <Compile Include="..\Models\Fits\FitsRegion.cs" Link="Linked\Fits\FitsRegion.cs" />
+    <Compile Include="..\Views\FitsViewer\FitsExportSurface.cs" Link="Linked\Fits\FitsExportSurface.cs" />
     <!-- The cube's projections. CubeProjector was pulled out of the axes overlay so the marks and the
          wireframe land on the same box — and so both can be tested without a GPU. -->
     <Compile Include="..\Services\CubeViewer\CubeMath.cs" Link="Linked\CubeViewer\CubeMath.cs" />
