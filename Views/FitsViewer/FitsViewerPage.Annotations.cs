@@ -34,7 +34,6 @@ public sealed partial class FitsViewerPage
     private string? _selectedId;
 
     private MarkGrab _grab = new MarkGrab.None();
-    private (double X, double Y) _dragOrigin;
 
     /// <summary>The canvas as the renderer sees it. Rebuilt per use: the transform moves under it.</summary>
     private FitsAnnotationSurface Surface() => new(
@@ -123,7 +122,6 @@ public sealed partial class FitsViewerPage
 
         var surface = Surface();
         _grab = AnnotationGeometry.GrabAt(_annotations, surface, _editingId, DrawingArmed, at.X, at.Y);
-        _dragOrigin = (at.X, at.Y);
 
         switch (_grab)
         {
