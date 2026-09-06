@@ -1,0 +1,286 @@
+using Xunit;
+using CanfarDesktop.Helpers;
+using CanfarDesktop.Models;
+
+namespace CanfarDesktop.Tests.Helpers;
+
+/// <summary>
+/// The geometry every viewer's marks share. Ported from the Linux build, including the
+/// substitutability contract that three shipped bugs were violations of.
+/// </summary>
+public class AnnotationGeometryTests
+{
+    /// <summary>A surface that projects image pixels straight through — the geometry needs no viewer.</summary>
+    private sealed class Flat : IAnnotationSurface
+    {
+        public (double X, double Y)? Project(AnnotationAnchor a)
+            => a.Space == AnchorSpace.ImagePixel ? (a.X, a.Y) : null;
+
+        public double UnitsToPixels(AnnotationAnchor a) => 1.0;
+    }
+
+    /// <summary>The same surface rendering four times the size — an export plate.</summary>
+    private sealed class Quadruple : IAnnotationSurface
+    {
+        public (double X, double Y)? Project(AnnotationAnchor a)
+            => a.Space == AnchorSpace.ImagePixel ? (a.X * 4, a.Y * 4) : null;
+
+        public double UnitsToPixels(AnnotationAnchor a) => 4.0;
+        public double InkScale => 4.0;
+    }
+
+    private static Annotation Circle(string id, double x, double y, double half = 10) => new()
+    {
+        Id = id,
+        Kind = AnnotationKind.Circle,
+        Anchor = AnnotationAnchor.ImagePixel(x, y),
+        Extent = Extent.Square(half),
+    };
+
+    // ── The substitutability contract ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Every surface must agree what a mark's size MEANS. Three shipped bugs were violations of this:
+    /// a mark that kept its screen size in a 4× export, marks missing from an exported figure, and a
+    /// mark with no radius drawn invisibly. It is one contract, so it is one test, run against every
+    /// implementation — including the ones added later.
+    /// </summary>
+    public static TheoryData<string, IAnnotationSurface, double> Surfaces() => new()
+    {
+        { "screen", new Flat(), 1.0 },
+        { "4x export plate", new Quadruple(), 4.0 },
+    };
+
+    [Theory]
+    [MemberData(nameof(Surfaces))]
+    public void AShapeOccupiesTheSurfacesOwnScale(string name, IAnnotationSurface surface, double factor)
+    {
+        var mark = Circle("m", 100, 100, half: 10);
+        var box = AnnotationGeometry.HalfSize(mark, surface, 8.0);
+
+        Assert.True(box.HasValue, name);
+        Assert.Equal(10 * factor, box!.Value.HalfW, 6);
+        Assert.Equal(10 * factor, box.Value.HalfH, 6);
+    }
+
+    [Theory]
+    [MemberData(nameof(Surfaces))]
+    public void TheGripsSitOnTheCornersOfTheShapeOnEverySurface(string name, IAnnotationSurface surface, double factor)
+    {
+        var mark = Circle("m", 100, 100, half: 10);
+        var handles = AnnotationGeometry.Handles(mark, surface);
+
+        Assert.Equal(4, handles.Count);
+        Assert.NotEmpty(name);
+        var centre = surface.Project(mark.Anchor)!.Value;
+        Assert.All(handles, h =>
+        {
+            Assert.Equal(10 * factor, Math.Abs(h.X - centre.X), 6);
+            Assert.Equal(10 * factor, Math.Abs(h.Y - centre.Y), 6);
+        });
+    }
+
+    /// <summary>
+    /// The ink factor is what makes a 4× export readable. Left at 1.0, a 2px ring stays 2px on a plate
+    /// whose title and colorbar have quadrupled — the annotations become the only thing that shrank.
+    /// </summary>
+    [Fact]
+    public void AnExportSurfaceScalesItsFurnitureToo()
+    {
+        var screen = AnnotationGeometry.LeaderGeometry(100, 100, 10, 10, true, null, 40, 1000, 1.0);
+        var plate = AnnotationGeometry.LeaderGeometry(400, 400, 40, 40, true, null, 160, 4000, 4.0);
+
+        var screenReach = Math.Abs(screen.ElbowX - screen.StartX);
+        var plateReach = Math.Abs(plate.ElbowX - plate.StartX);
+
+        Assert.Equal(4.0, plateReach / screenReach, 6);
+    }
+
+    // ── The leader ──────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The leader starts ON the outline, not at the bounding-box corner (outside a circle) and not at
+    /// the centre (a line drawn through the subject).
+    /// </summary>
+    [Fact]
+    public void ALeaderLeavesTheOutlineOfACircleNotItsBoundingBox()
+    {
+        var leader = AnnotationGeometry.LeaderGeometry(
+            cx: 100, cy: 100, halfW: 20, halfH: 20, elliptical: true,
+            offset: null, textWidth: 30, canvasWidth: 1000, ink: 1.0);
+
+        var distance = Math.Sqrt(Math.Pow(leader.StartX - 100, 2) + Math.Pow(leader.StartY - 100, 2));
+        Assert.Equal(20.0, distance, 6);   // exactly on the radius
+    }
+
+    [Fact]
+    public void ALeaderLeavesABoxThroughItsEdge()
+    {
+        var leader = AnnotationGeometry.LeaderGeometry(
+            cx: 100, cy: 100, halfW: 20, halfH: 5, elliptical: false,
+            offset: null, textWidth: 30, canvasWidth: 1000, ink: 1.0);
+
+        // At 45° the short axis is met first, so the start is on the top edge.
+        Assert.Equal(95.0, leader.StartY, 6);
+        Assert.True(leader.StartX < 120);
+    }
+
+    /// <summary>
+    /// The length is measured FROM the outline. Measured from the centre, a shape bigger than the
+    /// leader swallowed it and the line read as crossing the circle rather than leaving it.
+    /// </summary>
+    [Fact]
+    public void TheLeaderLengthIsMeasuredFromTheOutline()
+    {
+        var small = AnnotationGeometry.LeaderGeometry(100, 100, 5, 5, true, null, 30, 1000, 1.0);
+        var large = AnnotationGeometry.LeaderGeometry(100, 100, 60, 60, true, null, 30, 1000, 1.0);
+
+        double Reach(AnnotationGeometry.Leader l)
+            => Math.Sqrt(Math.Pow(l.ElbowX - l.StartX, 2) + Math.Pow(l.ElbowY - l.StartY, 2));
+
+        Assert.Equal(Reach(small), Reach(large), 6);
+    }
+
+    /// <summary>The whole thing flips to whichever side has room.</summary>
+    [Fact]
+    public void ALeaderFlipsAwayFromTheEdgeItWouldRunOff()
+    {
+        var roomy = AnnotationGeometry.LeaderGeometry(100, 100, 10, 10, true, null, 40, 1000, 1.0);
+        var cramped = AnnotationGeometry.LeaderGeometry(980, 100, 10, 10, true, null, 40, 1000, 1.0);
+
+        Assert.True(roomy.Rightwards);
+        Assert.False(cramped.Rightwards);
+        Assert.True(cramped.RuleEndX < cramped.ElbowX);
+    }
+
+    // ── Hit-testing ─────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void TheTopmostMarkUnderThePointerIsTheOneYouGet()
+    {
+        List<Annotation> marks = [Circle("under", 100, 100), Circle("over", 100, 100)];
+
+        Assert.Equal("over", AnnotationGeometry.AnnotationAt(marks, new Flat(), 100, 100));
+    }
+
+    /// <summary>
+    /// A mark that cannot be placed is SKIPPED, not fatal. Abandoning the search on the first one made
+    /// a single mark anchored in another viewer's space render every other mark unclickable.
+    /// </summary>
+    [Fact]
+    public void AnUnplaceableMarkDoesNotHideTheOnesUnderIt()
+    {
+        var elsewhere = new Annotation
+        {
+            Id = "cube",
+            Kind = AnnotationKind.Circle,
+            Anchor = AnnotationAnchor.Data(1, 2, 3),   // the Flat surface cannot project this
+            Extent = Extent.Square(10),
+        };
+        List<Annotation> marks = [Circle("flat", 100, 100), elsewhere];
+
+        Assert.Equal("flat", AnnotationGeometry.AnnotationAt(marks, new Flat(), 100, 100));
+    }
+
+    /// <summary>A hairline circle a few pixels across is impossible to hit exactly, so the target has a floor.</summary>
+    [Fact]
+    public void ATinyMarkIsStillClickable()
+    {
+        List<Annotation> marks = [Circle("tiny", 100, 100, half: 0.5)];
+
+        Assert.Equal("tiny", AnnotationGeometry.AnnotationAt(marks, new Flat(), 104, 100));
+        Assert.Null(AnnotationGeometry.AnnotationAt(marks, new Flat(), 130, 100));
+    }
+
+    [Fact]
+    public void AMarkWithNoExtentHasNoGrips()
+    {
+        var text = new Annotation
+        {
+            Id = "t", Kind = AnnotationKind.Text, Text = "note",
+            Anchor = AnnotationAnchor.ImagePixel(100, 100),
+        };
+
+        Assert.Empty(AnnotationGeometry.Handles(text, new Flat()));
+        Assert.False(AnnotationGeometry.HandleAt(text, new Flat(), 100, 100));
+    }
+
+    // ── What a press means ──────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A grip beats the shape it sits on. Grips are ON the outline, so testing the shape first would
+    /// mean a grip could never be grabbed and resizing would look simply broken.
+    /// </summary>
+    [Fact]
+    public void AGripOfTheEditedMarkWinsOverItsOwnShape()
+    {
+        var mark = Circle("m", 100, 100, half: 20);
+        var grab = AnnotationGeometry.GrabAt([mark], new Flat(), editingId: "m", drawing: false, sx: 120, sy: 120);
+
+        Assert.Equal(new MarkGrab.Resize("m"), grab);
+    }
+
+    /// <summary>
+    /// Drawing armed is checked LAST. Checked first, every press made a new mark — so a mark could not
+    /// be moved without disarming the pencil, and pressing on the mark you were editing dropped another
+    /// one on top of it.
+    /// </summary>
+    [Fact]
+    public void WithThePencilArmedAPressOnAMarkStillTakesHoldOfIt()
+    {
+        var mark = Circle("m", 100, 100, half: 20);
+        var grab = AnnotationGeometry.GrabAt([mark], new Flat(), editingId: null, drawing: true, sx: 100, sy: 100);
+
+        var move = Assert.IsType<MarkGrab.Move>(grab);
+        Assert.Equal("m", move.Id);
+    }
+
+    /// <summary>The grab offset is where in the shape it was taken hold of, so it does not jump.</summary>
+    [Fact]
+    public void MovingAMarkRemembersWhereItWasGrabbed()
+    {
+        var mark = Circle("m", 100, 100, half: 20);
+        var move = Assert.IsType<MarkGrab.Move>(
+            AnnotationGeometry.GrabAt([mark], new Flat(), null, false, 110, 95));
+
+        Assert.Equal(10, move.GrabDx, 6);
+        Assert.Equal(-5, move.GrabDy, 6);
+    }
+
+    [Fact]
+    public void EmptySpaceIsThePencilsOrTheCanvass()
+    {
+        Assert.IsType<MarkGrab.Place>(AnnotationGeometry.GrabAt([], new Flat(), null, drawing: true, 10, 10));
+        Assert.IsType<MarkGrab.None>(AnnotationGeometry.GrabAt([], new Flat(), null, drawing: false, 10, 10));
+    }
+
+    // ── Drags ───────────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ADragIsMeasuredOnScreenAndConvertedByTheLocalScale()
+    {
+        var anchor = AnnotationAnchor.ImagePixel(100, 100);
+
+        Assert.Equal(40, AnnotationGeometry.HalfFromDrag(new Flat(), anchor, 40), 6);
+        // The same drag on a 4x surface asks for a quarter as much DATA.
+        Assert.Equal(10, AnnotationGeometry.HalfFromDrag(new Quadruple(), anchor, 40), 6);
+    }
+
+    /// <summary>
+    /// The grip is a corner, so a resize takes the LARGER offset — dragging away from the centre grows
+    /// the shape whichever way you go.
+    /// </summary>
+    [Fact]
+    public void AResizeTakesTheLargerOfTheTwoOffsets()
+    {
+        var mark = Circle("m", 100, 100, half: 10);
+
+        Assert.Equal(30, AnnotationGeometry.ResizeHalf(mark, new Flat(), 130, 105)!.Value, 6);
+        Assert.Equal(30, AnnotationGeometry.ResizeHalf(mark, new Flat(), 105, 70)!.Value, 6);
+    }
+
+    /// <summary>A resize never produces a shape with no area — that is a mark that has vanished.</summary>
+    [Fact]
+    public void AResizeToNothingStillLeavesSomethingVisible()
+        => Assert.Equal(0.5, AnnotationGeometry.ResizeHalf(Circle("m", 100, 100), new Flat(), 100, 100)!.Value, 6);
+}
