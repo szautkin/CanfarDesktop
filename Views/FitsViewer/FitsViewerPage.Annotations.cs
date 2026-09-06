@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
@@ -154,6 +155,12 @@ public sealed partial class FitsViewerPage
                 _editingId = _selectedId = mark.Id;
                 _grab = mark.Extent is null ? new MarkGrab.None() : new MarkGrab.Resize(mark.Id);
                 RenderAnnotations();
+
+                // Words first for the kinds that are nothing without them. Dispatched rather than called
+                // inline so the flyout opens after this press has finished being handled.
+                if (mark.Kind is AnnotationKind.Callout or AnnotationKind.Text)
+                    DispatcherQueue.TryEnqueue(() => BeginLabelEdit(mark.Id));
+
                 return true;
 
             case MarkGrab.Move move:
@@ -251,6 +258,86 @@ public sealed partial class FitsViewerPage
 
         var imagePixel = AnnotationAnchor.ImagePixel(pixel.X, pixel.Y);
         return imagePixel.IsValid ? imagePixel : null;
+    }
+
+
+    /// <summary>Remove the mark that is picked out, if there is one.</summary>
+    public void DeleteSelectedMark()
+    {
+        if (_selectedId is null) return;
+
+        _annotations.RemoveAll(a => a.Id == _selectedId);
+        _selectedId = _editingId = null;
+        SaveAnnotations();
+        RenderAnnotations();
+    }
+
+    /// <summary>
+    /// Type a mark's label, in a field over the mark itself.
+    ///
+    /// A callout or a text mark cannot be stored without words — it would fail its own validation — so
+    /// drawing one opens this immediately. An existing mark gets it on a double-press.
+    /// </summary>
+    private void BeginLabelEdit(string id)
+    {
+        var mark = _annotations.FirstOrDefault(a => a.Id == id);
+        if (mark is null) return;
+        if (Surface().Project(mark.Anchor) is not { } at) return;
+
+        var field = new TextBox
+        {
+            Text = mark.Text,
+            Width = 220,
+            PlaceholderText = "Label",
+            AcceptsReturn = false,
+        };
+
+        var flyout = new Flyout { Content = field, ShouldConstrainToRootBounds = false };
+
+        void Commit()
+        {
+            var index = _annotations.FindIndex(a => a.Id == id);
+            if (index >= 0) _annotations[index] = _annotations[index] with { Text = field.Text.Trim() };
+
+            _editingId = null;
+
+            // A callout still without words cannot be stored, so it goes rather than lingering until the
+            // next load quietly drops it.
+            _annotations.RemoveAll(a => a.Validate() is not null);
+            SaveAnnotations();
+            RenderAnnotations();
+        }
+
+        field.KeyDown += (_, e) =>
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter) flyout.Hide();
+        };
+        flyout.Closed += (_, _) => Commit();
+
+        _editingId = id;
+        RenderAnnotations();
+
+        flyout.ShowAt(ImageCanvas, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+        {
+            Position = new Windows.Foundation.Point(at.X, at.Y),
+            Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Bottom,
+        });
+
+        field.Focus(FocusState.Programmatic);
+        field.SelectAll();
+    }
+
+    /// <summary>A double-press on a mark is the way to relabel one that is already there.</summary>
+    private void OnCanvasDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (AnnotationTarget is null) return;
+
+        var at = e.GetPosition(ImageCanvas);
+        if (AnnotationGeometry.AnnotationAt(_annotations, Surface(), at.X, at.Y) is not { } id) return;
+
+        _selectedId = id;
+        BeginLabelEdit(id);
+        e.Handled = true;
     }
 
     /// <summary>Give up editing, keeping whatever is valid. Called when the pencil is put down.</summary>

@@ -216,6 +216,9 @@ public sealed partial class FitsTabHost : UserControl
 
     private void SyncToolbarToActiveTab()
     {
+        // The pencil belongs to the toolbar, so a new tab inherits it rather than starting disarmed.
+        ApplyMarkModeToActivePage();
+
         var vm = ViewModel.ActiveViewModel;
         if (vm is null) return;
 
