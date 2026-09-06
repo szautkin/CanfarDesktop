@@ -38,7 +38,8 @@ public sealed partial class FitsViewerPage
     /// <summary>The canvas as the renderer sees it. Rebuilt per use: the transform moves under it.</summary>
     private FitsAnnotationSurface Surface() => new(
         (x, y) => { var p = ImageToScreen(new Windows.Foundation.Point(x, y)); return (p.X, p.Y); },
-        () => ViewModel.ImageData?.Wcs is { IsValid: true } wcs ? wcs : null);
+        () => ViewModel.ImageData?.Wcs is { IsValid: true } wcs ? wcs : null,
+        () => ViewModel.ImageData?.Height ?? 0);
 
     public void AttachAnnotationStore(IAnnotationStore store) => _annotationStore = store;
 
@@ -245,13 +246,14 @@ public sealed partial class FitsViewerPage
 
         var wanted = space ?? (wcs is not null ? AnchorSpace.Sky : AnchorSpace.ImagePixel);
 
-        if (wanted == AnchorSpace.Sky && wcs is not null)
+        if (wanted == AnchorSpace.Sky)
         {
-            var (ra, dec) = wcs.PixelToWorld(pixel.X, pixel.Y);
-            var sky = AnnotationAnchor.Sky(ra, dec);
+            // Through the surface's own converter, so the press → sky direction and the sky → screen
+            // direction cannot end up disagreeing about which way up the pixels are.
+            var sky = FitsAnnotationSurface.SkyAt(wcs, ViewModel.ImageData?.Height ?? 0, pixel.X, pixel.Y);
             // A projection can put a point off the sky at the edge of a wide field. An image pixel is
             // always somewhere, so it is the fallback rather than a refusal.
-            if (sky.IsValid) return sky;
+            if (sky is not null) return sky;
         }
 
         var imagePixel = AnnotationAnchor.ImagePixel(pixel.X, pixel.Y);

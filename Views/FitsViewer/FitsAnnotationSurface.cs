@@ -15,11 +15,21 @@ public sealed class FitsAnnotationSurface : IAnnotationSurface
 {
     private readonly Func<double, double, (double X, double Y)> _imageToScreen;
     private readonly Func<WcsInfo?> _wcs;
+    private readonly Func<int> _imageHeight;
 
-    public FitsAnnotationSurface(Func<double, double, (double X, double Y)> imageToScreen, Func<WcsInfo?> wcs)
+    /// <param name="imageToScreen">A DISPLAY pixel (0-based, y down from the top) to a canvas point.</param>
+    /// <param name="wcs">The image's WCS, or null when it has none.</param>
+    /// <param name="imageHeight">
+    /// The image height in pixels, which is what converts between the two pixel conventions in play —
+    /// see <see cref="ProjectSky"/>. A function rather than a value because the height changes with the
+    /// HDU, and a surface built once per render would otherwise hold a stale one.
+    /// </param>
+    public FitsAnnotationSurface(
+        Func<double, double, (double X, double Y)> imageToScreen, Func<WcsInfo?> wcs, Func<int> imageHeight)
     {
         _imageToScreen = imageToScreen;
         _wcs = wcs;
+        _imageHeight = imageHeight;
     }
 
     /// <summary>1.0 on screen. An export plate constructs its own surface with its own factor.</summary>
@@ -40,12 +50,42 @@ public sealed class FitsAnnotationSurface : IAnnotationSurface
         };
     }
 
+    /// <summary>
+    /// A sky position, through the WCS and then the canvas transform.
+    ///
+    /// The two ends count pixels differently, and mixing them is how a mark ends up mirrored and one
+    /// pixel out — near enough to look like a rendering wobble rather than a coordinate bug:
+    ///
+    ///  * <c>WorldToPixel</c> answers in FITS pixels: 1-BASED, with row 1 at the BOTTOM.
+    ///  * The canvas counts DISPLAY pixels: 0-based, with row 0 at the TOP (the renderer flips the
+    ///    image on the way to the bitmap).
+    ///
+    /// This is the same conversion the crosshair readout makes in the other direction, and the two are
+    /// pinned against each other by a round-trip test.
+    /// </summary>
     private (double X, double Y)? ProjectSky(double raDeg, double decDeg)
     {
         if (_wcs() is not { } wcs) return null;
         if (wcs.WorldToPixel(raDeg, decDeg) is not { } pixel) return null;
 
-        return _imageToScreen(pixel.Px, pixel.Py);
+        var height = _imageHeight();
+        if (height <= 0) return null;
+
+        return _imageToScreen(pixel.Px - 1, height - 1 - (pixel.Py - 1));
+    }
+
+    /// <summary>
+    /// A display pixel as a sky position — the inverse of <see cref="ProjectSky"/>, and the conversion a
+    /// viewer needs when it turns a press into an anchor. Here rather than in the page so that the two
+    /// directions sit together and cannot drift apart.
+    /// </summary>
+    public static AnnotationAnchor? SkyAt(WcsInfo? wcs, int imageHeight, double displayX, double displayY)
+    {
+        if (wcs is not { IsValid: true } || imageHeight <= 0) return null;
+
+        var (ra, dec) = wcs.PixelToWorld(displayX + 1, imageHeight - 1 - displayY + 1);
+        var anchor = AnnotationAnchor.Sky(ra, dec);
+        return anchor.IsValid ? anchor : null;
     }
 
     /// <summary>
