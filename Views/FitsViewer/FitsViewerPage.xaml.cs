@@ -663,6 +663,15 @@ public sealed partial class FitsViewerPage : UserControl
             return;
         }
 
+        // Asked before the pan, not after: a press that takes hold of a mark and ALSO starts a pan drags
+        // the image out from under the mark being moved.
+        if (point.Properties.IsLeftButtonPressed && TryBeginAnnotationGesture(point.Position))
+        {
+            ImageCanvas.CapturePointer(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         if (point.Properties.IsLeftButtonPressed || point.Properties.IsMiddleButtonPressed)
         {
             _isDragging = true;
@@ -714,6 +723,11 @@ public sealed partial class FitsViewerPage : UserControl
     /// </summary>
     private void RedrawCrosshairFromImage()
     {
+        // The marks are pinned to the DATA, so every pan, zoom and rotation moves them on screen. This is
+        // the one hook all three already call — hanging the redraw anywhere else would mean finding out
+        // later which of them had been missed.
+        RenderAnnotations();
+
         if (_crosshairImagePos is null || ViewModel.ImageData is null) return;
 
         var screenPos = ImageToScreen(_crosshairImagePos.Value);
@@ -820,6 +834,12 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void OnCanvasPointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (ContinueAnnotationGesture(e.GetCurrentPoint(ImageCanvas).Position))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (_isDragging)
         {
             var pos = e.GetCurrentPoint(ImageCanvas).Position;
@@ -845,6 +865,13 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void OnCanvasPointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (EndAnnotationGesture())
+        {
+            ImageCanvas.ReleasePointerCapture(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         if (_isDragging)
         {
             _isDragging = false;

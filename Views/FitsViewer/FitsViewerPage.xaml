@@ -2,7 +2,8 @@
 <UserControl
     x:Class="CanfarDesktop.Views.FitsViewer.FitsViewerPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CanfarDesktop.Views.Controls">
 
     <Grid RowDefinitions="*,Auto">
 
@@ -113,6 +114,10 @@
                         <CompositeTransform x:Name="BlinkTransform" />
                     </Image.RenderTransform>
                 </Image>
+
+                <!-- Marks. Under the crosshair, which is chrome and has to stay readable over them;
+                     never hit-testable, because the canvas beneath decides what a press means. -->
+                <controls:AnnotationLayer x:Name="AnnotationCanvas" IsHitTestVisible="False" />
 
                 <!-- Crosshair overlay (click to place) -->
                 <Canvas x:Name="CrosshairCanvas" IsHitTestVisible="False">

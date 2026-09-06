@@ -17,7 +17,7 @@ using static CanfarDesktop.Views.WindowHelper;
 
 namespace CanfarDesktop;
 
-public sealed partial class MainWindow : Window
+public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.IAnnotationHost
 {
     private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer, ObservationDetail, CubeViewer, AiGuide, Workflows }
 
@@ -175,6 +175,7 @@ public sealed partial class MainWindow : Window
                                       GetKernelStateActionAsync, ListNotebooksActionAsync, ListOpenNotebooksActionAsync);
         _viewState.SetTabActions(CloseTabActionAsync, ListOpenTabsActionAsync);
         _viewState.SetSearchHost(ResolveSearchBridgeAsync);
+        _viewState.SetAnnotationHost(this);
         _viewState.SetCreateAnalysisNotebookAction(CreateAnalysisNotebookActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
@@ -230,6 +231,27 @@ public sealed partial class MainWindow : Window
             default: return new(false, mode, mode);
         }
     }
+
+    // ── Annotations: which viewer is showing what, and "redraw it" ───────────────────────────────
+
+    /// <summary>
+    /// The file the named viewer is showing. Null when it has nothing open — which the annotation tools
+    /// read as "nothing is open", an answer with a way round it, since every one of them takes a target.
+    /// </summary>
+    Task<string?> CanfarDesktop.Mcp.Tools.Write.IAnnotationHost.ActiveTargetAsync(
+        CanfarDesktop.Mcp.Tools.Write.AnnotationViewer viewer)
+        => OnUi<string?>(() => viewer == CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
+            ? null                                  // the cube viewer does not draw marks yet
+            : _fitsTabHost?.ActiveAnnotationTarget, null);
+
+    /// <summary>
+    /// Redraw a viewer's marks, optionally picking one out. False when it is not showing that file: the
+    /// marks are stored against the file, so they will be there when it is opened.
+    /// </summary>
+    Task<bool> CanfarDesktop.Mcp.Tools.Write.IAnnotationHost.RefreshAsync(
+        CanfarDesktop.Mcp.Tools.Write.AnnotationViewer viewer, string target, string? selectId)
+        => OnUi(() => viewer != CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
+            && (_fitsTabHost?.RefreshAnnotations(target, selectId) ?? false), false);
 
     /// <summary>
     /// Reach the Search page for the <c>search_*</c> tools, creating it if this is the first anyone has

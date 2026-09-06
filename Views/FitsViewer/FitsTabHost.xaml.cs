@@ -69,9 +69,25 @@ public sealed partial class FitsTabHost : UserControl
     private readonly Dictionary<FitsViewerTabItem, TabHandlers> _tabHandlers = [];
     private readonly Dictionary<FitsViewerTabItem, FitsViewerPage> _tabPages = [];
 
+    /// <summary>The file the tab on screen is showing, for the annotation tools. Null when none is.</summary>
+    public string? ActiveAnnotationTarget => _activePage?.AnnotationTarget;
+
+    /// <summary>
+    /// Redraw the active tab's marks after something changed them elsewhere. False when this viewer is
+    /// not showing that file — the marks are stored against the file either way.
+    /// </summary>
+    public bool RefreshAnnotations(string target, string? selectId)
+        => _activePage?.RefreshAnnotations(target, selectId) ?? false;
+
     private FitsViewerPage CreateTabViewItem(FitsViewerTabItem tabItem)
     {
         var page = new FitsViewerPage(tabItem.ViewModel);
+
+        // The marks are keyed by the file, so every tab reads the same store; the page works out which
+        // file is its own from its view model.
+        page.AttachAnnotationStore(
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetRequiredService<CanfarDesktop.Services.Fits.IAnnotationStore>(App.Services));
 
         // Store handlers so we can unsubscribe on tab close
         Action<double, double> searchHandler = (ra, dec) => SearchAtPositionRequested?.Invoke(ra, dec);

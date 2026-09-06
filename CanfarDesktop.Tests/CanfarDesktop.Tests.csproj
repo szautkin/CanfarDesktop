@@ -262,6 +262,8 @@
     <Compile Include="..\Services\Fits\AnnotationStore.cs" Link="Linked\Fits\AnnotationStore.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationContracts.cs" Link="Linked\Mcp\AnnotationContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />
+    <!-- The FITS projection. No XAML in it: it takes the transform as a function, so it can be tested. -->
+    <Compile Include="..\Views\FitsViewer\FitsAnnotationSurface.cs" Link="Linked\Fits\FitsAnnotationSurface.cs" />
     <Compile Include="..\Models\Fits\FitsCard.cs" Link="Linked\Fits\FitsCard.cs" />
     <Compile Include="..\Models\Fits\FitsHeader.cs" Link="Linked\Fits\FitsHeader.cs" />
     <Compile Include="..\Models\Fits\WcsInfo.cs" Link="Linked\Fits\WcsInfo.cs" />
