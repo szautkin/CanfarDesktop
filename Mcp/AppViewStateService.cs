@@ -12,7 +12,7 @@ namespace CanfarDesktop.Mcp;
 /// (<c>navigate_to</c>, <c>set_search_focus</c>) the UI registers action delegates that marshal to the
 /// UI thread; the tools invoke them. Push (not pull) keeps cross-thread access safe.
 /// </summary>
-public sealed class AppViewStateService
+public sealed class AppViewStateService : IAnnotationHost
 {
     /// <summary>Per-mode view context returned to <c>get_current_view</c>.</summary>
     public sealed record ModeView(
@@ -309,4 +309,22 @@ public sealed class AppViewStateService
 
     public async Task<SearchRecentRemoved> RemoveRecentSearchAsync(string match)
         => await ResolveSearchAsync() is { } b ? await b.RemoveRecentSearchAsync(match) : SearchRecentRemoved.Unavailable(SearchUnavailable);
+
+    // ── Annotations ─────────────────────────────────────────────────────────────────────────────
+
+    private volatile IAnnotationHost? _annotations;
+
+    /// <summary>The viewers register how to answer "which file are you showing" and "redraw".</summary>
+    public void SetAnnotationHost(IAnnotationHost host) => _annotations = host;
+
+    /// <summary>
+    /// Null when no viewer has registered, or none has a file open. The annotation tools read that as
+    /// "nothing is open", which is an answer with a way round it — they take a named `target` — rather
+    /// than a failure. So they work against files on disk before any viewer is wired to them.
+    /// </summary>
+    public Task<string?> ActiveTargetAsync(AnnotationViewer viewer)
+        => _annotations?.ActiveTargetAsync(viewer) ?? Task.FromResult<string?>(null);
+
+    public Task<bool> RefreshAsync(AnnotationViewer viewer, string target, string? selectId)
+        => _annotations?.RefreshAsync(viewer, target, selectId) ?? Task.FromResult(false);
 }

@@ -292,6 +292,9 @@ public partial class App : Application
 
         // FITS viewer services
         services.AddSingleton<ICoordinateStoreService, CoordinateStoreService>();
+        // Marks, keyed by the file they were drawn on. Singleton so the two viewers and the MCP tools
+        // are looking at one set rather than three copies of it.
+        services.AddSingleton<IAnnotationStore, AnnotationStore>();
         services.AddSingleton<IFitsTabFactory, FitsTabFactory>();
 
         // Notebook services

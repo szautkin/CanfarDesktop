@@ -39,6 +39,7 @@ public static class McpToolCatalog
         var searchStore = sp.GetRequiredService<ISearchStoreService>();
         var tap = sp.GetRequiredService<ITAPService>();
         var tapSchema = sp.GetRequiredService<ITapSchemaService>();
+        var annotations = sp.GetRequiredService<IAnnotationStore>();
         var sessions = sp.GetRequiredService<ISessionService>();
         var imageCatalog = sp.GetRequiredService<IImageService>();
         var recentLaunches = sp.GetRequiredService<IRecentLaunchService>();
@@ -192,6 +193,17 @@ public static class McpToolCatalog
             new ShowSearchRowDetailTool(row => viewState.ShowSearchRowDetailAsync(row)),
             new ShowObservationDetailTool(id => viewState.ShowObservationDetailAsync(id)),
             new RemoveRecentSearchTool(match => viewState.RemoveRecentSearchAsync(match)),
+
+            // Marks on an image or a cube. The store is what makes them persist with the FILE, so these
+            // work on a target that is not currently open — which is how a batch is prepared before
+            // anyone looks at it.
+            new AnnotateFitsTool(annotations, viewState),
+            new AnnotateCubeTool(annotations, viewState),
+            new ListFitsAnnotationsTool(annotations, viewState),
+            new ListCubeAnnotationsTool(annotations, viewState),
+            new UpdateAnnotationTool(annotations, viewState),
+            new RemoveAnnotationTool(annotations, viewState),
+            new SelectAnnotationTool(annotations, viewState),
 
             // 3D Cube Viewer: open + steer + read + probe + export figure
             new OpenCubeTool(target => viewState.OpenCubeAsync(target)),
