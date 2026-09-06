@@ -70,6 +70,12 @@
                 <FontIcon Glyph="&#xE816;" FontSize="14" />
             </ToggleButton>
 
+            <Button x:Name="ExportFigureButton" Click="OnExportFigure" Padding="8,4"
+                    ToolTipService.ToolTip="Export a figure (Ctrl-drag the image for a region)"
+                    AutomationProperties.Name="Export figure">
+                <FontIcon Glyph="&#xE7C5;" FontSize="14" />
+            </Button>
+
             <AppBarSeparator />
 
             <!-- Marks. The pencil is a toggle rather than a mode you enter and leave, because while it

@@ -46,6 +46,12 @@ public sealed partial class FitsTabHost
 
     private void OnDeleteSelectedMark(object sender, RoutedEventArgs e) => _activePage?.DeleteSelectedMark();
 
+    /// <summary>
+    /// Export the view on screen. A region is Ctrl-drag on the image rather than a second button: the
+    /// gesture and the figure are one action, and a "select a region" mode would be a mode to leave.
+    /// </summary>
+    private void OnExportFigure(object sender, RoutedEventArgs e) => _ = _activePage?.ExportCurrentViewAsync();
+
     /// <summary>Push the pencil's state onto the page on screen. Called on every tab switch too.</summary>
     private void ApplyMarkModeToActivePage()
     {

@@ -79,6 +79,12 @@ public sealed partial class FitsTabHost : UserControl
     public bool RefreshAnnotations(string target, string? selectId)
         => _activePage?.RefreshAnnotations(target, selectId) ?? false;
 
+    /// <summary>Render a figure of the active tab, for <c>export_fits_figure</c>.</summary>
+    public Task<CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome> ExportFigureAsync(
+        CanfarDesktop.Mcp.Tools.Write.FitsFigureRequest request)
+        => _activePage?.ExportFigureAsync(request)
+           ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("no FITS image is open"));
+
     private FitsViewerPage CreateTabViewItem(FitsViewerTabItem tabItem)
     {
         var page = new FitsViewerPage(tabItem.ViewModel);

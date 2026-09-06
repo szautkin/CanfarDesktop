@@ -205,6 +205,9 @@ public static class McpToolCatalog
             new RemoveAnnotationTool(annotations, viewState),
             new SelectAnnotationTool(annotations, viewState),
 
+            // The figure the marks are drawn for.
+            new ExportFitsFigureTool(request => viewState.ExportFitsFigureAsync(request)),
+
             // 3D Cube Viewer: open + steer + read + probe + export figure
             new OpenCubeTool(target => viewState.OpenCubeAsync(target)),
             new SetCubeViewTool(args => viewState.SetCubeAsync(args)),

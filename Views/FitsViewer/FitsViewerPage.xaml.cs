@@ -663,6 +663,15 @@ public sealed partial class FitsViewerPage : UserControl
             return;
         }
 
+        // Ctrl says what this drag is FOR, so it is asked first. A modifier that loses to whatever else
+        // claims the press is a modifier nobody can rely on.
+        if (point.Properties.IsLeftButtonPressed && TryBeginRegionDrag(point.Position))
+        {
+            ImageCanvas.CapturePointer(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         // Asked before the pan, not after: a press that takes hold of a mark and ALSO starts a pan drags
         // the image out from under the mark being moved.
         if (point.Properties.IsLeftButtonPressed && TryBeginAnnotationGesture(point.Position))
@@ -834,7 +843,8 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void OnCanvasPointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        if (ContinueAnnotationGesture(e.GetCurrentPoint(ImageCanvas).Position))
+        if (ContinueRegionDrag(e.GetCurrentPoint(ImageCanvas).Position)
+            || ContinueAnnotationGesture(e.GetCurrentPoint(ImageCanvas).Position))
         {
             e.Handled = true;
             return;
@@ -865,7 +875,7 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void OnCanvasPointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        if (EndAnnotationGesture())
+        if (EndRegionDrag() || EndAnnotationGesture())
         {
             ImageCanvas.ReleasePointerCapture(e.Pointer);
             e.Handled = true;

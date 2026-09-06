@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="CanfarDesktop.Views.FitsViewer.FitsExportPlate"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CanfarDesktop.Views.Controls">
+
+    <Border x:Name="RootBorder" Padding="26">
+        <StackPanel x:Name="Stack" Spacing="0">
+
+            <!-- Header: object / instrument / filter+date (left), brand / filename / date (right) -->
+            <Grid x:Name="HeaderGrid">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock x:Name="HdrTitle" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="HdrInstrument" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="HdrRegion" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="2" HorizontalAlignment="Right" Margin="16,0,0,0">
+                    <TextBlock x:Name="HdrBrand" HorizontalAlignment="Right" />
+                    <TextBlock x:Name="HdrFile" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="HdrDate" HorizontalAlignment="Right" />
+                </StackPanel>
+            </Grid>
+            <Rectangle x:Name="DividerTop" Height="1" Margin="0,10,0,12" />
+
+            <!-- The picture, with the marks drawn LIVE over it by the same renderer the viewer uses.
+                 Not baked into the bitmap: the marks re-theme with the figure, and they are drawn at
+                 the plate's ink scale rather than the screen's. -->
+            <Border x:Name="FrameBorder" BorderThickness="1" HorizontalAlignment="Center">
+                <Grid>
+                    <Image x:Name="FrameImage" Stretch="Fill" />
+                    <controls:AnnotationLayer x:Name="MarkOverlay" IsHitTestVisible="False" />
+                </Grid>
+            </Border>
+
+            <Rectangle x:Name="DividerBot" Height="1" Margin="0,12,0,12" />
+
+            <!-- Footer: the colorbar with its cut levels, then what the picture is of and where -->
+            <StackPanel x:Name="FooterPanel" Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock x:Name="CbMin" VerticalAlignment="Center" />
+                    <Rectangle x:Name="ColorbarRect" Width="190" Height="12" VerticalAlignment="Center" />
+                    <TextBlock x:Name="CbMax" VerticalAlignment="Center" />
+                    <TextBlock x:Name="CbStretch" VerticalAlignment="Center" Margin="6,0,0,0" />
+                </StackPanel>
+                <StackPanel x:Name="MetaPanel" Orientation="Horizontal" Spacing="26" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

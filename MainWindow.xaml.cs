@@ -176,6 +176,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetTabActions(CloseTabActionAsync, ListOpenTabsActionAsync);
         _viewState.SetSearchHost(ResolveSearchBridgeAsync);
         _viewState.SetAnnotationHost(this);
+        _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
         _viewState.SetCreateAnalysisNotebookAction(CreateAnalysisNotebookActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
@@ -268,6 +269,14 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             EnsureSearchPage();
             return _searchPage;
         }, null);
+
+    /// <summary>Render a figure of the FITS tab on screen. UI-thread work: the plate is a real control.</summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome> ExportFitsFigureActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.FitsFigureRequest request)
+        => OnUiAsync(
+            () => _fitsTabHost?.ExportFigureAsync(request)
+                  ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("no FITS image is open")),
+            CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("the window is closing"));
 
     private Task SetSearchFocusActionAsync(double ra, double dec)
     {

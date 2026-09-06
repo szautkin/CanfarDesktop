@@ -120,6 +120,18 @@
                      never hit-testable, because the canvas beneath decides what a press means. -->
                 <controls:AnnotationLayer x:Name="AnnotationCanvas" IsHitTestVisible="False" />
 
+                <!-- Off-screen host: the export plate is parented here, laid out, and rasterized, then
+                     removed. Its children sit far off-screen so they never appear over the viewer. -->
+                <Canvas x:Name="ExportHost" IsHitTestVisible="False" />
+
+                <!-- The region being dragged out for a figure. -->
+                <Canvas x:Name="RegionCanvas" IsHitTestVisible="False">
+                    <Rectangle x:Name="RegionRect" Visibility="Collapsed"
+                               Stroke="{ThemeResource SystemFillColorAttentionBrush}"
+                               StrokeThickness="1.5" StrokeDashArray="5,3"
+                               Fill="#20FFFFFF" />
+                </Canvas>
+
                 <!-- Crosshair overlay (click to place) -->
                 <Canvas x:Name="CrosshairCanvas" IsHitTestVisible="False">
                     <!-- Linked crosshair (from other tabs, dashed) -->

@@ -327,4 +327,15 @@ public sealed class AppViewStateService : IAnnotationHost
 
     public Task<bool> RefreshAsync(AnnotationViewer viewer, string target, string? selectId)
         => _annotations?.RefreshAsync(viewer, target, selectId) ?? Task.FromResult(false);
+
+    // ── Figure export ───────────────────────────────────────────────────────────────────────────
+
+    private volatile Func<FitsFigureRequest, Task<FitsFigureOutcome>>? _exportFitsFigure;
+
+    public void SetFitsFigureAction(Func<FitsFigureRequest, Task<FitsFigureOutcome>> export)
+        => _exportFitsFigure = export;
+
+    public Task<FitsFigureOutcome> ExportFitsFigureAsync(FitsFigureRequest request)
+        => _exportFitsFigure?.Invoke(request)
+           ?? Task.FromResult(FitsFigureOutcome.Unavailable("the FITS viewer is not available"));
 }
