@@ -353,6 +353,27 @@
   <data name="Activity_ExpandButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Show what the app is doing</value>
   </data>
+  <data name="Settings_AboutVisitLink.Content" xml:space="preserve">
+    <value>verbinal.com</value>
+  </data>
+  <data name="Settings_AboutIssuesLink.Content" xml:space="preserve">
+    <value>Report an issue</value>
+  </data>
+  <data name="Settings_AboutCanfarLink.Content" xml:space="preserve">
+    <value>About CANFAR, the service</value>
+  </data>
+  <data name="Settings_RuntimeExpander.Header" xml:space="preserve">
+    <value>Runtime info</value>
+  </data>
+  <data name="Settings_CopyRuntimeButton.Content" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Settings_CopyLabel" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Settings_CopiedLabel" xml:space="preserve">
+    <value>Copied</value>
+  </data>
   <data name="Settings_AgentHeader.Text" xml:space="preserve">
     <value>AI agent</value>
   </data>

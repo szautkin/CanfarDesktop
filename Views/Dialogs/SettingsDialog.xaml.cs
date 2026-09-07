@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Services;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace CanfarDesktop.Views.Dialogs;
 
@@ -24,8 +25,9 @@ public sealed partial class SettingsDialog : ContentDialog
     {
         InitializeComponent();
         _settings = App.Services.GetRequiredService<ISettingsService>();
-        VersionText.Text = Loc.F("About_Version", AppVersion());
+        VersionText.Text = Loc.F("About_Version", RuntimeInfo.AppVersion());
         AboutSubtitleText.Text = Loc.T("About_Subtitle");
+        PopulateAbout();
         PopulateGeneral();
         PopulatePortal();
         Nav.SelectedItem = Nav.MenuItems.Count > 0 ? Nav.MenuItems[0] : null; // General
@@ -305,16 +307,41 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private static string? SelectedTag(ComboBox combo) => (combo.SelectedItem as ComboBoxItem)?.Tag as string;
 
-    private static string AppVersion()
+    /// <summary>
+    /// The About page's links and its runtime block.
+    ///
+    /// The URLs come from <see cref="AppLinks"/> rather than being typed into the XAML, so the app's
+    /// home, its issue tracker and the observatory's site cannot drift apart across the surfaces that
+    /// name them.
+    /// </summary>
+    private void PopulateAbout()
+    {
+        WebsiteLink.NavigateUri = new Uri(AppLinks.Website);
+        IssuesLink.NavigateUri = new Uri(AppLinks.Issues);
+        RuntimeText.Text = RuntimeInfo.AsText(RuntimeInfo.Facts());
+    }
+
+    private void OnCopyRuntimeInfo(object sender, RoutedEventArgs e)
     {
         try
         {
-            var v = Windows.ApplicationModel.Package.Current.Id.Version;
-            return $"{v.Major}.{v.Minor}.{v.Build}";
+            var package = new DataPackage();
+            package.SetText(RuntimeText.Text);
+            Clipboard.SetContent(package);
+
+            // Says it worked, and goes back on its own. A dialog for a copy would be worse than silence.
+            CopyRuntimeButton.Content = Loc.T("Settings_CopiedLabel");
+            var back = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            back.Tick += (_, _) =>
+            {
+                back.Stop();
+                CopyRuntimeButton.Content = Loc.T("Settings_CopyLabel");
+            };
+            back.Start();
         }
         catch
         {
-            return System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0";
+            // The clipboard can be held by another process. The text is selectable either way.
         }
     }
 }

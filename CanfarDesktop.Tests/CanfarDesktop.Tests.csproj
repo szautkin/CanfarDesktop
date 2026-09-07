@@ -43,6 +43,7 @@
     <Compile Include="..\Helpers\AgentCueTracker.cs" Link="Linked\AgentCueTracker.cs" />
     <Compile Include="..\Helpers\TaskRegistry.cs" Link="Linked\TaskRegistry.cs" />
     <Compile Include="..\Helpers\ActivitySummary.cs" Link="Linked\ActivitySummary.cs" />
+    <Compile Include="..\Helpers\RuntimeInfo.cs" Link="Linked\RuntimeInfo.cs" />
     <!-- The cue files themselves, at the path AgentSounds.FileFor probes, so the tests check the
          real installed layout rather than a fixture that could drift from it. -->
     <Content Include="..\Assets\Sounds\*.wav" Link="Assets\Sounds\%(Filename)%(Extension)"
