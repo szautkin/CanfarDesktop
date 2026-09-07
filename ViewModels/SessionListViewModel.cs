@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 
@@ -147,32 +148,44 @@ public partial class SessionListViewModel : ObservableObject
     [RelayCommand]
     private async Task DeleteSessionAsync(string sessionId)
     {
-        var success = await _sessionService.DeleteSessionAsync(sessionId);
-        if (success)
-        {
-            var session = Sessions.FirstOrDefault(s => s.Id == sessionId);
-            if (session is not null)
-                Sessions.Remove(session);
+        using var task = TaskRegistry.Begin(TaskKind.Session, $"Delete session {sessionId}");
 
-            await Task.Delay(3000);
-            await LoadSessionsAsync();
+        var success = await _sessionService.DeleteSessionAsync(sessionId);
+        if (!success)
+        {
+            task.Fail("the service refused the delete");
+            return;
         }
+
+        task.Succeed();
+
+        var session = Sessions.FirstOrDefault(s => s.Id == sessionId);
+        if (session is not null)
+            Sessions.Remove(session);
+
+        // Skaha reports the session as still there for a moment after accepting the delete.
+        await Task.Delay(3000);
+        await LoadSessionsAsync();
     }
 
     public async Task<(bool Success, string? ErrorMessage)> TryRenewSessionAsync(string sessionId)
     {
+        using var task = TaskRegistry.Begin(TaskKind.Session, $"Renew session {sessionId}");
         try
         {
             await _sessionService.RenewSessionAsync(sessionId);
             await LoadSessionsAsync();
+            task.Succeed();
             return (true, null);
         }
         catch (HttpRequestException ex)
         {
+            task.Fail(ex.Message);
             return (false, ex.Message);
         }
         catch (Exception ex)
         {
+            task.Fail(ex.Message);
             return (false, $"Unexpected error: {ex.Message}");
         }
     }

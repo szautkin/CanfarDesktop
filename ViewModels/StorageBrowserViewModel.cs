@@ -58,14 +58,17 @@ public partial class StorageBrowserViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(folderName)) return;
 
+        using var task = TaskRegistry.Begin(TaskKind.Storage, $"New folder {folderName}");
         try
         {
             var basePath = string.IsNullOrEmpty(CurrentPath) ? _username : $"{_username}/{CurrentPath}";
             await _storageService.CreateFolderAsync(basePath, folderName);
             await RefreshAsync();
+            task.Succeed();
         }
         catch (Exception ex)
         {
+            task.Fail(ex.Message);
             ErrorMessage = $"Create folder failed: {ex.Message}";
             HasError = true;
         }
@@ -76,6 +79,7 @@ public partial class StorageBrowserViewModel : ObservableObject
     {
         if (SelectedNode is null) return;
 
+        using var task = TaskRegistry.Begin(TaskKind.Storage, $"Delete {SelectedNode.Name}");
         try
         {
             var nodePath = string.IsNullOrEmpty(CurrentPath)
@@ -84,9 +88,11 @@ public partial class StorageBrowserViewModel : ObservableObject
             await _storageService.DeleteNodeAsync(nodePath);
             SelectedNode = null;
             await RefreshAsync();
+            task.Succeed();
         }
         catch (Exception ex)
         {
+            task.Fail(ex.Message);
             ErrorMessage = $"Delete failed: {ex.Message}";
             HasError = true;
         }
@@ -96,15 +102,19 @@ public partial class StorageBrowserViewModel : ObservableObject
     {
         if (SelectedNode is null || SelectedNode.IsContainer) return null;
 
+        using var task = TaskRegistry.Begin(TaskKind.Storage, $"Download {SelectedNode.Name}");
         try
         {
             var filePath = string.IsNullOrEmpty(CurrentPath)
                 ? $"{_username}/{SelectedNode.Name}"
                 : $"{_username}/{CurrentPath}/{SelectedNode.Name}";
-            return await _storageService.DownloadFileAsync(filePath);
+            var stream = await _storageService.DownloadFileAsync(filePath);
+            task.Succeed();
+            return stream;
         }
         catch (Exception ex)
         {
+            task.Fail(ex.Message);
             ErrorMessage = $"Download failed: {ex.Message}";
             HasError = true;
             return null;
@@ -113,6 +123,7 @@ public partial class StorageBrowserViewModel : ObservableObject
 
     public async Task UploadAsync(string fileName, Stream content)
     {
+        using var task = TaskRegistry.Begin(TaskKind.Storage, $"Upload {fileName}");
         try
         {
             var remotePath = string.IsNullOrEmpty(CurrentPath)
@@ -120,9 +131,11 @@ public partial class StorageBrowserViewModel : ObservableObject
                 : $"{_username}/{CurrentPath}/{fileName}";
             await _storageService.UploadFileAsync(remotePath, content);
             await RefreshAsync();
+            task.Succeed();
         }
         catch (Exception ex)
         {
+            task.Fail(ex.Message);
             ErrorMessage = $"Upload failed: {ex.Message}";
             HasError = true;
         }

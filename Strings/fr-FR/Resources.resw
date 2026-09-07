@@ -323,6 +323,36 @@
   <data name="Settings_ClearDefaultsButton.Content" xml:space="preserve">
     <value>Effacer toutes les valeurs par défaut</value>
   </data>
+  <data name="Activity_Idle" xml:space="preserve">
+    <value>Au repos</value>
+  </data>
+  <data name="Activity_RunningCount" xml:space="preserve">
+    <value>{0} tâches en cours</value>
+  </data>
+  <data name="Activity_FailedCount" xml:space="preserve">
+    <value>{0} en échec</value>
+  </data>
+  <data name="Activity_FailedNoReason" xml:space="preserve">
+    <value>échec</value>
+  </data>
+  <data name="Activity_Abandoned" xml:space="preserve">
+    <value>abandonné avant la fin</value>
+  </data>
+  <data name="Activity_JustNow" xml:space="preserve">
+    <value>à l’instant</value>
+  </data>
+  <data name="Activity_Empty.Text" xml:space="preserve">
+    <value>Rien n’a encore été exécuté.</value>
+  </data>
+  <data name="Activity_ClearButton.Content" xml:space="preserve">
+    <value>Effacer les tâches terminées</value>
+  </data>
+  <data name="Activity_ExpandButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Afficher ce que fait l’application</value>
+  </data>
+  <data name="Activity_ExpandButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Afficher ce que fait l’application</value>
+  </data>
   <data name="Settings_AgentHeader.Text" xml:space="preserve">
     <value>Agent IA</value>
   </data>

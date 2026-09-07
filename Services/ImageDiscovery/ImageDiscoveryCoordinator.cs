@@ -129,8 +129,33 @@ public class ImageDiscoveryCoordinator
         return manifest;
     }
 
+    /// <summary>
+    /// Registers the probe with <see cref="TaskRegistry"/> and runs it.
+    ///
+    /// A probe is seven stages long and used to report as one boolean, so two images being inspected at
+    /// once both read "Discovering…" and neither said which stage it was on — a job three minutes into
+    /// polling looked exactly like one that could not be submitted. The stages below are the same
+    /// milestones already written to the crash log; this puts them where a person can see them.
+    /// </summary>
     private async Task<ImageManifest> RunDiscoveryAsync(string imageID, bool force, CancellationToken ct)
     {
+        using var task = TaskRegistry.Begin(TaskKind.Discovery, $"Inspect {imageID}");
+        try
+        {
+            var manifest = await RunDiscoveryCoreAsync(imageID, force, ct, task);
+            task.Succeed();
+            return manifest;
+        }
+        catch (Exception ex)
+        {
+            task.Fail(ex.Message);
+            throw;
+        }
+    }
+
+    private async Task<ImageManifest> RunDiscoveryCoreAsync(string imageID, bool force, CancellationToken ct, TaskHandle task)
+    {
+        task.Stage("working out how to inspect it");
         var strategy = DiscoveryHeuristics.Strategy(await _imageTypesLookup(imageID));
         CrashLogger.Info($"[Discovery] START image={imageID} force={force} strategy={strategy} user={_usernameProvider()}");
 
@@ -144,6 +169,7 @@ public class ImageDiscoveryCoordinator
             throw e;
         }
 
+        task.Stage("uploading the probe script");
         try
         {
             await EnsureScriptAsync(strategy, ct);
@@ -159,12 +185,14 @@ public class ImageDiscoveryCoordinator
         // Recovery short-circuit: a previous probe may have written the manifest already.
         if (!force)
         {
+            task.Stage("looking for a manifest already published");
             var recovered = await FetchManifestIfPresentAsync(imageID, ct);
             CrashLogger.Info($"[Discovery] pre-launch manifest recovery image={imageID} -> {(recovered is null ? "none (will launch job)" : "FOUND, short-circuit")}");
             if (recovered is not null) { _store.SetManifest(recovered); return recovered; }
         }
 
         string jobId;
+        task.Stage("launching the probe job");
         try
         {
             jobId = await LaunchWithRetryAsync(strategy, imageID, ct);
@@ -174,6 +202,7 @@ public class ImageDiscoveryCoordinator
         catch (HeadlessLaunchException hle) { CrashLogger.Info($"[Discovery] launch FAILED image={imageID}: {hle.Message}"); var e = ImageDiscoveryException.JobSubmitFailed(hle.Message); PersistFailure(imageID, e, null); throw e; }
         catch (Exception ex) { CrashLogger.Info($"[Discovery] launch FAILED image={imageID}: {ex.Message}"); var e = ImageDiscoveryException.JobSubmitFailed(ex.Message); PersistFailure(imageID, e, null); throw e; }
 
+        task.Stage($"waiting for job {jobId}");
         try
         {
             await PollUntilTerminalAsync(jobId, ct);
@@ -192,6 +221,7 @@ public class ImageDiscoveryCoordinator
         }
 
         string json;
+        task.Stage("fetching the manifest");
         try
         {
             json = await FetchManifestDataAsync(imageID, ct);
@@ -206,6 +236,7 @@ public class ImageDiscoveryCoordinator
         }
 
         ImageManifest manifest;
+        task.Stage("reading the manifest");
         try
         {
             manifest = ManifestParser.Parse(json);

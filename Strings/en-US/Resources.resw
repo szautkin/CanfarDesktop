@@ -323,6 +323,36 @@
   <data name="Settings_ClearDefaultsButton.Content" xml:space="preserve">
     <value>Clear all defaults</value>
   </data>
+  <data name="Activity_Idle" xml:space="preserve">
+    <value>Idle</value>
+  </data>
+  <data name="Activity_RunningCount" xml:space="preserve">
+    <value>{0} tasks running</value>
+  </data>
+  <data name="Activity_FailedCount" xml:space="preserve">
+    <value>{0} failed</value>
+  </data>
+  <data name="Activity_FailedNoReason" xml:space="preserve">
+    <value>failed</value>
+  </data>
+  <data name="Activity_Abandoned" xml:space="preserve">
+    <value>abandoned before it finished</value>
+  </data>
+  <data name="Activity_JustNow" xml:space="preserve">
+    <value>just now</value>
+  </data>
+  <data name="Activity_Empty.Text" xml:space="preserve">
+    <value>Nothing has run yet.</value>
+  </data>
+  <data name="Activity_ClearButton.Content" xml:space="preserve">
+    <value>Clear finished</value>
+  </data>
+  <data name="Activity_ExpandButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Show what the app is doing</value>
+  </data>
+  <data name="Activity_ExpandButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Show what the app is doing</value>
+  </data>
   <data name="Settings_AgentHeader.Text" xml:space="preserve">
     <value>AI agent</value>
   </data>

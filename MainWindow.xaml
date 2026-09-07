@@ -3,6 +3,7 @@
     x:Class="CanfarDesktop.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CanfarDesktop.Views.Controls"
     Title="Verbinal - a CANFAR Science Portal Companion and Research Platform">
 
     <Window.SystemBackdrop>
@@ -13,6 +14,8 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <!-- What the app is doing. One line when idle; a list when asked. -->
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Title bar -->
@@ -156,7 +159,9 @@
         <!-- Terms-of-Use gate: full-window blocking overlay shown on first launch.
              Opaque background blocks all interaction with the app behind it until
              the user Accepts; it is not a ContentDialog so it cannot be light-dismissed. -->
-        <Grid x:Name="TermsGateOverlay" Grid.Row="0" Grid.RowSpan="2"
+        <controls:ActivityBar x:Name="Activity" Grid.Row="2" />
+
+        <Grid x:Name="TermsGateOverlay" Grid.Row="0" Grid.RowSpan="3"
               Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
               Canvas.ZIndex="1000" Visibility="Collapsed">
             <Border MaxWidth="640" MaxHeight="640" Margin="24"

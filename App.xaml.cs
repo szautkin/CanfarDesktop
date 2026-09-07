@@ -46,6 +46,14 @@ public partial class App : Application
             catch { return true; }
         };
 
+        // The status bar's wording, through the same hook-rather-than-reference route as the guide
+        // catalog below: Helpers is test-linked, and the resource loader needs a packaged app.
+        Helpers.ActivitySummary.Translate = key =>
+        {
+            var value = Helpers.Loc.T(key);
+            return value == key ? null : value;
+        };
+
         // Localize the AI Guide category widgets (the catalog lives in Services and is test-linked,
         // so it takes translations via this hook instead of referencing Loc directly).
         CanfarDesktop.Services.AiGuide.AiGuideCatalog.Localize = key =>
