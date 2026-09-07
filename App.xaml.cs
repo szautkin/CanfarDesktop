@@ -298,6 +298,8 @@ public partial class App : Application
         // The user's own image list: read by the images card, the package search and the launch form, so
         // one store rather than three copies that disagree the moment one of them adds to it.
         services.AddSingleton<IUserImageStore, UserImageStore>();
+        // Background applies outlive the call that started them, so their record has to outlive it too.
+        services.AddSingleton<CanfarDesktop.Mcp.Tools.Proposals.JobRegistry>();
         // A plain client: the registry is not CADC, and this must never carry the CADC token.
         services.AddHttpClient<IRegistryService, RegistryService>();
         services.AddSingleton<IFitsTabFactory, FitsTabFactory>();

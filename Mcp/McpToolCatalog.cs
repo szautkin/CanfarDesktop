@@ -40,6 +40,7 @@ public static class McpToolCatalog
         var tap = sp.GetRequiredService<ITAPService>();
         var tapSchema = sp.GetRequiredService<ITapSchemaService>();
         var annotations = sp.GetRequiredService<IAnnotationStore>();
+        var jobs = sp.GetRequiredService<Tools.Proposals.JobRegistry>();
         var userImages = sp.GetRequiredService<IUserImageStore>();
         var registry = sp.GetRequiredService<IRegistryService>();
         var discoverySettings = sp.GetRequiredService<ImageDiscoverySettingsService>();
@@ -186,6 +187,11 @@ public static class McpToolCatalog
             // Proposal lifecycle: let the agent see + manage its queued write proposals
             new ListPendingProposalsTool(),
             new GetProposalStateTool(),
+
+            // Work that outlives the call that asked for it.
+            new GetJobStatusTool(id => id is null
+                ? jobs.All()
+                : jobs.Get(id) is { } one ? [one] : []),
             new WithdrawProposalTool(),
 
             // Live ViewState writes: steer the user's view (no proposal)
@@ -345,6 +351,12 @@ public static class McpToolCatalog
         // (pure catalog consumers like AiGuideToolInventory) simply don't expose the tool.
         if (eventLog is not null)
             tools.Add(new ListEventsTool(eventLog));
+
+        // The map, added last and reading the finished catalogue — including itself. The closures hold
+        // the list rather than a copy of it, so a tool added above this line is one they can find; a
+        // snapshot taken here would go stale the moment anything else was appended.
+        tools.Add(new ListAppsTool(() => tools.Select(t => t.Descriptor.Name).ToList()));
+        tools.Add(new SearchToolsTool(() => tools.Select(t => t.Descriptor).ToList()));
 
         return tools;
     }

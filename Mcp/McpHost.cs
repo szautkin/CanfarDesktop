@@ -2,7 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Mcp.Agents;
 using CanfarDesktop.Mcp.Listener;
+using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Proposals;
+using CanfarDesktop.Mcp.Tools.Write;
 using CanfarDesktop.Services.AiGuide;
 
 namespace CanfarDesktop.Mcp;
@@ -120,6 +122,15 @@ public sealed class McpHost : IAsyncDisposable
         var registry = new ProposalApplierRegistry();
         registry.Register(McpToolCatalog.BuildAppliers(_services));
         _registry = registry;
+        // start_background_apply needs the store and the appliers, which are the host's rather than the
+        // catalogue's — so it is added here, where both exist, rather than taking them through DI and
+        // having two ideas of which store is the live one.
+        if (tools is List<IMcpTool> mutable)
+        {
+            var runner = new BackgroundApplyRunner(proposals, registry, _services.GetRequiredService<JobRegistry>());
+            mutable.Add(new StartBackgroundApplyTool(runner.StartAsync));
+        }
+
         var autoApply = new AutoApplyHook(
             // Destructive writes (deletes, etc.) NEVER auto-apply — they always queue for explicit
             // approval, even with auto-apply on. Auto-apply only fast-paths reversible SemanticWrite.

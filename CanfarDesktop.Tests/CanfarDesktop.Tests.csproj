@@ -147,12 +147,17 @@
     <Compile Include="..\Mcp\Tools\ToolPaths.cs" Link="Linked\Mcp\ToolPaths.cs" />
     <Compile Include="..\Mcp\Tools\ToolTimeout.cs" Link="Linked\Mcp\ToolTimeout.cs" />
     <Compile Include="..\Mcp\Tools\Builtin\FoundationalTools.cs" Link="Linked\Mcp\FoundationalTools.cs" />
+    <Compile Include="..\Mcp\Tools\Builtin\ToolMapTools.cs" Link="Linked\Mcp\ToolMapTools.cs" />
     <Compile Include="..\Mcp\Tools\ViewState\ViewStateTools.cs" Link="Linked\Mcp\ViewStateTools.cs" />
     <Compile Include="..\Mcp\AppViewStateService.cs" Link="Linked\Mcp\AppViewStateService.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\Proposal.cs" Link="Linked\Mcp\Proposal.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\ProposalApplier.cs" Link="Linked\Mcp\ProposalApplier.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\ProposalStore.cs" Link="Linked\Mcp\ProposalStore.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\ProposalBudget.cs" Link="Linked\Mcp\ProposalBudget.cs" />
+    <!-- Work that outlives the call that asked for it. -->
+    <Compile Include="..\Mcp\Tools\Proposals\JobRegistry.cs" Link="Linked\Mcp\JobRegistry.cs" />
+    <Compile Include="..\Mcp\Tools\Read\JobTools.cs" Link="Linked\Mcp\JobTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\StartBackgroundApplyTool.cs" Link="Linked\Mcp\StartBackgroundApplyTool.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\AutoApplyHook.cs" Link="Linked\Mcp\AutoApplyHook.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\AutoApplyPolicy.cs" Link="Linked\Mcp\AutoApplyPolicy.cs" />
     <Compile Include="..\Models\AICompute\AIComputeSettings.cs" Link="Linked\AICompute\AIComputeSettings.cs" />
