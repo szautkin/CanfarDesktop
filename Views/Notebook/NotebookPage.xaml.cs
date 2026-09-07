@@ -136,16 +136,22 @@ public sealed partial class NotebookPage : UserControl
     {
         try
         {
-            var ext = Path.GetExtension(filePath).ToLowerInvariant();
+            // One place decides what a file is, and the loader, the save path and list_notebooks all
+            // read that same answer.
+            var format = Helpers.Notebook.NotebookFormats.ForPath(filePath);
 
-            if (ext is ".py" or ".md")
+            if (format == Helpers.Notebook.NotebookFormat.Unsupported)
             {
-                // Plain text file → single-cell notebook
+                // Named rather than left to fail as malformed JSON: "invalid notebook JSON" describes
+                // the parser's disappointment rather than the user's problem.
+                ViewModel.StatusMessage = Helpers.Notebook.NotebookFormats.UnsupportedReason(filePath);
+                return;
+            }
+
+            if (format != Helpers.Notebook.NotebookFormat.Ipynb)
+            {
                 var content = await File.ReadAllTextAsync(filePath);
-                var mode = ext == ".py"
-                    ? ViewModels.Notebook.NotebookFileMode.PythonScript
-                    : ViewModels.Notebook.NotebookFileMode.Markdown;
-                ViewModel.LoadFromTextFile(filePath, content, mode);
+                ViewModel.LoadFromTextFile(filePath, content, format);
             }
             else
             {

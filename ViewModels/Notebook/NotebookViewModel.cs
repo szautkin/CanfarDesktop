@@ -40,7 +40,10 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
 
     /// <summary>Cell clipboard for command-mode C/V (shared across tabs via static).</summary>
     private static NotebookCell? _clipboardCell;
-    public NotebookFileMode FileMode { get; private set; } = NotebookFileMode.Notebook;
+    /// <summary>
+    /// What this file IS, decided once from its path. The save path reads it, so a .py stays a .py.
+    /// </summary>
+    public NotebookFormat Format { get; private set; } = NotebookFormat.Ipynb;
 
     public NotebookViewModel(IDirtyTracker dirtyTracker, IAutoSaveService autoSaveService,
         IKernelService kernelService, RecentNotebooksService recentNotebooks)
@@ -64,7 +67,7 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
     {
         _filePath = filePath;
         _document = document;
-        FileMode = NotebookFileMode.Notebook;
+        Format = NotebookFormat.Ipynb;
         Title = Path.GetFileName(filePath);
         KernelDisplayName = document.Metadata.KernelSpec?.DisplayName ?? "Unknown kernel";
         _recentNotebooks.AddOrUpdate(filePath);
@@ -77,26 +80,29 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Load a plain text file (.py, .md) as a single-cell notebook.
-    /// Saves back as plain text, not .ipynb.
+    /// Load a text file — a .py script, a .md document, or a .txt note — as a notebook.
+    ///
+    /// SPLIT into cells, not loaded as one. A 500-line script arriving as a single block you can only
+    /// run all at once is not what any other tool does with it, and it is not what the file means: every
+    /// editor that runs Python interactively splits a .py on `# %%`, and that convention is what a
+    /// scientist's script already contains.
     /// </summary>
-    public void LoadFromTextFile(string filePath, string content, NotebookFileMode mode)
+    public void LoadFromTextFile(string filePath, string content, NotebookFormat format)
     {
         _filePath = filePath;
-        FileMode = mode;
+        Format = format;
         Title = Path.GetFileName(filePath);
-        KernelDisplayName = mode == NotebookFileMode.PythonScript ? "Python" : "Markdown";
+        KernelDisplayName = format == NotebookFormat.PercentPython ? "Python" : "Python 3";
 
-        var cellType = mode == NotebookFileMode.PythonScript ? "code" : "markdown";
         _document = NotebookParser.CreateEmpty();
         _document.Cells.Clear();
-        _document.Cells.Add(new NotebookCell
+
+        foreach (var cell in NotebookFormats.Split(format, content))
         {
-            CellType = cellType,
-            Id = NotebookParser.GenerateCellId(),
-            Source = NotebookCell.SplitSourceLines(content),
-            Outputs = cellType == "code" ? [] : null,
-        });
+            cell.Id = NotebookParser.GenerateCellId();
+            cell.Outputs = cell.CellType == "code" ? [] : null;
+            _document.Cells.Add(cell);
+        }
 
         _recentNotebooks.AddOrUpdate(filePath);
         _dirtyTracker.Reset();
@@ -179,19 +185,17 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
         {
             var tmpPath = _filePath + ".tmp";
 
-            if (FileMode is NotebookFileMode.PythonScript or NotebookFileMode.Markdown)
-            {
-                // Plain text save — just the cell source, no JSON wrapper
-                var text = Cells.Count > 0 ? Cells[0].Source : "";
+            // Written back in the format it was opened in. Writing nbformat JSON to whatever path it
+            // was handed meant that opening analysis.py and pressing Ctrl+S replaced the script with a
+            // JSON document — a file someone may have opened only to read.
+            //
+            // And it writes EVERY cell. Serializing Cells[0] alone silently dropped everything after the
+            // first one, which is a data loss you find out about the next time you open the file.
+            if (NotebookFormats.Serialize(Format, _document) is { } text)
                 await File.WriteAllTextAsync(tmpPath, text);
-            }
             else
-            {
                 await using (var stream = File.Create(tmpPath))
-                {
                     await NotebookParser.SerializeAsync(_document, stream);
-                }
-            }
 
             File.Move(tmpPath, _filePath, overwrite: true);
             _dirtyTracker.MarkClean();
@@ -209,14 +213,21 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
         _filePath = filePath;
         Title = Path.GetFileName(filePath);
 
+        // Save As to a .py makes it a script from here on. The format follows the NAME the user chose —
+        // choosing "script.py" in the picker and getting JSON in it is the same bug in a nicer coat.
+        Format = NotebookFormats.ForPath(filePath);
+
         SyncAllCellsToModel();
         try
         {
             var tmpPath = filePath + ".tmp";
-            await using (var stream = File.Create(tmpPath))
-            {
-                await NotebookParser.SerializeAsync(_document, stream);
-            }
+
+            if (NotebookFormats.Serialize(Format, _document) is { } text)
+                await File.WriteAllTextAsync(tmpPath, text);
+            else
+                await using (var stream = File.Create(tmpPath))
+                    await NotebookParser.SerializeAsync(_document, stream);
+
             File.Move(tmpPath, filePath, overwrite: true);
             _dirtyTracker.MarkClean();
             _recentNotebooks.AddOrUpdate(filePath);

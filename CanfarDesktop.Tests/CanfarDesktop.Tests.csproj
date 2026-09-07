@@ -239,6 +239,7 @@
     <Compile Include="..\Models\Notebook\NotebookCell.cs" Link="Linked\Notebook\NotebookCell.cs" />
     <Compile Include="..\Models\Notebook\CellOutput.cs" Link="Linked\Notebook\CellOutput.cs" />
     <Compile Include="..\Helpers\Notebook\NotebookParser.cs" Link="Linked\Notebook\NotebookParser.cs" />
+    <Compile Include="..\Helpers\Notebook\NotebookFormats.cs" Link="Linked\Notebook\NotebookFormats.cs" />
     <Compile Include="..\Helpers\Notebook\AnalysisNotebookBuilder.cs" Link="Linked\Notebook\AnalysisNotebookBuilder.cs" />
     <Compile Include="..\Helpers\Notebook\AnsiParser.cs" Link="Linked\Notebook\AnsiParser.cs" />
     <Compile Include="..\Helpers\Notebook\PythonSyntaxHighlighter.cs" Link="Linked\Notebook\PythonSyntaxHighlighter.cs" />
@@ -255,7 +256,6 @@
     <Compile Include="..\Services\Notebook\INotebookTabFactory.cs" Link="Linked\Notebook\INotebookTabFactory.cs" />
     <Compile Include="..\ViewModels\Notebook\NotebookTabItem.cs" Link="Linked\Notebook\NotebookTabItem.cs" />
     <Compile Include="..\ViewModels\Notebook\NotebookTabHostViewModel.cs" Link="Linked\Notebook\NotebookTabHostViewModel.cs" />
-    <Compile Include="..\ViewModels\Notebook\NotebookFileMode.cs" Link="Linked\Notebook\NotebookFileMode.cs" />
     <!-- Viewport math + models -->
     <Compile Include="..\Helpers\ViewportMath.cs" Link="Linked\ViewportMath.cs" />
     <Compile Include="..\Helpers\BlinkAligner.cs" Link="Linked\BlinkAligner.cs" />

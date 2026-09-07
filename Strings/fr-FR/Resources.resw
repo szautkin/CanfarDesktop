@@ -2227,6 +2227,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Nb_FileTypeNotebook" xml:space="preserve">
     <value>Carnet Jupyter</value>
   </data>
+  <data name="Nb_FileTypeText" xml:space="preserve">
+    <value>Notes texte</value>
+  </data>
   <data name="Nb_FileTypePython" xml:space="preserve">
     <value>Script Python</value>
   </data>

@@ -2227,6 +2227,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Nb_FileTypeNotebook" xml:space="preserve">
     <value>Jupyter Notebook</value>
   </data>
+  <data name="Nb_FileTypeText" xml:space="preserve">
+    <value>Text Notes</value>
+  </data>
   <data name="Nb_FileTypePython" xml:space="preserve">
     <value>Python Script</value>
   </data>

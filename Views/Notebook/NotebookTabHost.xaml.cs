@@ -269,7 +269,10 @@ public sealed partial class NotebookTabHost : UserControl
             cells.Add(new NotebookCellInfo(i, c.CellType, ClipText(src, McpNotebookTextCap), src.Length > McpNotebookTextCap, exec, outs));
         }
         return new NotebookState(
-            Loaded: true, NotebookId: vm.NotebookId, Title: vm.Title, FilePath: vm.FilePath, FileMode: vm.FileMode.ToString(),
+            // The kind an agent sees comes from the format, not a second reading of the extension — the
+            // Linux build kept a separate copy of that mapping and it drifted within a day, reporting a
+            // file as unsupported while the editor opened it happily.
+            Loaded: true, NotebookId: vm.NotebookId, Title: vm.Title, FilePath: vm.FilePath, FileMode: vm.Format.Kind(),
             IsDirty: vm.IsDirty, KernelState: vm.KernelState.ToString(), KernelName: vm.KernelDisplayName,
             SelectedIndex: vm.SelectedCellIndex, CellCount: vm.Cells.Count, Cells: cells);
     }
@@ -456,15 +459,21 @@ public sealed partial class NotebookTabHost : UserControl
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
 
             // File type matches the source format
-            switch (ActiveVM.FileMode)
+            // The file's own format first, then the others — Save As is also how a script becomes a
+            // notebook, so every format it can write is offered rather than only the one it came from.
+            switch (ActiveVM.Format)
             {
-                case NotebookFileMode.PythonScript:
+                case Helpers.Notebook.NotebookFormat.PercentPython:
                     picker.SuggestedFileName = ActiveVM.Title;
                     picker.FileTypeChoices.Add(Helpers.Loc.T("Nb_FileTypePython"), [".py"]);
                     break;
-                case NotebookFileMode.Markdown:
+                case Helpers.Notebook.NotebookFormat.Markdown:
                     picker.SuggestedFileName = ActiveVM.Title;
                     picker.FileTypeChoices.Add(Helpers.Loc.T("Nb_FileTypeMarkdown"), [".md"]);
+                    break;
+                case Helpers.Notebook.NotebookFormat.PlainText:
+                    picker.SuggestedFileName = ActiveVM.Title;
+                    picker.FileTypeChoices.Add(Helpers.Loc.T("Nb_FileTypeText"), [".txt"]);
                     break;
                 default:
                     picker.SuggestedFileName = ActiveVM.Title.Replace(".ipynb", "") + ".ipynb";
