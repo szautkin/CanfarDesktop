@@ -209,9 +209,46 @@ public sealed partial class NotebookTabHost : UserControl
                 ClipText(text, McpNotebookTextCap), text.Length > McpNotebookTextCap,
                 o.IsError, o.ErrorType, // the exception type only ("ValueError"); the message is in the traceback
                 ClipText(tb, McpNotebookTextCap), tb.Length > McpNotebookTextCap,
-                o.HasImage, o.HasHtml));
+                o.HasImage, o.HasHtml, o.RichTypes));
         }
         return new NotebookCellOutputs(index, "code", code.ExecutionCount, outs);
+    }
+
+
+    /// <summary>
+    /// One cell's figure as bytes, for <c>get_cell_image</c>. Null-ish outcomes carry a reason: an agent
+    /// asking for a picture that is not there needs to know whether the cell has not run, produced text,
+    /// or does not exist.
+    /// </summary>
+    public NotebookCellImage GetCellImage(int index, string? selector = null)
+    {
+        var vm = ResolveTarget(selector);
+        if (vm is null) return NotebookCellImage.None("no notebook is open");
+        if (index < 0 || index >= vm.Cells.Count)
+            return NotebookCellImage.None($"this notebook has cells 0-{vm.Cells.Count - 1}; there is no cell {index}");
+
+        if (vm.Cells[index] is not CodeCellViewModel code)
+            return NotebookCellImage.None($"cell {index} is a {vm.Cells[index].CellType} cell, which produces no output");
+
+        // The LAST image the cell produced: a cell that plots in a loop ends with the one on screen, and
+        // that is the one someone asking about "the figure" means.
+        var output = code.Outputs.LastOrDefault(o => o.HasImage);
+        if (output is null)
+        {
+            var ran = code.ExecutionCount is > 0;
+            return NotebookCellImage.None(ran
+                ? $"cell {index} ran but produced no image"
+                : $"cell {index} has not been run yet");
+        }
+
+        try
+        {
+            return new NotebookCellImage(Convert.FromBase64String(output.ImageBase64.Trim()), "image/png", index);
+        }
+        catch (FormatException)
+        {
+            return NotebookCellImage.None($"cell {index}'s image could not be decoded");
+        }
     }
 
     /// <summary>A notebook's kernel status (active by default, or <paramref name="selector"/>), or a

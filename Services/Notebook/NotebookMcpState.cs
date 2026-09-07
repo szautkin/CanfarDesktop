@@ -46,10 +46,30 @@ public sealed record NotebookOutputInfo(
     string Traceback,
     bool TracebackTruncated,
     bool HasImage,
-    bool HasHtml);
+    bool HasHtml,
+    /// <summary>
+    /// Every MIME type this output carries, richest first.
+    ///
+    /// Without it a caller sees only the text and cannot tell a figure from a printed number: the
+    /// plain-text fallback for a plot is the string "&lt;Figure size 640x480&gt;", which says nothing
+    /// about the plot. This is what tells an agent that get_cell_image has something to fetch.
+    /// </summary>
+    IReadOnlyList<string> RichTypes);
 
 /// <summary>The outputs of a single code cell, returned by get_cell_output.</summary>
 public sealed record NotebookCellOutputs(int Index, string Type, int? ExecutionCount, IReadOnlyList<NotebookOutputInfo> Outputs);
+
+
+/// <summary>
+/// A cell's figure, as bytes ready to be handed back as MCP image content.
+///
+/// Not base64 inside a JSON string: an image returned as text is one the client has to be told how to
+/// decode, and the protocol already has a content type for pictures.
+/// </summary>
+public sealed record NotebookCellImage(byte[] Data, string MimeType, int Index, string? Message = null)
+{
+    public static NotebookCellImage None(string message) => new([], "image/png", -1, message);
+}
 
 /// <summary>The kernel status of the active notebook, returned by the kernel tools.</summary>
 public sealed record NotebookKernelInfo(string State, string StatusText, string KernelName);

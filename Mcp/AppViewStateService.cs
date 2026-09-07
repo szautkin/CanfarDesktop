@@ -218,6 +218,14 @@ public sealed class AppViewStateService : IAnnotationHost
     public Task<NotebookCellOutputs?> GetCellOutputAsync(int index, string? notebook = null)
         => _notebookCellOutput?.Invoke(index, notebook) ?? Task.FromResult<NotebookCellOutputs?>(null);
 
+    private volatile Func<int, string?, Task<NotebookCellImage>>? _notebookCellImage;
+
+    public void SetNotebookImageAction(Func<int, string?, Task<NotebookCellImage>> get) => _notebookCellImage = get;
+
+    public Task<NotebookCellImage> GetCellImageAsync(int index, string? notebook = null)
+        => _notebookCellImage?.Invoke(index, notebook)
+           ?? Task.FromResult(NotebookCellImage.None("no notebook is open"));
+
     public Task<NotebookKernelInfo> GetKernelStateAsync(string? notebook = null)
         => _notebookKernel?.Invoke(notebook) ?? Task.FromResult(new NotebookKernelInfo("Dead", "no notebook open", ""));
 

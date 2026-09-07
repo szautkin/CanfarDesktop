@@ -177,6 +177,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetSearchHost(ResolveSearchBridgeAsync);
         _viewState.SetAnnotationHost(this);
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
+        _viewState.SetNotebookImageAction(GetCellImageActionAsync);
         _viewState.SetCreateAnalysisNotebookAction(CreateAnalysisNotebookActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
         PublishViewMode();
@@ -277,6 +278,12 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             () => _fitsTabHost?.ExportFigureAsync(request)
                   ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("no FITS image is open")),
             CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("the window is closing"));
+
+    /// <summary>A notebook cell's figure, for get_cell_image. UI-thread work: it reads the live cell.</summary>
+    private Task<CanfarDesktop.Services.Notebook.NotebookCellImage> GetCellImageActionAsync(int index, string? notebook)
+        => OnUi(() => _notebookTabHost?.GetCellImage(index, notebook)
+                      ?? CanfarDesktop.Services.Notebook.NotebookCellImage.None("no notebook is open"),
+                CanfarDesktop.Services.Notebook.NotebookCellImage.None("the window is closing"));
 
     private Task SetSearchFocusActionAsync(double ra, double dec)
     {

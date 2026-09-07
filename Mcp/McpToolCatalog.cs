@@ -255,6 +255,7 @@ public static class McpToolCatalog
             new ListOpenNotebooksTool(() => viewState.ListOpenNotebooksAsync()),
             new GetNotebookTool(nb => viewState.GetNotebookAsync(nb)),
             new GetCellOutputTool((i, nb) => viewState.GetCellOutputAsync(i, nb)),
+            new GetCellImageTool((i, nb) => viewState.GetCellImageAsync(i, nb)),
             new GetKernelStateTool(nb => viewState.GetKernelStateAsync(nb)),
             new OpenNotebookTool(cmd => viewState.NotebookMutateAsync(cmd)),
             new CreateNotebookTool(cmd => viewState.NotebookMutateAsync(cmd)),
