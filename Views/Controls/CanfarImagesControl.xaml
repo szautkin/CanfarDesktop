@@ -39,10 +39,25 @@
                     </Button>
                     <Button x:Uid="Images_FindByPackageBtn" Content="Find by package…" Click="OnFindByPackage"
                             ToolTipService.ToolTip="Search discovered images by installed package" />
+                    <Button x:Uid="Images_FindInRegistryBtn" Content="Registry…" Click="OnFindInRegistry"
+                            ToolTipService.ToolTip="Find an image the catalogue does not list" />
                 </StackPanel>
             </Grid>
 
-            <SelectorBar Grid.Row="1" x:Name="TypeSelector" SelectionChanged="OnTypeChanged" />
+            <!-- Session type, then project: the card runs to several hundred images, and the collection
+                 someone works in is the second question after what they want to launch. The project
+                 filter hides itself when there is only one — a control with one choice is furniture. -->
+            <Grid Grid.Row="1" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <SelectorBar Grid.Column="0" x:Name="TypeSelector" SelectionChanged="OnTypeChanged" />
+                <ComboBox Grid.Column="1" x:Name="ProjectFilter" MinWidth="150" Visibility="Collapsed"
+                          SelectionChanged="OnProjectChanged"
+                          AutomationProperties.Name="Filter images by project"
+                          ToolTipService.ToolTip="Filter by project" />
+            </Grid>
 
             <ListView Grid.Row="2" x:Name="ImageList" MaxHeight="320" SelectionMode="None"
                       ScrollViewer.HorizontalScrollMode="Disabled">
@@ -65,9 +80,12 @@
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
-                            <Button Grid.Column="2" x:Uid="Images_InspectBtn" Content="Inspect" Click="OnInspectClick"
-                                    VerticalAlignment="Center"
-                                    ToolTipService.ToolTip="Discover the packages installed in this image" />
+                            <!-- One button, two jobs, and its label says which: an image nobody has
+                                 probed needs probing, and a probed one has contents to show. Two
+                                 buttons where only ever one applies is a row that asks to be read. -->
+                            <Button Grid.Column="2" x:Name="RowAction" Content="{x:Bind ActionLabel, Mode=OneWay}"
+                                    Click="OnInspectClick" VerticalAlignment="Center"
+                                    ToolTipService.ToolTip="{x:Bind ActionTooltip, Mode=OneWay}" />
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
