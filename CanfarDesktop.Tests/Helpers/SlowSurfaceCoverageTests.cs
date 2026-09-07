@@ -51,13 +51,41 @@ public class SlowSurfaceCoverageTests
             string.Join(", ", missing));
     }
 
+    /// <summary>
+    /// The two surfaces that poll CANFAR and raise notifications from what they see.
+    ///
+    /// Every notification either raises is a side effect of a poll, so a fixed interval here is a fixed
+    /// notification delay. One of these going back to a constant would put that delay back without
+    /// anything else changing visibly.
+    /// </summary>
+    private static readonly string[] Pollers =
+    [
+        "ViewModels/SessionListViewModel.cs",
+        "Views/Controls/BatchJobsControl.xaml.cs",
+    ];
+
+    [Fact]
+    public void EverySurfaceThatPollsAndNotifiesUsesTheAdaptiveCadence()
+    {
+        var root = RepoRoot();
+
+        var fixedInterval = Pollers
+            .Where(rel => !File.ReadAllText(Path.Combine(root, rel.Replace('/', Path.DirectorySeparatorChar)))
+                .Contains("PollCadence"))
+            .ToList();
+
+        Assert.True(fixedInterval.Count == 0,
+            "these poll on a fixed interval, so their notifications are that late: " +
+            string.Join(", ", fixedInterval));
+    }
+
     /// <summary>A path in the list that no longer exists would make the guard above pass by accident.</summary>
     [Fact]
     public void EveryListedSourceIsStillThere()
     {
         var root = RepoRoot();
 
-        var gone = Registered
+        var gone = Registered.Concat(Pollers)
             .Where(rel => !File.Exists(Path.Combine(root, rel.Replace('/', Path.DirectorySeparatorChar))))
             .ToList();
 

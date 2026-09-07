@@ -15,7 +15,15 @@ public sealed partial class BatchJobsControl : UserControl
     private bool _isFirstPoll = true;
     private DispatcherTimer? _pollTimer;
     private int _countdown;
-    private const int PollSeconds = 45;
+
+    /// <summary>
+    /// How long before asking again — adaptive, because the interval IS the notification delay.
+    ///
+    /// The card used to run at a flat 45 seconds, so a job that started and finished inside one window
+    /// was never seen in a non-terminal state and no completion was ever announced. See
+    /// <see cref="PollCadence"/>.
+    /// </summary>
+    private PollCadence _cadence = new(PollCadence.JobsWatchSeconds);
 
     public BatchJobsControl(ISessionService sessionService)
     {
@@ -41,7 +49,7 @@ public sealed partial class BatchJobsControl : UserControl
     private void StartPolling()
     {
         if (_pollTimer is not null) return;
-        _countdown = PollSeconds;
+        _countdown = _cadence.Seconds;
         UpdateCountdownText();
         _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _pollTimer.Tick += OnTimerTick;
@@ -58,7 +66,7 @@ public sealed partial class BatchJobsControl : UserControl
             if (_countdown <= 0)
             {
                 await RefreshAsync();
-                _countdown = PollSeconds;
+                _countdown = _cadence.Seconds;
                 UpdateCountdownText();
             }
         }
@@ -76,7 +84,7 @@ public sealed partial class BatchJobsControl : UserControl
     private async void OnRefreshClick(object sender, RoutedEventArgs e)
     {
         await RefreshAsync();
-        _countdown = PollSeconds;
+        _countdown = _cadence.Seconds;
         UpdateCountdownText();
     }
 
@@ -94,8 +102,16 @@ public sealed partial class BatchJobsControl : UserControl
             if (!_isFirstPoll)
                 DetectTransitions(_previousStates, _headlessSessions);
 
+            // What the next interval is decided from. In flight: any job that can still change state,
+            // so a card of finished jobs costs nothing to watch. Changed: any job that moved, appeared
+            // or went away since last time.
+            var inFlight = _headlessSessions.Any(s => !IsTerminal(s.Status));
+            var changed = newStates.Count != _previousStates.Count
+                || newStates.Any(kv => !_previousStates.TryGetValue(kv.Key, out var was) || was != kv.Value);
+
             _previousStates = newStates;
             _isFirstPoll = false;
+            _cadence.Observe(inFlight, changed);
             UpdateCounts();
         }
         catch (Exception ex)
