@@ -45,6 +45,8 @@
     <Compile Include="..\Helpers\ActivitySummary.cs" Link="Linked\ActivitySummary.cs" />
     <Compile Include="..\Helpers\RuntimeInfo.cs" Link="Linked\RuntimeInfo.cs" />
     <Compile Include="..\Helpers\PollCadence.cs" Link="Linked\PollCadence.cs" />
+    <Compile Include="..\Models\JobRecord.cs" Link="Linked\JobRecord.cs" />
+    <Compile Include="..\Services\JobHistoryStore.cs" Link="Linked\JobHistoryStore.cs" />
     <!-- The cue files themselves, at the path AgentSounds.FileFor probes, so the tests check the
          real installed layout rather than a fixture that could drift from it. -->
     <Content Include="..\Assets\Sounds\*.wav" Link="Assets\Sounds\%(Filename)%(Extension)"

@@ -374,6 +374,15 @@
   <data name="Settings_CopiedLabel" xml:space="preserve">
     <value>Copied</value>
   </data>
+  <data name="Batch_HistoryTab" xml:space="preserve">
+    <value>History ({0})</value>
+  </data>
+  <data name="Batch_HistoryEmpty.Text" xml:space="preserve">
+    <value>No finished jobs remembered yet. CANFAR clears jobs once they end, so what happens from now on is kept here.</value>
+  </data>
+  <data name="Batch_ClearHistory.Content" xml:space="preserve">
+    <value>Clear history</value>
+  </data>
   <data name="Settings_AgentHeader.Text" xml:space="preserve">
     <value>AI agent</value>
   </data>

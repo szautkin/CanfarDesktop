@@ -31,7 +31,8 @@ public sealed partial class DashboardPage : Page
         IImageService imageService,
         ImageDiscoveryCoordinator imageDiscoveryCoordinator,
         ImageDiscoverySettingsService imageDiscoverySettings,
-        IUserImageStore userImages)
+        IUserImageStore userImages,
+        IJobHistoryStore? jobHistory = null)
     {
         InitializeComponent();
 
@@ -41,7 +42,7 @@ public sealed partial class DashboardPage : Page
         _launchForm = new LaunchFormControl(sessionLaunchVm);
         _platformLoad = new PlatformLoadControl(platformLoadVm);
         _storageQuota = new StorageQuotaControl(storageVm);
-        _batchJobs = new BatchJobsControl(sessionService);
+        _batchJobs = new BatchJobsControl(sessionService, jobHistory);
         _recentLaunches = new RecentLaunchesControl(recentLaunchService);
         _canfarImages = new CanfarImagesControl(imageService, imageDiscoveryCoordinator, imageDiscoverySettings, userImages);
 

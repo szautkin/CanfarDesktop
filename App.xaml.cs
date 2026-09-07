@@ -268,6 +268,9 @@ public partial class App : Application
         services.AddSingleton<IHeadlessProbeLauncher, HeadlessProbeAdapter>();
         services.AddSingleton<IVoSpaceFileTransfer, VoSpaceFileTransferAdapter>();
         services.AddSingleton<ImageDiscoverySettingsService>();
+        // What happened to jobs CANFAR has since reaped. Shared: the discovery coordinator writes probe
+        // failures into the same history the Batch Jobs card writes user jobs into, and reads back.
+        services.AddSingleton<IJobHistoryStore, JobHistoryStore>();
         services.AddSingleton(sp => new ImageDiscoveryCoordinator(
             sp.GetRequiredService<IManifestStore>(),
             sp.GetRequiredService<IHeadlessProbeLauncher>(),
@@ -284,7 +287,12 @@ public partial class App : Application
                 catch { return null; }
             },
             registryAuthProvider: () => Task.FromResult(sp.GetRequiredService<ImageDiscoverySettingsService>().CurrentAuthHeader()),
-            inspectorImageResolver: () => Task.FromResult(sp.GetRequiredService<ImageDiscoverySettingsService>().ResolveInspectorImage())));
+            inspectorImageResolver: () => Task.FromResult(sp.GetRequiredService<ImageDiscoverySettingsService>().ResolveInspectorImage()))
+        {
+            // A probe job is deleted the moment it finishes — success or failure — so the diagnosis is
+            // the only thing that survives it.
+            JobHistory = sp.GetRequiredService<IJobHistoryStore>(),
+        });
         // CAOM2 metadata (auth'd — proprietary collections need the token; host-allowlisted)
         services.AddHttpClient<ICAOM2Service, CAOM2Service>()
             .AddHttpMessageHandler<AuthTokenHandler>();

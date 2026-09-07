@@ -1,6 +1,7 @@
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.ImageDiscovery;
+using CanfarDesktop.Services;
 
 namespace CanfarDesktop.Services.ImageDiscovery;
 
@@ -25,6 +26,12 @@ public class ImageDiscoveryCoordinator
     private readonly Func<int, Task> _raceDelay;
     private readonly Func<Task> _pollDelay;
     private readonly int _maxPolls;
+
+    /// <summary>
+    /// Where a failed probe is remembered after its job has been deleted. Optional: a coordinator built
+    /// without one still works, it just forgets — which is what every one of them did before.
+    /// </summary>
+    public IJobHistoryStore? JobHistory { get; set; }
 
     private readonly object _inFlightGate = new();
     private readonly Dictionary<string, Task<ImageManifest>> _inFlight = new();
@@ -427,5 +434,25 @@ public class ImageDiscoveryCoordinator
     {
         try { _store.SetFailure(imageID, error.Category, error.Message, DateTimeOffset.UtcNow, jobId); }
         catch { /* never let failure-persistence mask the real error */ }
+
+        // And in the job history, which outlives the probe job itself. This coordinator DELETES its own
+        // jobs the moment they finish, so by the time anybody asks why one failed, the job, its logs and
+        // its events are gone. The diagnosis assembled above is the only surviving copy of the answer.
+        try
+        {
+            JobHistory?.Record(new Models.JobRecord
+            {
+                Id = jobId ?? $"probe:{imageID}",
+                Name = $"Inspect {imageID}",
+                Image = imageID,
+                Origin = Models.JobOrigin.ImageProbe,
+                Outcome = Models.JobOutcome.Failed,
+                Status = error.Category.ToString(),
+                FinishedAt = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                FailureReason = error.Message,
+                TargetImage = imageID,
+            });
+        }
+        catch { /* the history is a convenience; the error above is the answer */ }
     }
 }

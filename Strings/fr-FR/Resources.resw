@@ -374,6 +374,15 @@
   <data name="Settings_CopiedLabel" xml:space="preserve">
     <value>Copié</value>
   </data>
+  <data name="Batch_HistoryTab" xml:space="preserve">
+    <value>Historique ({0})</value>
+  </data>
+  <data name="Batch_HistoryEmpty.Text" xml:space="preserve">
+    <value>Aucune tâche terminée n’est encore conservée. CANFAR supprime les tâches une fois terminées ; ce qui se passe à partir de maintenant est gardé ici.</value>
+  </data>
+  <data name="Batch_ClearHistory.Content" xml:space="preserve">
+    <value>Effacer l’historique</value>
+  </data>
   <data name="Settings_AgentHeader.Text" xml:space="preserve">
     <value>Agent IA</value>
   </data>

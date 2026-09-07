@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 using Windows.Foundation;
@@ -10,7 +11,14 @@ public sealed partial class BatchJobsDialog : ContentDialog
 {
     private record JobRow(string Id, string SessionName, string ImageLabel);
 
+    /// <summary>
+    /// A remembered job. Flattened for binding, and built once — a history row shows what was captured,
+    /// not what is happening, so nothing in it changes while the dialog is open.
+    /// </summary>
+    private record HistoryRow(string Name, string Detail, string When, string Glyph, Brush Colour);
+
     private readonly ISessionService _sessionService;
+    private readonly IJobHistoryStore _history;
 
     private static readonly Dictionary<string, int> StateToTabIndex = new()
     {
@@ -18,18 +26,21 @@ public sealed partial class BatchJobsDialog : ContentDialog
         ["Running"] = 1,
         ["Succeeded"] = 2,
         ["Completed"] = 2,
-        ["Failed"] = 3,
-        ["Error"] = 3
+        ["Failed"] = 4,
+        ["Error"] = 4,
+        ["History"] = 3
     };
 
     public BatchJobsDialog(
         IReadOnlyList<Session> headlessSessions,
         string initialTab,
         Size viewportSize,
-        ISessionService sessionService)
+        ISessionService sessionService,
+        IJobHistoryStore? history = null)
     {
         InitializeComponent();
         _sessionService = sessionService;
+        _history = history ?? new JobHistoryStore();
 
         var dialogWidth = viewportSize.Width * 0.6;
         var dialogHeight = viewportSize.Height * 0.6;
@@ -68,8 +79,63 @@ public sealed partial class BatchJobsDialog : ContentDialog
         CompletedList.ItemsSource = completed;
         FailedList.ItemsSource = failed;
 
+        PopulateHistory();
+
         if (StateToTabIndex.TryGetValue(initialTab, out var idx))
             TabPivot.SelectedIndex = idx;
+    }
+
+    /// <summary>
+    /// What the app remembers about jobs CANFAR no longer has.
+    ///
+    /// The four live tabs above are a view of the sessions listing, which forgets a job shortly after it
+    /// ends. This tab is the only place a failure from an hour ago still has a reason attached.
+    /// </summary>
+    private void PopulateHistory()
+    {
+        var jobs = _history.All();
+
+        HistoryHeader.Text = Helpers.Loc.F("Batch_HistoryTab", jobs.Count);
+        HistoryList.ItemsSource = jobs.Select(Row).ToList();
+        HistoryEmptyText.Visibility = jobs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ClearHistoryButton.Visibility = jobs.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private static HistoryRow Row(JobRecord job)
+    {
+        var failed = job.Outcome == JobOutcome.Failed;
+
+        // The reason, when there is one. Otherwise what it was — a probe the app ran, or a job the user
+        // submitted — because "Succeeded" on its own says nothing a green tick has not already said.
+        var detail = failed && job.FailureReason is { Length: > 0 } why
+            ? $"{job.Summary} — {why}"
+            : job.Summary;
+
+        return new HistoryRow(
+            job.Name,
+            detail,
+            FormatWhen(job.FinishedAt),
+            failed ? "" : "",
+            Brush(failed ? "SystemFillColorCriticalBrush" : "SystemFillColorSuccessBrush"));
+    }
+
+    /// <summary>
+    /// The stored instant in the reader's own time zone, or the raw string when it will not parse.
+    ///
+    /// Showing the raw value beats showing nothing: a timestamp this app failed to read is still a
+    /// timestamp somebody can compare against a log.
+    /// </summary>
+    private static string FormatWhen(string iso)
+        => DateTimeOffset.TryParse(iso, out var at) ? at.ToLocalTime().ToString("g") : iso;
+
+    private static Brush Brush(string key)
+        => Application.Current.Resources[key] as Brush
+            ?? (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+
+    private void OnClearHistory(object sender, RoutedEventArgs e)
+    {
+        _history.Clear();
+        PopulateHistory();
     }
 
     private void OnEventsClick(object sender, RoutedEventArgs e)

@@ -10,6 +10,7 @@ namespace CanfarDesktop.Views.Controls;
 public sealed partial class BatchJobsControl : UserControl
 {
     private readonly ISessionService _sessionService;
+    private readonly IJobHistoryStore _history;
     private List<Session> _headlessSessions = [];
     private Dictionary<string, string> _previousStates = new();
     private bool _isFirstPoll = true;
@@ -25,9 +26,10 @@ public sealed partial class BatchJobsControl : UserControl
     /// </summary>
     private PollCadence _cadence = new(PollCadence.JobsWatchSeconds);
 
-    public BatchJobsControl(ISessionService sessionService)
+    public BatchJobsControl(ISessionService sessionService, IJobHistoryStore? history = null)
     {
         _sessionService = sessionService;
+        _history = history ?? new JobHistoryStore();
         InitializeComponent();
         Unloaded += (_, _) => StopPolling();
     }
@@ -120,7 +122,14 @@ public sealed partial class BatchJobsControl : UserControl
         }
     }
 
-    private static void DetectTransitions(Dictionary<string, string> oldStates, List<Session> jobs)
+    /// <summary>
+    /// Announce the jobs that just finished, and write them down.
+    ///
+    /// The notification is a moment; the record is what survives. Skaha reaps headless jobs, so a job
+    /// can fail here and be gone from the listing a minute later — leaving a dismissed toast and a count
+    /// that ticked from Running to Failed as the only trace that anything happened.
+    /// </summary>
+    private void DetectTransitions(Dictionary<string, string> oldStates, List<Session> jobs)
     {
         foreach (var job in jobs)
         {
@@ -128,9 +137,42 @@ public sealed partial class BatchJobsControl : UserControl
             if (IsTerminal(oldStatus)) continue;
 
             if (IsCompleted(job.Status))
+            {
                 Helpers.NotificationService.SendJobCompleted(job.SessionName, job.ContainerImage);
+                Remember(job, JobOutcome.Succeeded);
+            }
             else if (IsFailed(job.Status))
+            {
                 Helpers.NotificationService.SendJobFailed(job.SessionName, job.ContainerImage);
+                Remember(job, JobOutcome.Failed);
+            }
+        }
+    }
+
+    private void Remember(Session job, JobOutcome outcome)
+    {
+        try
+        {
+            _history.Record(new JobRecord
+            {
+                Id = job.Id,
+                Name = job.SessionName,
+                Image = job.ContainerImage,
+                Origin = JobOrigin.User,
+                Outcome = outcome,
+                Status = job.Status,
+                StartedAt = job.StartedTime,
+                FinishedAt = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+
+                // Skaha's status is all there is at this point. The reason, when there is one to get, is
+                // fetched by whoever opens the job — while it still exists.
+                FailureReason = outcome == JobOutcome.Failed ? job.Status : null,
+            });
+        }
+        catch (Exception ex)
+        {
+            // Remembering is a convenience. Failing to remember must not break the card.
+            System.Diagnostics.Debug.WriteLine($"Job history write failed: {ex.Message}");
         }
     }
 
@@ -158,7 +200,7 @@ public sealed partial class BatchJobsControl : UserControl
 
     private async void ShowDialog(string initialTab)
     {
-        var dialog = new BatchJobsDialog(_headlessSessions, initialTab, XamlRoot.Size, _sessionService)
+        var dialog = new BatchJobsDialog(_headlessSessions, initialTab, XamlRoot.Size, _sessionService, _history)
         {
             XamlRoot = XamlRoot
         };
