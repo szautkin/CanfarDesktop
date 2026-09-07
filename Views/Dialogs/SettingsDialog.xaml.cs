@@ -57,6 +57,7 @@ public sealed partial class SettingsDialog : ContentDialog
         _loading = true;
         SelectByTag(ThemeCombo, _settings.Theme);
         SelectByTag(LanguageCombo, _settings.Language);
+        AgentSoundsToggle.IsOn = _settings.AgentSounds;
         PopulateEndpoints();
         _loading = false;
     }
@@ -143,6 +144,17 @@ public sealed partial class SettingsDialog : ContentDialog
     private static Visibility Vis(bool show) => show ? Visibility.Visible : Visibility.Collapsed;
 
     // ── General persistence (auto-save) ──
+
+    /// <summary>
+    /// Saved at once, and heard at once: AgentSounds.IsEnabled asks the settings service per cue, so the
+    /// very next one follows this switch rather than waiting for a restart.
+    /// </summary>
+    private void OnAgentSoundsToggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _settings.AgentSounds = AgentSoundsToggle.IsOn;
+        _settings.Save();
+    }
 
     private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
     {

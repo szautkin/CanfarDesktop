@@ -70,6 +70,7 @@ public class SettingsService : ISettingsService
     public int DefaultRam { get; set; } = 8;
     public int DefaultGpus { get; set; }
     public string Theme { get; set; } = "System";
+    public bool AgentSounds { get; set; } = true;
     public string Language { get; set; } = "system";
 
     public void Save()
@@ -81,6 +82,7 @@ public class SettingsService : ISettingsService
         _localSettings.Values["DefaultRam"] = DefaultRam;
         _localSettings.Values["DefaultGpus"] = DefaultGpus;
         _localSettings.Values["Theme"] = Theme;
+        _localSettings.Values["AgentSounds"] = AgentSounds;
         _localSettings.Values["Language"] = Language;
         // Endpoints: persist only real customizations. Freezing the current defaults into
         // settings would pin every user to this release's hosts forever.
@@ -121,6 +123,8 @@ public class SettingsService : ISettingsService
             Theme = (string)theme;
         if (_localSettings.Values.TryGetValue("Language", out var language))
             Language = (string)language;
+        if (_localSettings.Values.TryGetValue("AgentSounds", out var sounds))
+            AgentSounds = (bool)sounds;
         if (_localSettings.Values.TryGetValue("EndpointLoginBase", out var e1)) EndpointLoginBase = (string)e1;
         if (_localSettings.Values.TryGetValue("EndpointSkahaBase", out var e2)) EndpointSkahaBase = (string)e2;
         if (_localSettings.Values.TryGetValue("EndpointAcBase", out var e3)) EndpointAcBase = (string)e3;

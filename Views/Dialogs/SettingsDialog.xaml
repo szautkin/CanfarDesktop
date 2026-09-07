@@ -164,6 +164,13 @@
                 <StackPanel x:Name="AgentPanel" Spacing="12" Visibility="Collapsed">
                     <TextBlock x:Uid="Settings_AgentHeader" Text="AI agent" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <Button x:Uid="Settings_ConnectWizardButton" Content="Connect an AI agent (guided)…" Click="OnOpenWizard" Style="{StaticResource AccentButtonStyle}" />
+                    <ToggleSwitch x:Name="AgentSoundsToggle" x:Uid="Settings_AgentSoundsToggle"
+                                  Header="Sound when an agent starts and finishes"
+                                  Toggled="OnAgentSoundsToggled" />
+                    <TextBlock x:Uid="Settings_AgentSoundsHint" Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" MaxWidth="440"
+                               HorizontalAlignment="Left"
+                               Text="Two short cues, so you notice an agent working while you are looking at something else." />
                     <dialogs:McpServerSettingsPanel />
                 </StackPanel>
 

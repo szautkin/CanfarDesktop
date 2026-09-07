@@ -38,6 +38,8 @@
     <Content Include="Assets\Square310x310Logo.scale-*.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\Wide310x150Logo.scale-*.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\SplashScreen.scale-*.png" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The agent cues. The same bytes the Linux build plays, so the two apps sound alike. -->
+    <Content Include="Assets\Sounds\*.wav" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\StoreLogo.scale-*.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\Verbinal.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\Verbinal_icon.png" CopyToOutputDirectory="PreserveNewest" />

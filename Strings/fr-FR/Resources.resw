@@ -326,6 +326,12 @@
   <data name="Settings_AgentHeader.Text" xml:space="preserve">
     <value>Agent IA</value>
   </data>
+  <data name="Settings_AgentSoundsToggle.Header" xml:space="preserve">
+    <value>Son au démarrage et à la fin d’un agent</value>
+  </data>
+  <data name="Settings_AgentSoundsHint.Text" xml:space="preserve">
+    <value>Deux courts signaux, pour remarquer qu’un agent travaille pendant que vous regardez autre chose.</value>
+  </data>
   <data name="Settings_ConnectWizardButton.Content" xml:space="preserve">
     <value>Connecter un agent IA (assisté)…</value>
   </data>

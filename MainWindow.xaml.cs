@@ -522,6 +522,9 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
 
     private DispatcherTimer? _agentActivityTimer;
 
+    /// <summary>Turns a burst of per-tool-call signals into one "started" and one "finished".</summary>
+    private readonly AgentCueTracker _agentCues = new();
+
     private void OnAgentActivity(CanfarDesktop.Mcp.AppViewStateService.AgentActivitySignal signal)
     {
         DispatcherQueue.TryEnqueue(() =>
@@ -530,6 +533,10 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 ? Loc.F("MainWindow_AgentWorkingModule", TitleForModule(module))
                 : Loc.T("MainWindow_AgentWorking");
             AgentActivityIndicator.Visibility = Visibility.Visible;
+
+            // The pill says an agent is working to someone looking at this window; the sound says it
+            // started to someone reading a paper in another one.
+            if (_agentCues.Activity() is { } cue) AgentSounds.Play(cue);
 
             _agentActivityTimer ??= CreateAgentActivityTimer();
             _agentActivityTimer.Stop();
@@ -544,6 +551,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         {
             timer.Stop();
             AgentActivityIndicator.Visibility = Visibility.Collapsed;
+            if (_agentCues.Idle() is { } cue) AgentSounds.Play(cue);
         };
         return timer;
     }

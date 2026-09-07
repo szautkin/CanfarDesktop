@@ -15,6 +15,12 @@ public interface ISettingsService
     string EndpointResolverBase { get; set; }
     /// <summary>Restore every endpoint to its standard CANFAR default.</summary>
     void ResetEndpoints();
+
+    /// <summary>
+    /// Whether the two agent cues play. On by default: the point of a sound is to reach someone who is
+    /// not watching the window, and a cue nobody has been told about is one they never turn on.
+    /// </summary>
+    bool AgentSounds { get; set; }
     /// <summary>Push the endpoint settings into the live URL builder (validating each value).</summary>
     void ApplyEndpointsTo(Helpers.ApiEndpoints endpoints);
 

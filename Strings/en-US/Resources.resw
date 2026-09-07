@@ -326,6 +326,12 @@
   <data name="Settings_AgentHeader.Text" xml:space="preserve">
     <value>AI agent</value>
   </data>
+  <data name="Settings_AgentSoundsToggle.Header" xml:space="preserve">
+    <value>Sound when an agent starts and finishes</value>
+  </data>
+  <data name="Settings_AgentSoundsHint.Text" xml:space="preserve">
+    <value>Two short cues, so you notice an agent working while you are looking at something else.</value>
+  </data>
   <data name="Settings_ConnectWizardButton.Content" xml:space="preserve">
     <value>Connect an AI agent (guided)…</value>
   </data>

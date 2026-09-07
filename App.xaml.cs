@@ -38,6 +38,14 @@ public partial class App : Application
         }
         catch { /* defaults remain */ }
 
+        // The agent cues follow the Settings switch. Asked PER CUE rather than read once, so turning
+        // them off takes effect on the next one instead of on the next launch.
+        Helpers.AgentSounds.IsEnabled = () =>
+        {
+            try { return Services.GetRequiredService<ISettingsService>().AgentSounds; }
+            catch { return true; }
+        };
+
         // Localize the AI Guide category widgets (the catalog lives in Services and is test-linked,
         // so it takes translations via this hook instead of referencing Loc directly).
         CanfarDesktop.Services.AiGuide.AiGuideCatalog.Localize = key =>
