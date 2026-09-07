@@ -40,6 +40,9 @@ public static class McpToolCatalog
         var tap = sp.GetRequiredService<ITAPService>();
         var tapSchema = sp.GetRequiredService<ITapSchemaService>();
         var annotations = sp.GetRequiredService<IAnnotationStore>();
+        var userImages = sp.GetRequiredService<IUserImageStore>();
+        var registry = sp.GetRequiredService<IRegistryService>();
+        var discoverySettings = sp.GetRequiredService<ImageDiscoverySettingsService>();
         var sessions = sp.GetRequiredService<ISessionService>();
         var imageCatalog = sp.GetRequiredService<IImageService>();
         var recentLaunches = sp.GetRequiredService<IRecentLaunchService>();
@@ -124,6 +127,19 @@ public static class McpToolCatalog
                 (query, minScore, limit) => discovery.SearchPartial(query, minScore, limit)),
             // discover_image_packages (write) — probe an image so find_images_with_packages can match it.
             new DiscoverImagePackagesTool(),
+
+            // The other door: images the platform does not list, and what is inside the ones it does.
+            // The same credentials the discovery settings already mint for x-skaha-registry-auth: someone
+            // who configured discovery has configured this too, and nobody is asked for a secret twice.
+            new SearchImageRegistryTool((query, ct) => registry.SearchAsync(
+                discoverySettings.Settings.RegistryHost, query,
+                new RegistryAuth(discoverySettings.CurrentAuthHeader()), ct)),
+            new ListMyImagesTool(() => userImages.All()),
+            new SearchPackagesTool(() => discovery.AllPackages()),
+            new DescribeImageTool(id => discovery.DiscoveredManifests()
+                .FirstOrDefault(m => string.Equals(m.ImageID, id, StringComparison.OrdinalIgnoreCase))),
+            new AddRegistryImageTool(),
+            new RemoveRegistryImageTool(),
 
             // AI Compute (Feature B): run agent code on a warm contributed session via the /arc file-drop.
             // run_code/start_compute are SemanticWrite (macOS parity — CANFAR compute is platform UX, not
@@ -346,9 +362,20 @@ public static class McpToolCatalog
         var aiGuide = sp.GetRequiredService<AiGuideService>();
         var caom2 = sp.GetRequiredService<ICAOM2Service>();
         var aiCompute = sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeService>();
+        var userImages = sp.GetRequiredService<IUserImageStore>();
 
         return new IProposalApplier[]
         {
+            new AddRegistryImageApplier(payload =>
+            {
+                userImages.Add(Models.RegistryImage.FromLabels(payload.ImageID, payload.Types));
+                return Task.CompletedTask;
+            }),
+            new RemoveRegistryImageApplier(payload =>
+            {
+                userImages.Remove(payload.ImageID);
+                return Task.CompletedTask;
+            }),
             new SaveQueryApplier((payload, attribution) =>
             {
                 searchStore.SaveQuery(new SavedQuery

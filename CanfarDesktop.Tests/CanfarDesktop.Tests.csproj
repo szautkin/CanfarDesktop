@@ -45,6 +45,12 @@
     <Compile Include="..\Models\ImageDiscovery\ImageDiscoverySettings.cs" Link="Linked\ImageDiscovery\ImageDiscoverySettings.cs" />
     <Compile Include="..\Services\ImageDiscovery\ManifestParser.cs" Link="Linked\ImageDiscovery\ManifestParser.cs" />
     <Compile Include="..\Services\ImageDiscovery\RegistryCredentialTest.cs" Link="Linked\ImageDiscovery\RegistryCredentialTest.cs" />
+    <!-- The other door: images the platform does not list, and the user's own list of them. -->
+    <Compile Include="..\Models\RegistryImage.cs" Link="Linked\ImageDiscovery\RegistryImage.cs" />
+    <Compile Include="..\Services\ImageDiscovery\RegistryService.cs" Link="Linked\ImageDiscovery\RegistryService.cs" />
+    <Compile Include="..\Services\ImageDiscovery\UserImageStore.cs" Link="Linked\ImageDiscovery\UserImageStore.cs" />
+    <Compile Include="..\Mcp\Tools\Read\RegistryImageTools.cs" Link="Linked\Mcp\RegistryImageTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\RegistryImageWriteTools.cs" Link="Linked\Mcp\RegistryImageWriteTools.cs" />
     <Compile Include="..\Helpers\RollingTagPolicy.cs" Link="Linked\ImageDiscovery\RollingTagPolicy.cs" />
     <Compile Include="..\Helpers\ImageDiscovery\FacetEngine.cs" Link="Linked\ImageDiscovery\FacetEngine.cs" />
     <Compile Include="..\Helpers\ImageDiscovery\ImageParser.cs" Link="Linked\ImageDiscovery\ImageParser.cs" />

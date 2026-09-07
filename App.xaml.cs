@@ -295,6 +295,11 @@ public partial class App : Application
         // Marks, keyed by the file they were drawn on. Singleton so the two viewers and the MCP tools
         // are looking at one set rather than three copies of it.
         services.AddSingleton<IAnnotationStore, AnnotationStore>();
+        // The user's own image list: read by the images card, the package search and the launch form, so
+        // one store rather than three copies that disagree the moment one of them adds to it.
+        services.AddSingleton<IUserImageStore, UserImageStore>();
+        // A plain client: the registry is not CADC, and this must never carry the CADC token.
+        services.AddHttpClient<IRegistryService, RegistryService>();
         services.AddSingleton<IFitsTabFactory, FitsTabFactory>();
 
         // Notebook services
