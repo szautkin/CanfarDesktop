@@ -205,6 +205,38 @@ public sealed record MarkStyle(double Red, double Green, double Blue, double Fon
     }
 
     /// <summary>
+    /// The style as one short string, for the settings store: <c>#rrggbb|size|bold|stroke</c>.
+    ///
+    /// One value rather than four, because a style is only meaningful whole. Four separate settings can
+    /// be half-written — the colour saved and the stroke not — and a half-applied style is a state
+    /// nothing else in the app can produce and nothing knows how to repair.
+    /// </summary>
+    public string Encode()
+        => string.Create(CultureInfo.InvariantCulture,
+            $"{ColourHex()}|{FontSize:0.##}|{(Bold ? 1 : 0)}|{Stroke:0.##}");
+
+    /// <summary>
+    /// Read back what <see cref="Encode"/> wrote, or <paramref name="fallback"/> for anything else.
+    ///
+    /// Anything else includes a value from a future build with more fields in it. A style that cannot be
+    /// read is not an error worth showing anybody: the marks still draw, in the colour they would have
+    /// had before this setting existed.
+    /// </summary>
+    public static MarkStyle Decode(string? text, MarkStyle fallback)
+    {
+        var parts = (text ?? string.Empty).Split('|');
+        if (parts.Length != 4) return fallback;
+        if (ColourFromHex(parts[0]) is not { } colour) return fallback;
+
+        var n = NumberStyles.Float;
+        var c = CultureInfo.InvariantCulture;
+        if (!double.TryParse(parts[1], n, c, out var fontSize)) return fallback;
+        if (!double.TryParse(parts[3], n, c, out var stroke)) return fallback;
+
+        return new MarkStyle(colour.R, colour.G, colour.B, fontSize, parts[2] == "1", stroke).Sane();
+    }
+
+    /// <summary>
     /// An ink factor that can actually be drawn with.
     ///
     /// One definition, because the factor is applied in several places — the stroke, the font, the

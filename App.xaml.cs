@@ -54,6 +54,13 @@ public partial class App : Application
             return value == key ? null : value;
         };
 
+        // The Marks list's wording, through the same hook-rather-than-reference route.
+        Helpers.MarkSummary.Translate = key =>
+        {
+            var value = Helpers.Loc.T(key);
+            return value == key ? null : value;
+        };
+
         // Localize the AI Guide category widgets (the catalog lives in Services and is test-linked,
         // so it takes translations via this hook instead of referencing Loc directly).
         CanfarDesktop.Services.AiGuide.AiGuideCatalog.Localize = key =>

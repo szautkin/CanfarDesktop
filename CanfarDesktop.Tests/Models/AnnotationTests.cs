@@ -198,4 +198,85 @@ public class AnnotationTests
     [InlineData(4.0, 4.0)]
     public void AnUnusableInkFactorFallsBackToTheScreen(double given, double expected)
         => Assert.Equal(expected, MarkStyle.UsableInk(given));
+
+    // ── Carrying a style through the settings store ─────────────────────────────────────────────
+
+    /// <summary>
+    /// A style has to come back from its own storage unchanged, or the default a person chose is not
+    /// the default they get — which reads as the setting not having been saved at all.
+    /// </summary>
+    [Fact]
+    public void AStyleSurvivesItsOwnEncoding()
+    {
+        var style = MarkStyle.FromBytes(200, 40, 90, 18, bold: true, stroke: 2.5);
+
+        Assert.Equal(style, MarkStyle.Decode(style.Encode(), MarkStyle.UserDefault));
+    }
+
+    /// <summary>
+    /// The shipped defaults especially: a constant that does not equal itself after one round trip is
+    /// how "reset to default" ends up producing something subtly different.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Defaults))]
+    public void EveryShippedDefaultSurvivesItsOwnEncoding(MarkStyle style)
+        => Assert.Equal(style, MarkStyle.Decode(style.Encode(), MarkStyle.AgentDefault));
+
+    public static TheoryData<MarkStyle> Defaults() => new() { MarkStyle.UserDefault, MarkStyle.AgentDefault };
+
+    [Fact]
+    public void BoldSurvivesBothWays()
+    {
+        var plain = MarkStyle.UserDefault with { Bold = false };
+        var bold = MarkStyle.UserDefault with { Bold = true };
+
+        Assert.False(MarkStyle.Decode(plain.Encode(), bold).Bold);
+        Assert.True(MarkStyle.Decode(bold.Encode(), plain).Bold);
+    }
+
+    /// <summary>
+    /// Anything unreadable — a truncated value, a colour that is not one, a future build's longer
+    /// format — leaves the marks looking as they would have before the setting existed. It is not an
+    /// error worth showing anybody.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("garbage")]
+    [InlineData("#9ed9ff|11|0")]                 // too few fields
+    [InlineData("#9ed9ff|11|0|1|extra")]         // a later build's
+    [InlineData("notacolour|11|0|1")]
+    [InlineData("#9ed9ff|wide|0|1")]
+    [InlineData("#9ed9ff|11|0|thick")]
+    public void AnUnreadableStyleFallsBackRatherThanFailing(string? text)
+        => Assert.Equal(MarkStyle.UserDefault, MarkStyle.Decode(text, MarkStyle.UserDefault));
+
+    /// <summary>Stored values are clamped on the way in, so a hand-edited setting cannot hide a mark.</summary>
+    [Fact]
+    public void ADecodedStyleIsStillDrawable()
+    {
+        var wild = MarkStyle.Decode("#9ed9ff|900|1|900", MarkStyle.UserDefault);
+
+        Assert.Equal(72, wild.FontSize);
+        Assert.Equal(20, wild.Stroke);
+    }
+
+    /// <summary>Written in the invariant culture, so a comma-decimal machine can read a dot-decimal file.</summary>
+    [Fact]
+    public void TheEncodingDoesNotDependOnTheMachinesNumberFormat()
+    {
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("fr-FR");
+            var style = MarkStyle.UserDefault with { Stroke = 2.5 };
+
+            Assert.Contains("2.5", style.Encode());
+            Assert.Equal(2.5, MarkStyle.Decode(style.Encode(), MarkStyle.AgentDefault).Stroke);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previous;
+        }
+    }
 }

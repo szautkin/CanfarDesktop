@@ -222,8 +222,9 @@ public sealed partial class FitsTabHost : UserControl
 
     private void SyncToolbarToActiveTab()
     {
-        // The pencil belongs to the toolbar, so a new tab inherits it rather than starting disarmed.
-        ApplyMarkModeToActivePage();
+        // The pencil belongs to each image's own Marks section now, so a tab keeps whatever it was
+        // left with rather than inheriting the toolbar's state — which is what a person expects of a
+        // drawing mode attached to a particular picture.
 
         var vm = ViewModel.ActiveViewModel;
         if (vm is null) return;

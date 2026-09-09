@@ -78,39 +78,19 @@
 
             <AppBarSeparator />
 
-            <!-- Marks. The pencil is a toggle rather than a mode you enter and leave, because while it
-                 is armed a press on empty canvas draws instead of panning — and that has to be visible
-                 at a glance, not remembered. -->
-            <ToggleButton x:Name="DrawMarksToggle" Click="OnToggleDrawMarks" Padding="8,4"
-                          ToolTipService.ToolTip="Draw marks (press on the image to place one)"
-                          AutomationProperties.Name="Draw marks">
-                <FontIcon Glyph="&#xE70F;" FontSize="14" />
-            </ToggleButton>
-            <DropDownButton Padding="8,4"
-                            AutomationProperties.Name="Mark options"
-                            ToolTipService.ToolTip="Mark shape and actions">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <FontIcon Glyph="&#xE71E;" FontSize="14" />
+            <!-- Marks. ONE labelled control, and it opens the panel where everything about marks
+                 lives — the pencil, the shape, the style and the list. A picture of a pencil beside a
+                 picture of a chevron was the whole feature's only entry point, and it told nobody that
+                 this image could be annotated, let alone how to name a mark once drawn. -->
+            <Button x:Name="MarksButton" Click="OnOpenMarksPanel" Padding="8,4"
+                    x:Uid="Fits_MarksButton"
+                    ToolTipService.ToolTip="Marks: draw, style and list"
+                    AutomationProperties.Name="Marks">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                    <TextBlock x:Uid="Fits_MarksButtonLabel" Text="Marks" />
                 </StackPanel>
-                <DropDownButton.Flyout>
-                    <MenuFlyout>
-                        <RadioMenuFlyoutItem x:Name="MarkKindCircle" Text="Circle" GroupName="MarkKind"
-                                             IsChecked="True" Click="OnMarkKindChanged" Tag="circle" />
-                        <RadioMenuFlyoutItem x:Name="MarkKindRect" Text="Box" GroupName="MarkKind"
-                                             Click="OnMarkKindChanged" Tag="rect" />
-                        <RadioMenuFlyoutItem x:Name="MarkKindCallout" Text="Callout" GroupName="MarkKind"
-                                             Click="OnMarkKindChanged" Tag="callout" />
-                        <RadioMenuFlyoutItem x:Name="MarkKindText" Text="Label" GroupName="MarkKind"
-                                             Click="OnMarkKindChanged" Tag="text" />
-                        <MenuFlyoutSeparator />
-                        <MenuFlyoutItem Text="Delete selected mark" Click="OnDeleteSelectedMark">
-                            <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE74D;" />
-                            </MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                    </MenuFlyout>
-                </DropDownButton.Flyout>
-            </DropDownButton>
+            </Button>
 
             <AppBarSeparator />
 

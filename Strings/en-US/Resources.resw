@@ -383,6 +383,120 @@
   <data name="Batch_ClearHistory.Content" xml:space="preserve">
     <value>Clear history</value>
   </data>
+  <data name="Marks_AddHeader.Text" xml:space="preserve">
+    <value>Add mark</value>
+  </data>
+  <data name="Marks_DrawLabel.Text" xml:space="preserve">
+    <value>Draw</value>
+  </data>
+  <data name="Marks_KindCircle.Content" xml:space="preserve">
+    <value>Circle</value>
+  </data>
+  <data name="Marks_KindBox.Content" xml:space="preserve">
+    <value>Box</value>
+  </data>
+  <data name="Marks_ColourButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Mark colour</value>
+  </data>
+  <data name="Marks_FontSize.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Label size in pixels</value>
+  </data>
+  <data name="Marks_Bold.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Bold label</value>
+  </data>
+  <data name="Marks_Stroke.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Outline thickness in pixels</value>
+  </data>
+  <data name="Marks_FilterBox.PlaceholderText" xml:space="preserve">
+    <value>Filter marks…</value>
+  </data>
+  <data name="Marks_Hint.Text" xml:space="preserve">
+    <value>Click a mark to edit it: drag a grip to resize, the shape to move it, then confirm.</value>
+  </data>
+  <data name="Marks_ClearButton.Content" xml:space="preserve">
+    <value>Clear all marks</value>
+  </data>
+  <data name="Marks_Empty" xml:space="preserve">
+    <value>Nothing marked yet. Turn on Draw, then click the image.</value>
+  </data>
+  <data name="Marks_NoneMatchFilter" xml:space="preserve">
+    <value>No mark matches that filter.</value>
+  </data>
+  <data name="Marks_RowEdit" xml:space="preserve">
+    <value>Rename this mark</value>
+  </data>
+  <data name="Marks_RowDelete" xml:space="preserve">
+    <value>Delete this mark</value>
+  </data>
+  <data name="Marks_ClearTitle" xml:space="preserve">
+    <value>Delete every mark?</value>
+  </data>
+  <data name="Marks_ClearBody" xml:space="preserve">
+    <value>This removes all marks on this image, including any an agent made. It cannot be undone.</value>
+  </data>
+  <data name="Marks_ClearConfirm" xml:space="preserve">
+    <value>Delete all</value>
+  </data>
+  <data name="Marks_PanelHeader" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Marks_PanelToggle" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Mark_LabelField.PlaceholderText" xml:space="preserve">
+    <value>What is this?</value>
+  </data>
+  <data name="Mark_LabelDone.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Mark_LabelDelete.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Delete this mark</value>
+  </data>
+  <data name="Mark_KindBox" xml:space="preserve">
+    <value>box</value>
+  </data>
+  <data name="Mark_KindCircle" xml:space="preserve">
+    <value>circle</value>
+  </data>
+  <data name="Mark_KindCallout" xml:space="preserve">
+    <value>callout</value>
+  </data>
+  <data name="Mark_KindText" xml:space="preserve">
+    <value>text</value>
+  </data>
+  <data name="Mark_PlacePixel" xml:space="preserve">
+    <value>pixel {0:0}, {1:0}</value>
+  </data>
+  <data name="Mark_PlaceSky" xml:space="preserve">
+    <value>{0:0.0000}°, {1:0.0000}°</value>
+  </data>
+  <data name="Mark_PlaceVoxel" xml:space="preserve">
+    <value>voxel {0:0}, {1:0}, ch {2:0}</value>
+  </data>
+  <data name="Mark_ByAgent" xml:space="preserve">
+    <value>{0} — by the agent</value>
+  </data>
+  <data name="Mark_Count" xml:space="preserve">
+    <value>{0} marks</value>
+  </data>
+  <data name="Cube_MarksPanelToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Marks: draw, style and list</value>
+  </data>
+  <data name="Cube_MarksPanelToggleLabel.Text" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Cube_MarksHeader.Text" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Fits_MarksExpander.Header" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Fits_MarksButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Marks: draw, style and list</value>
+  </data>
+  <data name="Fits_MarksButtonLabel.Text" xml:space="preserve">
+    <value>Marks</value>
+  </data>
   <data name="Settings_AgentHeader.Text" xml:space="preserve">
     <value>AI agent</value>
   </data>

@@ -21,6 +21,16 @@ public interface ISettingsService
     /// not watching the window, and a cue nobody has been told about is one they never turn on.
     /// </summary>
     bool AgentSounds { get; set; }
+
+    /// <summary>
+    /// What the NEXT mark will look like, as <c>MarkStyle.Encode</c> writes it.
+    ///
+    /// A default, not the storage: every mark carries its own style, because it persists, travels over
+    /// MCP and ends up in an exported figure that has to look the same when reopened. This is only what
+    /// the style controls start at when nothing is selected — so a person who prefers thicker outlines
+    /// sets it once rather than on every mark.
+    /// </summary>
+    string DefaultMarkStyle { get; set; }
     /// <summary>Push the endpoint settings into the live URL builder (validating each value).</summary>
     void ApplyEndpointsTo(Helpers.ApiEndpoints endpoints);
 

@@ -18,9 +18,19 @@
             <Border Grid.Column="0" Background="{ThemeResource LayerFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="0,0,1,0">
-                <Grid RowDefinitions="Auto,Auto,Auto,*">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+                    <!-- Marks, at the top of the control column and collapsed until wanted. Everything
+                         about them lives here — the pencil, the shape, the style and the list — rather
+                         than the pencil being in the toolbar and the list nowhere. -->
+                    <Expander Grid.Row="0" x:Name="MarksExpander" x:Uid="Fits_MarksExpander"
+                              Header="Marks" HorizontalAlignment="Stretch" Margin="4,4,4,0"
+                              HorizontalContentAlignment="Stretch"
+                              Expanding="OnMarksExpanding" Collapsed="OnMarksCollapsed">
+                        <controls:MarksPanel x:Name="Marks" MaxHeight="420" />
+                    </Expander>
+
                     <!-- HDU selector (multi-extension files only): pick which HDU/extension to view -->
-                    <StackPanel x:Name="HduSection" Grid.Row="0" Spacing="2" Margin="6,6,6,2" Visibility="Collapsed">
+                    <StackPanel x:Name="HduSection" Grid.Row="1" Spacing="2" Margin="6,6,6,2" Visibility="Collapsed">
                         <TextBlock x:Uid="Fits_HduHeader" Text="Extensions (HDUs)"
                                    Style="{StaticResource BodyStrongTextBlockStyle}" FontSize="12" />
                         <ListView x:Name="HduList" SelectionMode="Single" MaxHeight="140"
@@ -42,7 +52,7 @@
                     </StackPanel>
 
                     <!-- Synthesized image summary (WCS, scale, field, instrument…) above the raw header -->
-                    <StackPanel Grid.Row="1" Spacing="2" Margin="6,6,6,2">
+                    <StackPanel Grid.Row="2" Spacing="2" Margin="6,6,6,2">
                         <TextBlock x:Uid="Fits_ImageInfoHeader" Text="Image info"
                                    Style="{StaticResource BodyStrongTextBlockStyle}" FontSize="12" />
                         <ItemsControl x:Name="ImageInfoList">
@@ -59,10 +69,10 @@
                         </ItemsControl>
                         <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4,0,0" />
                     </StackPanel>
-                    <TextBox Grid.Row="2" x:Name="HeaderFilter" x:Uid="Fits_HeaderFilter"
+                    <TextBox Grid.Row="3" x:Name="HeaderFilter" x:Uid="Fits_HeaderFilter"
                              PlaceholderText="Search headers..."
                              Margin="4" TextChanged="OnHeaderFilterChanged" />
-                    <ListView Grid.Row="3" x:Name="HeaderList" SelectionMode="None"
+                    <ListView Grid.Row="4" x:Name="HeaderList" SelectionMode="None"
                               Padding="4">
                         <ListView.ItemTemplate>
                             <DataTemplate>
@@ -101,6 +111,11 @@
                         <CompositeTransform x:Name="ImageTransform" />
                     </Image.RenderTransform>
                 </Image>
+
+                <!-- Naming a mark, over the mark itself. An ordinary control rather than a flyout: a
+                     flyout dismisses when the pointer returns to the image, commits on close so Escape
+                     saves, and has nowhere to put a bin. -->
+                <controls:MarkLabelEditor x:Name="MarkEditor" Visibility="Collapsed" />
 
                 <!-- Blink overlay (fades on top of main image, never changes transforms) -->
                 <Image x:Name="BlinkImage"

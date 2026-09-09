@@ -58,6 +58,11 @@
                  space the pointer handlers already work in. -->
             <controls:AnnotationLayer x:Name="SliceAnnotationCanvas" IsHitTestVisible="False" />
 
+            <!-- Naming a mark, over the mark itself. An ordinary control rather than a flyout: a
+                 flyout dismisses when the pointer returns to the image, commits on close so Escape
+                 saves, and has nowhere to put a bin. -->
+            <controls:MarkLabelEditor x:Name="MarkEditor" Visibility="Collapsed" />
+
             <!-- Floating cursor readout (sky + spectral + value), positioned near the pointer -->
             <Canvas IsHitTestVisible="False">
                 <Border x:Name="CursorChip" Visibility="Collapsed"
@@ -94,39 +99,43 @@
                 <ToggleButton x:Name="SliceModeButton" x:Uid="Cube_SliceModeButton" Content="Slice"
                               MinWidth="84" Click="OnSliceModeClick" />
 
-                <!-- Marks. Drawing happens on the SLICE: placing one in a perspective view means
-                     guessing a depth from a flat press, while a slice already has its channel. The
-                     pencil therefore switches to Slice rather than being disabled in Volume, which
-                     would leave a control that does nothing and does not say why. -->
+                <!-- Marks. ONE labelled control, and it opens the panel where everything about
+                     marks lives — the pencil, the shape, the style and the list. Two unlabelled
+                     icons here were the whole feature's only entry point, and a picture of a pencil
+                     beside a picture of a chevron does not tell anybody that this image can be
+                     annotated, let alone how to name one.
+
+                     Drawing itself happens on the SLICE: placing a mark in a perspective view means
+                     guessing a depth from a flat press, while a slice already has its channel. -->
                 <AppBarSeparator Margin="4,0" />
-                <ToggleButton x:Name="DrawMarksToggle" Click="OnToggleDrawMarks"
-                              ToolTipService.ToolTip="Draw marks on the slice"
-                              AutomationProperties.Name="Draw marks">
-                    <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                <ToggleButton x:Name="MarksPanelToggle" Click="OnToggleMarksPanel" MinWidth="84"
+                              x:Uid="Cube_MarksPanelToggle"
+                              ToolTipService.ToolTip="Marks: draw, style and list"
+                              AutomationProperties.Name="Marks">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                        <TextBlock x:Uid="Cube_MarksPanelToggleLabel" Text="Marks" />
+                    </StackPanel>
                 </ToggleButton>
-                <DropDownButton AutomationProperties.Name="Mark options"
-                                ToolTipService.ToolTip="Mark shape and actions">
-                    <FontIcon Glyph="&#xE71E;" FontSize="14" />
-                    <DropDownButton.Flyout>
-                        <MenuFlyout>
-                            <RadioMenuFlyoutItem x:Name="MarkKindCircle" Text="Circle" GroupName="CubeMarkKind"
-                                                 IsChecked="True" Click="OnMarkKindChanged" Tag="circle" />
-                            <RadioMenuFlyoutItem x:Name="MarkKindRect" Text="Box" GroupName="CubeMarkKind"
-                                                 Click="OnMarkKindChanged" Tag="rect" />
-                            <RadioMenuFlyoutItem x:Name="MarkKindCallout" Text="Callout" GroupName="CubeMarkKind"
-                                                 Click="OnMarkKindChanged" Tag="callout" />
-                            <RadioMenuFlyoutItem x:Name="MarkKindText" Text="Label" GroupName="CubeMarkKind"
-                                                 Click="OnMarkKindChanged" Tag="text" />
-                            <MenuFlyoutSeparator />
-                            <MenuFlyoutItem Text="Delete selected mark" Click="OnDeleteSelectedMark">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE74D;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                        </MenuFlyout>
-                    </DropDownButton.Flyout>
-                </DropDownButton>
             </StackPanel>
+        </Border>
+
+        <!-- Everything about marks, in one place. Right-hand side, clear of the scrubber along the
+             bottom and the info panel bottom-left. -->
+        <Border x:Name="MarksPanelHost" Visibility="Collapsed"
+                HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                Margin="0,64,16,96" Padding="14,12" CornerRadius="8" Width="300"
+                Background="#D8101622" BorderBrush="#40FFFFFF" BorderThickness="1">
+            <Grid RowSpacing="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" x:Uid="Cube_MarksHeader" Text="Marks"
+                           Foreground="#FFF0F0F0"
+                           Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <controls:MarksPanel Grid.Row="1" x:Name="Marks" />
+            </Grid>
         </Border>
 
         <!-- Fallback message shown if the GPU device can't be created -->

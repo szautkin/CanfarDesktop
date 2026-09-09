@@ -43,6 +43,7 @@
     <Compile Include="..\Helpers\AgentCueTracker.cs" Link="Linked\AgentCueTracker.cs" />
     <Compile Include="..\Helpers\TaskRegistry.cs" Link="Linked\TaskRegistry.cs" />
     <Compile Include="..\Helpers\ActivitySummary.cs" Link="Linked\ActivitySummary.cs" />
+    <Compile Include="..\Helpers\MarkSummary.cs" Link="Linked\MarkSummary.cs" />
     <Compile Include="..\Helpers\RuntimeInfo.cs" Link="Linked\RuntimeInfo.cs" />
     <Compile Include="..\Helpers\PollCadence.cs" Link="Linked\PollCadence.cs" />
     <Compile Include="..\Models\JobRecord.cs" Link="Linked\JobRecord.cs" />

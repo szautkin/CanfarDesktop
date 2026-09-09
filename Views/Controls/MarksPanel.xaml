@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="CanfarDesktop.Views.Controls.MarksPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        The list of marks drawn on a viewer, with what to do about each.
+
+        One panel for the FITS viewer and the cube: the two differ only in where their marks come from,
+        which is a pair of callbacks, so a second copy of this would be a second place to fix a bug in
+        the list.
+
+        It is also the only way to reach a mark whose subject is off screen — selecting one is how you
+        find it again after panning away, and a canvas alone can never offer that.
+
+        The drawing controls live INSIDE this panel, above the list they produce. They used to be in a
+        toolbar elsewhere, which put making a mark and looking at your marks in two different places —
+        and left the toolbar's two unlabelled icons as the only clue that marks existed at all.
+    -->
+
+    <Grid RowSpacing="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ── Add a mark ─────────────────────────────────────────────────────────────────── -->
+        <StackPanel Grid.Row="0" Spacing="6">
+            <TextBlock x:Uid="Marks_AddHeader" Text="Add mark"
+                       Style="{StaticResource BodyStrongTextBlockStyle}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <ToggleButton x:Name="DrawToggle" Click="OnToggleDraw" Padding="8,4"
+                              AutomationProperties.Name="Draw marks">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                        <TextBlock x:Name="DrawLabel" x:Uid="Marks_DrawLabel" Text="Draw" />
+                    </StackPanel>
+                </ToggleButton>
+
+                <!-- Two shapes. A "callout" was a small circle with a leader and every shape has a
+                     leader now; a "text" was a label with nothing to point at. Both kinds still exist
+                     in the model and over MCP — stored marks and an agent's calls keep working — they
+                     are simply not choices a person has to make here. -->
+                <ComboBox x:Name="KindCombo" MinWidth="104" SelectionChanged="OnKindChanged"
+                          x:Uid="Marks_KindCombo" AutomationProperties.Name="Mark shape">
+                    <ComboBoxItem x:Uid="Marks_KindCircle" Content="Circle" Tag="circle" />
+                    <ComboBoxItem x:Uid="Marks_KindBox" Content="Box" Tag="rect" />
+                </ComboBox>
+            </StackPanel>
+
+            <!-- Style, directly under the pencil that uses it. Four controls, acting on the selected
+                 mark when there is one and on what the next mark will look like otherwise — which is
+                 how every drawing application behaves, and avoids a "preferences for new marks" screen
+                 nobody would find. -->
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button x:Name="ColourButton" Padding="4" MinWidth="40"
+                        x:Uid="Marks_ColourButton" ToolTipService.ToolTip="Mark colour"
+                        AutomationProperties.Name="Mark colour">
+                    <Border x:Name="ColourSwatch" Width="22" Height="18" CornerRadius="3"
+                            BorderBrush="#60000000" BorderThickness="1" />
+                    <Button.Flyout>
+                        <Flyout>
+                            <ColorPicker x:Name="Colour" IsAlphaEnabled="False"
+                                         IsColorSliderVisible="True" IsHexInputVisible="True"
+                                         ColorChanged="OnColourChanged" />
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <NumberBox x:Name="FontSize" Minimum="6" Maximum="72" SmallChange="1" Width="86"
+                           SpinButtonPlacementMode="Compact" ValueChanged="OnStyleChanged"
+                           x:Uid="Marks_FontSize" ToolTipService.ToolTip="Label size in pixels"
+                           AutomationProperties.Name="Label size in pixels" />
+
+                <ToggleButton x:Name="Bold" Padding="8,4" Click="OnStyleToggled"
+                              x:Uid="Marks_Bold" ToolTipService.ToolTip="Bold label"
+                              AutomationProperties.Name="Bold label">
+                    <TextBlock Text="B" FontWeight="Bold" />
+                </ToggleButton>
+
+                <NumberBox x:Name="Stroke" Minimum="0.5" Maximum="20" SmallChange="0.5" Width="86"
+                           SpinButtonPlacementMode="Compact" ValueChanged="OnStyleChanged"
+                           x:Uid="Marks_Stroke" ToolTipService.ToolTip="Outline thickness in pixels"
+                           AutomationProperties.Name="Outline thickness in pixels" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- ── What is already there ──────────────────────────────────────────────────────── -->
+        <TextBox Grid.Row="1" x:Name="FilterBox" TextChanged="OnFilterChanged"
+                 x:Uid="Marks_FilterBox" PlaceholderText="Filter marks…"
+                 AutomationProperties.Name="Filter marks" />
+
+        <TextBlock Grid.Row="2" x:Name="CountText" Visibility="Collapsed"
+                   Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
+
+        <ListView Grid.Row="3" x:Name="MarkList" SelectionMode="Single" MinHeight="80"
+                  SelectionChanged="OnSelectionChanged"
+                  AutomationProperties.Name="Marks">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="MinHeight" Value="0" />
+                    <Setter Property="Padding" Value="8,4" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                </Style>
+            </ListView.ItemContainerStyle>
+        </ListView>
+
+        <!-- Text comes from code: it says two different things depending on whether there are no
+             marks or just none matching the filter. -->
+        <TextBlock Grid.Row="3" x:Name="EmptyText"
+                   Text="Nothing marked yet. Turn on Draw, then click the image."
+                   TextWrapping="Wrap" Opacity="0.7" VerticalAlignment="Top" Margin="4,8,4,0"
+                   Style="{StaticResource CaptionTextBlockStyle}" />
+
+        <StackPanel Grid.Row="4" Spacing="6">
+            <TextBlock x:Name="HintText" x:Uid="Marks_Hint"
+                       Text="Click a mark to edit it: drag a grip to resize, the shape to move it, then confirm."
+                       TextWrapping="Wrap" Opacity="0.6"
+                       Style="{StaticResource CaptionTextBlockStyle}" />
+            <Button x:Name="ClearButton" Click="OnClearAll" HorizontalAlignment="Left"
+                    x:Uid="Marks_ClearButton" Content="Clear all marks" />
+        </StackPanel>
+    </Grid>
+</UserControl>

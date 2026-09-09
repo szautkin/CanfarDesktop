@@ -153,6 +153,19 @@ public sealed partial class FitsViewerPage : UserControl
         HeaderColumn.Width = _headerVisible ? new GridLength(320) : new GridLength(0);
     }
 
+    /// <summary>
+    /// Open the control column if it is shut.
+    ///
+    /// Separate from <see cref="ToggleHeader"/> because opening the Marks section has to SHOW the
+    /// column, not flip it: a Marks button that hides the panel when the column happens to be open is
+    /// a button that does the opposite of what it says every other time.
+    /// </summary>
+    public void ShowHeaderColumn()
+    {
+        _headerVisible = true;
+        HeaderColumn.Width = new GridLength(320);
+    }
+
     public void ClearCrosshair()
     {
         _crosshairScreenPos = null;

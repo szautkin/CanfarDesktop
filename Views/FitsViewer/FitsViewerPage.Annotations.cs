@@ -82,6 +82,10 @@ public sealed partial class FitsViewerPage
         if (selectId is not null) _selectedId = selectId;
 
         RenderAnnotations();
+
+        // An agent's mark has to appear in the list too, not only on the image — the list is where a
+        // person sees WHAT it marked and that an agent made it.
+        RefreshMarksPanel();
         return true;
     }
 
@@ -145,20 +149,21 @@ public sealed partial class FitsViewerPage
                         ? Extent.Square(AnnotationGeometry.HalfFromDrag(surface, anchor, 12))
                         : null,
                     Author = MarkAuthor.User,
+                    // What the style controls say. A style chosen and then not applied to the next mark
+                    // is a control that appears to do nothing.
+                    Style = PendingStyle(),
                     CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
                 };
 
-                // A callout or a text mark with no words yet cannot be stored — it would fail its own
-                // validation — so drawing one puts it straight into editing, where the label is typed.
                 _annotations.Add(mark);
                 _editingId = _selectedId = mark.Id;
                 _grab = mark.Extent is null ? new MarkGrab.None() : new MarkGrab.Resize(mark.Id);
                 RenderAnnotations();
 
-                // Words first for the kinds that are nothing without them. Dispatched rather than called
-                // inline so the flyout opens after this press has finished being handled.
-                if (mark.Kind is AnnotationKind.Callout or AnnotationKind.Text)
-                    DispatcherQueue.TryEnqueue(() => BeginLabelEdit(mark.Id));
+                // A shape with no size to drag is finished the moment it lands, so it can be named now.
+                // The others are named when the drag that sizes them ends — see EndAnnotationGesture.
+                // Dispatched rather than called inline so the field opens after this press is handled.
+                if (mark.Extent is null) DispatcherQueue.TryEnqueue(() => BeginLabelEdit(mark.Id));
 
                 return true;
 
@@ -223,6 +228,12 @@ public sealed partial class FitsViewerPage
     {
         if (_grab is MarkGrab.None) return false;
 
+        // A mark that was just drawn goes straight into being named. Every shape has a label — a circle
+        // round something unnamed says "look here" and nothing else, and asking for the words is the
+        // difference between a mark and an annotation. Sizing it is what finishes drawing it, so this
+        // is where the field opens.
+        var justDrawn = _grab is MarkGrab.Resize resize && resize.Id == _editingId ? resize.Id : null;
+
         _grab = new MarkGrab.None();
 
         // Anything that failed its own validation during the drag — a shape dragged to nothing — is
@@ -232,6 +243,11 @@ public sealed partial class FitsViewerPage
 
         SaveAnnotations();
         RenderAnnotations();
+        RefreshMarksPanel();
+
+        if (justDrawn is not null && _annotations.Any(a => a.Id == justDrawn))
+            DispatcherQueue.TryEnqueue(() => BeginLabelEdit(justDrawn));
+
         return true;
     }
 
@@ -270,13 +286,18 @@ public sealed partial class FitsViewerPage
         _selectedId = _editingId = null;
         SaveAnnotations();
         RenderAnnotations();
+        RefreshMarksPanel();
     }
+
+    private bool _labelEditorWired;
 
     /// <summary>
     /// Type a mark's label, in a field over the mark itself.
     ///
-    /// A callout or a text mark cannot be stored without words — it would fail its own validation — so
-    /// drawing one opens this immediately. An existing mark gets it on a double-press.
+    /// The field is an ordinary control on the canvas rather than a flyout. A flyout dismissed itself
+    /// the moment the pointer went back to the image, committed on close so Escape saved instead of
+    /// cancelling, and had nowhere to put a bin — which left "draw a mark you did not mean to" with no
+    /// way out but drawing it, naming it and then deleting it.
     /// </summary>
     private void BeginLabelEdit(string id)
     {
@@ -284,47 +305,59 @@ public sealed partial class FitsViewerPage
         if (mark is null) return;
         if (Surface().Project(mark.Anchor) is not { } at) return;
 
-        var field = new TextBox
-        {
-            Text = mark.Text,
-            Width = 220,
-            PlaceholderText = "Label",
-            AcceptsReturn = false,
-        };
-
-        var flyout = new Flyout { Content = field, ShouldConstrainToRootBounds = false };
-
-        void Commit()
-        {
-            var index = _annotations.FindIndex(a => a.Id == id);
-            if (index >= 0) _annotations[index] = _annotations[index] with { Text = field.Text.Trim() };
-
-            _editingId = null;
-
-            // A callout still without words cannot be stored, so it goes rather than lingering until the
-            // next load quietly drops it.
-            _annotations.RemoveAll(a => a.Validate() is not null);
-            SaveAnnotations();
-            RenderAnnotations();
-        }
-
-        field.KeyDown += (_, e) =>
-        {
-            if (e.Key == Windows.System.VirtualKey.Enter) flyout.Hide();
-        };
-        flyout.Closed += (_, _) => Commit();
+        WireLabelEditor();
 
         _editingId = id;
         RenderAnnotations();
 
-        flyout.ShowAt(ImageCanvas, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
-        {
-            Position = new Windows.Foundation.Point(at.X, at.Y),
-            Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Bottom,
-        });
+        // Below the mark, and never off the left or top edge — a field half outside the canvas is one
+        // you cannot type in.
+        MarkEditor.PlaceAt(Math.Max(0, at.X - 60), Math.Max(0, at.Y + 16));
+        MarkEditor.Visibility = Visibility.Visible;
+        MarkEditor.Open(mark.Text);
+    }
 
-        field.Focus(FocusState.Programmatic);
-        field.SelectAll();
+    private void WireLabelEditor()
+    {
+        if (_labelEditorWired) return;
+        _labelEditorWired = true;
+
+        MarkEditor.Committed += text =>
+        {
+            if (_editingId is { } id && _annotations.FindIndex(a => a.Id == id) is >= 0 and var at)
+                _annotations[at] = _annotations[at] with { Text = text };
+
+            CloseLabelEditor();
+        };
+
+        MarkEditor.Deleted += () =>
+        {
+            if (_editingId is { } id)
+            {
+                _annotations.RemoveAll(a => a.Id == id);
+                if (_selectedId == id) _selectedId = null;
+            }
+
+            CloseLabelEditor();
+        };
+
+        // Escape leaves the mark exactly as it was — including a brand-new one, which keeps whatever it
+        // already had rather than being thrown away. Drawing it was deliberate; not naming it yet is not
+        // a reason to lose it.
+        MarkEditor.Cancelled += CloseLabelEditor;
+    }
+
+    private void CloseLabelEditor()
+    {
+        MarkEditor.Visibility = Visibility.Collapsed;
+        _editingId = null;
+
+        // A callout still without words cannot be stored, so it goes rather than lingering until the
+        // next load quietly drops it.
+        _annotations.RemoveAll(a => a.Validate() is not null);
+        SaveAnnotations();
+        RenderAnnotations();
+        RefreshMarksPanel();
     }
 
     /// <summary>A double-press on a mark is the way to relabel one that is already there.</summary>
@@ -343,6 +376,7 @@ public sealed partial class FitsViewerPage
     /// <summary>Give up editing, keeping whatever is valid. Called when the pencil is put down.</summary>
     public void EndAnnotationEditing()
     {
+        MarkEditor.Visibility = Visibility.Collapsed;
         _editingId = null;
         _annotations.RemoveAll(a => a.Validate() is not null);
         SaveAnnotations();
