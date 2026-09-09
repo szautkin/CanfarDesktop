@@ -40,6 +40,25 @@ public sealed class CubeVolumeAnnotationSurface : IAnnotationSurface
     }
 
     /// <summary>
+    /// The inverse of <see cref="Project"/> for one channel: which voxel a press is over.
+    ///
+    /// A press on a perspective view names a ray, so the channel supplies the depth — the ray is met
+    /// with the plane the view already draws as the slice-plane marker. Null when the press is not over
+    /// the box at all.
+    ///
+    /// Here rather than in the page, because this class already holds the projector and the cube's
+    /// dimensions; a caller that assembled them again would be a second place to get them wrong.
+    /// </summary>
+    public AnnotationAnchor? VoxelAt(double screenX, double screenY, int channel)
+    {
+        if (_projector is null) return null;
+        if (_projector.VoxelOnChannelPlane(screenX, screenY, channel, _nx, _ny, _nz) is not { } voxel) return null;
+
+        var anchor = AnnotationAnchor.Data(voxel.X, voxel.Y, channel);
+        return anchor.IsValid ? anchor : null;
+    }
+
+    /// <summary>
     /// Measured, not derived: project the anchor and a voxel away from it, and take the distance.
     ///
     /// It has to be measured here more than anywhere. The view is perspective, so a voxel near the

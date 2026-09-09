@@ -79,9 +79,64 @@ public sealed class CubeProjector
         => ProjectBox(Fraction(x, nx), Fraction(y, ny), Fraction(channel, nz));
 
     /// <summary>
+    /// The inverse: which voxel a press on the volume is over, on the plane of one channel.
+    ///
+    /// A press on a perspective view names a RAY, not a point — every voxel along it is under the
+    /// pointer. The channel supplies the missing dimension, so the answer is where that ray crosses the
+    /// plane the view is already drawing as the slice-plane marker. That makes the depth something the
+    /// person can see before they press rather than something the app guesses.
+    ///
+    /// Null when the ray runs parallel to the plane, or crosses it outside the cube — a press on empty
+    /// space beside the box is not a voxel, and clamping it to the nearest face would silently put a
+    /// mark somewhere nobody pointed at.
+    ///
+    /// Lives here because this class owns the camera arithmetic. A caller that inverted the matrix
+    /// itself would be a second place for the field of view and the box scaling to be got right.
+    /// </summary>
+    public (double X, double Y)? VoxelOnChannelPlane(
+        double screenX, double screenY, double channel, int nx, int ny, int nz)
+    {
+        if (!Matrix4x4.Invert(_viewProj, out var inverse)) return null;
+
+        // Screen → clip. The y flip is the one ProjectBox applies, read backwards.
+        var ndcX = screenX / _width * 2.0 - 1.0;
+        var ndcY = 1.0 - screenY / _height * 2.0;
+
+        // Two depths give the ray; which two does not matter, only that they differ.
+        if (Unproject(inverse, ndcX, ndcY, 0f) is not { } near) return null;
+        if (Unproject(inverse, ndcX, ndcY, 1f) is not { } far) return null;
+
+        var direction = far - near;
+        var planeZ = Fraction(channel, nz) * _sz;
+        if (Math.Abs(direction.Z) < 1e-6f) return null;
+
+        var hit = near + direction * ((planeZ - near.Z) / direction.Z);
+
+        // World → box. A degenerate axis has no span to divide by.
+        var boxX = _sx > 1e-6f ? hit.X / _sx : 0f;
+        var boxY = _sy > 1e-6f ? hit.Y / _sy : 0f;
+
+        // The box spans ±0.5, with a little tolerance so a press right on an edge still counts.
+        const float half = 0.5f + 1e-3f;
+        if (Math.Abs(boxX) > half || Math.Abs(boxY) > half) return null;
+
+        return (Index(boxX, nx), Index(boxY, ny));
+    }
+
+    private static Vector3? Unproject(Matrix4x4 inverse, double ndcX, double ndcY, float ndcZ)
+    {
+        var p = CubeMath.TransformPoint(inverse, new Vector4((float)ndcX, (float)ndcY, ndcZ, 1f));
+        return Math.Abs(p.W) < 1e-6f ? null : new Vector3(p.X / p.W, p.Y / p.W, p.Z / p.W);
+    }
+
+    /// <summary>
     /// A voxel index as a box coordinate. An axis one voxel deep has no span to place anything along,
     /// so it collapses to the middle rather than dividing by zero.
     /// </summary>
     private static float Fraction(double index, int count)
         => count > 1 ? (float)(index / (count - 1) - 0.5) : 0f;
+
+    /// <summary>The exact inverse of <see cref="Fraction"/>, so a projected voxel round-trips.</summary>
+    private static double Index(double box, int count)
+        => count > 1 ? (box + 0.5) * (count - 1) : 0;
 }

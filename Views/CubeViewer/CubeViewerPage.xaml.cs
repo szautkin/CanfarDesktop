@@ -447,8 +447,12 @@ public sealed partial class CubeViewerPage : UserControl
 
     private void OnPanelSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        // Keep the control panel scrollable within the viewport (independent of GPU init).
-        ControlScroll.MaxHeight = Math.Max(200, e.NewSize.Height - 56);
+        // The control column bounds itself, in the layout — see ControlColumnBounds in the XAML.
+        //
+        // This used to set ControlScroll.MaxHeight from the render panel's own size, which coupled the
+        // two in a circle: collapsing a section changed the column's height, that re-laid out the page,
+        // the render panel's SizeChanged fired, and it wrote a height back into the column. The visible
+        // result was the volume viewport collapsing when the panels were collapsed.
         if (!_initialized || _closed) return;
         var (w, h) = PhysicalSize();
         _renderer.Resize(w, h);
@@ -461,6 +465,16 @@ public sealed partial class CubeViewerPage : UserControl
     {
         var pt = e.GetCurrentPoint(RenderPanel);
         if (!pt.Properties.IsLeftButtonPressed) return;
+
+        // The marks are offered the press first, exactly as the slice offers it — a press that takes
+        // hold of a mark and also starts an orbit swings the cube out from under the mark being moved.
+        if (TryBeginAnnotationGesture(pt.Position))
+        {
+            RenderPanel.CapturePointer(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         _isDragging = true;
         _lastPointer = pt.Position;
         RenderPanel.CapturePointer(e.Pointer);
@@ -471,6 +485,12 @@ public sealed partial class CubeViewerPage : UserControl
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (ContinueAnnotationGesture(e.GetCurrentPoint(RenderPanel).Position))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (!_isDragging) return;
         var pos = e.GetCurrentPoint(RenderPanel).Position;
         float dx = (float)(pos.X - _lastPointer.X);
@@ -482,6 +502,13 @@ public sealed partial class CubeViewerPage : UserControl
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (EndAnnotationGesture())
+        {
+            RenderPanel.ReleasePointerCapture(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         if (!_isDragging) return;
         _isDragging = false;
         RenderPanel.ReleasePointerCapture(e.Pointer);

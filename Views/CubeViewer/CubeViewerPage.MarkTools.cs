@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
@@ -15,28 +15,29 @@ namespace CanfarDesktop.Views.CubeViewer;
 /// arming the pencil, choosing the shape, styling it, finding one in the list, renaming and deleting.
 /// It replaced two unlabelled toolbar icons that were the feature's only entry point.
 ///
-/// Arming the pencil switches to the Slice view rather than being refused in Volume. Placing a mark in
-/// a perspective view means guessing a depth from a flat press; the slice already has its channel, so
-/// the pencil belongs there — and a control that silently does nothing in the mode you are in is worse
-/// than one that takes you where it works.
+/// Both views can be drawn on. A press on the slice names one voxel outright; a press on the volume
+/// names a ray, so the channel on screen supplies the depth and the mark lands on the plane the volume
+/// already draws as the slice-plane marker. Forcing the Slice view when the pencil was armed was the
+/// earlier answer, and it moved the view out from under someone who had lined up an angle they wanted.
 /// </summary>
 public sealed partial class CubeViewerPage
 {
     private bool _marksWired;
 
+    /// <summary>Whether each section of the control column is showing.</summary>
+    private bool _displayOpen = true;
+    private bool _marksOpen;
+
     /// <summary>
-    /// Cap the control column at the height actually available.
+    /// The open section's title, bright. A closed one is dimmed back.
     ///
-    /// The column sizes to its content, so a short one is a short card. Without a ceiling it kept
-    /// growing: in Volume mode the panel ran off the bottom of the window and the opacity curve could
-    /// not be reached, because the ScrollViewer inside it was being handed infinite height and so never
-    /// had anything to scroll.
+    /// No bar behind it: which section is open is already said by the section BEING there, so the title
+    /// only has to lift. A filled highlight on a panel that sits on top of the image is one more opaque
+    /// rectangle competing with the data.
     /// </summary>
-    private void OnControlColumnBounds(object sender, SizeChangedEventArgs e)
-    {
-        var margins = ControlColumn.Margin.Top + ControlColumn.Margin.Bottom;
-        ControlColumn.MaxHeight = Math.Max(120, e.NewSize.Height - margins);
-    }
+    private static readonly SolidColorBrush SectionTitleOpen = new(Windows.UI.Color.FromArgb(0xFF, 0xDC, 0xF2, 0xFF));
+
+    private static readonly SolidColorBrush SectionTitleClosed = new(Windows.UI.Color.FromArgb(0x90, 0xBF, 0xD8, 0xFF));
 
     /// <summary>
     /// The DISPLAY section's own header.
@@ -46,12 +47,16 @@ public sealed partial class CubeViewerPage
     /// sidebar, because this column sits ON the image it is describing.
     /// </summary>
     private void OnToggleDisplaySection(object sender, RoutedEventArgs e)
-        => ApplySectionState(DisplayHeader, DisplaySection, DisplayChevron);
+    {
+        _displayOpen = !_displayOpen;
+        ApplySectionState(_displayOpen, DisplaySection, DisplayTitle, DisplayChevron);
+    }
 
     /// <summary>The MARKS section's own header. The toolbar button is the other way in.</summary>
     private void OnToggleMarksSection(object sender, RoutedEventArgs e)
     {
-        ApplySectionState(MarksHeader, Marks, MarksChevron);
+        _marksOpen = !_marksOpen;
+        ApplySectionState(_marksOpen, Marks, MarksTitle, MarksChevron);
         SyncMarksSection(bringIntoView: false);
     }
 
@@ -64,31 +69,30 @@ public sealed partial class CubeViewerPage
     /// </summary>
     private void OnToggleMarksPanel(object sender, RoutedEventArgs e)
     {
-        MarksHeader.IsChecked = MarksPanelToggle.IsChecked == true;
-        ApplySectionState(MarksHeader, Marks, MarksChevron);
+        _marksOpen = MarksPanelToggle.IsChecked == true;
+        ApplySectionState(_marksOpen, Marks, MarksTitle, MarksChevron);
         SyncMarksSection(bringIntoView: true);
     }
 
-    /// <summary>Show or hide a section's body, and point its chevron the way it will go next.</summary>
-    private static void ApplySectionState(ToggleButton header, UIElement body, FontIcon chevron)
+    /// <summary>Show or hide a section's body, brighten its title, and point its chevron.</summary>
+    private static void ApplySectionState(bool open, UIElement body, TextBlock title, FontIcon chevron)
     {
-        var open = header.IsChecked == true;
         body.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        title.Foreground = open ? SectionTitleOpen : SectionTitleClosed;
 
-        // Down when open (press to close), up when closed (press to open) — the chevron shows the
-        // DIRECTION of the next press, which is the convention every disclosure control uses.
-        chevron.Glyph = open ? "" : "";
+        // Up when open (press to close), down when closed (press to open) — the chevron shows what the
+        // next press does, which is the convention every disclosure control uses.
+        chevron.Glyph = open ? "" : "";
+        chevron.Foreground = title.Foreground;
     }
 
     private void SyncMarksSection(bool bringIntoView)
     {
-        var open = MarksHeader.IsChecked == true;
-
         // The toolbar button and the section header are two ways to the same state, so neither may be
         // left saying something the other has just contradicted.
-        if (MarksPanelToggle.IsChecked != open) MarksPanelToggle.IsChecked = open;
+        if (MarksPanelToggle.IsChecked != _marksOpen) MarksPanelToggle.IsChecked = _marksOpen;
 
-        if (open)
+        if (_marksOpen)
         {
             WireMarksPanel();
             RefreshMarksPanel();
@@ -148,7 +152,6 @@ public sealed partial class CubeViewerPage
         Marks.EditRequested += id =>
         {
             _selectedId = id;
-            if (ViewModel.ViewMode != CubeViewMode.Slice) SetViewMode(CubeViewMode.Slice);
             GoToMark(id);
             BeginLabelEdit(id);
         };
@@ -173,22 +176,21 @@ public sealed partial class CubeViewerPage
         };
     }
 
-    /// <summary>Arm or disarm the pencil, keeping the panel's toggle and the view mode in step.</summary>
+    /// <summary>
+    /// Arm or disarm the pencil, keeping the panel's toggle in step.
+    ///
+    /// It no longer forces the Slice view. Both views can be drawn on: a press on the volume names a
+    /// ray, and the channel on screen supplies the depth — so a mark lands on the plane the volume is
+    /// already drawing as the slice-plane marker, which is a depth you can see before you press.
+    /// </summary>
     private void SetDrawArmed(bool armed)
     {
         DrawingArmed = armed;
         Marks.DrawArmed = armed;
 
-        if (armed)
-        {
-            if (ViewModel.ViewMode != CubeViewMode.Slice) SetViewMode(CubeViewMode.Slice);
-        }
-        else
-        {
-            // Putting the pencil down commits whatever was being labelled. Left open, a callout with no
-            // words yet is a mark that cannot be stored and quietly disappears on the next load.
-            EndAnnotationEditing();
-        }
+        // Putting the pencil down commits whatever was being labelled. Left open, a mark with no words
+        // yet is one that cannot be stored and quietly disappears on the next load.
+        if (!armed) EndAnnotationEditing();
     }
 
     /// <summary>Show the panel what there is, if the section is open. Cheap enough to call after any change.</summary>

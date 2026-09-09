@@ -5,16 +5,18 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CanfarDesktop.Views.Controls">
 
-    <Grid Background="#FF050810" RequestedTheme="Dark" SizeChanged="OnControlColumnBounds">
+    <Grid x:Name="PageRoot" Background="#FF050810" RequestedTheme="Dark">
         <Grid.Resources>
             <!--
-                A section header that collapses its section: the title, and a chevron that says which
-                way it will go. A ToggleButton rather than a decorated TextBlock, so it is focusable,
-                reaches the keyboard, and announces its expanded state without any of that having to be
-                re-implemented. Flat and transparent, because the card it sits in is already the
-                surface — a stock Expander would draw a second box inside the first.
+                A section header that collapses its section: the title, and a chevron saying which way
+                it will go next.
+
+                A Button, NOT a ToggleButton. A ToggleButton's checked state paints an accent bar behind
+                its content, and a visual-state setter beats any Background set here — so the open
+                section wore a solid highlight across the title. Which section is open is already said
+                by the section being visible; the title only needs to brighten.
             -->
-            <Style x:Key="OverlaySectionHeaderStyle" TargetType="ToggleButton">
+            <Style x:Key="OverlaySectionHeaderStyle" TargetType="Button">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Padding" Value="0,2" />
@@ -78,11 +80,6 @@
             <!-- Marks on this channel's slice. Inside the viewport, so it shares the coordinate
                  space the pointer handlers already work in. -->
             <controls:AnnotationLayer x:Name="SliceAnnotationCanvas" IsHitTestVisible="False" />
-
-            <!-- Naming a mark, over the mark itself. An ordinary control rather than a flyout: a
-                 flyout dismisses when the pointer returns to the image, commits on close so Escape
-                 saves, and has nowhere to put a bin. -->
-            <controls:MarkLabelEditor x:Name="MarkEditor" Visibility="Collapsed" />
 
             <!-- Floating cursor readout (sky + spectral + value), positioned near the pointer -->
             <Canvas IsHitTestVisible="False">
@@ -234,16 +231,28 @@
             </StackPanel>
         </Border>
 
+        <!-- Naming a mark, over the mark itself. An ordinary control rather than a flyout: a flyout
+             dismisses when the pointer returns to the image, commits on close so Escape saves, and has
+             nowhere to put a bin.
+
+             Parented to the page rather than to a view, because BOTH views name marks and the slice is
+             Collapsed while the volume is showing. Its position is translated from whichever view was
+             pressed — see BeginLabelEdit. -->
+        <controls:MarkLabelEditor x:Name="MarkEditor" Visibility="Collapsed" />
+
         <!--
             The control column. ONE column on the right, holding every panel that is not the image.
 
             It used to be top-aligned and unbounded, which meant the ScrollViewer inside it could never
             scroll — it was handed infinite height, so in Volume mode the panel simply ran off the
-            bottom of the window and the opacity curve was unreachable. Stretching it between the mode
-            toggle and the scrubber gives the scroller a height to work with — as a CEILING, set in
-            OnControlColumnBounds, not as a fixed height. Stretching it instead would have left a
-            full-height dark card over the image whenever both sections were collapsed, which is the
-            opposite of what collapsing them is for.
+            bottom of the window and the opacity curve was unreachable.
+
+            The bound comes from the layout, not from code. An invisible host stretches between the mode
+            toggle and the scrubber; the card inside is top-aligned, so it is MEASURED against the
+            host's height but ARRANGED only as tall as its content. Short content is a short card;
+            long content stops at the host and scrolls. Computing a MaxHeight in a SizeChanged handler
+            did the same job on paper and collapsed the whole page in practice — writing a layout
+            property from a layout event re-triggers the pass that raised it.
 
             Panels stack here as SECTIONS rather than floating separately. Two floating panels on the
             same edge overlap, and no amount of careful margins survives the next window size; sections
@@ -251,25 +260,27 @@
             anything transient stacks underneath it, so nothing a person is using moves when something
             else opens.
         -->
-        <Border x:Name="ControlColumn" HorizontalAlignment="Right" VerticalAlignment="Top"
-                Margin="20,64,20,96" Padding="16,14" CornerRadius="8"
+        <Grid x:Name="ControlColumnBounds" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+              Margin="20,64,20,96">
+        <Border x:Name="ControlColumn" VerticalAlignment="Top"
+                Padding="16,14" CornerRadius="8"
                 Background="#C0101622" BorderBrush="#40FFFFFF" BorderThickness="1">
             <ScrollViewer x:Name="ControlScroll" VerticalScrollBarVisibility="Auto"
                           VerticalScrollMode="Auto" HorizontalScrollMode="Disabled">
             <StackPanel Spacing="12" Width="264">
 
                 <!-- ── DISPLAY ── -->
-                <ToggleButton x:Name="DisplayHeader" IsChecked="True" Click="OnToggleDisplaySection"
+                <Button x:Name="DisplayHeader" Click="OnToggleDisplaySection"
                               Style="{StaticResource OverlaySectionHeaderStyle}"
                               AutomationProperties.Name="Display controls">
                     <Grid>
-                        <TextBlock x:Uid="Cube_DisplayHeader" Text="DISPLAY" FontWeight="SemiBold"
+                        <TextBlock x:Name="DisplayTitle" x:Uid="Cube_DisplayHeader" Text="DISPLAY" FontWeight="SemiBold"
                                    Foreground="#90BFD8FF" HorizontalAlignment="Left"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                         <FontIcon x:Name="DisplayChevron" Glyph="&#xE70D;" FontSize="10"
                                   Foreground="#90BFD8FF" HorizontalAlignment="Right" />
                     </Grid>
-                </ToggleButton>
+                </Button>
 
                 <StackPanel x:Name="DisplaySection" Spacing="12">
                 <StackPanel Spacing="2">
@@ -415,22 +426,23 @@
                 </StackPanel>
 
                 <!-- ── MARKS ── Collapsed until asked for, by its own header or the toolbar button. -->
-                <ToggleButton x:Name="MarksHeader" Click="OnToggleMarksSection"
+                <Button x:Name="MarksHeader" Click="OnToggleMarksSection"
                               Style="{StaticResource OverlaySectionHeaderStyle}"
                               AutomationProperties.Name="Marks">
                     <Grid>
-                        <TextBlock x:Uid="Cube_MarksHeader" Text="MARKS" FontWeight="SemiBold"
+                        <TextBlock x:Name="MarksTitle" x:Uid="Cube_MarksHeader" Text="MARKS" FontWeight="SemiBold"
                                    Foreground="#90BFD8FF" HorizontalAlignment="Left"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                         <FontIcon x:Name="MarksChevron" Glyph="&#xE70E;" FontSize="10"
                                   Foreground="#90BFD8FF" HorizontalAlignment="Right" />
                     </Grid>
-                </ToggleButton>
+                </Button>
 
                 <controls:MarksPanel x:Name="Marks" Visibility="Collapsed" />
             </StackPanel>
             </ScrollViewer>
         </Border>
+        </Grid>
 
         <!-- Cube load progress (bottom-center): stepped indicator + progress bar -->
         <Border x:Name="LoadingPanel" Visibility="Collapsed" IsHitTestVisible="False"

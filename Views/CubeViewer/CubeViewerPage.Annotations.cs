@@ -56,6 +56,21 @@ public sealed partial class CubeViewerPage
         return new CubeVolumeAnnotationSurface(projector, _volume?.Nx ?? 1, _volume?.Ny ?? 1, _volume?.Nz ?? 1);
     }
 
+    /// <summary>
+    /// The surface of whichever view is on screen.
+    ///
+    /// Every gesture goes through this rather than naming a view. The two surfaces already answer the
+    /// same three questions — where a voxel lands, how big a unit is, how much bigger than the screen
+    /// this rendering is — so the code that moves and resizes marks never needs to know which it has,
+    /// and a fix to it cannot land in one view and not the other.
+    /// </summary>
+    private IAnnotationSurface ActiveSurface()
+        => ViewModel.ViewMode == CubeViewMode.Slice ? SliceSurface() : VolumeSurface();
+
+    /// <summary>The element a press is measured against, which is the one the view uses.</summary>
+    private FrameworkElement ActiveViewport()
+        => ViewModel.ViewMode == CubeViewMode.Slice ? SliceViewport : RenderPanel;
+
     /// <summary>The slice view's surface for the channel on screen.</summary>
     private CubeSliceAnnotationSurface SliceSurface() => new(
         ViewModel.Channel,
@@ -128,10 +143,10 @@ public sealed partial class CubeViewerPage
         }
     }
 
-    // ── Drawing, on the slice ───────────────────────────────────────────────────────────────────
+    // ── Drawing, in whichever view is on screen ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Whether the marks want this press. True means the slice must not pan.
+    /// Whether the marks want this press. True means the view must not pan or orbit.
     ///
     /// Asked before the pan handling, for the reason the FITS canvas asks first: a press that takes hold
     /// of a mark and also starts a pan drags the image out from under the mark being moved.
@@ -140,7 +155,7 @@ public sealed partial class CubeViewerPage
     {
         if (AnnotationTarget is null || _volume is null) return false;
 
-        var surface = SliceSurface();
+        var surface = ActiveSurface();
         _grab = AnnotationGeometry.GrabAt(_annotations, surface, _editingId, DrawingArmed, at.X, at.Y);
 
         switch (_grab)
@@ -193,7 +208,7 @@ public sealed partial class CubeViewerPage
 
     private bool ContinueAnnotationGesture(Windows.Foundation.Point at)
     {
-        var surface = SliceSurface();
+        var surface = ActiveSurface();
 
         switch (_grab)
         {
@@ -275,10 +290,22 @@ public sealed partial class CubeViewerPage
     }
 
     /// <summary>
+    /// The voxel a press is over, in whichever view is on screen.
+    ///
+    /// The two views answer this differently and there is no way around that: the slice press names one
+    /// voxel outright, while a press on the volume names a RAY and the channel has to supply the depth.
+    /// The dispatch is here, once, so the gesture code above stays one path.
+    /// </summary>
+    private AnnotationAnchor? VoxelAt(Windows.Foundation.Point at)
+        => ViewModel.ViewMode == CubeViewMode.Slice
+            ? VoxelOnSlice(at)
+            : VolumeSurface().VoxelAt(at.X, at.Y, ViewModel.Channel);
+
+    /// <summary>
     /// The voxel a press on the slice is over, on the channel currently shown. Null in the letterbox
     /// margin, where there is no data under the pointer.
     /// </summary>
-    private AnnotationAnchor? VoxelAt(Windows.Foundation.Point at)
+    private AnnotationAnchor? VoxelOnSlice(Windows.Foundation.Point at)
     {
         if (_volume is null || MapToPixel(at) is not { } display) return null;
 
@@ -328,16 +355,20 @@ public sealed partial class CubeViewerPage
     {
         var mark = _annotations.FirstOrDefault(a => a.Id == id);
         if (mark is null) return;
-        if (SliceSurface().Project(mark.Anchor) is not { } at) return;
+        if (ActiveSurface().Project(mark.Anchor) is not { } at) return;
 
         WireLabelEditor();
 
         _editingId = id;
         RenderAnnotations();
 
-        // Below the mark, and never off the left or top edge of the viewport — a field half outside the
-        // clip is one you cannot type in.
-        MarkEditor.PlaceAt(Math.Max(0, at.X - 60), Math.Max(0, at.Y + 16));
+        // The mark's position is in the pressed VIEW's coordinates; the field hangs off the page. One
+        // translation, so the same call works over the slice and over the volume.
+        var onPage = ActiveViewport().TransformToVisual(PageRoot).TransformPoint(new Windows.Foundation.Point(at.X, at.Y));
+
+        // Below the mark, and never off the left or top edge — a field half outside the page is one you
+        // cannot type in.
+        MarkEditor.PlaceAt(Math.Max(0, onPage.X - 60), Math.Max(0, onPage.Y + 16));
         MarkEditor.Visibility = Visibility.Visible;
         MarkEditor.Open(mark.Text);
     }
@@ -386,7 +417,7 @@ public sealed partial class CubeViewerPage
     private bool TryRelabelAt(Windows.Foundation.Point at)
     {
         if (AnnotationTarget is null) return false;
-        if (AnnotationGeometry.AnnotationAt(_annotations, SliceSurface(), at.X, at.Y) is not { } id) return false;
+        if (AnnotationGeometry.AnnotationAt(_annotations, ActiveSurface(), at.X, at.Y) is not { } id) return false;
 
         _selectedId = id;
         BeginLabelEdit(id);
