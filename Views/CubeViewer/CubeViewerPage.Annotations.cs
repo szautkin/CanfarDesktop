@@ -261,7 +261,7 @@ public sealed partial class CubeViewerPage
     /// </summary>
     private MarkStyle PendingStyle()
     {
-        if (MarksPanelHost.Visibility == Visibility.Visible) return Marks.Style();
+        if (Marks.Visibility == Visibility.Visible) return Marks.Style();
 
         try
         {

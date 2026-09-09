@@ -5,7 +5,24 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CanfarDesktop.Views.Controls">
 
-    <Grid Background="#FF050810" RequestedTheme="Dark">
+    <Grid Background="#FF050810" RequestedTheme="Dark" SizeChanged="OnControlColumnBounds">
+        <Grid.Resources>
+            <!--
+                A section header that collapses its section: the title, and a chevron that says which
+                way it will go. A ToggleButton rather than a decorated TextBlock, so it is focusable,
+                reaches the keyboard, and announces its expanded state without any of that having to be
+                re-implemented. Flat and transparent, because the card it sits in is already the
+                surface — a stock Expander would draw a second box inside the first.
+            -->
+            <Style x:Key="OverlaySectionHeaderStyle" TargetType="ToggleButton">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="0,2" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            </Style>
+        </Grid.Resources>
+
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Space" Invoked="OnPlayPauseAccel" />
             <KeyboardAccelerator Key="Left" Invoked="OnChannelStepAccel" />
@@ -39,9 +56,13 @@
              Click to probe the spectrum at a spaxel; wheel-zoom toward the cursor, drag to pan,
              double-tap to reset. Hovering shows a floating value + WCS readout chip. The viewport
              (not the Image) takes pointer input so the letterbox area still hit-tests, and it is
-             clipped so the zoomed slice never spills over the surrounding panels. -->
+             clipped so the zoomed slice never spills over the surrounding panels.
+
+             The right inset clears the control column — its content width, its padding and its margin.
+             Short of that the slice runs UNDER the column, and a mark drawn near the right edge is
+             hidden behind the very controls that drew it. -->
         <Grid x:Name="SliceViewport" Visibility="Collapsed" Background="Transparent"
-              Margin="60,72,264,96"
+              Margin="60,72,320,96"
               SizeChanged="OnSliceViewportSizeChanged"
               PointerPressed="OnSlicePointerPressed"
               PointerMoved="OnSlicePointerMoved"
@@ -118,24 +139,6 @@
                     </StackPanel>
                 </ToggleButton>
             </StackPanel>
-        </Border>
-
-        <!-- Everything about marks, in one place. Right-hand side, clear of the scrubber along the
-             bottom and the info panel bottom-left. -->
-        <Border x:Name="MarksPanelHost" Visibility="Collapsed"
-                HorizontalAlignment="Right" VerticalAlignment="Stretch"
-                Margin="0,64,16,96" Padding="14,12" CornerRadius="8" Width="300"
-                Background="#D8101622" BorderBrush="#40FFFFFF" BorderThickness="1">
-            <Grid RowSpacing="8">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" x:Uid="Cube_MarksHeader" Text="Marks"
-                           Foreground="#FFF0F0F0"
-                           Style="{StaticResource BodyStrongTextBlockStyle}" />
-                <controls:MarksPanel Grid.Row="1" x:Name="Marks" />
-            </Grid>
         </Border>
 
         <!-- Fallback message shown if the GPU device can't be created -->
@@ -231,19 +234,44 @@
             </StackPanel>
         </Border>
 
-        <!-- Control panel -->
-        <Border HorizontalAlignment="Right" VerticalAlignment="Top"
-                Margin="20" Padding="16,14" CornerRadius="8"
+        <!--
+            The control column. ONE column on the right, holding every panel that is not the image.
+
+            It used to be top-aligned and unbounded, which meant the ScrollViewer inside it could never
+            scroll — it was handed infinite height, so in Volume mode the panel simply ran off the
+            bottom of the window and the opacity curve was unreachable. Stretching it between the mode
+            toggle and the scrubber gives the scroller a height to work with — as a CEILING, set in
+            OnControlColumnBounds, not as a fixed height. Stretching it instead would have left a
+            full-height dark card over the image whenever both sections were collapsed, which is the
+            opposite of what collapsing them is for.
+
+            Panels stack here as SECTIONS rather than floating separately. Two floating panels on the
+            same edge overlap, and no amount of careful margins survives the next window size; sections
+            in one column cannot overlap at all. Display is the permanent resident and comes first;
+            anything transient stacks underneath it, so nothing a person is using moves when something
+            else opens.
+        -->
+        <Border x:Name="ControlColumn" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="20,64,20,96" Padding="16,14" CornerRadius="8"
                 Background="#C0101622" BorderBrush="#40FFFFFF" BorderThickness="1">
             <ScrollViewer x:Name="ControlScroll" VerticalScrollBarVisibility="Auto"
                           VerticalScrollMode="Auto" HorizontalScrollMode="Disabled">
-            <StackPanel Spacing="12" Width="228">
+            <StackPanel Spacing="12" Width="264">
 
                 <!-- ── DISPLAY ── -->
-                <TextBlock x:Uid="Cube_DisplayHeader" Text="DISPLAY" FontWeight="SemiBold"
-                           Foreground="#90BFD8FF"
-                           Style="{StaticResource CaptionTextBlockStyle}" />
+                <ToggleButton x:Name="DisplayHeader" IsChecked="True" Click="OnToggleDisplaySection"
+                              Style="{StaticResource OverlaySectionHeaderStyle}"
+                              AutomationProperties.Name="Display controls">
+                    <Grid>
+                        <TextBlock x:Uid="Cube_DisplayHeader" Text="DISPLAY" FontWeight="SemiBold"
+                                   Foreground="#90BFD8FF" HorizontalAlignment="Left"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                        <FontIcon x:Name="DisplayChevron" Glyph="&#xE70D;" FontSize="10"
+                                  Foreground="#90BFD8FF" HorizontalAlignment="Right" />
+                    </Grid>
+                </ToggleButton>
 
+                <StackPanel x:Name="DisplaySection" Spacing="12">
                 <StackPanel Spacing="2">
                     <Grid>
                         <TextBlock x:Uid="Cube_WindowLabel" Text="Window" Foreground="#FFE0E0E0" HorizontalAlignment="Left"
@@ -384,6 +412,22 @@
 
                 <Button x:Name="ExportButton" x:Uid="Cube_ExportButton" Content="Export figure…" HorizontalAlignment="Stretch"
                         Click="OnExportClick" />
+                </StackPanel>
+
+                <!-- ── MARKS ── Collapsed until asked for, by its own header or the toolbar button. -->
+                <ToggleButton x:Name="MarksHeader" Click="OnToggleMarksSection"
+                              Style="{StaticResource OverlaySectionHeaderStyle}"
+                              AutomationProperties.Name="Marks">
+                    <Grid>
+                        <TextBlock x:Uid="Cube_MarksHeader" Text="MARKS" FontWeight="SemiBold"
+                                   Foreground="#90BFD8FF" HorizontalAlignment="Left"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                        <FontIcon x:Name="MarksChevron" Glyph="&#xE70E;" FontSize="10"
+                                  Foreground="#90BFD8FF" HorizontalAlignment="Right" />
+                    </Grid>
+                </ToggleButton>
+
+                <controls:MarksPanel x:Name="Marks" Visibility="Collapsed" />
             </StackPanel>
             </ScrollViewer>
         </Border>

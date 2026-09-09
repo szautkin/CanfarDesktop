@@ -24,7 +24,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -57,11 +57,21 @@
                  mark when there is one and on what the next mark will look like otherwise — which is
                  how every drawing application behaves, and avoids a "preferences for new marks" screen
                  nobody would find. -->
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <Button x:Name="ColourButton" Padding="4" MinWidth="40"
+            <!-- A Grid, not a horizontal StackPanel: the two number boxes share whatever is left after
+                 the swatch and the B, so this fits a narrow overlay column and a wide sidebar without
+                 either host having to be built around the row's fixed width. -->
+            <Grid ColumnSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" x:Name="ColourButton" Padding="4" MinWidth="38"
                         x:Uid="Marks_ColourButton" ToolTipService.ToolTip="Mark colour"
                         AutomationProperties.Name="Mark colour">
-                    <Border x:Name="ColourSwatch" Width="22" Height="18" CornerRadius="3"
+                    <Border x:Name="ColourSwatch" Width="20" Height="16" CornerRadius="3"
                             BorderBrush="#60000000" BorderThickness="1" />
                     <Button.Flyout>
                         <Flyout>
@@ -72,22 +82,22 @@
                     </Button.Flyout>
                 </Button>
 
-                <NumberBox x:Name="FontSize" Minimum="6" Maximum="72" SmallChange="1" Width="86"
-                           SpinButtonPlacementMode="Compact" ValueChanged="OnStyleChanged"
-                           x:Uid="Marks_FontSize" ToolTipService.ToolTip="Label size in pixels"
-                           AutomationProperties.Name="Label size in pixels" />
-
-                <ToggleButton x:Name="Bold" Padding="8,4" Click="OnStyleToggled"
+                <ToggleButton Grid.Column="1" x:Name="Bold" Padding="8,4" Click="OnStyleToggled"
                               x:Uid="Marks_Bold" ToolTipService.ToolTip="Bold label"
                               AutomationProperties.Name="Bold label">
                     <TextBlock Text="B" FontWeight="Bold" />
                 </ToggleButton>
 
-                <NumberBox x:Name="Stroke" Minimum="0.5" Maximum="20" SmallChange="0.5" Width="86"
-                           SpinButtonPlacementMode="Compact" ValueChanged="OnStyleChanged"
+                <NumberBox Grid.Column="2" x:Name="FontSize" Minimum="6" Maximum="72" SmallChange="1"
+                           MinWidth="64" SpinButtonPlacementMode="Compact" ValueChanged="OnStyleChanged"
+                           x:Uid="Marks_FontSize" ToolTipService.ToolTip="Label size in pixels"
+                           AutomationProperties.Name="Label size in pixels" />
+
+                <NumberBox Grid.Column="3" x:Name="Stroke" Minimum="0.5" Maximum="20" SmallChange="0.5"
+                           MinWidth="64" SpinButtonPlacementMode="Compact" ValueChanged="OnStyleChanged"
                            x:Uid="Marks_Stroke" ToolTipService.ToolTip="Outline thickness in pixels"
                            AutomationProperties.Name="Outline thickness in pixels" />
-            </StackPanel>
+            </Grid>
         </StackPanel>
 
         <!-- ── What is already there ──────────────────────────────────────────────────────── -->
@@ -98,7 +108,10 @@
         <TextBlock Grid.Row="2" x:Name="CountText" Visibility="Collapsed"
                    Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7" />
 
-        <ListView Grid.Row="3" x:Name="MarkList" SelectionMode="Single" MinHeight="80"
+        <!-- Sized to its contents up to a ceiling, then scrolling inside itself. This panel hangs in a
+             column that scrolls, and a list that grew without limit would push everything below it out
+             of reach while the column's own scrollbar never appeared. -->
+        <ListView Grid.Row="3" x:Name="MarkList" SelectionMode="Single" MaxHeight="240"
                   SelectionChanged="OnSelectionChanged"
                   AutomationProperties.Name="Marks">
             <ListView.ItemContainerStyle>

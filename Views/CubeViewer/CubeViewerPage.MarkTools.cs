@@ -1,4 +1,6 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
@@ -22,21 +24,82 @@ public sealed partial class CubeViewerPage
 {
     private bool _marksWired;
 
+    /// <summary>
+    /// Cap the control column at the height actually available.
+    ///
+    /// The column sizes to its content, so a short one is a short card. Without a ceiling it kept
+    /// growing: in Volume mode the panel ran off the bottom of the window and the opacity curve could
+    /// not be reached, because the ScrollViewer inside it was being handed infinite height and so never
+    /// had anything to scroll.
+    /// </summary>
+    private void OnControlColumnBounds(object sender, SizeChangedEventArgs e)
+    {
+        var margins = ControlColumn.Margin.Top + ControlColumn.Margin.Bottom;
+        ControlColumn.MaxHeight = Math.Max(120, e.NewSize.Height - margins);
+    }
+
+    /// <summary>
+    /// The DISPLAY section's own header.
+    ///
+    /// Collapsing it is how the column gets out of the way without anything being hidden from you: the
+    /// header stays, so the controls are one press from coming back. That matters more here than in a
+    /// sidebar, because this column sits ON the image it is describing.
+    /// </summary>
+    private void OnToggleDisplaySection(object sender, RoutedEventArgs e)
+        => ApplySectionState(DisplayHeader, DisplaySection, DisplayChevron);
+
+    /// <summary>The MARKS section's own header. The toolbar button is the other way in.</summary>
+    private void OnToggleMarksSection(object sender, RoutedEventArgs e)
+    {
+        ApplySectionState(MarksHeader, Marks, MarksChevron);
+        SyncMarksSection(bringIntoView: false);
+    }
+
+    /// <summary>
+    /// The toolbar's Marks button.
+    ///
+    /// It opens the section and brings it into view rather than only expanding it. With DISPLAY open —
+    /// which in Volume mode is taller than the column — an expanded MARKS would otherwise be below the
+    /// fold, and a button that appears to do nothing is worse than no button.
+    /// </summary>
     private void OnToggleMarksPanel(object sender, RoutedEventArgs e)
     {
-        var open = MarksPanelToggle.IsChecked == true;
-        MarksPanelHost.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        MarksHeader.IsChecked = MarksPanelToggle.IsChecked == true;
+        ApplySectionState(MarksHeader, Marks, MarksChevron);
+        SyncMarksSection(bringIntoView: true);
+    }
+
+    /// <summary>Show or hide a section's body, and point its chevron the way it will go next.</summary>
+    private static void ApplySectionState(ToggleButton header, UIElement body, FontIcon chevron)
+    {
+        var open = header.IsChecked == true;
+        body.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+
+        // Down when open (press to close), up when closed (press to open) — the chevron shows the
+        // DIRECTION of the next press, which is the convention every disclosure control uses.
+        chevron.Glyph = open ? "" : "";
+    }
+
+    private void SyncMarksSection(bool bringIntoView)
+    {
+        var open = MarksHeader.IsChecked == true;
+
+        // The toolbar button and the section header are two ways to the same state, so neither may be
+        // left saying something the other has just contradicted.
+        if (MarksPanelToggle.IsChecked != open) MarksPanelToggle.IsChecked = open;
 
         if (open)
         {
             WireMarksPanel();
             RefreshMarksPanel();
+
+            if (bringIntoView) MarksHeader.StartBringIntoView();
         }
         else
         {
-            // Closing the panel puts the pencil down. Leaving it armed would mean a press on the slice
-            // still draws with no visible control saying so — which reads as the viewer having broken
-            // its own panning.
+            // Closing the section puts the pencil down. Leaving it armed would mean a press on the
+            // slice still draws with no visible control saying so — which reads as the viewer having
+            // broken its own panning.
             SetDrawArmed(false);
             EndAnnotationEditing();
         }
@@ -128,10 +191,10 @@ public sealed partial class CubeViewerPage
         }
     }
 
-    /// <summary>Show the panel what there is, if it is open. Cheap enough to call after any change.</summary>
+    /// <summary>Show the panel what there is, if the section is open. Cheap enough to call after any change.</summary>
     private void RefreshMarksPanel()
     {
-        if (MarksPanelHost.Visibility != Visibility.Visible) return;
+        if (Marks.Visibility != Visibility.Visible) return;
 
         EnsureAnnotationsLoaded();
         Marks.Show(_annotations, _selectedId);
