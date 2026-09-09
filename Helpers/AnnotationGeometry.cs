@@ -221,9 +221,66 @@ public static class AnnotationGeometry
 
             if (Math.Abs(sx - box.Cx) <= hw && Math.Abs(sy - box.Cy) <= hh)
                 return annotations[i].Id;
+
+            // The words count as part of the mark. They sit at the end of a leader, which can be well
+            // away from the shape — so a label that could not be clicked would be a piece of the mark
+            // visibly there and inert, which reads as the click being broken rather than as a rule.
+            if (LabelBox(annotations[i], surface) is { } label
+                && sx >= label.Left && sx <= label.Right && sy >= label.Top && sy <= label.Bottom)
+                return annotations[i].Id;
         }
         return null;
     }
+
+    /// <summary>
+    /// Where a mark's words are on screen, or null when it has none.
+    ///
+    /// Uses the same estimated text width the renderer lays the rule out from, because the hit box and
+    /// the drawn rule have to agree: measured one way and drawn another, the clickable area creeps away
+    /// from the words as a label gets longer.
+    /// </summary>
+    public static (double Left, double Top, double Right, double Bottom)? LabelBox(
+        Annotation mark, IAnnotationSurface surface)
+    {
+        if (string.IsNullOrWhiteSpace(mark.Text)) return null;
+        if (surface.Project(mark.Anchor) is not { } centre) return null;
+
+        var ink = MarkStyle.UsableInk(surface.InkScale);
+        var style = mark.EffectiveStyle;
+        var fontSize = style.FontSize * ink;
+        var width = EstimateTextWidth(mark.Text, fontSize, style.Bold);
+
+        // A text mark has no leader: its words sit at the anchor.
+        if (mark.Kind == AnnotationKind.Text)
+            return (centre.X, centre.Y - fontSize * 2, centre.X + width, centre.Y);
+
+        var box = HalfSize(mark, surface, 8.0);
+        var (hw, hh) = mark.Extent is not null
+            ? (Math.Max(box?.HalfW ?? 1, 1), Math.Max(box?.HalfH ?? 1, 1))
+            : (3.0, 3.0);
+
+        var offset = mark.LabelOffsetX is { } dx && mark.LabelOffsetY is { } dy ? (dx, dy) : ((double, double)?)null;
+
+        // Canvas width only decides whether a rule near the right edge flips to the left, and a hit box
+        // that is one flip out is better than refusing to test the label at all — so this asks for the
+        // un-flipped geometry rather than making every caller carry a width it does not otherwise need.
+        var leader = LeaderGeometry(centre.X, centre.Y, hw, hh,
+            elliptical: mark.Kind != AnnotationKind.Rect, offset, width, double.MaxValue, ink);
+
+        var top = leader.ElbowY - fontSize - TextLift * ink;
+        return (leader.TextX, top, leader.TextX + width, top + fontSize);
+    }
+
+    /// <summary>
+    /// A text width without laying the text out.
+    ///
+    /// WinUI can measure exactly, but only once the element is in the tree — and the leader's geometry
+    /// has to be known BEFORE the label is placed. Deliberately a little generous, which errs towards a
+    /// rule slightly longer than its text and a hit box slightly larger than its words: of the two ways
+    /// to be wrong, that is the one nobody notices.
+    /// </summary>
+    public static double EstimateTextWidth(string? text, double fontSize, bool bold)
+        => (text?.Length ?? 0) * fontSize * (bold ? 0.60 : 0.55);
 
     /// <summary>
     /// Decide what a press is asking for. The ORDER is the whole content of this function, and it lives

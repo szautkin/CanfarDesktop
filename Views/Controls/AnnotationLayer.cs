@@ -77,7 +77,10 @@ public sealed class AnnotationLayer : Canvas
                     break;
 
                 case AnnotationKind.Callout:
-                    DrawCallout(mark, style, brush, stroke, centre, halfW, halfH, canvasWidth, ink);
+                    // A callout's shape is a small ring at the subject; the leader is the point of it.
+                    if (mark.Extent is not null)
+                        AddShape(new Ellipse { Width = halfW * 2, Height = halfH * 2, Stroke = brush, StrokeThickness = stroke },
+                                 centre.X - halfW, centre.Y - halfH);
                     break;
 
                 case AnnotationKind.Text:
@@ -85,8 +88,15 @@ public sealed class AnnotationLayer : Canvas
                     break;
             }
 
-            if (mark.Kind is AnnotationKind.Circle or AnnotationKind.Rect && !string.IsNullOrEmpty(mark.Text))
-                AddLabel(mark.Text, style, brush, ink, centre.X - halfW, centre.Y - halfH - AnnotationGeometry.TextLift * ink);
+            // Every labelled shape is labelled the same way — a leader leaving the outline at a fixed
+            // acute angle, with the text on the rule at its end.
+            //
+            // A box and a circle used to put their label at their own corner while a callout drew a
+            // leader, which read as two different products on one canvas. A blueprint labels everything
+            // with a leader; and once a circle has one, a "callout" is just a circle with a label, which
+            // is why the shape picker no longer offers one.
+            if (mark.Kind != AnnotationKind.Text && !string.IsNullOrEmpty(mark.Text))
+                DrawLeaderAndLabel(mark, style, brush, stroke, centre, halfW, halfH, canvasWidth, ink);
 
             if (editing) DrawHandles(mark, surface);
         }
@@ -105,19 +115,29 @@ public sealed class AnnotationLayer : Canvas
         return Color.FromArgb(255, Q(style.Red), Q(style.Green), Q(style.Blue));
     }
 
-    private void DrawCallout(Annotation mark, MarkStyle style, Brush brush, double stroke,
-                             (double X, double Y) centre, double halfW, double halfH, double canvasWidth, double ink)
+    /// <summary>
+    /// The leader and the label, for any shape that has words.
+    ///
+    /// One path for all of them, which is what stops a box and a circle drifting into being labelled
+    /// differently from each other.
+    /// </summary>
+    private void DrawLeaderAndLabel(Annotation mark, MarkStyle style, Brush brush, double stroke,
+                                    (double X, double Y) centre, double halfW, double halfH, double canvasWidth, double ink)
     {
         // The text is measured with the SCALED font, because the rule is as long as its text and mixing
         // a scaled width with an unscaled overhang leaves a rule that does not reach its own text.
         var fontSize = style.FontSize * ink;
-        var textWidth = MeasureText(mark.Text, fontSize, style.Bold);
+        var textWidth = AnnotationGeometry.EstimateTextWidth(mark.Text, fontSize, style.Bold);
 
         var offset = mark.LabelOffsetX is { } dx && mark.LabelOffsetY is { } dy ? (dx, dy) : ((double, double)?)null;
 
+        // A mark with no extent — a bare callout — still needs somewhere for the leader to start, so it
+        // gets the small ring's radius rather than a zero the geometry would divide by.
+        var (hw, hh) = mark.Extent is not null ? (Math.Max(halfW, 1), Math.Max(halfH, 1)) : (3.0, 3.0);
+
         var leader = AnnotationGeometry.LeaderGeometry(
-            centre.X, centre.Y, Math.Max(halfW, 1), Math.Max(halfH, 1),
-            elliptical: true, offset, textWidth, canvasWidth, ink);
+            centre.X, centre.Y, hw, hh,
+            elliptical: mark.Kind != AnnotationKind.Rect, offset, textWidth, canvasWidth, ink);
 
         Children.Add(new Polyline
         {
@@ -128,15 +148,6 @@ public sealed class AnnotationLayer : Canvas
 
         AddLabel(mark.Text, style, brush, ink, leader.TextX, leader.ElbowY - fontSize - AnnotationGeometry.TextLift * ink);
     }
-
-    /// <summary>
-    /// A text width without laying the text out twice. WinUI can measure exactly, but only after the
-    /// element is in the tree — and the leader's geometry has to be known BEFORE the label is placed.
-    /// The estimate is a little generous, which errs towards a rule slightly longer than its text: the
-    /// failure that reads as a bug is the other one.
-    /// </summary>
-    private static double MeasureText(string text, double fontSize, bool bold)
-        => (text?.Length ?? 0) * fontSize * (bold ? 0.60 : 0.55);
 
     private void AddLabel(string text, MarkStyle style, Brush brush, double ink, double x, double y)
     {

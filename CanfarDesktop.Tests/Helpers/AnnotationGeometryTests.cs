@@ -283,4 +283,88 @@ public class AnnotationGeometryTests
     [Fact]
     public void AResizeToNothingStillLeavesSomethingVisible()
         => Assert.Equal(0.5, AnnotationGeometry.ResizeHalf(Circle("m", 100, 100), new Flat(), 100, 100)!.Value, 6);
+
+    // ── The words are part of the mark ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A label sits at the end of a leader, which can be well away from its shape. A label that could
+    /// not be clicked would be a visible piece of the mark that is inert — which reads as the click
+    /// being broken rather than as a rule.
+    /// </summary>
+    [Fact]
+    public void ClickingTheWordsPicksTheMark()
+    {
+        var mark = Circle("m1", 50, 50, 5) with { Text = "NGC 4321" };
+        var surface = new Flat();
+
+        var label = AnnotationGeometry.LabelBox(mark, surface);
+        Assert.NotNull(label);
+
+        var midX = (label!.Value.Left + label.Value.Right) / 2;
+        var midY = (label.Value.Top + label.Value.Bottom) / 2;
+
+        Assert.Equal("m1", AnnotationGeometry.AnnotationAt([mark], surface, midX, midY));
+    }
+
+    /// <summary>The label is up and to the right of the shape, so it is genuinely a separate target.</summary>
+    [Fact]
+    public void TheLabelIsClearOfTheShapeItBelongsTo()
+    {
+        var mark = Circle("m1", 50, 50, 5) with { Text = "NGC 4321" };
+
+        var label = AnnotationGeometry.LabelBox(mark, new Flat())!.Value;
+
+        Assert.True(label.Left > 50, "the label should sit to the right of its shape");
+        Assert.True(label.Bottom < 50, "the label should sit above its shape");
+    }
+
+    [Fact]
+    public void AMarkWithNoWordsHasNoLabelToClick()
+        => Assert.Null(AnnotationGeometry.LabelBox(Circle("m1", 50, 50, 5), new Flat()));
+
+    [Fact]
+    public void WhitespaceIsNotALabel()
+        => Assert.Null(AnnotationGeometry.LabelBox(
+            Circle("m1", 50, 50, 5) with { Text = "   " }, new Flat()));
+
+    /// <summary>Empty space is still empty: a hit box that swallows the canvas would stop panning.</summary>
+    [Fact]
+    public void ClickingWellAwayFromBothStillHitsNothing()
+    {
+        var mark = Circle("m1", 50, 50, 5) with { Text = "NGC 4321" };
+
+        Assert.Null(AnnotationGeometry.AnnotationAt([mark], new Flat(), 400, 400));
+    }
+
+    /// <summary>The shape still wins where they overlap — it is what a person aimed at.</summary>
+    [Fact]
+    public void TheShapeIsStillHitAtItsOwnCentre()
+    {
+        var mark = Circle("m1", 50, 50, 5) with { Text = "NGC 4321" };
+
+        Assert.Equal("m1", AnnotationGeometry.AnnotationAt([mark], new Flat(), 50, 50));
+    }
+
+    /// <summary>
+    /// A longer label is a wider target. The renderer lays the rule out from this same estimate, so a
+    /// hit box computed any other way would creep away from the words as the label grows.
+    /// </summary>
+    [Fact]
+    public void ALongerLabelIsAWiderTarget()
+    {
+        var surface = new Flat();
+        var shortish = AnnotationGeometry.LabelBox(Circle("m1", 50, 50, 5) with { Text = "a" }, surface)!.Value;
+        var longer = AnnotationGeometry.LabelBox(Circle("m1", 50, 50, 5) with { Text = "a much longer label" }, surface)!.Value;
+
+        Assert.True(longer.Right - longer.Left > shortish.Right - shortish.Left);
+    }
+
+    [Fact]
+    public void BoldTextIsMeasuredWider()
+        => Assert.True(AnnotationGeometry.EstimateTextWidth("abc", 12, bold: true)
+                     > AnnotationGeometry.EstimateTextWidth("abc", 12, bold: false));
+
+    [Fact]
+    public void NoTextHasNoWidth()
+        => Assert.Equal(0, AnnotationGeometry.EstimateTextWidth(null, 12, bold: false));
 }
