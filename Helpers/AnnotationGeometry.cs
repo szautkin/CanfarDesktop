@@ -286,8 +286,8 @@ public static class AnnotationGeometry
     /// Decide what a press is asking for. The ORDER is the whole content of this function, and it lives
     /// here so that two canvases cannot disagree about it:
     ///
-    /// 1. A grip of the mark being edited. Grips sit ON the outline of their own shape, so testing the
-    ///    shape first would mean a grip could never be grabbed and resizing would look simply broken.
+    /// 1. A grip of the mark that is picked out. Grips sit ON the outline of their own shape, so testing
+    ///    the shape first would mean a grip could never be grabbed and resizing would look simply broken.
     /// 2. Any mark's shape — take hold of it and move it.
     /// 3. Empty space, with drawing armed — make a new one.
     /// 4. Empty space — the canvas can have the press.
@@ -296,16 +296,25 @@ public static class AnnotationGeometry
     /// mark, so a mark could not be moved or resized without disarming the pencil — and pressing on the
     /// mark you were in the middle of editing dropped another one on top of it.
     /// </summary>
+    /// <param name="activeId">
+    /// The mark whose grips are live — the SELECTED one.
+    ///
+    /// It used to be the one being edited, which is only true while its label field is open. So a mark
+    /// could be resized in the moment it was drawn and never again: clicking it selected it, no grips
+    /// appeared, and dragging the outline moved it instead. Selection is what the panel's own hint
+    /// promises ("click a mark to edit it: drag a grip to resize"), and it is what a person means by
+    /// picking something out.
+    /// </param>
     public static MarkGrab GrabAt(
         IReadOnlyList<Annotation> annotations, IAnnotationSurface surface,
-        string? editingId, bool drawing, double sx, double sy)
+        string? activeId, bool drawing, double sx, double sy)
     {
-        var editing = editingId is null
+        var active = activeId is null
             ? null
-            : annotations.FirstOrDefault(a => a.Id == editingId);
+            : annotations.FirstOrDefault(a => a.Id == activeId);
 
-        if (editing is not null && HandleAt(editing, surface, sx, sy))
-            return new MarkGrab.Resize(editing.Id);
+        if (active is not null && HandleAt(active, surface, sx, sy))
+            return new MarkGrab.Resize(active.Id);
 
         if (AnnotationAt(annotations, surface, sx, sy) is { } id)
         {

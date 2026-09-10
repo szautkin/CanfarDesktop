@@ -156,7 +156,7 @@ public sealed partial class CubeViewerPage
         if (AnnotationTarget is null || _volume is null) return false;
 
         var surface = ActiveSurface();
-        _grab = AnnotationGeometry.GrabAt(_annotations, surface, _editingId, DrawingArmed, at.X, at.Y);
+        _grab = AnnotationGeometry.GrabAt(_annotations, surface, _selectedId, DrawingArmed, at.X, at.Y);
 
         switch (_grab)
         {

@@ -215,7 +215,7 @@ public class AnnotationGeometryTests
     public void AGripOfTheEditedMarkWinsOverItsOwnShape()
     {
         var mark = Circle("m", 100, 100, half: 20);
-        var grab = AnnotationGeometry.GrabAt([mark], new Flat(), editingId: "m", drawing: false, sx: 120, sy: 120);
+        var grab = AnnotationGeometry.GrabAt([mark], new Flat(), activeId: "m", drawing: false, sx: 120, sy: 120);
 
         Assert.Equal(new MarkGrab.Resize("m"), grab);
     }
@@ -229,7 +229,7 @@ public class AnnotationGeometryTests
     public void WithThePencilArmedAPressOnAMarkStillTakesHoldOfIt()
     {
         var mark = Circle("m", 100, 100, half: 20);
-        var grab = AnnotationGeometry.GrabAt([mark], new Flat(), editingId: null, drawing: true, sx: 100, sy: 100);
+        var grab = AnnotationGeometry.GrabAt([mark], new Flat(), activeId: null, drawing: true, sx: 100, sy: 100);
 
         var move = Assert.IsType<MarkGrab.Move>(grab);
         Assert.Equal("m", move.Id);
@@ -367,4 +367,63 @@ public class AnnotationGeometryTests
     [Fact]
     public void NoTextHasNoWidth()
         => Assert.Equal(0, AnnotationGeometry.EstimateTextWidth(null, 12, bold: false));
+
+    // ── Resizing a mark you have picked out ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Selecting a mark is what makes its grips live.
+    ///
+    /// They used to belong to the mark being EDITED, which is only so while its label field is open —
+    /// so a mark could be resized in the moment it was drawn and never again. Clicking it afterwards
+    /// selected it, no grip answered, and dragging the outline moved it instead. That is what "cannot
+    /// resize the box" looked like, in both viewers, because both ask this one function.
+    /// </summary>
+    [Fact]
+    public void AGripOfTheSelectedMarkResizesIt()
+    {
+        var mark = Circle("m", 100, 100, half: 10);
+
+        // A grip sits at a CORNER of the bounding box, not the middle of an edge.
+        var grab = AnnotationGeometry.GrabAt([mark], new Flat(), activeId: "m", drawing: false, sx: 110, sy: 110);
+
+        Assert.Equal("m", Assert.IsType<MarkGrab.Resize>(grab).Id);
+    }
+
+    /// <summary>A mark nobody has picked out is moved by its outline, not resized.</summary>
+    [Fact]
+    public void TheOutlineOfAnUnselectedMarkMovesIt()
+    {
+        var mark = Circle("m", 100, 100, half: 10);
+
+        var grab = AnnotationGeometry.GrabAt([mark], new Flat(), activeId: null, drawing: false, sx: 110, sy: 110);
+
+        Assert.Equal("m", Assert.IsType<MarkGrab.Move>(grab).Id);
+    }
+
+    /// <summary>
+    /// Only the picked-out mark's grips answer. Every mark offering grips would mean a press between
+    /// two overlapping marks resized whichever was found first, which is not a thing anybody asked for.
+    /// </summary>
+    [Fact]
+    public void AnotherMarksGripDoesNotAnswer()
+    {
+        List<Annotation> marks = [Circle("a", 100, 100, half: 10), Circle("b", 300, 300, half: 10)];
+
+        var grab = AnnotationGeometry.GrabAt(marks, new Flat(), activeId: "b", drawing: false, sx: 110, sy: 110);
+
+        Assert.IsType<MarkGrab.Move>(grab);
+    }
+
+    /// <summary>
+    /// A grip still wins over the outline it sits on. Grips are ON the shape, so testing the shape
+    /// first would mean a grip could never be grabbed and resizing would look simply broken.
+    /// </summary>
+    [Fact]
+    public void AGripBeatsTheOutlineItSitsOn()
+    {
+        var mark = Circle("m", 100, 100, half: 10);
+
+        Assert.IsType<MarkGrab.Resize>(
+            AnnotationGeometry.GrabAt([mark], new Flat(), activeId: "m", drawing: true, sx: 110, sy: 110));
+    }
 }

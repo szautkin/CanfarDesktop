@@ -126,7 +126,7 @@ public sealed partial class FitsViewerPage
         if (AnnotationTarget is null) return false;
 
         var surface = Surface();
-        _grab = AnnotationGeometry.GrabAt(_annotations, surface, _editingId, DrawingArmed, at.X, at.Y);
+        _grab = AnnotationGeometry.GrabAt(_annotations, surface, _selectedId, DrawingArmed, at.X, at.Y);
 
         switch (_grab)
         {

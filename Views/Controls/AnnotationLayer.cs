@@ -98,7 +98,10 @@ public sealed class AnnotationLayer : Canvas
             if (mark.Kind != AnnotationKind.Text && !string.IsNullOrEmpty(mark.Text))
                 DrawLeaderAndLabel(mark, style, brush, stroke, centre, halfW, halfH, canvasWidth, ink);
 
-            if (editing) DrawHandles(mark, surface);
+            // Grips on the mark that is picked out, not only on the one being labelled: selecting a
+            // mark is how a person says "this one", and a resize handle that appears only while a text
+            // field happens to be open is one nobody finds.
+            if (selected || editing) DrawHandles(mark, surface);
         }
     }
 
