@@ -238,7 +238,7 @@
              Parented to the page rather than to a view, because BOTH views name marks and the slice is
              Collapsed while the volume is showing. Its position is translated from whichever view was
              pressed — see BeginLabelEdit. -->
-        <controls:MarkLabelEditor x:Name="MarkEditor" Visibility="Collapsed" />
+        <controls:MarkLabelEditor x:Name="MarkEditorField" Visibility="Collapsed" />
 
         <!--
             The control column. ONE column on the right, holding every panel that is not the image.
@@ -438,7 +438,7 @@
                     </Grid>
                 </Button>
 
-                <controls:MarksPanel x:Name="Marks" Visibility="Collapsed" />
+                <controls:MarksPanel x:Name="MarksPanelControl" Visibility="Collapsed" />
             </StackPanel>
             </ScrollViewer>
         </Border>

@@ -1,47 +1,53 @@
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Windows.Foundation;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
-using CanfarDesktop.Models.Fits;
 using CanfarDesktop.Services.Fits;
 
 namespace CanfarDesktop.Views.FitsViewer;
 
 /// <summary>
-/// Marks on the FITS canvas: drawing them, and the presses that create, move and resize them.
+/// This canvas, as <see cref="MarkEditor"/> sees it.
 ///
-/// What a press MEANS is not decided here — <see cref="AnnotationGeometry.GrabAt"/> decides it, and the
-/// cube viewer asks the same question of the same function. Two canvases that each decided for
-/// themselves would eventually disagree about whether a grip or the shape under it wins, and the
-/// answer to that is not obvious enough to be worth arriving at twice.
+/// Everything a person does to a mark lives in that class, shared with the cube viewer. What is here is
+/// only what is genuinely different about a flat image: where a mark lands on screen, and what a press
+/// means in sky or image-pixel coordinates.
+///
+/// It used to be six hundred lines that were nearly the cube's six hundred, and the cost was not the
+/// duplication — it was the drift. Fixes landed in one viewer and not the other, and a person who had
+/// used one found the other subtly wrong.
 /// </summary>
-public sealed partial class FitsViewerPage
+public sealed partial class FitsViewerPage : IMarkCanvas
 {
     private IAnnotationStore? _annotationStore;
-    private List<Annotation> _annotations = [];
+    private MarkEditor? _marks;
+    private Controls.MarkPanelBinding? _panelBinding;
 
-    /// <summary>The file the marks currently on screen were loaded for.</summary>
-    private string? _loadedTarget;
-
-    /// <summary>The pencil. While it is armed, a press on empty canvas draws rather than pans.</summary>
-    public bool DrawingArmed { get; set; }
-
-    /// <summary>What a newly drawn mark will be.</summary>
-    public AnnotationKind DrawingKind { get; set; } = AnnotationKind.Circle;
-
-    private string? _editingId;
-    private string? _selectedId;
-
-    private MarkGrab _grab = new MarkGrab.None();
-
-    /// <summary>The canvas as the renderer sees it. Rebuilt per use: the transform moves under it.</summary>
-    private FitsAnnotationSurface Surface() => new(
-        (x, y) => { var p = ImageToScreen(new Windows.Foundation.Point(x, y)); return (p.X, p.Y); },
-        () => ViewModel.ImageData?.Wcs is { IsValid: true } wcs ? wcs : null,
-        () => ViewModel.ImageData?.Height ?? 0);
+    /// <summary>The marks on this canvas. Built on first use, once the store has been attached.</summary>
+    private MarkEditor Marks => _marks ??= new MarkEditor(
+        this,
+        _annotationStore,
+        new Services.SettingsMarkStylePreference(
+            () => App.Services.GetService(typeof(Services.ISettingsService)) as Services.ISettingsService));
 
     public void AttachAnnotationStore(IAnnotationStore store) => _annotationStore = store;
+
+    /// <summary>The pencil. While it is armed, a press on empty canvas draws rather than pans.</summary>
+    public bool DrawingArmed
+    {
+        get => Marks.DrawArmed;
+        set => Marks.SetDrawArmed(value);
+    }
+
+    /// <summary>What a newly drawn mark will be.</summary>
+    public AnnotationKind DrawingKind
+    {
+        get => Marks.Kind;
+        set => MarksPanelControl.Kind = value;
+    }
+
+    // ── IMarkCanvas: the two things a flat image does differently ───────────────────────────────
 
     /// <summary>
     /// The file whose marks belong on this canvas — the answer <c>annotate_fits</c> needs.
@@ -49,224 +55,46 @@ public sealed partial class FitsViewerPage
     /// Taken from the view model rather than pushed in when a tab opens: the path is already there, and
     /// a second copy of it is a second thing that can be stale. A tab with nothing loaded has none.
     /// </summary>
-    public string? AnnotationTarget
-        => string.IsNullOrWhiteSpace(ViewModel.FilePath) ? null : ViewModel.FilePath;
+    public string? Target => string.IsNullOrWhiteSpace(ViewModel.FilePath) ? null : ViewModel.FilePath;
+
+    /// <summary>The canvas as the renderer sees it. Rebuilt per use: the transform moves under it.</summary>
+    public IAnnotationSurface Surface => new FitsAnnotationSurface(
+        (x, y) => { var p = ImageToScreen(new Point(x, y)); return (p.X, p.Y); },
+        () => ViewModel.ImageData?.Wcs is { IsValid: true } wcs ? wcs : null,
+        () => ViewModel.ImageData?.Height ?? 0);
+
+    public IMarkLabelField Label => MarkEditorField;
+
+    /// <summary>The field hangs off the same element presses are measured against, so no translation.</summary>
+    public (double X, double Y) ToLabelHost(double x, double y) => (x, y);
 
     /// <summary>
-    /// Load this file's marks if the file has changed under us. Called from the render, which is called
-    /// from every view change — so a newly opened image picks up its marks without anyone remembering to
-    /// tell it to.
-    /// </summary>
-    private void EnsureAnnotationsLoaded()
-    {
-        var target = AnnotationTarget;
-        if (string.Equals(target, _loadedTarget, StringComparison.Ordinal)) return;
-
-        _loadedTarget = target;
-        _editingId = _selectedId = null;
-        _annotations = target is null || _annotationStore is null
-            ? []
-            : _annotationStore.LoadFor(target).ToList();
-    }
-
-    /// <summary>
-    /// Re-read and redraw, optionally picking a mark out. Called after an agent has changed something:
-    /// the store is the truth, and this view had a copy of it.
-    /// </summary>
-    public bool RefreshAnnotations(string target, string? selectId)
-    {
-        if (AnnotationTarget is not { } mine || !string.Equals(mine, target, StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        _annotations = _annotationStore?.LoadFor(target).ToList() ?? [];
-        if (selectId is not null) _selectedId = selectId;
-
-        RenderAnnotations();
-
-        // An agent's mark has to appear in the list too, not only on the image — the list is where a
-        // person sees WHAT it marked and that an agent made it.
-        RefreshMarksPanel();
-        return true;
-    }
-
-    /// <summary>Draw what is there. Also called from every pan, zoom and rotation — the marks move with the image.</summary>
-    private void RenderAnnotations()
-    {
-        EnsureAnnotationsLoaded();
-        AnnotationCanvas.EditingId = _editingId;
-        AnnotationCanvas.SelectedId = _selectedId;
-        AnnotationCanvas.Render(_annotations, Surface(), ImageCanvas.ActualWidth);
-    }
-
-    private void SaveAnnotations()
-    {
-        if (AnnotationTarget is not { } target || _annotationStore is null) return;
-
-        try
-        {
-            _annotationStore.SaveFor(target, _annotations);
-        }
-        catch (Exception ex)
-        {
-            // A save that quietly did nothing loses a drawing, and they find out the next time they open
-            // the file. Nothing here can put up a dialog, so it goes to the log and the marks stay on
-            // screen — the user has not lost them yet.
-            System.Diagnostics.Debug.WriteLine($"Could not save annotations for {target}: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Whether the annotation layer wants this press. True means the canvas must not pan.
+    /// Run something after the current input event.
     ///
-    /// Called before the pan handling rather than after, because a press that takes hold of a mark and
-    /// ALSO starts a pan drags the image out from under the mark being moved.
+    /// Opening the naming field inline would put a text box up in the middle of the pointer event that
+    /// created the mark.
     /// </summary>
-    private bool TryBeginAnnotationGesture(Windows.Foundation.Point at)
-    {
-        if (AnnotationTarget is null) return false;
-
-        var surface = Surface();
-        _grab = AnnotationGeometry.GrabAt(_annotations, surface, _selectedId, DrawingArmed, at.X, at.Y);
-
-        switch (_grab)
-        {
-            case MarkGrab.None:
-                return false;
-
-            case MarkGrab.Place:
-                var anchor = AnchorAt(at, surface);
-                if (anchor is null) return false;
-
-                // Placed with a size, then dragged to the size you want: a mark that appeared with no
-                // extent would be invisible until the drag ended, and a drag that starts on nothing
-                // looks like it did nothing.
-                var mark = new Annotation
-                {
-                    Id = "m" + Guid.NewGuid().ToString("N")[..8],
-                    Kind = DrawingKind,
-                    Anchor = anchor,
-                    Extent = DrawingKind.NeedsExtent()
-                        ? Extent.Square(AnnotationGeometry.HalfFromDrag(surface, anchor, 12))
-                        : null,
-                    Author = MarkAuthor.User,
-                    // What the style controls say. A style chosen and then not applied to the next mark
-                    // is a control that appears to do nothing.
-                    Style = PendingStyle(),
-                    CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
-                };
-
-                _annotations.Add(mark);
-                _editingId = _selectedId = mark.Id;
-                _grab = mark.Extent is null ? new MarkGrab.None() : new MarkGrab.Resize(mark.Id);
-                RenderAnnotations();
-
-                // A shape with no size to drag is finished the moment it lands, so it can be named now.
-                // The others are named when the drag that sizes them ends — see EndAnnotationGesture.
-                // Dispatched rather than called inline so the field opens after this press is handled.
-                if (mark.Extent is null) DispatcherQueue.TryEnqueue(() => BeginLabelEdit(mark.Id));
-
-                return true;
-
-            case MarkGrab.Move move:
-                _selectedId = move.Id;
-                RenderAnnotations();
-                return true;
-
-            case MarkGrab.Resize resize:
-                _selectedId = resize.Id;
-                return true;
-
-            default:
-                return false;
-        }
-    }
+    public void Later(Action what) => DispatcherQueue.TryEnqueue(() => what());
 
     /// <summary>
-    /// Continue a move or a resize. Returns true while the annotation layer owns the pointer.
+    /// The anchor a press means: sky whenever the image has WCS, because a sky mark points at the same
+    /// place in a DIFFERENT image of the same field.
+    ///
+    /// A mark being moved keeps the space it was pinned in, so dragging a sky mark does not quietly
+    /// demote it to pixels the first time it is touched.
     /// </summary>
-    private bool ContinueAnnotationGesture(Windows.Foundation.Point at)
+    public AnnotationAnchor? AnchorFor(double x, double y, Annotation? moving)
     {
-        var surface = Surface();
-
-        switch (_grab)
-        {
-            case MarkGrab.Move move:
-            {
-                var index = _annotations.FindIndex(a => a.Id == move.Id);
-                if (index < 0) return false;
-
-                // Where the shape was taken hold of is subtracted, so it does not jump to centre itself
-                // under the pointer the moment it starts moving.
-                var target = new Windows.Foundation.Point(at.X - move.GrabDx, at.Y - move.GrabDy);
-                if (AnchorAt(target, surface, _annotations[index].Anchor.Space) is not { } anchor) return true;
-
-                _annotations[index] = _annotations[index] with { Anchor = anchor };
-                RenderAnnotations();
-                return true;
-            }
-
-            case MarkGrab.Resize resize:
-            {
-                var index = _annotations.FindIndex(a => a.Id == resize.Id);
-                if (index < 0) return false;
-
-                var half = AnnotationGeometry.ResizeHalf(_annotations[index], surface, at.X, at.Y);
-                if (half is null) return true;
-
-                _annotations[index] = _annotations[index] with { Extent = Extent.Square(half.Value) };
-                RenderAnnotations();
-                return true;
-            }
-
-            default:
-                return false;
-        }
-    }
-
-    /// <summary>Finish a gesture and persist. Returns true if the annotation layer had the pointer.</summary>
-    private bool EndAnnotationGesture()
-    {
-        if (_grab is MarkGrab.None) return false;
-
-        // A mark that was just drawn goes straight into being named. Every shape has a label — a circle
-        // round something unnamed says "look here" and nothing else, and asking for the words is the
-        // difference between a mark and an annotation. Sizing it is what finishes drawing it, so this
-        // is where the field opens.
-        var justDrawn = _grab is MarkGrab.Resize resize && resize.Id == _editingId ? resize.Id : null;
-
-        _grab = new MarkGrab.None();
-
-        // Anything that failed its own validation during the drag — a shape dragged to nothing — is
-        // dropped rather than stored: the store would refuse it, and a mark that is there until you
-        // reopen the file is worse than one that never appeared.
-        _annotations.RemoveAll(a => a.Validate() is not null);
-
-        SaveAnnotations();
-        RenderAnnotations();
-        RefreshMarksPanel();
-
-        if (justDrawn is not null && _annotations.Any(a => a.Id == justDrawn))
-            DispatcherQueue.TryEnqueue(() => BeginLabelEdit(justDrawn));
-
-        return true;
-    }
-
-    /// <summary>
-    /// The anchor a screen point corresponds to, in the space asked for. Sky whenever the image has WCS,
-    /// because a sky mark points at the same place in a different image of the same field.
-    /// </summary>
-    private AnnotationAnchor? AnchorAt(Windows.Foundation.Point screen, FitsAnnotationSurface surface, AnchorSpace? space = null)
-    {
-        var pixel = e_PointToImage(screen);
+        var pixel = e_PointToImage(new Point(x, y));
         var wcs = ViewModel.ImageData?.Wcs is { IsValid: true } valid ? valid : null;
-
-        var wanted = space ?? (wcs is not null ? AnchorSpace.Sky : AnchorSpace.ImagePixel);
+        var wanted = moving?.Anchor.Space ?? (wcs is not null ? AnchorSpace.Sky : AnchorSpace.ImagePixel);
 
         if (wanted == AnchorSpace.Sky)
         {
             // Through the surface's own converter, so the press → sky direction and the sky → screen
             // direction cannot end up disagreeing about which way up the pixels are.
             var sky = FitsAnnotationSurface.SkyAt(wcs, ViewModel.ImageData?.Height ?? 0, pixel.X, pixel.Y);
+
             // A projection can put a point off the sky at the edge of a wide field. An image pixel is
             // always somewhere, so it is the fallback rather than a refusal.
             if (sky is not null) return sky;
@@ -276,110 +104,46 @@ public sealed partial class FitsViewerPage
         return imagePixel.IsValid ? imagePixel : null;
     }
 
-
-    /// <summary>Remove the mark that is picked out, if there is one.</summary>
-    public void DeleteSelectedMark()
+    public void Draw(IReadOnlyList<Annotation> marks, string? selectedId, string? editingId)
     {
-        if (_selectedId is null) return;
-
-        _annotations.RemoveAll(a => a.Id == _selectedId);
-        _selectedId = _editingId = null;
-        SaveAnnotations();
-        RenderAnnotations();
-        RefreshMarksPanel();
+        AnnotationCanvas.EditingId = editingId;
+        AnnotationCanvas.SelectedId = selectedId;
+        AnnotationCanvas.Render(marks, Surface, ImageCanvas.ActualWidth);
     }
-
-    private bool _labelEditorWired;
 
     /// <summary>
-    /// Type a mark's label, in a field over the mark itself.
-    ///
-    /// The field is an ordinary control on the canvas rather than a flyout. A flyout dismissed itself
-    /// the moment the pointer went back to the image, committed on close so Escape saved instead of
-    /// cancelling, and had nowhere to put a bin — which left "draw a mark you did not mean to" with no
-    /// way out but drawing it, naming it and then deleting it.
+    /// Nothing to do: a flat image draws every mark it can at once, so one that is picked out is already
+    /// as visible as it is going to get. The cube has a channel to go to; this does not.
     /// </summary>
-    private void BeginLabelEdit(string id)
-    {
-        var mark = _annotations.FirstOrDefault(a => a.Id == id);
-        if (mark is null) return;
-        if (Surface().Project(mark.Anchor) is not { } at) return;
+    public void Reveal(Annotation mark) { }
 
-        WireLabelEditor();
+    // ── What the page and the tab host call ────────────────────────────────────────────────────
 
-        _editingId = id;
-        RenderAnnotations();
+    /// <summary>The file the marks on screen belong to.</summary>
+    public string? AnnotationTarget => Target;
 
-        // Below the mark, and never off the left or top edge — a field half outside the canvas is one
-        // you cannot type in.
-        MarkEditor.PlaceAt(Math.Max(0, at.X - 60), Math.Max(0, at.Y + 16));
-        MarkEditor.Visibility = Visibility.Visible;
-        MarkEditor.Open(mark.Text);
-    }
+    /// <summary>Draw what is there. Called from every pan, zoom and rotation — marks move with the image.</summary>
+    private void RenderAnnotations() => Marks.Render();
 
-    private void WireLabelEditor()
-    {
-        if (_labelEditorWired) return;
-        _labelEditorWired = true;
+    /// <summary>Re-read and redraw after an agent has changed something.</summary>
+    public bool RefreshAnnotations(string target, string? selectId) => Marks.Refresh(target, selectId);
 
-        MarkEditor.Committed += text =>
-        {
-            if (_editingId is { } id && _annotations.FindIndex(a => a.Id == id) is >= 0 and var at)
-                _annotations[at] = _annotations[at] with { Text = text };
+    private bool TryBeginAnnotationGesture(Point at) => Marks.TryBegin(at.X, at.Y);
 
-            CloseLabelEditor();
-        };
+    private bool ContinueAnnotationGesture(Point at) => Marks.Continue(at.X, at.Y);
 
-        MarkEditor.Deleted += () =>
-        {
-            if (_editingId is { } id)
-            {
-                _annotations.RemoveAll(a => a.Id == id);
-                if (_selectedId == id) _selectedId = null;
-            }
+    private bool EndAnnotationGesture() => Marks.End();
 
-            CloseLabelEditor();
-        };
+    /// <summary>Remove the mark that is picked out, if there is one.</summary>
+    public void DeleteSelectedMark() => Marks.DeleteSelected();
 
-        // Escape leaves the mark exactly as it was — including a brand-new one, which keeps whatever it
-        // already had rather than being thrown away. Drawing it was deliberate; not naming it yet is not
-        // a reason to lose it.
-        MarkEditor.Cancelled += CloseLabelEditor;
-    }
-
-    private void CloseLabelEditor()
-    {
-        MarkEditor.Visibility = Visibility.Collapsed;
-        _editingId = null;
-
-        // A callout still without words cannot be stored, so it goes rather than lingering until the
-        // next load quietly drops it.
-        _annotations.RemoveAll(a => a.Validate() is not null);
-        SaveAnnotations();
-        RenderAnnotations();
-        RefreshMarksPanel();
-    }
+    /// <summary>Give up naming, keeping whatever is valid. Called when the pencil is put down.</summary>
+    public void EndAnnotationEditing() => Marks.EndEditing();
 
     /// <summary>A double-press on a mark is the way to relabel one that is already there.</summary>
     private void OnCanvasDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (AnnotationTarget is null) return;
-
         var at = e.GetPosition(ImageCanvas);
-        if (AnnotationGeometry.AnnotationAt(_annotations, Surface(), at.X, at.Y) is not { } id) return;
-
-        _selectedId = id;
-        BeginLabelEdit(id);
-        e.Handled = true;
-    }
-
-    /// <summary>Give up editing, keeping whatever is valid. Called when the pencil is put down.</summary>
-    public void EndAnnotationEditing()
-    {
-        MarkEditor.Visibility = Visibility.Collapsed;
-        _editingId = null;
-        _annotations.RemoveAll(a => a.Validate() is not null);
-        SaveAnnotations();
-        RenderAnnotations();
+        if (Marks.TryRelabelAt(at.X, at.Y)) e.Handled = true;
     }
 }

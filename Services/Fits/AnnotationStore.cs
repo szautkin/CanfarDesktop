@@ -5,14 +5,8 @@ using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Services.Fits;
 
-public interface IAnnotationStore
+public interface IAnnotationStore : CanfarDesktop.Helpers.IMarkStore
 {
-    /// <summary>The marks on one target, in creation order.</summary>
-    IReadOnlyList<Annotation> LoadFor(string target);
-
-    /// <summary>Replace one target's marks. Returns what is now stored.</summary>
-    IReadOnlyList<Annotation> SaveFor(string target, IReadOnlyList<Annotation> annotations);
-
     /// <summary>Add one mark. Throws <see cref="ArgumentException"/> with the reason if it cannot be drawn.</summary>
     IReadOnlyList<Annotation> Add(string target, Annotation annotation);
 

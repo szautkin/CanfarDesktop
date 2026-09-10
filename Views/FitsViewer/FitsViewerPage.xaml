@@ -26,7 +26,7 @@
                               Header="Marks" HorizontalAlignment="Stretch" Margin="4,4,4,0"
                               HorizontalContentAlignment="Stretch"
                               Expanding="OnMarksExpanding" Collapsed="OnMarksCollapsed">
-                        <controls:MarksPanel x:Name="Marks" MaxHeight="420" />
+                        <controls:MarksPanel x:Name="MarksPanelControl" MaxHeight="420" />
                     </Expander>
 
                     <!-- HDU selector (multi-extension files only): pick which HDU/extension to view -->
@@ -115,7 +115,7 @@
                 <!-- Naming a mark, over the mark itself. An ordinary control rather than a flyout: a
                      flyout dismisses when the pointer returns to the image, commits on close so Escape
                      saves, and has nowhere to put a bin. -->
-                <controls:MarkLabelEditor x:Name="MarkEditor" Visibility="Collapsed" />
+                <controls:MarkLabelEditor x:Name="MarkEditorField" Visibility="Collapsed" />
 
                 <!-- Blink overlay (fades on top of main image, never changes transforms) -->
                 <Image x:Name="BlinkImage"

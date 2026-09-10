@@ -1,6 +1,5 @@
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
+using Windows.Foundation;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
@@ -11,39 +10,73 @@ using CanfarDesktop.ViewModels.CubeViewer;
 namespace CanfarDesktop.Views.CubeViewer;
 
 /// <summary>
-/// Marks in the cube: on the slice, and in the volume.
+/// This cube, as <see cref="MarkEditor"/> sees it.
 ///
-/// The two views are one set of marks seen two ways. A mark lives on a channel — the slice showing that
-/// channel draws it, the others do not, and the volume draws all of them because that is what the
-/// volume is for. Neither view stores anything: both ask a surface where a voxel lands, and the surface
-/// is the only thing that differs between them.
+/// Everything a person does to a mark lives in that class, shared with the FITS viewer. What is here is
+/// only what is genuinely different about a cube: two views of one set of marks, and a press that names
+/// a RAY rather than a point.
 ///
-/// Drawing and editing happen on the SLICE. Placing a mark in a perspective view means choosing a depth
-/// from a flat press, and every answer to that is a guess; the slice already has a channel, so a press
-/// there means exactly one voxel.
+/// A mark lives on a channel — the slice showing that channel draws it, the others do not, and the
+/// volume draws all of them because that is what the volume is for. Neither view stores anything: both
+/// ask a surface where a voxel lands, and the surface is the only thing that differs between them.
 /// </summary>
-public sealed partial class CubeViewerPage
+public sealed partial class CubeViewerPage : IMarkCanvas
 {
     private IAnnotationStore? _annotationStore;
-    private List<Annotation> _annotations = [];
-    private string? _loadedAnnotationTarget;
+    private MarkEditor? _marks;
+    private Controls.MarkPanelBinding? _panelBinding;
 
-    /// <summary>The pencil. While armed, a press on the slice draws rather than panning.</summary>
-    public bool DrawingArmed { get; set; }
-
-    /// <summary>What a newly drawn mark will be.</summary>
-    public AnnotationKind DrawingKind { get; set; } = AnnotationKind.Circle;
-
-    private string? _editingId;
-    private string? _selectedId;
-    private MarkGrab _grab = new MarkGrab.None();
+    /// <summary>The marks in this cube. Built on first use, once the store has been attached.</summary>
+    private MarkEditor Marks => _marks ??= new MarkEditor(
+        this,
+        _annotationStore,
+        new SettingsMarkStylePreference(() => App.Services.GetService(typeof(ISettingsService)) as ISettingsService));
 
     public void AttachAnnotationStore(IAnnotationStore store) => _annotationStore = store;
 
-    /// <summary>The cube whose marks these are — the answer <c>annotate_cube</c> needs.</summary>
-    public string? AnnotationTarget => string.IsNullOrWhiteSpace(_cubePath) ? null : _cubePath;
+    /// <summary>The pencil. While armed, a press draws rather than panning or orbiting.</summary>
+    public bool DrawingArmed
+    {
+        get => Marks.DrawArmed;
+        set => Marks.SetDrawArmed(value);
+    }
 
-    /// <summary>The volume view's surface for the current camera, or null before the panel has a size.</summary>
+    /// <summary>What a newly drawn mark will be.</summary>
+    public AnnotationKind DrawingKind => Marks.Kind;
+
+    // ── IMarkCanvas: the two things a cube does differently ────────────────────────────────────
+
+    /// <summary>The cube whose marks these are — the answer <c>annotate_cube</c> needs.</summary>
+    public string? Target => string.IsNullOrWhiteSpace(_cubePath) ? null : _cubePath;
+
+    /// <summary>
+    /// The surface of whichever view is on screen.
+    ///
+    /// Every gesture goes through this rather than naming a view. The two surfaces already answer the
+    /// same three questions — where a voxel lands, how big a unit is, how much bigger than the screen
+    /// this rendering is — so the code that moves and resizes marks never needs to know which it has.
+    /// </summary>
+    public IAnnotationSurface Surface
+        => ViewModel.ViewMode == CubeViewMode.Slice ? SliceSurface() : VolumeSurface();
+
+    public IMarkLabelField Label => MarkEditorField;
+
+    /// <summary>
+    /// A press is measured against whichever view is showing; the field hangs off the PAGE, because the
+    /// slice is Collapsed while the volume shows and a field parented there could never appear over it.
+    /// One translation, so the same call works in both.
+    /// </summary>
+    public (double X, double Y) ToLabelHost(double x, double y)
+    {
+        var view = ViewModel.ViewMode == CubeViewMode.Slice ? (FrameworkElement)SliceViewport : RenderPanel;
+        var onPage = view.TransformToVisual(PageRoot).TransformPoint(new Point(x, y));
+        return (onPage.X, onPage.Y);
+    }
+
+    /// <summary>Run something after the current input event has finished being handled.</summary>
+    public void Later(Action what) => DispatcherQueue.TryEnqueue(() => what());
+
+    /// <summary>The volume view's surface for the current camera.</summary>
     private CubeVolumeAnnotationSurface VolumeSurface()
     {
         var projector = _volume is null
@@ -56,21 +89,6 @@ public sealed partial class CubeViewerPage
         return new CubeVolumeAnnotationSurface(projector, _volume?.Nx ?? 1, _volume?.Ny ?? 1, _volume?.Nz ?? 1);
     }
 
-    /// <summary>
-    /// The surface of whichever view is on screen.
-    ///
-    /// Every gesture goes through this rather than naming a view. The two surfaces already answer the
-    /// same three questions — where a voxel lands, how big a unit is, how much bigger than the screen
-    /// this rendering is — so the code that moves and resizes marks never needs to know which it has,
-    /// and a fix to it cannot land in one view and not the other.
-    /// </summary>
-    private IAnnotationSurface ActiveSurface()
-        => ViewModel.ViewMode == CubeViewMode.Slice ? SliceSurface() : VolumeSurface();
-
-    /// <summary>The element a press is measured against, which is the one the view uses.</summary>
-    private FrameworkElement ActiveViewport()
-        => ViewModel.ViewMode == CubeViewMode.Slice ? SliceViewport : RenderPanel;
-
     /// <summary>The slice view's surface for the channel on screen.</summary>
     private CubeSliceAnnotationSurface SliceSurface() => new(
         ViewModel.Channel,
@@ -80,232 +98,33 @@ public sealed partial class CubeViewerPage
         _sliceZoom, _slicePanX, _slicePanY);
 
     /// <summary>
-    /// Load this cube's marks if the file has changed under us, then draw both views.
-    ///
-    /// Called from the volume overlay's own update and from every slice render, which between them
-    /// cover every camera move, channel change, zoom and pan — so nothing has to remember to ask.
-    /// </summary>
-    private void RenderAnnotations()
-    {
-        EnsureAnnotationsLoaded();
-
-        VolumeAnnotationCanvas.EditingId = SliceAnnotationCanvas.EditingId = _editingId;
-        VolumeAnnotationCanvas.SelectedId = SliceAnnotationCanvas.SelectedId = _selectedId;
-
-        // Each view is drawn only while it is the one on screen: rendering the other's marks into a
-        // hidden canvas is work with nothing to show for it, on a panel that repaints at 60fps.
-        if (ViewModel.ViewMode == CubeViewMode.Slice)
-            SliceAnnotationCanvas.Render(_annotations, SliceSurface(), SliceViewport.ActualWidth);
-        else
-            VolumeAnnotationCanvas.Render(_annotations, VolumeSurface(), RenderPanel.ActualWidth);
-    }
-
-    private void EnsureAnnotationsLoaded()
-    {
-        var target = AnnotationTarget;
-        if (string.Equals(target, _loadedAnnotationTarget, StringComparison.Ordinal)) return;
-
-        _loadedAnnotationTarget = target;
-        _editingId = _selectedId = null;
-        _annotations = target is null || _annotationStore is null
-            ? []
-            : _annotationStore.LoadFor(target).ToList();
-    }
-
-    /// <summary>Re-read and redraw after something changed the marks elsewhere.</summary>
-    public bool RefreshAnnotations(string target, string? selectId)
-    {
-        if (AnnotationTarget is not { } mine || !string.Equals(mine, target, StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        _annotations = _annotationStore?.LoadFor(target).ToList() ?? [];
-        if (selectId is not null) _selectedId = selectId;
-
-        RenderAnnotations();
-
-        // An agent's mark has to appear in the list too, not only on the image — the list is where a
-        // person sees WHAT it marked and that an agent made it.
-        RefreshMarksPanel();
-        return true;
-    }
-
-    private void SaveAnnotations()
-    {
-        if (AnnotationTarget is not { } target || _annotationStore is null) return;
-
-        try
-        {
-            _annotationStore.SaveFor(target, _annotations);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Could not save annotations for {target}: {ex.Message}");
-        }
-    }
-
-    // ── Drawing, in whichever view is on screen ─────────────────────────────────────────────────
-
-    /// <summary>
-    /// Whether the marks want this press. True means the view must not pan or orbit.
-    ///
-    /// Asked before the pan handling, for the reason the FITS canvas asks first: a press that takes hold
-    /// of a mark and also starts a pan drags the image out from under the mark being moved.
-    /// </summary>
-    private bool TryBeginAnnotationGesture(Windows.Foundation.Point at)
-    {
-        if (AnnotationTarget is null || _volume is null) return false;
-
-        var surface = ActiveSurface();
-        _grab = AnnotationGeometry.GrabAt(_annotations, surface, _selectedId, DrawingArmed, at.X, at.Y);
-
-        switch (_grab)
-        {
-            case MarkGrab.None:
-                return false;
-
-            case MarkGrab.Place:
-                if (VoxelAt(at) is not { } anchor) return false;
-
-                var mark = new Annotation
-                {
-                    Id = "m" + Guid.NewGuid().ToString("N")[..8],
-                    Kind = DrawingKind,
-                    Anchor = anchor,
-                    Extent = DrawingKind.NeedsExtent()
-                        ? Extent.Square(AnnotationGeometry.HalfFromDrag(surface, anchor, 12))
-                        : null,
-                    Author = MarkAuthor.User,
-                    // What the style controls say. A style chosen and then not applied to the next mark
-                    // is a control that appears to do nothing.
-                    Style = PendingStyle(),
-                    CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
-                };
-
-                _annotations.Add(mark);
-                _editingId = _selectedId = mark.Id;
-                _grab = mark.Extent is null ? new MarkGrab.None() : new MarkGrab.Resize(mark.Id);
-                RenderAnnotations();
-
-                // A shape with no size to drag is finished the moment it lands, so it can be named now.
-                // The others are named when the drag that sizes them ends — see EndAnnotationGesture.
-                if (mark.Extent is null) DispatcherQueue.TryEnqueue(() => BeginLabelEdit(mark.Id));
-
-                return true;
-
-            case MarkGrab.Move move:
-                _selectedId = move.Id;
-                RenderAnnotations();
-                return true;
-
-            case MarkGrab.Resize resize:
-                _selectedId = resize.Id;
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-    private bool ContinueAnnotationGesture(Windows.Foundation.Point at)
-    {
-        var surface = ActiveSurface();
-
-        switch (_grab)
-        {
-            case MarkGrab.Move move:
-            {
-                var index = _annotations.FindIndex(a => a.Id == move.Id);
-                if (index < 0) return false;
-
-                var target = new Windows.Foundation.Point(at.X - move.GrabDx, at.Y - move.GrabDy);
-                if (VoxelAt(target) is not { } anchor) return true;
-
-                // The channel is the mark's, not the scrubber's: dragging a mark sideways must not move
-                // it to whichever channel happens to be on screen.
-                _annotations[index] = _annotations[index] with
-                {
-                    Anchor = AnnotationAnchor.Data(anchor.X, anchor.Y, _annotations[index].Anchor.Z),
-                };
-                RenderAnnotations();
-                return true;
-            }
-
-            case MarkGrab.Resize resize:
-            {
-                var index = _annotations.FindIndex(a => a.Id == resize.Id);
-                if (index < 0) return false;
-
-                var half = AnnotationGeometry.ResizeHalf(_annotations[index], surface, at.X, at.Y);
-                if (half is null) return true;
-
-                _annotations[index] = _annotations[index] with { Extent = Extent.Square(half.Value) };
-                RenderAnnotations();
-                return true;
-            }
-
-            default:
-                return false;
-        }
-    }
-
-    private bool EndAnnotationGesture()
-    {
-        if (_grab is MarkGrab.None) return false;
-
-        // A mark that was just drawn goes straight into being named. Every shape has a label — a circle
-        // round something unnamed says "look here" and nothing else, and asking for the words is the
-        // difference between a mark and an annotation. Sizing it is what finishes drawing it, so this
-        // is where the field opens.
-        var justDrawn = _grab is MarkGrab.Resize resize && resize.Id == _editingId ? resize.Id : null;
-
-        _grab = new MarkGrab.None();
-        _annotations.RemoveAll(a => a.Validate() is not null);
-        SaveAnnotations();
-        RenderAnnotations();
-        RefreshMarksPanel();
-
-        if (justDrawn is not null && _annotations.Any(a => a.Id == justDrawn))
-            DispatcherQueue.TryEnqueue(() => BeginLabelEdit(justDrawn));
-
-        return true;
-    }
-
-    /// <summary>
-    /// What the next mark will look like: the style row when the panel is open, the stored default
-    /// otherwise.
-    /// </summary>
-    private MarkStyle PendingStyle()
-    {
-        if (Marks.Visibility == Visibility.Visible) return Marks.Style();
-
-        try
-        {
-            var settings = App.Services.GetService(typeof(ISettingsService)) as ISettingsService;
-            return MarkStyle.Decode(settings?.DefaultMarkStyle, MarkStyle.UserDefault);
-        }
-        catch
-        {
-            return MarkStyle.UserDefault;
-        }
-    }
-
-    /// <summary>
     /// The voxel a press is over, in whichever view is on screen.
     ///
-    /// The two views answer this differently and there is no way around that: the slice press names one
-    /// voxel outright, while a press on the volume names a RAY and the channel has to supply the depth.
-    /// The dispatch is here, once, so the gesture code above stays one path.
+    /// The two views answer this differently and there is no way around that: a press on the slice names
+    /// one voxel outright, while a press on the volume names a RAY and the channel has to supply the
+    /// depth — met with the plane the volume already draws as the slice-plane marker.
+    ///
+    /// A mark being MOVED keeps its own channel rather than jumping to whichever one the scrubber shows,
+    /// so dragging a mark sideways does not quietly move it through the cube.
     /// </summary>
-    private AnnotationAnchor? VoxelAt(Windows.Foundation.Point at)
-        => ViewModel.ViewMode == CubeViewMode.Slice
-            ? VoxelOnSlice(at)
-            : VolumeSurface().VoxelAt(at.X, at.Y, ViewModel.Channel);
+    public AnnotationAnchor? AnchorFor(double x, double y, Annotation? moving)
+    {
+        var voxel = ViewModel.ViewMode == CubeViewMode.Slice
+            ? VoxelOnSlice(new Point(x, y))
+            : VolumeSurface().VoxelAt(x, y, ViewModel.Channel);
+
+        if (voxel is null) return null;
+        if (moving is null) return voxel;
+
+        var kept = AnnotationAnchor.Data(voxel.X, voxel.Y, moving.Anchor.Z);
+        return kept.IsValid ? kept : null;
+    }
 
     /// <summary>
     /// The voxel a press on the slice is over, on the channel currently shown. Null in the letterbox
     /// margin, where there is no data under the pointer.
     /// </summary>
-    private AnnotationAnchor? VoxelOnSlice(Windows.Foundation.Point at)
+    private AnnotationAnchor? VoxelOnSlice(Point at)
     {
         if (_volume is null || MapToPixel(at) is not { } display) return null;
 
@@ -319,108 +138,59 @@ public sealed partial class CubeViewerPage
         return voxel.IsValid ? voxel : null;
     }
 
-    /// <summary>Remove the mark that is picked out, if there is one.</summary>
-    public void DeleteSelectedMark()
+    /// <summary>
+    /// Both views are told, every time. They are one set of marks seen two ways, and drawing only the
+    /// one on screen would leave the other stale the moment the mode changed.
+    /// </summary>
+    public void Draw(IReadOnlyList<Annotation> marks, string? selectedId, string? editingId)
     {
-        if (_selectedId is null) return;
+        SliceAnnotationCanvas.EditingId = VolumeAnnotationCanvas.EditingId = editingId;
+        SliceAnnotationCanvas.SelectedId = VolumeAnnotationCanvas.SelectedId = selectedId;
 
-        _annotations.RemoveAll(a => a.Id == _selectedId);
-        _selectedId = _editingId = null;
-        SaveAnnotations();
-        RenderAnnotations();
-        RefreshMarksPanel();
+        if (ViewModel.ViewMode == CubeViewMode.Slice)
+            SliceAnnotationCanvas.Render(marks, SliceSurface(), SliceViewport.ActualWidth);
+        else
+            VolumeAnnotationCanvas.Render(marks, VolumeSurface(), RenderPanel.ActualWidth);
     }
-
-    /// <summary>Give up editing, keeping whatever is valid. Called when the pencil is put down.</summary>
-    public void EndAnnotationEditing()
-    {
-        MarkEditor.Visibility = Visibility.Collapsed;
-        _editingId = null;
-        _annotations.RemoveAll(a => a.Validate() is not null);
-        SaveAnnotations();
-        RenderAnnotations();
-    }
-
-    private bool _labelEditorWired;
 
     /// <summary>
-    /// Type a mark's label, in a field over the mark itself.
+    /// Go to a mark's CHANNEL, since that is what decides whether the slice draws it at all.
     ///
-    /// The field is an ordinary control in the viewport rather than a flyout. A flyout dismissed itself
-    /// the moment the pointer went back to the image, committed on close so Escape saved instead of
-    /// cancelling, and had nowhere to put a bin — which left "draw a mark you did not mean to" with no
-    /// way out but drawing it, naming it and then deleting it.
+    /// Panning to centre it as well would fight whatever the person had lined up; the channel is the one
+    /// part they cannot recover by looking.
     /// </summary>
-    private void BeginLabelEdit(string id)
+    public void Reveal(Annotation mark)
     {
-        var mark = _annotations.FirstOrDefault(a => a.Id == id);
-        if (mark is null) return;
-        if (ActiveSurface().Project(mark.Anchor) is not { } at) return;
+        if (mark.Anchor.Space != AnchorSpace.Data) return;
 
-        WireLabelEditor();
-
-        _editingId = id;
-        RenderAnnotations();
-
-        // The mark's position is in the pressed VIEW's coordinates; the field hangs off the page. One
-        // translation, so the same call works over the slice and over the volume.
-        var onPage = ActiveViewport().TransformToVisual(PageRoot).TransformPoint(new Windows.Foundation.Point(at.X, at.Y));
-
-        // Below the mark, and never off the left or top edge — a field half outside the page is one you
-        // cannot type in.
-        MarkEditor.PlaceAt(Math.Max(0, onPage.X - 60), Math.Max(0, onPage.Y + 16));
-        MarkEditor.Visibility = Visibility.Visible;
-        MarkEditor.Open(mark.Text);
+        // Away-from-zero, matching the slice surface's own channel test: banker's rounding sends channel
+        // 16.5 to 16 there and 16 here, or the mark is shown on a slice that does not draw it.
+        var channel = (int)Math.Round(mark.Anchor.Z, MidpointRounding.AwayFromZero);
+        ViewModel.Channel = Math.Clamp(channel, 0, Math.Max(0, (_volume?.Nz ?? 1) - 1));
     }
 
-    private void WireLabelEditor()
-    {
-        if (_labelEditorWired) return;
-        _labelEditorWired = true;
+    // ── What the page calls ────────────────────────────────────────────────────────────────────
 
-        MarkEditor.Committed += text =>
-        {
-            if (_editingId is { } id && _annotations.FindIndex(a => a.Id == id) is >= 0 and var at)
-                _annotations[at] = _annotations[at] with { Text = text };
+    /// <summary>The cube the marks on screen belong to.</summary>
+    public string? AnnotationTarget => Target;
 
-            CloseLabelEditor();
-        };
+    private void RenderAnnotations() => Marks.Render();
 
-        MarkEditor.Deleted += () =>
-        {
-            if (_editingId is { } id)
-            {
-                _annotations.RemoveAll(a => a.Id == id);
-                if (_selectedId == id) _selectedId = null;
-            }
+    /// <summary>Re-read and redraw after an agent has changed something.</summary>
+    public bool RefreshAnnotations(string target, string? selectId) => Marks.Refresh(target, selectId);
 
-            CloseLabelEditor();
-        };
+    private bool TryBeginAnnotationGesture(Point at) => Marks.TryBegin(at.X, at.Y);
 
-        // Escape leaves the mark exactly as it was — including a brand-new one, which keeps whatever
-        // it already had rather than being thrown away. Drawing it was deliberate; not naming it yet
-        // is not a reason to lose it.
-        MarkEditor.Cancelled += CloseLabelEditor;
-    }
+    private bool ContinueAnnotationGesture(Point at) => Marks.Continue(at.X, at.Y);
 
-    private void CloseLabelEditor()
-    {
-        MarkEditor.Visibility = Visibility.Collapsed;
-        _editingId = null;
-        _annotations.RemoveAll(a => a.Validate() is not null);
-        SaveAnnotations();
-        RenderAnnotations();
-        RefreshMarksPanel();
-    }
+    private bool EndAnnotationGesture() => Marks.End();
+
+    /// <summary>Remove the mark that is picked out, if there is one.</summary>
+    public void DeleteSelectedMark() => Marks.DeleteSelected();
+
+    /// <summary>Give up naming, keeping whatever is valid. Called when the pencil is put down.</summary>
+    public void EndAnnotationEditing() => Marks.EndEditing();
 
     /// <summary>A double-press on a mark relabels it — but only when it is not the reset gesture.</summary>
-    private bool TryRelabelAt(Windows.Foundation.Point at)
-    {
-        if (AnnotationTarget is null) return false;
-        if (AnnotationGeometry.AnnotationAt(_annotations, ActiveSurface(), at.X, at.Y) is not { } id) return false;
-
-        _selectedId = id;
-        BeginLabelEdit(id);
-        return true;
-    }
+    private bool TryRelabelAt(Point at) => Marks.TryRelabelAt(at.X, at.Y);
 }

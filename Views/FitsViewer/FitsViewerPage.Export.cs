@@ -142,7 +142,7 @@ public sealed partial class FitsViewerPage
             CbStretch = $"{ViewModel.Stretch.ToString().ToUpperInvariant()} · {ViewModel.Colormap.ToString().ToUpperInvariant()}",
             ColorbarLut = ColorbarLut(ViewModel.Colormap),
             Facts = facts,
-            Marks = _annotations,
+            Marks = Marks.Marks,
             Region = region,
             Wcs = wcs,
             ImageHeight = image?.Height ?? 0,
@@ -307,7 +307,7 @@ public sealed partial class FitsViewerPage
 
             case FigureRegionKind.Mark:
             {
-                var mark = _annotations.FirstOrDefault(a => a.Id == request.MarkId);
+                var mark = Marks.Marks.FirstOrDefault(a => a.Id == request.MarkId);
                 if (mark is null)
                     return FitsFigureOutcome.Unavailable(
                         $"no mark '{request.MarkId}' on this image — list_fits_annotations gives the ids");
@@ -375,6 +375,6 @@ public sealed partial class FitsViewerPage
         var surface = new FitsExportSurface(region, region.Width, region.Height,
             image.Wcs is { IsValid: true } wcs ? wcs : null, image.Height);
 
-        return _annotations.Count(a => surface.Project(a.Anchor) is not null);
+        return Marks.Marks.Count(a => surface.Project(a.Anchor) is not null);
     }
 }

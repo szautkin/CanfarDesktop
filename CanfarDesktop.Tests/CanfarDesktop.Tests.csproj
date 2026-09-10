@@ -44,6 +44,9 @@
     <Compile Include="..\Helpers\TaskRegistry.cs" Link="Linked\TaskRegistry.cs" />
     <Compile Include="..\Helpers\ActivitySummary.cs" Link="Linked\ActivitySummary.cs" />
     <Compile Include="..\Helpers\MarkSummary.cs" Link="Linked\MarkSummary.cs" />
+    <Compile Include="..\Helpers\MarkEditor.cs" Link="Linked\MarkEditor.cs" />
+    <Compile Include="..\Helpers\MarkStore.cs" Link="Linked\MarkStore.cs" />
+    <Compile Include="..\Helpers\MarkStylePreference.cs" Link="Linked\MarkStylePreference.cs" />
     <Compile Include="..\Helpers\RuntimeInfo.cs" Link="Linked\RuntimeInfo.cs" />
     <Compile Include="..\Helpers\PollCadence.cs" Link="Linked\PollCadence.cs" />
     <Compile Include="..\Models\JobRecord.cs" Link="Linked\JobRecord.cs" />

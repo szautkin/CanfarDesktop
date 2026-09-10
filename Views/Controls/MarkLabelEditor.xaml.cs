@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using CanfarDesktop.Helpers;
 
 namespace CanfarDesktop.Views.Controls;
 
@@ -11,7 +12,7 @@ namespace CanfarDesktop.Views.Controls;
 /// it was: an Escape that quietly saves is worse than one that does nothing, because the person pressing
 /// it believes they have undone something.
 /// </summary>
-public sealed partial class MarkLabelEditor : UserControl
+public sealed partial class MarkLabelEditor : UserControl, IMarkLabelField
 {
     private bool _answered;
 
@@ -60,8 +61,20 @@ public sealed partial class MarkLabelEditor : UserControl
         Field.SelectAll();
     }
 
-    /// <summary>Where on the canvas this sits. The host knows; this does not.</summary>
-    public void PlaceAt(double x, double y) => Margin = new Thickness(x, y, 0, 0);
+    /// <summary>
+    /// Show the field at a point in the host's coordinates, ready to be typed over.
+    ///
+    /// Where it sits is the host's business — only the host knows where the mark is on screen — and
+    /// what it looks like and answers to is this control's.
+    /// </summary>
+    public void Open(string current, double x, double y)
+    {
+        Margin = new Thickness(x, y, 0, 0);
+        Visibility = Visibility.Visible;
+        Open(current);
+    }
+
+    public void Close() => Visibility = Visibility.Collapsed;
 
     private void OnDone(object sender, RoutedEventArgs e) => Answer(() => Committed?.Invoke(Field.Text.Trim()));
 
