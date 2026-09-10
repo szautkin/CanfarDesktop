@@ -10,6 +10,24 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
+            <!--
+                A TabView fills its parent rather than shrinking to its content.
+
+                WinUI's default leaves TabView vertically Top-aligned, so the control takes only its
+                DESIRED height. A tab whose content is taller than the space is clamped and looks
+                correct, which is why this hid for so long — every tab host in the app had tall content.
+                The cube viewer does not: it is floating overlays over a render surface, so collapsing
+                its control column shrank the TabView, and the volume redrew into a strip a couple of
+                hundred pixels tall.
+
+                Set here, once, rather than on each of the three tab hosts — the defect belongs to the
+                control, not to any one use of it, and a fourth tab host should not be able to
+                reintroduce it by omission.
+            -->
+            <Style TargetType="TabView">
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+            </Style>
+
             <!-- Other app resources here -->
         </ResourceDictionary>
     </Application.Resources>
