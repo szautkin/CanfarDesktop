@@ -171,6 +171,7 @@
     <Compile Include="..\Mcp\Tools\Proposals\Proposal.cs" Link="Linked\Mcp\Proposal.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\ProposalApplier.cs" Link="Linked\Mcp\ProposalApplier.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\ProposalStore.cs" Link="Linked\Mcp\ProposalStore.cs" />
+    <Compile Include="..\Mcp\Tools\Proposals\ProposalJournal.cs" Link="Linked\Mcp\ProposalJournal.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\ProposalBudget.cs" Link="Linked\Mcp\ProposalBudget.cs" />
     <!-- Work that outlives the call that asked for it. -->
     <Compile Include="..\Mcp\Tools\Proposals\JobRegistry.cs" Link="Linked\Mcp\JobRegistry.cs" />

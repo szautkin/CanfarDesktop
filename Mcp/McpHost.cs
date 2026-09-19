@@ -111,8 +111,10 @@ public sealed class McpHost : IAsyncDisposable
         var tools = McpToolCatalog.Build(_services, _appVersion, EventLog);
         var identity = new ServerIdentity(ServerName, _appVersion);
 
-        // Shared write-surface state across connections.
-        var proposals = new InMemoryProposalStore();
+        // Shared write-surface state across connections. Journalled, because a restart used to destroy
+        // the review queue in silence — proposals awaiting a human vanished, and one already approved
+        // was voided. The host owns that decision; the store itself keeps nothing.
+        var proposals = new InMemoryProposalStore(journal: new JsonProposalJournal());
         proposals.Changed += () => ProposalsChanged?.Invoke();
         proposals.EventOccurred += e => EventLog.Append(e.Kind, e.Proposal, DateTimeOffset.UtcNow);
         _proposals = proposals;

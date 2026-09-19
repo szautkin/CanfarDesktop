@@ -48,9 +48,27 @@ public sealed class InMemoryProposalStore : IProposalStore
     private readonly List<Guid> _pendingOrder = new();
     private readonly List<(Guid Id, ProposalState State, DateTimeOffset At)> _tombstones = new();
     private readonly Func<DateTimeOffset> _clock;
+    private readonly IProposalJournal _journal;
 
-    public InMemoryProposalStore(Func<DateTimeOffset>? clock = null)
-        => _clock = clock ?? (() => DateTimeOffset.UtcNow);
+    /// <summary>
+    /// The clock is injectable so the TTL/cap are deterministically testable; the journal is
+    /// injectable so persistence is the HOST's decision rather than the store's. Every test builds one
+    /// of these, and a store that wrote to the user's data directory would leak between runs.
+    /// </summary>
+    public InMemoryProposalStore(Func<DateTimeOffset>? clock = null, IProposalJournal? journal = null)
+    {
+        _clock = clock ?? (() => DateTimeOffset.UtcNow);
+        _journal = journal ?? NullProposalJournal.Instance;
+
+        // Rehydrate under the ORIGINAL ids, so an agent handed a proposal id before a restart can
+        // still ask about it. Resolved proposals are deliberately not restored (see JsonProposalJournal).
+        foreach (var restored in _journal.Read())
+        {
+            if (_pending.ContainsKey(restored.Id)) continue;
+            _pending[restored.Id] = restored;
+            _pendingOrder.Add(restored.Id);
+        }
+    }
 
     public PendingProposal Enqueue(PendingProposal proposal)
     {
@@ -59,6 +77,7 @@ public sealed class InMemoryProposalStore : IProposalStore
             _pending[proposal.Id] = proposal;
             _pendingOrder.Add(proposal.Id);
         }
+        Persist();
         Changed?.Invoke();
         EventOccurred?.Invoke(new ProposalStoreEvent("proposalArrived", proposal));
         return proposal;
@@ -112,6 +131,7 @@ public sealed class InMemoryProposalStore : IProposalStore
             if (_tombstones.Count > TombstoneCap)
                 _tombstones.RemoveRange(0, _tombstones.Count - TombstoneCap);
         }
+        Persist();
         Changed?.Invoke();
         EventOccurred?.Invoke(new ProposalStoreEvent(state switch
         {
@@ -126,6 +146,17 @@ public sealed class InMemoryProposalStore : IProposalStore
     {
         var cutoff = _clock() - TombstoneTtl;
         _tombstones.RemoveAll(t => t.At < cutoff);
+    }
+
+    /// <summary>
+    /// Write the pending set after a mutation. Outside the lock, on a snapshot taken inside it, so a
+    /// slow disk cannot hold up a tool call — and so the journal never sees a half-applied mutation.
+    /// </summary>
+    private void Persist()
+    {
+        List<PendingProposal> snapshot;
+        lock (_gate) snapshot = _pendingOrder.Select(id => _pending[id]).ToList();
+        _journal.Write(snapshot);
     }
 }
 
