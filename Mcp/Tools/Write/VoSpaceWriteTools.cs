@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using CanfarDesktop.Mcp.Tools.Proposals;
 using CanfarDesktop.Models;
+using CanfarDesktop.Helpers;
 
 namespace CanfarDesktop.Mcp.Tools.Write;
 
@@ -248,20 +249,17 @@ public sealed class DownloadVoSpaceFileTool : JsonReadTool<DownloadVoSpaceFileTo
             throw new McpToolException(new AuthRequired());
         }
 
-        long total = 0;
+        long total;
         try
         {
+            // Atomic, which this path was not: it opened the DESTINATION with FileMode.Create, so a
+            // cancelled or failed transfer truncated whatever the user already had there and left a
+            // partial file in its place. The temp is removed on failure and the existing file survives.
+            //
+            // Zero bytes is NOT refused here, unlike an archive download: a zero-byte file in VOSpace
+            // is a legitimate thing to fetch.
             await using (stream)
-            await using (var fs = new FileStream(full, FileMode.Create, FileAccess.Write))
-            {
-                var buffer = new byte[81920];
-                int read;
-                while ((read = await stream.ReadAsync(buffer, token)) > 0)
-                {
-                    await fs.WriteAsync(buffer.AsMemory(0, read), token);
-                    total += read;
-                }
-            }
+                total = await StreamToFile.WriteAsync(stream, full, ct: token);
         }
         catch (DirectoryNotFoundException)
         {

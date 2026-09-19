@@ -32,40 +32,22 @@ public sealed class ObservationDownloadService
         string url, string localPath, int timeoutSeconds = 120,
         IProgress<(long Downloaded, long? Total)>? progress = null, CancellationToken ct = default)
     {
-        var tmp = localPath + ".tmp";
-        try
-        {
-            using var response = await _dataLink.DownloadAsync(url, timeoutSeconds);
-            response.EnsureSuccessStatusCode();
-            var total = response.Content.Headers.ContentLength;
+        using var response = await _dataLink.DownloadAsync(url, timeoutSeconds);
+        response.EnsureSuccessStatusCode();
 
-            long downloaded = 0;
-            await using (var stream = await response.Content.ReadAsStreamAsync(ct))
-            await using (var fs = new FileStream(tmp, FileMode.Create))
-            {
-                var buffer = new byte[81920];
-                int read;
-                while ((read = await stream.ReadAsync(buffer, ct)) > 0)
-                {
-                    await fs.WriteAsync(buffer.AsMemory(0, read), ct);
-                    downloaded += read;
-                    progress?.Report((downloaded, total));
-                }
-            }
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
 
-            // A 200 that produced no bytes is not a download. The `pkg` endpoint answers exactly this
-            // for a publisher id it cannot resolve, so the empty file is removed rather than filed.
-            if (downloaded == 0)
-                throw new EmptyDownloadException(url, IsPackageEndpoint(url));
-
-            if (File.Exists(localPath)) File.Delete(localPath);
-            File.Move(tmp, localPath);
-        }
-        catch
-        {
-            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best effort */ }
-            throw;
-        }
+        // A 200 that produced no bytes is not a download. The `pkg` endpoint answers exactly this for a
+        // publisher id it cannot resolve, so refusing it here — before the file is put over the target
+        // — leaves whatever was already there untouched and nothing new behind.
+        await StreamToFile.WriteAsync(
+            stream, localPath,
+            expectedTotal: response.Content.Headers.ContentLength,
+            progress: progress,
+            validateTotal: written => written == 0
+                ? new EmptyDownloadException(url, IsPackageEndpoint(url))
+                : null,
+            ct: ct);
     }
 
     /// <summary>
