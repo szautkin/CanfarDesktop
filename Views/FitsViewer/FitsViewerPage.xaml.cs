@@ -786,9 +786,8 @@ public sealed partial class FitsViewerPage : UserControl
                 // readout by up to half a pixel — ~10" on a coarse TESS frame (20.5"/px) — so the
                 // same sky point read differently across two linked images. The pixel value stays
                 // per-integer-pixel; only the coordinate uses the fractional position.
-                var fracX = _crosshairImagePos.Value.X;
-                var fracFitsY = (h - 1) - _crosshairImagePos.Value.Y;
-                var (ra, dec) = wcs.PixelToWorld(fracX + 1, fracFitsY + 1);
+                var (ra, dec) = PixelConvention.SkyAtDisplay(
+                    wcs, h, _crosshairImagePos.Value.X, _crosshairImagePos.Value.Y);
                 lines.Add(Loc.F("Fits_ReadoutRa", WcsInfo.FormatRa(ra)));
                 lines.Add(Loc.F("Fits_ReadoutDec", WcsInfo.FormatDec(dec)));
                 ViewModel.CrosshairPosition = new WorldCoordinate(ra, dec);

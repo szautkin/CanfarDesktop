@@ -56,12 +56,9 @@ public readonly record struct FitsRegion(double X, double Y, double Width, doubl
         return Around(c.X, c.Y, radiusPixels, radiusPixels);
     }
 
-    /// <summary>
-    /// A sky position as a display pixel. The same conversion the viewer makes, and the reason it is
-    /// spelled out here too: WorldToPixel answers 1-based FITS pixels counting up from the bottom.
-    /// </summary>
+    /// <summary>A sky position as a display pixel — the same conversion the viewer makes.</summary>
     private static (double X, double Y)? ToDisplay(WcsInfo wcs, int imageHeight, double raDeg, double decDeg)
-        => wcs.WorldToPixel(raDeg, decDeg) is { } p ? (p.Px - 1, imageHeight - 1 - (p.Py - 1)) : null;
+        => PixelConvention.DisplayOfSky(wcs, imageHeight, raDeg, decDeg);
 
     /// <summary>
     /// Grown by a fraction of its own size, so an exported figure has some sky around its subject rather

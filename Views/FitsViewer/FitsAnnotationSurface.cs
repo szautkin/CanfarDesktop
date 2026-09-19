@@ -54,24 +54,20 @@ public sealed class FitsAnnotationSurface : IAnnotationSurface
     /// A sky position, through the WCS and then the canvas transform.
     ///
     /// The two ends count pixels differently, and mixing them is how a mark ends up mirrored and one
-    /// pixel out — near enough to look like a rendering wobble rather than a coordinate bug:
-    ///
-    ///  * <c>WorldToPixel</c> answers in FITS pixels: 1-BASED, with row 1 at the BOTTOM.
-    ///  * The canvas counts DISPLAY pixels: 0-based, with row 0 at the TOP (the renderer flips the
-    ///    image on the way to the bitmap).
-    ///
-    /// This is the same conversion the crosshair readout makes in the other direction, and the two are
-    /// pinned against each other by a round-trip test.
+    /// pixel out — near enough to look like a rendering wobble rather than a coordinate bug. Both
+    /// directions go through <see cref="PixelConvention"/>, which is where the FITS, array and display
+    /// conventions are named and each paired with its inverse, so this and <see cref="SkyAt"/> cancel
+    /// exactly rather than nearly.
     /// </summary>
     private (double X, double Y)? ProjectSky(double raDeg, double decDeg)
     {
         if (_wcs() is not { } wcs) return null;
-        if (wcs.WorldToPixel(raDeg, decDeg) is not { } pixel) return null;
 
         var height = _imageHeight();
         if (height <= 0) return null;
+        if (PixelConvention.DisplayOfSky(wcs, height, raDeg, decDeg) is not { } d) return null;
 
-        return _imageToScreen(pixel.Px - 1, height - 1 - (pixel.Py - 1));
+        return _imageToScreen(d.X, d.Y);
     }
 
     /// <summary>
@@ -83,7 +79,7 @@ public sealed class FitsAnnotationSurface : IAnnotationSurface
     {
         if (wcs is not { IsValid: true } || imageHeight <= 0) return null;
 
-        var (ra, dec) = wcs.PixelToWorld(displayX + 1, imageHeight - 1 - displayY + 1);
+        var (ra, dec) = PixelConvention.SkyAtDisplay(wcs, imageHeight, displayX, displayY);
         var anchor = AnnotationAnchor.Sky(ra, dec);
         return anchor.IsValid ? anchor : null;
     }

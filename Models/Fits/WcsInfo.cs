@@ -4,7 +4,7 @@ namespace CanfarDesktop.Models.Fits;
 
 /// <summary>
 /// World Coordinate System parameters extracted from a FITS header.
-/// Supports CD matrix and CDELT+CROTA2 conventions, the four common zenithal
+/// Supports the CD matrix, PC+CDELT and CDELT+CROTA2 conventions, the four common zenithal
 /// projections (TAN/SIN/STG/ZEA) with a linear fallback, and an approximate
 /// reconstruction from legacy RA/DEC keywords.
 /// </summary>
@@ -385,6 +385,23 @@ public record WcsInfo
                 Cd2_2 = header.GetDouble("CD2_2"),
             };
         }
+        else if (HasPcMatrix(header))
+        {
+            // PC + CDELT (FITS Paper II §6.1): CDi_j = CDELTi * PCi_j. What modern pipelines
+            // write — a JWST i2d header carries this and neither of the other two forms, so
+            // reading only CD and CROTA2 left its rotation at zero: no error at CRPIX, growing
+            // with distance from it, 40-90" at the edge of the frame.
+            // PC defaults to the identity matrix, which is why the fallbacks are 1 and 0.
+            var cdelt1 = header.GetDouble("CDELT1");
+            var cdelt2 = header.GetDouble("CDELT2");
+            wcs = baseWcs with
+            {
+                Cd1_1 = cdelt1 * header.GetDouble("PC1_1", 1.0),
+                Cd1_2 = cdelt1 * header.GetDouble("PC1_2", 0.0),
+                Cd2_1 = cdelt2 * header.GetDouble("PC2_1", 0.0),
+                Cd2_2 = cdelt2 * header.GetDouble("PC2_2", 1.0),
+            };
+        }
         else
         {
             // Fall back to CDELT + CROTA2.
@@ -422,6 +439,15 @@ public record WcsInfo
         }
         return wcs;
     }
+
+    /// <summary>
+    /// True when the header states any element of the PC matrix. One is enough: the rest of the
+    /// matrix defaults to the identity, so a header carrying only PC1_2 is still a rotated frame
+    /// and must not fall through to the CROTA2 branch, which would read that rotation as zero.
+    /// </summary>
+    private static bool HasPcMatrix(FitsHeader header) =>
+        header.Contains("PC1_1") || header.Contains("PC1_2") ||
+        header.Contains("PC2_1") || header.Contains("PC2_2");
 
     /// <summary>Read a SIP coefficient set (&lt;prefix&gt;_ORDER + &lt;prefix&gt;_p_q) into a
     /// [p, q] array, or null when absent.</summary>

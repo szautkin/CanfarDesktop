@@ -855,11 +855,11 @@ public sealed partial class FitsTabHost : UserControl
         var img = ViewModel.ActiveViewModel?.ImageData;
         if (img is null || x < 0 || y < 0 || x >= img.Width || y >= img.Height) return null;
 
-        int fitsY = img.Height - 1 - y; // display row 0 = FITS row (height-1)
-        double value = img.Pixels[fitsY * img.Width + x];
+        var (_, arrayY) = PixelConvention.DisplayToArray(x, y, img.Height);
+        double value = img.Pixels[(int)arrayY * img.Width + x];
         if (img.Wcs is { IsValid: true } wcs)
         {
-            var (ra, dec) = wcs.PixelToWorld(x + 1, fitsY + 1); // FITS pixels are 1-based
+            var (ra, dec) = PixelConvention.SkyAtDisplay(wcs, img.Height, x, y);
             return new FitsPixelResult(x, y, value, true, ra, dec, img.Unit);
         }
         return new FitsPixelResult(x, y, value, false, 0, 0, img.Unit);

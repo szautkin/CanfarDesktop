@@ -163,20 +163,30 @@ public static partial class WorkflowFormat
     /// </summary>
     public static string WithStepDone(string text, int stepIndex, bool done)
     {
-        var normalizedProbe = 0;
-        var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
-        for (var i = 0; i < lines.Length; i++)
+        // Walked as spans of the ORIGINAL text rather than split-and-rejoined. Splitting on any of
+        // CRLF/CR/LF and joining with "\n" rewrites every line ending in the file, which is the one
+        // thing this method promises not to do: a CRLF workflow — what a Windows editor writes —
+        // came back wholly reformatted from ticking one box, and the file is the state.
+        var seen = 0;
+        var pos = 0;
+        while (pos <= text.Length)
         {
-            var m = StepStart().Match(lines[i].TrimEnd());
-            if (!m.Success) continue;
-            if (normalizedProbe++ == stepIndex)
+            var rel = text.AsSpan(pos).IndexOfAny('\r', '\n');
+            var end = rel < 0 ? text.Length : pos + rel;
+            var line = text[pos..end];
+
+            if (StepStart().IsMatch(line.TrimEnd()) && seen++ == stepIndex)
             {
-                var open = lines[i].IndexOf('[');
-                lines[i] = lines[i][..(open + 1)] + (done ? "x" : " ") + lines[i][(open + 2)..];
-                return string.Join("\n", lines);
+                // The character between the brackets, addressed in the original string.
+                var marker = pos + line.IndexOf('[') + 1;
+                return string.Concat(text.AsSpan(0, marker), done ? "x" : " ", text.AsSpan(marker + 1));
             }
+
+            if (end == text.Length) break;
+            // A CRLF is one break, not two empty lines.
+            pos = end + (text[end] == '\r' && end + 1 < text.Length && text[end + 1] == '\n' ? 2 : 1);
         }
-        throw new ArgumentOutOfRangeException(nameof(stepIndex), $"workflow has {normalizedProbe} steps; step {stepIndex} does not exist.");
+        throw new ArgumentOutOfRangeException(nameof(stepIndex), $"workflow has {seen} steps; step {stepIndex} does not exist.");
     }
 
     /// <summary>A starter document for the "New workflow" action.</summary>

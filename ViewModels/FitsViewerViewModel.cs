@@ -159,16 +159,16 @@ public partial class FitsViewerViewModel : ObservableObject
             return;
         }
 
-        // FITS Y is flipped: display row 0 = FITS row (height-1)
-        var fitsY = _imageData.Height - 1 - iy;
-        var pixelIdx = fitsY * _imageData.Width + ix;
+        // Display row 0 is the LAST row of the array: the renderer flips Y to draw.
+        var (_, arrayY) = PixelConvention.DisplayToArray(ix, iy, _imageData.Height);
+        var pixelIdx = (int)arrayY * _imageData.Width + ix;
         var value = _imageData.Pixels[pixelIdx];
 
         PixelText = $"({ix}, {iy}) = {value:G6}";
 
         if (_imageData.Wcs is { IsValid: true } wcs)
         {
-            var (ra, dec) = wcs.PixelToWorld(ix + 1, fitsY + 1); // FITS pixels are 1-based
+            var (ra, dec) = PixelConvention.SkyAtDisplay(wcs, _imageData.Height, ix, iy);
             CoordinateText = $"RA {WcsInfo.FormatRa(ra)}  Dec {WcsInfo.FormatDec(dec)}";
         }
         else
@@ -211,12 +211,7 @@ public partial class FitsViewerViewModel : ObservableObject
     public (double X, double Y)? GoToCoordinate(double ra, double dec)
     {
         if (_imageData?.Wcs is not { IsValid: true } wcs) return null;
-        var pixel = wcs.WorldToPixel(ra, dec);
-        if (pixel is null) return null;
-        // 1-based FITS pixel → 0-based display pixel, flip Y
-        var displayX = pixel.Value.Px - 1;
-        var displayY = _imageData.Height - 1 - (pixel.Value.Py - 1);
-        return (displayX, displayY);
+        return PixelConvention.DisplayOfSky(wcs, _imageData.Height, ra, dec);
     }
 
     /// <summary>
