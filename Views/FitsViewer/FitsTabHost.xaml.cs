@@ -39,6 +39,7 @@ public sealed partial class FitsTabHost : UserControl
             _suppressToolbarSync = true;
             ZoomPresetCombo.SelectedIndex = 3; // "100%" item
             _suppressToolbarSync = false;
+            UpdateEmptyState();
         };
     }
 
@@ -47,7 +48,9 @@ public sealed partial class FitsTabHost : UserControl
     public FitsViewerPage AddNewTab()
     {
         var tabItem = ViewModel.AddNewTab();
-        return CreateTabViewItem(tabItem);
+        var page = CreateTabViewItem(tabItem);
+        UpdateEmptyState();
+        return page;
     }
 
     public async Task<FitsViewerPage> AddTabForFileAsync(string filePath)
@@ -57,6 +60,11 @@ public sealed partial class FitsTabHost : UserControl
         await page.OpenFileAsync(filePath);
         SyncToolbarToActiveTab();
         UpdateWcsSyncWarning(); // WCS is loaded now — re-check if opening this file made sync approximate
+
+        // Every route in — picker, empty state, recents, Research, Storage, MCP — lands here, so this
+        // is the one place that has to remember it.
+        _recents.AddOrUpdate(filePath, System.IO.Path.GetFileNameWithoutExtension(filePath));
+        UpdateEmptyState();
         return page;
     }
 
@@ -263,6 +271,62 @@ public sealed partial class FitsTabHost : UserControl
             _activePage = null;
             AllTabsClosed?.Invoke();
         }
+        UpdateEmptyState();
+    }
+
+    // ── Empty state + recents ────────────────────────────────────────────────
+
+    /// <summary>
+    /// The images opened before. Same store and same cap as the cube viewer's, because they are the
+    /// same list of the same kind of thing in two windows.
+    /// </summary>
+    private readonly CanfarDesktop.Services.Fits.RecentFitsService _recents = new();
+
+    /// <summary>Show the empty state exactly when there is nothing open, and refresh what it offers.</summary>
+    private void UpdateEmptyState()
+    {
+        var empty = TabViewControl.TabItems.Count == 0;
+        EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+        if (empty) RefreshRecents();
+    }
+
+    /// <summary>Rebuild the recents rows — a handful of entries, so rebuilding is cheaper than diffing.</summary>
+    private void RefreshRecents()
+    {
+        RecentsList.Items.Clear();
+        var entries = _recents.Entries;
+        RecentsPanel.Visibility = entries.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (var entry in entries)
+        {
+            var button = new HyperlinkButton
+            {
+                Content = entry.Name,
+                Tag = entry.Path,
+                Padding = new Thickness(8, 2, 8, 2),
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
+            ToolTipService.SetToolTip(button, entry.Path);
+            button.Click += OnRecentClick;
+            RecentsList.Items.Add(button);
+        }
+    }
+
+    private async void OnOpenFileEmpty(object sender, RoutedEventArgs e) => await PromptOpenFileAsync();
+
+    private async void OnRecentClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string path) return;
+
+        // A file deleted since it was recorded drops out of the list rather than opening a tab that
+        // can only fail.
+        if (!File.Exists(path))
+        {
+            _recents.Remove(path);
+            RefreshRecents();
+            return;
+        }
+        await AddTabForFileAsync(path);
     }
 
     private void OnTabSelectionChanged(object sender, SelectionChangedEventArgs e)

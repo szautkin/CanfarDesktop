@@ -113,7 +113,7 @@ public sealed partial class FitsViewerPage : UserControl
                     PixelLabel.Text = ViewModel.PixelText;
                     break;
                 case nameof(ViewModel.RenderedImage):
-                    FitsImage.Source = ViewModel.RenderedImage;
+                    ShowRenderedImage();
                     break;
             }
         });
@@ -123,7 +123,34 @@ public sealed partial class FitsViewerPage : UserControl
     {
         // Restore image source when tab becomes visible again after WinUI unload
         if (FitsImage.Source is null && ViewModel.RenderedImage is not null)
-            FitsImage.Source = ViewModel.RenderedImage;
+            ShowRenderedImage();
+    }
+
+    /// <summary>
+    /// Put the rendered frame on screen, capped at its own native size.
+    ///
+    /// <para><c>Stretch="Uniform"</c> fits the frame to the canvas, which is what an 11471x4593 mosaic
+    /// wants — but Uniform scales UP as readily as down, so a 64x64 cutout was blown across the whole
+    /// viewport and interpolated into a blur. Enlarging invents detail the data does not have.</para>
+    ///
+    /// <para>The cap is expressed as a maximum SIZE rather than as a zoom, so the existing coordinate
+    /// chain follows it for free: every screen↔image conversion here is derived from
+    /// <c>FitsImage.ActualWidth</c>, so constraining that constrains all of them consistently.</para>
+    /// </summary>
+    private void ShowRenderedImage()
+    {
+        FitsImage.Source = ViewModel.RenderedImage;
+
+        if (ViewModel.ImageData is { Width: > 0, Height: > 0 } data)
+        {
+            FitsImage.MaxWidth = data.Width;
+            FitsImage.MaxHeight = data.Height;
+        }
+        else
+        {
+            FitsImage.MaxWidth = double.PositiveInfinity;
+            FitsImage.MaxHeight = double.PositiveInfinity;
+        }
     }
 
     /// <summary>

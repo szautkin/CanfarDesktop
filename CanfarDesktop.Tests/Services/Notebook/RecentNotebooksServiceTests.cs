@@ -3,14 +3,28 @@ using CanfarDesktop.Services.Notebook;
 
 namespace CanfarDesktop.Tests.Services.Notebook;
 
-public class RecentNotebooksServiceTests
+public class RecentNotebooksServiceTests : IDisposable
 {
+    private readonly string _dir = Path.Combine(
+        Path.GetTempPath(), "verbinal-recent-notebooks-" + Guid.NewGuid().ToString("N")[..8]);
+
     private readonly RecentNotebooksService _service;
 
+    /// <summary>
+    /// On its own file, not the user's. This used to build the real service and Clear() it, so running
+    /// the suite wiped the developer's actual recent-notebooks list — the path became injectable when
+    /// the two recents services were collapsed onto one store.
+    /// </summary>
     public RecentNotebooksServiceTests()
     {
-        _service = new RecentNotebooksService();
-        _service.Clear(); // start clean — avoid cross-test pollution from shared disk file
+        Directory.CreateDirectory(_dir);
+        _service = new RecentNotebooksService(Path.Combine(_dir, "recent-notebooks.json"));
+    }
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_dir, recursive: true); } catch { /* best effort */ }
+        GC.SuppressFinalize(this);
     }
 
     [Fact]

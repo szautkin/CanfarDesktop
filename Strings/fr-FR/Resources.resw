@@ -1630,6 +1630,18 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Fits_OpenAnotherTab" xml:space="preserve">
     <value>Ouvrez d'abord un autre onglet</value>
   </data>
+  <data name="Fits_EmptyTitle" xml:space="preserve">
+    <value>Aucune image ouverte</value>
+  </data>
+  <data name="Fits_EmptyBody" xml:space="preserve">
+    <value>Ouvrez une image FITS pour l’examiner —étalement et palette, lecture WCS, sondage de pixels, marques et comparaison multi-onglets.</value>
+  </data>
+  <data name="Fits_OpenLabel" xml:space="preserve">
+    <value>Ouvrir une image…</value>
+  </data>
+  <data name="Fits_RecentsHeader" xml:space="preserve">
+    <value>Images récentes</value>
+  </data>
   <data name="Fits_OpenButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Ouvrir un fichier FITS</value>
   </data>

@@ -1630,6 +1630,18 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Fits_OpenAnotherTab" xml:space="preserve">
     <value>Open another tab first</value>
   </data>
+  <data name="Fits_EmptyTitle" xml:space="preserve">
+    <value>No image open</value>
+  </data>
+  <data name="Fits_EmptyBody" xml:space="preserve">
+    <value>Open a FITS image to inspect it — stretch and colormap, WCS readout, pixel probing, marks, and multi-tab comparison.</value>
+  </data>
+  <data name="Fits_OpenLabel" xml:space="preserve">
+    <value>Open image…</value>
+  </data>
+  <data name="Fits_RecentsHeader" xml:space="preserve">
+    <value>Recent images</value>
+  </data>
   <data name="Fits_OpenButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Open FITS file</value>
   </data>
