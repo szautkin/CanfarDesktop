@@ -208,26 +208,22 @@ public sealed class CubeWcs
 
     // ── Compact sexagesimal / decimal formatters for captions ──
 
+    /// <summary>
+    /// Whole-second RA for an axis caption. The carry fix this used to spell out inline — <c>if (s ==
+    /// 60) { s = 0; m++; }</c> — is what <see cref="Helpers.Sexagesimal.SplitRa"/> does for every
+    /// caller, so the knowledge lives in one place instead of in whichever copies remembered it.
+    /// </summary>
     private static string FormatRaShort(double raDeg)
     {
-        var ra = raDeg / 15.0;
-        ra %= 24.0; if (ra < 0) ra += 24.0;
-        int h = (int)ra;
-        int m = (int)((ra - h) * 60);
-        int s = (int)Math.Round((ra - h - m / 60.0) * 3600);
-        if (s == 60) { s = 0; m++; } if (m == 60) { m = 0; h = (h + 1) % 24; }
-        return $"{h:00}:{m:00}:{s:00}";
+        var p = Helpers.Sexagesimal.SplitRa(raDeg, 0);
+        return $"{p.Units:00}:{p.Minutes:00}:{p.Seconds:00}";
     }
 
+    /// <summary>Whole-second Dec, with this readout's own minus glyph.</summary>
     private static string FormatDecShort(double decDeg)
     {
-        var sign = decDeg >= 0 ? "+" : "−";
-        var d = Math.Abs(decDeg);
-        int dd = (int)d;
-        int m = (int)((d - dd) * 60);
-        int s = (int)Math.Round((d - dd - m / 60.0) * 3600);
-        if (s == 60) { s = 0; m++; } if (m == 60) { m = 0; dd++; }
-        return $"{sign}{dd:00}:{m:00}:{s:00}";
+        var p = Helpers.Sexagesimal.SplitDec(decDeg, 0);
+        return $"{(p.Sign < 0 ? "−" : "+")}{p.Units:00}:{p.Minutes:00}:{p.Seconds:00}";
     }
 
     private static string FormatDeg(double deg) =>

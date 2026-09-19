@@ -311,26 +311,24 @@ public record WcsInfo
 
     #region Formatting
 
-    /// <summary>Format RA in degrees to sexagesimal (HHhMMmSS.ss s).</summary>
+    /// <summary>
+    /// Format RA in degrees to sexagesimal (HHhMMmSS.sss).
+    ///
+    /// The glyphs are this readout's own; the arithmetic is not. Splitting in floating point and
+    /// truncating — which this did — reads 359.999999° as <c>23h59m60.00s</c>, sixty seconds, which is
+    /// not a time. <see cref="Sexagesimal.SplitRa"/> carries in integers so it cannot.
+    /// </summary>
     public static string FormatRa(double raDeg)
     {
-        var ra = raDeg / 15.0; // degrees to hours
-        if (ra < 0) ra += 24;
-        var h = (int)ra;
-        var m = (int)((ra - h) * 60);
-        var s = (ra - h - m / 60.0) * 3600;
-        return $"{h:D2}h{m:D2}m{s:00.00}s";
+        var p = Sexagesimal.SplitRa(raDeg, 2);
+        return $"{p.Units:D2}h{p.Minutes:D2}m{p.Seconds:D2}.{p.Fraction:D2}s";
     }
 
-    /// <summary>Format Dec in degrees to sexagesimal (+DD°MM'SS.s").</summary>
+    /// <summary>Format Dec in degrees to sexagesimal (+DD°MM'SS.s"), carried the same way.</summary>
     public static string FormatDec(double decDeg)
     {
-        var sign = decDeg >= 0 ? "+" : "-";
-        var dec = Math.Abs(decDeg);
-        var d = (int)dec;
-        var m = (int)((dec - d) * 60);
-        var s = (dec - d - m / 60.0) * 3600;
-        return $"{sign}{d:D2}°{m:D2}'{s:00.0}\"";
+        var p = Sexagesimal.SplitDec(decDeg, 1);
+        return $"{(p.Sign < 0 ? "-" : "+")}{p.Units:D2}°{p.Minutes:D2}'{p.Seconds:D2}.{p.Fraction}\"";
     }
 
     /// <summary>
@@ -339,24 +337,18 @@ public record WcsInfo
     /// </summary>
     public static string FormatForResolver(double raDeg, double decDeg)
     {
-        // RA: degrees → hours → HH:MM:SS.ss
-        var ra = raDeg / 15.0;
-        if (ra < 0) ra += 24;
-        var rh = (int)ra;
-        var rm = (int)((ra - rh) * 60);
-        var rs = (ra - rh - rm / 60.0) * 3600;
+        // The same carry-correct split the readouts use. Rounding the seconds separately — which this
+        // did — could produce 6000 in a field that is centiseconds written as four digits, i.e. sixty
+        // seconds, and send CADC a coordinate that is not one.
+        var ra = Sexagesimal.SplitRa(raDeg, 2);
+        var dec = Sexagesimal.SplitDec(decDeg, 1);
 
-        // Dec: degrees → DD:MM:SS.s
-        var sign = decDeg >= 0 ? "+" : "-";
-        var dec = Math.Abs(decDeg);
-        var dd = (int)dec;
-        var dm = (int)((dec - dd) * 60);
-        var ds = (dec - dd - dm / 60.0) * 3600;
+        // CADC format: seconds × 100 (RA) or × 10 (Dec) as integers, no decimal point.
+        var rsInt = ra.Seconds * 100 + ra.Fraction;
+        var dsInt = dec.Seconds * 10 + dec.Fraction;
 
-        // CADC format: seconds × 100 (RA) or × 10 (Dec) as integers, no decimal point
-        var rsInt = (int)Math.Round(rs * 100);
-        var dsInt = (int)Math.Round(ds * 10);
-        return $"{rh:D2}:{rm:D2}:{rsInt:D4},{sign}{dd:D2}:{dm:D2}:{dsInt:D3}";
+        return $"{ra.Units:D2}:{ra.Minutes:D2}:{rsInt:D4}," +
+               $"{(dec.Sign < 0 ? "-" : "+")}{dec.Units:D2}:{dec.Minutes:D2}:{dsInt:D3}";
     }
 
     #endregion
