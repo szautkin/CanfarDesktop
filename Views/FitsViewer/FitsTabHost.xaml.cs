@@ -85,6 +85,12 @@ public sealed partial class FitsTabHost : UserControl
         => _activePage?.ExportFigureAsync(request)
            ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("no FITS image is open"));
 
+    /// <summary>Capture what the active tab is showing, for <c>get_fits_image</c>.</summary>
+    public Task<CanfarDesktop.Mcp.Tools.Write.ViewerCapture> CaptureAsync(
+        CanfarDesktop.Mcp.Tools.Write.ViewerCaptureRequest request)
+        => _activePage?.CaptureAsync(request)
+           ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("no FITS image is open"));
+
     private FitsViewerPage CreateTabViewItem(FitsViewerTabItem tabItem)
     {
         var page = new FitsViewerPage(tabItem.ViewModel);

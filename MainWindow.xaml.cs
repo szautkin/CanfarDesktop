@@ -177,6 +177,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetSearchHost(ResolveSearchBridgeAsync);
         _viewState.SetAnnotationHost(this);
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
+        _viewState.SetFitsCaptureAction(CaptureFitsActionAsync);
+        _viewState.SetCubeCaptureAction(CaptureCubeActionAsync);
         _viewState.SetNotebookImageAction(GetCellImageActionAsync);
         _viewState.SetCreateAnalysisNotebookAction(CreateAnalysisNotebookActionAsync);
         _viewState.AgentActivity += OnAgentActivity;
@@ -278,6 +280,25 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             () => _fitsTabHost?.ExportFigureAsync(request)
                   ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("no FITS image is open")),
             CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("the window is closing"));
+
+    /// <summary>
+    /// What the FITS viewer is showing, for get_fits_image. UI-thread work: the capture rasterises a
+    /// real control.
+    /// </summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.ViewerCapture> CaptureFitsActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.ViewerCaptureRequest request)
+        => OnUiAsync(
+            () => _fitsTabHost?.CaptureAsync(request)
+                  ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("no FITS image is open")),
+            CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("the window is closing"));
+
+    /// <summary>What the cube viewer is showing, for get_cube_image.</summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.ViewerCapture> CaptureCubeActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.ViewerCaptureRequest request)
+        => OnUiAsync(
+            () => _cubeTabHost?.ActivePage?.CaptureAsync(request)
+                  ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("no cube is open")),
+            CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("the window is closing"));
 
     /// <summary>A notebook cell's figure, for get_cell_image. UI-thread work: it reads the live cell.</summary>
     private Task<CanfarDesktop.Services.Notebook.NotebookCellImage> GetCellImageActionAsync(int index, string? notebook)

@@ -34,16 +34,29 @@ public sealed partial class FitsViewerPage
     /// Render a region as the figure's picture. Null when the region is not on the image, or when
     /// nothing is loaded.
     /// </summary>
-    private async Task<(WriteableBitmap Frame, int W, int H)?> RenderFrameAsync(FitsRegion region, int scale)
+    private Task<(WriteableBitmap Frame, int W, int H)?> RenderFrameAsync(FitsRegion region, int scale)
     {
-        if (ViewModel.ImageData is not { } image) return null;
-        if (region.ClampTo(image.Width, image.Height) is not { } area) return null;
+        if (ViewModel.ImageData is not { } image) return Task.FromResult<(WriteableBitmap, int, int)?>(null);
+        if (region.ClampTo(image.Width, image.Height) is not { } area)
+            return Task.FromResult<(WriteableBitmap, int, int)?>(null);
 
         // The frame keeps the region's aspect: a figure of a wide region should be wide. The scale
         // multiplies both sides, so 4x is four times the picture rather than four times the file.
         var longest = Math.Max(area.Width, area.Height);
         var w = (int)Math.Round(FrameBase * scale * area.Width / longest);
         var h = (int)Math.Round(FrameBase * scale * area.Height / longest);
+        return RenderFrameAtAsync(region, w, h);
+    }
+
+    /// <summary>
+    /// The same render at an EXACT pixel size rather than a multiple of the figure base. An agent
+    /// capture is bounded in pixels and bytes rather than scaled up for print, so it asks for the size
+    /// it worked out; a figure asks for a multiple. One renderer either way.
+    /// </summary>
+    private async Task<(WriteableBitmap Frame, int W, int H)?> RenderFrameAtAsync(FitsRegion region, int w, int h)
+    {
+        if (ViewModel.ImageData is not { } image) return null;
+        if (region.ClampTo(image.Width, image.Height) is not { } area) return null;
         if (w < 1 || h < 1) return null;
 
         var colormap = ColormapProvider.GetColormap(ViewModel.Colormap);

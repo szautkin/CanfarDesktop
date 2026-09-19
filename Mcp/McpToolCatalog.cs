@@ -235,6 +235,10 @@ public static class McpToolCatalog
             // The figure the marks are drawn for.
             new ExportFitsFigureTool(request => viewState.ExportFitsFigureAsync(request)),
 
+            // Looking at what the person is looking at, as opposed to writing a plate for a paper.
+            new GetFitsImageTool(request => viewState.CaptureFitsAsync(request)),
+            new GetCubeImageTool(request => viewState.CaptureCubeAsync(request)),
+
             // 3D Cube Viewer: open + steer + read + probe + export figure
             new OpenCubeTool(target => viewState.OpenCubeAsync(target)),
             new SetCubeViewTool(args => viewState.SetCubeAsync(args)),

@@ -49,6 +49,8 @@
     <Compile Include="..\Helpers\MarkStylePreference.cs" Link="Linked\MarkStylePreference.cs" />
     <Compile Include="..\Helpers\RuntimeInfo.cs" Link="Linked\RuntimeInfo.cs" />
     <Compile Include="..\Helpers\PollCadence.cs" Link="Linked\PollCadence.cs" />
+    <Compile Include="..\Helpers\AgentCapture.cs" Link="Linked\AgentCapture.cs" />
+    <Compile Include="..\Mcp\Tools\Write\ViewerCaptureContracts.cs" Link="Linked\Mcp\ViewerCaptureContracts.cs" />
     <Compile Include="..\Models\JobRecord.cs" Link="Linked\JobRecord.cs" />
     <Compile Include="..\Services\JobHistoryStore.cs" Link="Linked\JobHistoryStore.cs" />
     <!-- The cue files themselves, at the path AgentSounds.FileFor probes, so the tests check the

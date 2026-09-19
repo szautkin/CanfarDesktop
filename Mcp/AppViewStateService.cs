@@ -346,4 +346,23 @@ public sealed class AppViewStateService : IAnnotationHost
     public Task<FitsFigureOutcome> ExportFitsFigureAsync(FitsFigureRequest request)
         => _exportFitsFigure?.Invoke(request)
            ?? Task.FromResult(FitsFigureOutcome.Unavailable("the FITS viewer is not available"));
+
+    // ── What an agent can see ────────────────────────────────────────────────
+
+    private volatile Func<ViewerCaptureRequest, Task<ViewerCapture>>? _captureFits;
+    private volatile Func<ViewerCaptureRequest, Task<ViewerCapture>>? _captureCube;
+
+    public void SetFitsCaptureAction(Func<ViewerCaptureRequest, Task<ViewerCapture>> capture)
+        => _captureFits = capture;
+
+    public void SetCubeCaptureAction(Func<ViewerCaptureRequest, Task<ViewerCapture>> capture)
+        => _captureCube = capture;
+
+    public Task<ViewerCapture> CaptureFitsAsync(ViewerCaptureRequest request)
+        => _captureFits?.Invoke(request)
+           ?? Task.FromResult(ViewerCapture.Unavailable("the FITS viewer is not available"));
+
+    public Task<ViewerCapture> CaptureCubeAsync(ViewerCaptureRequest request)
+        => _captureCube?.Invoke(request)
+           ?? Task.FromResult(ViewerCapture.Unavailable("the cube viewer is not available"));
 }
