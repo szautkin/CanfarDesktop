@@ -146,4 +146,38 @@ public sealed partial class CubeViewerPage
             BeamMinorArcsec: w?.BeamMinorDeg is double bmin ? bmin * 3600.0 : null,
             BeamPaDeg: w?.BeamPaDeg);
     }
+
+    /// <summary>
+    /// The per-channel intensity profile — the waveform drawn under the channel scrubber, which is
+    /// what a person reads to find where the line is.
+    ///
+    /// It is computed once on load and kept, so this costs nothing but the copy. Null when no cube is
+    /// loaded, or when the profile has not been computed yet.
+    /// </summary>
+    public CubeChannelProfileResult? GetChannelProfile()
+    {
+        if (_volume is null || _channelProfile is not { Length: > 0 } profile) return null;
+
+        var nz = profile.Length;
+        var axis = new double[nz];
+        var intensity = new double[nz];
+        var hasSpec = _meta?.Wcs.HasSpectral == true;
+
+        var peak = 0;
+        for (var z = 0; z < nz; z++)
+        {
+            axis[z] = hasSpec ? _meta!.Wcs.SpectralValue(z) : z;
+            intensity[z] = profile[z];
+            if (profile[z] > profile[peak]) peak = z;
+        }
+
+        var w = _meta?.Wcs;
+        return new CubeChannelProfileResult(
+            nz, axis, intensity,
+            hasSpec ? w!.SpecUnitDisplay() : "channel",
+            peak,
+            ViewModel.Channel,
+            SpectralFrame: string.IsNullOrEmpty(w?.SpectralFrame) ? null : w!.SpectralFrame,
+            RestFrequencyGHz: w?.RestFrequencyGHz);
+    }
 }

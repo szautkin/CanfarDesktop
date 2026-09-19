@@ -94,6 +94,18 @@ public sealed partial class CubeTabHost : UserControl
     /// <summary>Number of open cube tabs.</summary>
     public int OpenTabCount => TabViewControl.TabItems.Count;
 
+    /// <summary>
+    /// The cubes this viewer has opened before — the list its empty state offers.
+    ///
+    /// `exists` is checked here rather than remembered, because a recents list outlives the files in
+    /// it and "open this" failing after the fact is worse than knowing before.
+    /// </summary>
+    public IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.RecentCubeView> ListRecentCubes()
+        => _recents.Entries
+            .Select(e => new CanfarDesktop.Mcp.Tools.Write.RecentCubeView(
+                e.Path, e.Name, System.IO.File.Exists(e.Path)))
+            .ToList();
+
     /// <summary>Every open tab, in order, with the index an agent addresses them by and a real path.</summary>
     public IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo> ListTabs()
     {

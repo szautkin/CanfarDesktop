@@ -181,4 +181,84 @@ public class CubeViewerToolsTests
         var r = await tool.InvokeAsync(Args("""{}"""), Ctx, default);
         Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(r).Reason);
     }
+
+    // ── The reads that are about the whole file ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// The waveform a person scrubs against to find the line. It was on screen and nowhere else, so
+    /// "go to the brightest channel" meant probing a spaxel nothing said was on the source, or walking
+    /// every channel. The peak is reported outright, because that is what this is usually asked for.
+    /// </summary>
+    [Fact]
+    public async Task ChannelProfile_ReportsTheIntensityPerChannelAndThePeak()
+    {
+        var tool = new GetCubeChannelProfileTool(() => Task.FromResult<CubeChannelProfileResult?>(
+            new CubeChannelProfileResult(
+                Channels: 4,
+                SpectralAxis: [115.20, 115.21, 115.22, 115.23],
+                Intensity: [0.1, 0.9, 0.3, 0.2],
+                SpectralUnit: "GHz",
+                PeakChannel: 1,
+                CurrentChannel: 0,
+                SpectralFrame: "LSRK",
+                RestFrequencyGHz: 115.271)));
+
+        var doc = Json(await tool.InvokeAsync(Args("{}"), Ctx, default));
+
+        Assert.Equal(4, doc.GetProperty("channels").GetInt32());
+        Assert.Equal(1, doc.GetProperty("peakChannel").GetInt32());
+        Assert.Equal(0, doc.GetProperty("currentChannel").GetInt32());
+        Assert.Equal("GHz", doc.GetProperty("spectralUnit").GetString());
+        Assert.Equal("LSRK", doc.GetProperty("spectralFrame").GetString());
+    }
+
+    /// <summary>No cube loaded is a named failure, not an empty profile that reads as a flat spectrum.</summary>
+    [Fact]
+    public async Task ChannelProfile_WithNoCube_SaysToOpenOne()
+    {
+        var tool = new GetCubeChannelProfileTool(() => Task.FromResult<CubeChannelProfileResult?>(null));
+        var failure = Assert.IsType<FailedResult>(await tool.InvokeAsync(Args("{}"), Ctx, default));
+
+        Assert.Contains("open_cube", failure.Reason.Description);
+    }
+
+    /// <summary>The description sends a caller wanting one spaxel to the tool that does that instead.</summary>
+    [Fact]
+    public void ChannelProfile_DistinguishesItselfFromProbeCubeSpectrum()
+    {
+        var tool = new GetCubeChannelProfileTool(() => Task.FromResult<CubeChannelProfileResult?>(null));
+        Assert.Contains("probe_cube_spectrum", tool.Descriptor.Description);
+    }
+
+    /// <summary>
+    /// A recents list outlives the files in it, so each entry says whether its file is still there —
+    /// knowing before beats "open this" failing after the fact.
+    /// </summary>
+    [Fact]
+    public async Task RecentCubes_CarryRealPathsAndWhetherTheFileIsStillThere()
+    {
+        var tool = new ListRecentCubesTool(() => Task.FromResult<IReadOnlyList<RecentCubeView>>(
+        [
+            new RecentCubeView(@"C:\data\m51.fits", "M51", true),
+            new RecentCubeView(@"D:\gone\old.fits", "old", false),
+        ]));
+
+        var doc = Json(await tool.InvokeAsync(Args("{}"), Ctx, default));
+        var cubes = doc.GetProperty("cubes");
+
+        Assert.Equal(2, doc.GetProperty("count").GetInt32());
+        Assert.Equal(@"C:\data\m51.fits", cubes[0].GetProperty("path").GetString());
+        Assert.True(cubes[0].GetProperty("exists").GetBoolean());
+        Assert.False(cubes[1].GetProperty("exists").GetBoolean());
+    }
+
+    [Fact]
+    public async Task RecentCubes_EmptyIsAnEmptyListNotAFailure()
+    {
+        var tool = new ListRecentCubesTool(() => Task.FromResult<IReadOnlyList<RecentCubeView>>([]));
+        var doc = Json(await tool.InvokeAsync(Args("{}"), Ctx, default));
+
+        Assert.Equal(0, doc.GetProperty("count").GetInt32());
+        Assert.Equal(0, doc.GetProperty("cubes").GetArrayLength());
+    }
 }

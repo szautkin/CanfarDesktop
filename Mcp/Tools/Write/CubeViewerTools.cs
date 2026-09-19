@@ -192,3 +192,68 @@ public sealed class ProbeCubeSpectrumTool : JsonReadTool<ProbeCubeSpectrumTool.A
 
     public sealed record Args { public int? X { get; init; } public int? Y { get; init; } }
 }
+
+/// <summary>
+/// <c>get_cube_channel_profile</c> — the waveform under the channel scrubber.
+///
+/// A person finds the line by looking at it: the profile shows which channels carry signal, and the
+/// scrubber runs along it. An agent had neither. "Go to the brightest channel" meant probing a spaxel
+/// it had no reason to believe was on the source, or stepping through every channel one at a time and
+/// looking at each.
+///
+/// It reports the peak channel outright, because that is the question this is usually asked for.
+/// </summary>
+public sealed class GetCubeChannelProfileTool : JsonReadTool<EmptyArgs, CubeChannelProfileResult>
+{
+    private readonly Func<Task<CubeChannelProfileResult?>> _profile;
+
+    public GetCubeChannelProfileTool(Func<Task<CubeChannelProfileResult?>> profile) => _profile = profile;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "get_cube_channel_profile",
+        "The loaded cube's per-channel intensity profile — the waveform drawn under the channel " +
+        "scrubber, which is how you find which channels carry signal. Returns intensity per channel, " +
+        "the spectral axis beside it so a channel can be named in the data's own units, the peak " +
+        "channel, and which channel the viewer is on. Use probe_cube_spectrum when you want one " +
+        "spaxel's spectrum instead; this is the whole plane, channel by channel.",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override async Task<CubeChannelProfileResult> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
+        => await _profile()
+           ?? throw new McpToolException(new UnknownTarget(
+               "no cube is loaded — open one with open_cube first"));
+}
+
+/// <summary>One cube the viewer has opened before, as an agent sees it.</summary>
+public sealed record RecentCubeView(string Path, string Name, bool Exists);
+
+/// <summary>
+/// <c>list_recent_cubes</c> — the files the cube viewer offers on its empty state.
+///
+/// The list is on screen and was reachable nowhere else, so an agent picking up a session someone
+/// else started could not name what they had been working on.
+///
+/// Each entry says whether the file is still <c>exists</c>: a recents list outlives the files in it,
+/// and "open this" failing after the fact is worse than knowing before.
+/// </summary>
+public sealed class ListRecentCubesTool : JsonReadTool<EmptyArgs, ListRecentCubesTool.Output>
+{
+    private readonly Func<Task<IReadOnlyList<RecentCubeView>>> _recents;
+
+    public ListRecentCubesTool(Func<Task<IReadOnlyList<RecentCubeView>>> recents) => _recents = recents;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "list_recent_cubes",
+        "The spectral cubes the viewer has opened before — the list its empty state offers, newest " +
+        "first. Each entry carries a real path you can pass to open_cube, and `exists` says whether the " +
+        "file is still there, because a recents list outlives the files in it.",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override async Task<Output> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
+    {
+        var entries = await _recents();
+        return new Output(entries.Count, entries);
+    }
+
+    public sealed record Output(int Count, IReadOnlyList<RecentCubeView> Cubes);
+}

@@ -234,6 +234,10 @@ public static class McpToolCatalog
             new UpdateAnnotationTool(annotations, viewState),
             new RemoveAnnotationTool(annotations, viewState),
             new ClearAnnotationsTool(annotations, viewState),
+
+            // The cube reads that are about the whole file rather than one view of it.
+            new GetCubeChannelProfileTool(() => viewState.GetCubeChannelProfileAsync()),
+            new ListRecentCubesTool(() => viewState.ListRecentCubesAsync()),
             new SelectAnnotationTool(annotations, viewState),
 
             // The figure the marks are drawn for.

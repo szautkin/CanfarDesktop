@@ -169,6 +169,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetActions(NavigateByKeyAsync, SetSearchFocusActionAsync, OpenFitsActionAsync);
         _viewState.SetCubeActions(OpenCubeActionAsync, GetCubeActionAsync, SetCubeActionAsync,
                                   ExportCubeActionAsync, ProbeCubeActionAsync);
+        _viewState.SetCubeCatalogueActions(GetCubeChannelProfileActionAsync, ListRecentCubesActionAsync);
         _viewState.SetFitsActions(GetFitsActionAsync, SetFitsActionAsync, ProbeFitsActionAsync, GotoFitsActionAsync);
         _viewState.SetFitsBookmarkActions(ListFitsBookmarksActionAsync, SaveFitsBookmarkActionAsync, DeleteFitsBookmarkActionAsync);
         _viewState.SetNotebookActions(NotebookMutateActionAsync, GetNotebookActionAsync, GetCellOutputActionAsync,
@@ -293,6 +294,15 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             () => _fitsTabHost?.CaptureAsync(request)
                   ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("no FITS image is open")),
             CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("the window is closing"));
+
+    /// <summary>The cube's channel waveform, for get_cube_channel_profile.</summary>
+    private Task<CanfarDesktop.Services.CubeViewer.CubeChannelProfileResult?> GetCubeChannelProfileActionAsync()
+        => OnUi(() => _cubeTabHost?.ActivePage?.GetChannelProfile(), null);
+
+    /// <summary>The cubes opened before, for list_recent_cubes.</summary>
+    private Task<IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.RecentCubeView>> ListRecentCubesActionAsync()
+        => OnUi(() => _cubeTabHost?.ListRecentCubes() ?? [],
+                (IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.RecentCubeView>)[]);
 
     /// <summary>What the cube viewer is showing, for get_cube_image.</summary>
     private Task<CanfarDesktop.Mcp.Tools.Write.ViewerCapture> CaptureCubeActionAsync(

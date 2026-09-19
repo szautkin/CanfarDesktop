@@ -127,6 +127,24 @@ public sealed class AppViewStateService : IAnnotationHost
     public Task<CubeSpectrumResult?> ProbeCubeAsync(int x, int y)
         => _probeCube?.Invoke(x, y) ?? Task.FromResult<CubeSpectrumResult?>(null);
 
+    private volatile Func<Task<CubeChannelProfileResult?>>? _cubeProfile;
+    private volatile Func<Task<IReadOnlyList<RecentCubeView>>>? _recentCubes;
+
+    /// <summary>The cube reads that are about the whole file rather than about one view of it.</summary>
+    public void SetCubeCatalogueActions(
+        Func<Task<CubeChannelProfileResult?>> profile,
+        Func<Task<IReadOnlyList<RecentCubeView>>> recents)
+    {
+        _cubeProfile = profile;
+        _recentCubes = recents;
+    }
+
+    public Task<CubeChannelProfileResult?> GetCubeChannelProfileAsync()
+        => _cubeProfile?.Invoke() ?? Task.FromResult<CubeChannelProfileResult?>(null);
+
+    public Task<IReadOnlyList<RecentCubeView>> ListRecentCubesAsync()
+        => _recentCubes?.Invoke() ?? Task.FromResult<IReadOnlyList<RecentCubeView>>([]);
+
     // ── 2D FITS Viewer actions (registered by the UI; invoked by the FITS MCP tools) ─────────────
 
     private volatile Func<Task<FitsViewState?>>? _getFits;

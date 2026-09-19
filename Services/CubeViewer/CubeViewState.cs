@@ -46,3 +46,23 @@ public sealed record CubeSpectrumResult(
     double? BeamMajorArcsec = null,   // synthesized beam (for K↔Jy/beam + flux integration)
     double? BeamMinorArcsec = null,
     double? BeamPaDeg = null);
+
+/// <summary>
+/// The cube's per-channel intensity profile — the waveform under the channel scrubber.
+///
+/// It is the thing a person scrubs against to find where the line is, and it was on screen and
+/// nowhere else: an agent asked to "go to the brightest channel" had to probe a spaxel it had no
+/// reason to trust was on the source, or walk every channel one at a time.
+///
+/// <see cref="Intensity"/> is the whole-plane statistic per channel, indexed by channel. The spectral
+/// axis is beside it so a channel can be named in the units the data is in rather than as an integer.
+/// </summary>
+public sealed record CubeChannelProfileResult(
+    int Channels,
+    double[] SpectralAxis,     // spectral world value per channel (or the channel index if no WCS)
+    double[] Intensity,        // whole-plane intensity per channel
+    string SpectralUnit,
+    int PeakChannel,           // the channel where Intensity is greatest
+    int CurrentChannel,        // what the viewer is showing right now
+    string? SpectralFrame = null,
+    double? RestFrequencyGHz = null);
