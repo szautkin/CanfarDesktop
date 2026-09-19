@@ -1,3 +1,5 @@
+using CanfarDesktop.Helpers;
+
 namespace CanfarDesktop.Mcp.Config;
 
 /// <summary>
@@ -49,9 +51,6 @@ public sealed class ClaudeConfigRepair
         if (File.Exists(ConfigPath))
             File.Copy(ConfigPath, ConfigPath + ".bak", overwrite: true);
 
-        var tmp = ConfigPath + ".tmp";
-        File.WriteAllText(tmp, merged);
-        if (File.Exists(ConfigPath)) File.Replace(tmp, ConfigPath, null);
-        else File.Move(tmp, ConfigPath);
+        AtomicFile.WriteAllText(ConfigPath, merged);
     }
 }

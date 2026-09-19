@@ -3,6 +3,7 @@ namespace CanfarDesktop.Services.Notebook;
 using System.Diagnostics;
 using CanfarDesktop.Helpers.Notebook;
 using CanfarDesktop.Models.Notebook;
+using CanfarDesktop.Helpers;
 
 /// <summary>
 /// Writes autosave checkpoints to %LocalAppData%/CanfarDesktop/AutoSave/.
@@ -101,10 +102,8 @@ public class AutoSaveService : IAutoSaveService
             var document = provider();
             var json = NotebookParser.Serialize(document);
 
-            // Atomic write: tmp + rename prevents reading half-written files
-            var tmpPath = path + ".tmp";
-            File.WriteAllText(tmpPath, json);
-            File.Move(tmpPath, path, overwrite: true);
+            // Atomic: a recovery file read half-written is worse than no recovery file.
+            AtomicFile.WriteAllText(path, json);
 
             lock (_lock) { _hasNewChangesSinceLastSave = false; }
             Debug.WriteLine($"AutoSave written: {path}");

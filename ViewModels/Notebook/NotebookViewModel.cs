@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using CanfarDesktop.Helpers.Notebook;
 using CanfarDesktop.Models.Notebook;
 using CanfarDesktop.Services.Notebook;
+using CanfarDesktop.Helpers;
 
 /// <summary>
 /// Top-level ViewModel for a single open notebook. Owns the cell list,
@@ -183,21 +184,13 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
         SyncAllCellsToModel();
         try
         {
-            var tmpPath = _filePath + ".tmp";
-
             // Written back in the format it was opened in. Writing nbformat JSON to whatever path it
             // was handed meant that opening analysis.py and pressing Ctrl+S replaced the script with a
             // JSON document — a file someone may have opened only to read.
             //
             // And it writes EVERY cell. Serializing Cells[0] alone silently dropped everything after the
             // first one, which is a data loss you find out about the next time you open the file.
-            if (NotebookFormats.Serialize(Format, _document) is { } text)
-                await File.WriteAllTextAsync(tmpPath, text);
-            else
-                await using (var stream = File.Create(tmpPath))
-                    await NotebookParser.SerializeAsync(_document, stream);
-
-            File.Move(tmpPath, _filePath, overwrite: true);
+            await WriteDocumentAsync(_filePath);
             _dirtyTracker.MarkClean();
             StatusMessage = $"Saved {Path.GetFileName(_filePath)}";
         }
@@ -220,15 +213,7 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
         SyncAllCellsToModel();
         try
         {
-            var tmpPath = filePath + ".tmp";
-
-            if (NotebookFormats.Serialize(Format, _document) is { } text)
-                await File.WriteAllTextAsync(tmpPath, text);
-            else
-                await using (var stream = File.Create(tmpPath))
-                    await NotebookParser.SerializeAsync(_document, stream);
-
-            File.Move(tmpPath, filePath, overwrite: true);
+            await WriteDocumentAsync(filePath);
             _dirtyTracker.MarkClean();
             _recentNotebooks.AddOrUpdate(filePath);
             StatusMessage = $"Saved {Path.GetFileName(filePath)}";
@@ -241,6 +226,18 @@ public partial class NotebookViewModel : ObservableObject, IDisposable
             StatusMessage = $"Save failed: {ex.Message}";
         }
     }
+
+    /// <summary>
+    /// Serialize the document to <paramref name="path"/> in the format it carries, atomically.
+    ///
+    /// Save and Save As had this twice, and neither removed its temp file when the write failed — so a
+    /// save that threw left <c>analysis.ipynb.tmp</c> beside the notebook. <see cref="AtomicFile"/>
+    /// cleans up, and there is one copy of the format decision to keep right.
+    /// </summary>
+    private Task WriteDocumentAsync(string path)
+        => NotebookFormats.Serialize(Format, _document) is { } text
+            ? AtomicFile.WriteAllTextAsync(path, text)
+            : AtomicFile.WriteStreamAsync(path, stream => NotebookParser.SerializeAsync(_document, stream));
 
     private void SyncAllCellsToModel()
     {

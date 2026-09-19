@@ -1,3 +1,5 @@
+using CanfarDesktop.Helpers;
+
 namespace CanfarDesktop.Mcp.Listener;
 
 /// <summary>
@@ -19,10 +21,7 @@ public sealed class McpSidecar
     public void Write(string pipeName)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        var tmp = FilePath + ".tmp";
-        File.WriteAllText(tmp, pipeName);
-        if (File.Exists(FilePath)) File.Replace(tmp, FilePath, null);
-        else File.Move(tmp, FilePath);
+        AtomicFile.WriteAllText(FilePath, pipeName);
     }
 
     /// <summary>The pipe name the app last advertised, or null when absent/unreadable.</summary>

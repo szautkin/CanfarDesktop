@@ -1,5 +1,6 @@
 using System.Text.Json;
 using CanfarDesktop.Models.ImageDiscovery;
+using CanfarDesktop.Helpers;
 
 namespace CanfarDesktop.Services.ImageDiscovery;
 
@@ -205,11 +206,7 @@ public class JsonManifestStore : IManifestStore
         try
         {
             Directory.CreateDirectory(_directory);
-            var path = FilePath(imageID);
-            var tmp = path + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(outcome, Options));
-            if (File.Exists(path)) File.Replace(tmp, path, null);
-            else File.Move(tmp, path);
+            AtomicFile.WriteAllText(FilePath(imageID), JsonSerializer.Serialize(outcome, Options));
         }
         catch (Exception ex)
         {
