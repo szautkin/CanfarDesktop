@@ -2,7 +2,8 @@ namespace CanfarDesktop.Mcp.Tools.Read;
 
 /// <summary>The resolved arguments handed to the injected VizieR search (radius already in degrees).</summary>
 public sealed record VizierConeSearchRequest(
-    string Catalogue, double RaDeg, double DecDeg, double RadiusDeg, string RaColumn, string DecColumn, int MaxRec);
+    string Catalogue, double RaDeg, double DecDeg, double RadiusDeg, string RaColumn, string DecColumn, int MaxRec,
+    IReadOnlyList<string>? Columns = null);
 
 /// <summary>
 /// <c>vizier_cone_search</c> — cone-search a VizieR catalogue at CDS. Wraps
@@ -31,7 +32,10 @@ public sealed class VizierConeSearchTool : JsonReadTool<VizierConeSearchTool.Arg
         "(`V/97/catalog`, `B/vsx/vsx`, `I/355/gaiadr3`, …). Position columns default to RAJ2000 / DEJ2000 " +
         "— override `raColumn` / `decColumn` if the specific catalogue uses different names. " +
         "`radiusArcsec` is in arcseconds for the convenience of typical cluster work; the tool converts " +
-        "to degrees internally. Returns parsed rows + a `probablyTruncated` hint when the row count hit the cap.",
+        "to degrees internally. `columns` narrows the projection: omit it and the query is `SELECT TOP n *`, " +
+        "which for a wide catalogue is more than a caller can hold — a Gaia DR3 cone is ~230 columns a row, " +
+        "and 500 rows of that is ~760 KB. Name the handful you need. " +
+        "Returns parsed rows + a `probablyTruncated` hint when the row count hit the cap.",
         """
         {"type":"object","required":["catalogue","raDeg","decDeg","radiusArcsec"],"properties":{
           "catalogue":{"type":"string","minLength":1,"description":"VizieR catalogue identifier, e.g. V/97/catalog."},
@@ -40,7 +44,8 @@ public sealed class VizierConeSearchTool : JsonReadTool<VizierConeSearchTool.Arg
           "radiusArcsec":{"type":"number","minimum":0,"description":"Cone radius in arcseconds; converted to degrees internally."},
           "raColumn":{"type":"string","description":"Override the RA column name. Default: RAJ2000."},
           "decColumn":{"type":"string","description":"Override the Dec column name. Default: DEJ2000."},
-          "maxRec":{"type":"integer","minimum":1,"maximum":5000,"description":"Row cap; default 500."}
+          "maxRec":{"type":"integer","minimum":1,"maximum":5000,"description":"Row cap; default 500."},
+          "columns":{"type":"array","items":{"type":"string"},"description":"Columns to return, e.g. [\"RAJ2000\",\"DEJ2000\",\"Gmag\"]. Omit for every column."}
         },"additionalProperties":false}
         """);
 
@@ -63,12 +68,18 @@ public sealed class VizierConeSearchTool : JsonReadTool<VizierConeSearchTool.Arg
         var decColumn = string.IsNullOrWhiteSpace(args.DecColumn) ? "DEJ2000" : args.DecColumn!.Trim();
         var radiusDeg = radiusArcsec / 3600.0;
 
+        // An empty array is the caller asking for nothing, which no query can answer — read it as
+        // "every column", which is what omitting the argument means.
+        var columns = args.Columns is { Count: > 0 } c
+            ? c.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).ToList()
+            : null;
+
         IReadOnlyList<string> headers;
         IReadOnlyList<IReadOnlyList<string>> rows;
         try
         {
             (headers, rows) = await _search(
-                new VizierConeSearchRequest(catalogue, raDeg, decDeg, radiusDeg, raColumn, decColumn, maxRec), ct);
+                new VizierConeSearchRequest(catalogue, raDeg, decDeg, radiusDeg, raColumn, decColumn, maxRec, columns), ct);
         }
         catch (OperationCanceledException)
         {
@@ -91,6 +102,7 @@ public sealed class VizierConeSearchTool : JsonReadTool<VizierConeSearchTool.Arg
         public string? RaColumn { get; init; }
         public string? DecColumn { get; init; }
         public int? MaxRec { get; init; }
+        public IReadOnlyList<string>? Columns { get; init; }
     }
 
     /// <summary><c>probablyTruncated</c> is true when the row count hit the requested cap, meaning the

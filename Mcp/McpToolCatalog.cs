@@ -60,8 +60,12 @@ public static class McpToolCatalog
         var aiCompute = sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeService>();
         var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
         var previewFetcher = new McpPreviewFetcher(dataLink, httpFactory);
-        // VizieR is public (no auth) — a plain client is deliberate.
-        var vizier = new VizierService(httpFactory.CreateClient());
+        // VizieR is public (no auth) — a plain client is deliberate. The mirror list is read live from
+        // settings rather than captured, so editing it takes effect on the next search, not the next run.
+        var appSettings = sp.GetRequiredService<ISettingsService>();
+        var vizier = new VizierService(
+            httpFactory.CreateClient(),
+            () => VizierService.ParseEndpointList(appSettings.VizierMirrors));
 
         // Built once and exposed under BOTH the Windows name and its macOS alias (G5 wire parity).
         var uploadFileToVoSpace = new UploadFileToVoSpaceTool();
@@ -95,7 +99,8 @@ public static class McpToolCatalog
             new DescribeTapSchemaTool(ct => tapSchema.GetSchemaAsync(ct)),
             new ValidateAdqlQueryTool(ct => tapSchema.GetSchemaAsync(ct)),
             new VizierConeSearchTool((req, ct) => vizier.ConeSearchAsync(
-                req.Catalogue, req.RaDeg, req.DecDeg, req.RadiusDeg, req.RaColumn, req.DecColumn, req.MaxRec, ct)),
+                req.Catalogue, req.RaDeg, req.DecDeg, req.RadiusDeg, req.RaColumn, req.DecColumn, req.MaxRec,
+                req.Columns, ct)),
 
             // Skaha sessions / headless jobs
             new ListSessionsTool(async ct => (IReadOnlyList<Session>)await sessions.GetSessionsAsync(ct)),

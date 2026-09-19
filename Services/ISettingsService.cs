@@ -31,6 +31,15 @@ public interface ISettingsService
     /// sets it once rather than on every mark.
     /// </summary>
     string DefaultMarkStyle { get; set; }
+
+    /// <summary>
+    /// VizieR TAP mirrors, one URL per line; empty means the shipped default list.
+    ///
+    /// A setting rather than a constant because these hostnames have moved before — two of the four
+    /// we shipped stopped resolving — and a constant in the binary leaves nobody a way to route around
+    /// the next move until the next release.
+    /// </summary>
+    string VizierMirrors { get; set; }
     /// <summary>Push the endpoint settings into the live URL builder (validating each value).</summary>
     void ApplyEndpointsTo(Helpers.ApiEndpoints endpoints);
 
