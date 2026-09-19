@@ -220,6 +220,9 @@ public static class McpToolCatalog
             new ShowSearchRowDetailTool(row => viewState.ShowSearchRowDetailAsync(row)),
             new ShowObservationDetailTool(id => viewState.ShowObservationDetailAsync(id)),
             new RemoveRecentSearchTool(match => viewState.RemoveRecentSearchAsync(match)),
+            new ClearRecentSearchesTool(() => viewState.ClearRecentSearchesAsync()),
+            new LoadRecentSearchTool(match => viewState.LoadRecentSearchAsync(match)),
+            new ResetSearchFormTool(() => viewState.ResetSearchFormAsync()),
 
             // Marks on an image or a cube. The store is what makes them persist with the FILE, so these
             // work on a target that is not currently open — which is how a batch is prepared before

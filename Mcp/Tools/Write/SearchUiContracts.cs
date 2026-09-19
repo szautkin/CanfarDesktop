@@ -26,6 +26,9 @@ public interface ISearchUiBridge
     Task<SearchRowDetailOutcome> ShowObservationDetailAsync(string publisherId);
     Task<SearchRunOutcome> RunSavedQueryAsync(string name);
     Task<SearchRecentRemoved> RemoveRecentSearchAsync(string match);
+    Task<SearchFormApplied> ResetFormAsync();
+    Task<SearchFormApplied> LoadRecentSearchAsync(string match);
+    Task<SearchRecentRemoved> ClearRecentSearchesAsync();
 }
 
 // ── Form ────────────────────────────────────────────────────────────────────────────────────────

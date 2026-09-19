@@ -753,4 +753,62 @@ public sealed partial class SearchPage : ISearchUiBridge
             ViewModel.RemoveRecentSearch(found);
             return new SearchRecentRemoved(true, found.Summary, ViewModel.RecentSearches.Count);
         }, SearchRecentRemoved.Unavailable("the Search page could not be reached"));
+
+    // ── Getting back to a known state ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Empty the form, the way the Clear button does.
+    ///
+    /// It goes through the same three steps a click does — the view model, the data-train manager, and
+    /// the train lists — because clearing only the view model leaves the facet columns still ticked and
+    /// the next search silently constrained by boxes nobody can see checked.
+    /// </summary>
+    Task<SearchFormApplied> ISearchUiBridge.ResetFormAsync()
+        => UiDispatch.OnUi(DispatcherQueue, () =>
+        {
+            ViewModel.ClearForm();
+            _dataTrainMgr.ClearAll();
+            if (_dataTrainUIBuilt) SyncAllTrainLists();
+
+            var known = FormSpecs.Select(f => f.Name).ToList();
+            return new SearchFormApplied(true, known, Array.Empty<string>(), known, CaptureForm());
+        }, SearchFormApplied.Unavailable("the Search page could not be reached"));
+
+    /// <summary>
+    /// Put one of the recent searches back in the form — the rail's own button, reachable.
+    ///
+    /// Matched the same way remove_recent_search matches, so the string an agent read out of
+    /// list_recent_searches works in either tool rather than in one of them.
+    /// </summary>
+    Task<SearchFormApplied> ISearchUiBridge.LoadRecentSearchAsync(string match)
+        => UiDispatch.OnUi(DispatcherQueue, () =>
+        {
+            var recents = ViewModel.RecentSearches;
+            var found = recents.FirstOrDefault(s => string.Equals(s.Summary, match, StringComparison.Ordinal))
+                     ?? recents.FirstOrDefault(s => string.Equals(s.Adql, match, StringComparison.Ordinal))
+                     ?? recents.FirstOrDefault(s => string.Equals(s.Summary, match, StringComparison.OrdinalIgnoreCase));
+
+            var known = FormSpecs.Select(f => f.Name).ToList();
+            if (found is null)
+                return new SearchFormApplied(false, Array.Empty<string>(), Array.Empty<string>(), known, CaptureForm(),
+                    recents.Count == 0
+                        ? "there are no recent searches"
+                        : $"no recent search matching '{match}' — match on the summary or the exact ADQL");
+
+            ViewModel.LoadFromRecentSearch(found);
+            SyncDataTrainToViewModel();
+
+            return new SearchFormApplied(true, known, Array.Empty<string>(), known, CaptureForm());
+        }, SearchFormApplied.Unavailable("the Search page could not be reached"));
+
+    /// <summary>Empty the recent-searches rail. Saved queries are a different list and are untouched.</summary>
+    Task<SearchRecentRemoved> ISearchUiBridge.ClearRecentSearchesAsync()
+        => UiDispatch.OnUi(DispatcherQueue, () =>
+        {
+            var had = ViewModel.RecentSearches.Count;
+            if (had == 0) return new SearchRecentRemoved(false, null, 0, "the recent-searches rail is already empty");
+
+            ViewModel.ClearAllRecentSearches();
+            return new SearchRecentRemoved(true, null, 0, $"cleared {had} recent searches");
+        }, SearchRecentRemoved.Unavailable("the Search page could not be reached"));
 }

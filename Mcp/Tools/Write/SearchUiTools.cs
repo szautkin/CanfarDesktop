@@ -542,7 +542,7 @@ public sealed class RemoveRecentSearchTool : JsonReadTool<RemoveRecentSearchTool
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "remove_recent_search",
         "Remove one entry from the Search page's recent-searches rail, matched by its summary or by its " +
-        "exact ADQL (see list_recent_searches). Removes a single entry — there is no bulk clear here.",
+        "exact ADQL (see list_recent_searches). One entry — clear_recent_searches empties the whole rail.",
         """{"type":"object","properties":{"match":{"type":"string","description":"The entry's summary, or its exact ADQL."}},"required":["match"],"additionalProperties":false}""");
 
     protected override async Task<SearchRecentRemoved> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -553,4 +553,85 @@ public sealed class RemoveRecentSearchTool : JsonReadTool<RemoveRecentSearchTool
     }
 
     public sealed record Args { public string? Match { get; init; } }
+}
+
+/// <summary>
+/// <c>reset_search_form</c> — empty the form, the way the Clear button does.
+///
+/// An agent that had filled in six fields for one target and wanted a different one had to overwrite
+/// each of them by name, and any it forgot silently narrowed the next search. Worse, the Additional
+/// Constraints facets are not form fields: a tick left in one of those columns constrains a query with
+/// nothing on screen to say so.
+/// </summary>
+public sealed class ResetSearchFormTool : JsonReadTool<EmptyArgs, SearchFormApplied>
+{
+    private readonly Func<Task<SearchFormApplied>> _reset;
+
+    public ResetSearchFormTool(Func<Task<SearchFormApplied>> reset) => _reset = reset;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "reset_search_form",
+        "Empty the Search form — every field AND every Additional Constraints facet, which is what the " +
+        "Clear button does. Call this between unrelated searches: a value left in a field you did not " +
+        "overwrite, or a facet left ticked, silently narrows the next query. Returns the empty form. " +
+        "The recent-searches rail and the saved queries are untouched.",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override Task<SearchFormApplied> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
+        => _reset();
+}
+
+/// <summary>
+/// <c>load_recent_search</c> — put one of the recent searches back in the form.
+///
+/// The rail could be read and its entries deleted, but not USED, which is the one thing the rail is
+/// for. Matching is the same as remove_recent_search's, so a string read out of list_recent_searches
+/// works in either.
+/// </summary>
+public sealed class LoadRecentSearchTool : JsonReadTool<LoadRecentSearchTool.Args, SearchFormApplied>
+{
+    private readonly Func<string, Task<SearchFormApplied>> _load;
+
+    public LoadRecentSearchTool(Func<string, Task<SearchFormApplied>> load) => _load = load;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "load_recent_search",
+        "Load one of the Search page's recent searches back into the form, matched by its summary or by " +
+        "its exact ADQL (see list_recent_searches). Fills the fields and the Additional Constraints " +
+        "facets and returns the form; it does NOT run the search — call run_search when you want that.",
+        """{"type":"object","properties":{"match":{"type":"string","description":"The entry's summary, or its exact ADQL."}},"required":["match"],"additionalProperties":false}""");
+
+    protected override async Task<SearchFormApplied> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var match = (args.Match ?? string.Empty).Trim();
+        if (match.Length == 0) throw new McpToolException(new InvalidArgument("match is required"));
+        return await _load(match);
+    }
+
+    public sealed record Args { public string? Match { get; init; } }
+}
+
+/// <summary><c>clear_recent_searches</c> — empty the rail, rather than a call per entry.</summary>
+public sealed class ClearRecentSearchesTool : JsonReadTool<EmptyArgs, SearchRecentRemoved>
+{
+    private readonly Func<Task<SearchRecentRemoved>> _clear;
+
+    public ClearRecentSearchesTool(Func<Task<SearchRecentRemoved>> clear) => _clear = clear;
+
+    /// <summary>Destructive: the rail is the only record of those searches, and nothing brings it back.</summary>
+    public override McpVerbClass VerbClass => McpVerbClass.Destructive;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "clear_recent_searches",
+        "Empty the Search page's recent-searches rail. There is no undo, and the rail is the only record " +
+        "of those queries — save one with save_query first if it is worth keeping. Saved queries are a " +
+        "separate list and are NOT affected. Use remove_recent_search when you mean one entry.",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override Task<SearchRecentRemoved> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
+        => _clear();
 }

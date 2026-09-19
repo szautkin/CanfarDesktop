@@ -346,6 +346,15 @@ public sealed class AppViewStateService : IAnnotationHost
     public async Task<SearchRecentRemoved> RemoveRecentSearchAsync(string match)
         => await ResolveSearchAsync() is { } b ? await b.RemoveRecentSearchAsync(match) : SearchRecentRemoved.Unavailable(SearchUnavailable);
 
+    public async Task<SearchFormApplied> ResetSearchFormAsync()
+        => await ResolveSearchAsync() is { } b ? await b.ResetFormAsync() : SearchFormApplied.Unavailable(SearchUnavailable);
+
+    public async Task<SearchFormApplied> LoadRecentSearchAsync(string match)
+        => await ResolveSearchAsync() is { } b ? await b.LoadRecentSearchAsync(match) : SearchFormApplied.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRecentRemoved> ClearRecentSearchesAsync()
+        => await ResolveSearchAsync() is { } b ? await b.ClearRecentSearchesAsync() : SearchRecentRemoved.Unavailable(SearchUnavailable);
+
     // ── Annotations ─────────────────────────────────────────────────────────────────────────────
 
     private volatile IAnnotationHost? _annotations;
