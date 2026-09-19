@@ -628,3 +628,68 @@ public sealed class SelectAnnotationTool : JsonReadTool<SelectAnnotationTool.Arg
         public string? Viewer { get; init; }
     }
 }
+
+/// <summary>
+/// <c>clear_annotations</c> — take every mark off one file.
+///
+/// Removing them one id at a time worked, and needed a listing first and a call per mark; an agent
+/// tidying up after a run it had drawn a dozen marks in spent a dozen round trips on it. The count it
+/// answers with is what was actually removed, so "clear" on a file with nothing on it reports zero
+/// rather than claiming work it did not do.
+/// </summary>
+public sealed class ClearAnnotationsTool : JsonReadTool<ClearAnnotationsTool.Args, AnnotationChange>
+{
+    private readonly IAnnotationStore _store;
+    private readonly IAnnotationHost _host;
+
+    public ClearAnnotationsTool(IAnnotationStore store, IAnnotationHost host)
+    {
+        _store = store;
+        _host = host;
+    }
+
+    /// <summary>Destructive, and more so than remove_annotation: nothing here comes back.</summary>
+    public override McpVerbClass VerbClass => McpVerbClass.Destructive;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "clear_annotations",
+        "Remove EVERY mark from one file. There is no undo — use remove_annotation when you mean one of " +
+        "them. Defaults to the file on screen in the named viewer; pass `target` to clear a file that is " +
+        "not open. Answers with how many were removed.",
+        """
+        {"type":"object","properties":{
+          "viewer":{"type":"string","enum":["fits","cube"],"description":"Default fits."},
+          "target":{"type":"string","description":"Defaults to the file on screen in that viewer."}
+        },"additionalProperties":false}
+        """);
+
+    protected override async Task<AnnotationChange> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var viewer = UpdateAnnotationTool.ParseViewer(args.Viewer);
+        var name = AnnotationArgs.Name(viewer);
+
+        var target = await AnnotationArgs.ResolveTargetAsync(_host, viewer, args.Target);
+        if (target is null)
+            return AnnotationChange.NothingOpen(name, $"nothing is open in the {name} viewer — open a file, or name a `target`");
+
+        int removed;
+        try
+        {
+            removed = _store.LoadFor(target).Count;
+            _store.SaveFor(target, []);
+        }
+        catch (Exception ex)
+        {
+            throw new McpToolException(new BackendError(ex.Message));
+        }
+
+        var shown = await _host.RefreshAsync(viewer, target, null);
+        return new AnnotationChange(true, name, target, shown, null, 0, Removed: removed);
+    }
+
+    public sealed record Args
+    {
+        public string? Viewer { get; init; }
+        public string? Target { get; init; }
+    }
+}

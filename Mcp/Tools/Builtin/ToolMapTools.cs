@@ -137,3 +137,104 @@ public sealed class SearchToolsTool : JsonReadTool<SearchToolsTool.Args, SearchT
 
     public sealed record Output(string Query, int Count, IReadOnlyList<ToolMatch> Tools, string? Message);
 }
+
+/// <summary>
+/// <c>man</c> — one tool's full entry: its description and its complete argument schema.
+///
+/// The map's last step. <c>list_apps</c> gives the areas, <c>describe_app</c> gives an area's tools,
+/// <c>search_tools</c> finds one by what it does — and each of those answers with a NAME and a summary,
+/// because listing every schema is the cost the map exists to avoid. So an agent that has found the
+/// tool it wants still has to guess its arguments, or call it wrong once to be told them.
+///
+/// Named after the thing it is: you have the name, you want the page.
+/// </summary>
+public sealed class ManTool : JsonReadTool<ManTool.Args, ManTool.Output>
+{
+    /// <summary>How many near-misses to offer when the name is not one. Enough to recognise, few enough to read.</summary>
+    private const int MaxSuggestions = 5;
+
+    private readonly Func<IReadOnlyList<ToolDescriptor>> _tools;
+
+    public ManTool(Func<IReadOnlyList<ToolDescriptor>> tools) => _tools = tools;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "man",
+        "Read one tool's full entry — its description and its complete argument schema — by name. " +
+        "list_apps, describe_app and search_tools all answer with names and summaries rather than " +
+        "schemas, so this is how you get the arguments for the one you picked without calling it wrong " +
+        "first. An unknown name answers with the closest ones rather than just refusing.",
+        """
+        {"type":"object","properties":{
+          "tool":{"type":"string","minLength":1,"description":"The tool's exact name, e.g. \"annotate_fits\"."}
+        },"required":["tool"],"additionalProperties":false}
+        """);
+
+    protected override Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var wanted = (args.Tool ?? string.Empty).Trim();
+        if (wanted.Length == 0) throw new McpToolException(new InvalidArgument("tool is required"));
+
+        var all = _tools();
+
+        // Case-insensitively, because an agent reads a name off a heading as often as off a listing,
+        // and being refused for the case teaches it nothing it could not have guessed.
+        var found = all.FirstOrDefault(t => string.Equals(t.Name, wanted, StringComparison.OrdinalIgnoreCase));
+        if (found is not null)
+        {
+            return Task.FromResult(new Output(
+                true,
+                found.Name,
+                AiGuideCatalog.CategoryIdForTool(found.Name),
+                found.Description,
+                found.InputSchema,
+                Array.Empty<string>(),
+                null));
+        }
+
+        // Not a name. Offer the ones it is nearest to — a typo and a half-remembered name are the two
+        // ways to get here, and both are answered by showing what does exist.
+        var near = all
+            .Select(t => t.Name)
+            .Where(n => n.Contains(wanted, StringComparison.OrdinalIgnoreCase)
+                     || wanted.Contains(n, StringComparison.OrdinalIgnoreCase)
+                     || SharesAWord(n, wanted))
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .Take(MaxSuggestions)
+            .ToList();
+
+        return Task.FromResult(new Output(
+            false, wanted, null, null, null, near,
+            near.Count > 0
+                ? $"no tool named \"{wanted}\"; did you mean one of these?"
+                : $"no tool named \"{wanted}\". Use search_tools to find one by what it does."));
+    }
+
+    /// <summary>
+    /// Whether two tool names share an underscore-separated word — "fits_goto" and "goto_fits" are the
+    /// same guess made two ways, and the shared word is what says so.
+    /// </summary>
+    private static bool SharesAWord(string name, string wanted)
+    {
+        var wantedWords = wanted.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        if (wantedWords.Length == 0) return false;
+
+        var nameWords = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        return wantedWords.Any(w => w.Length >= 3
+            && nameWords.Any(n => string.Equals(n, w, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public sealed record Args { public string? Tool { get; init; } }
+
+    /// <summary>
+    /// <c>inputSchema</c> is the tool's own schema verbatim, not a summary of it: a paraphrase is the
+    /// thing an agent would then have to call the tool to check.
+    /// </summary>
+    public sealed record Output(
+        bool Found,
+        string Tool,
+        string? App,
+        string? Description,
+        Wire.JsonValue? InputSchema,
+        IReadOnlyList<string> DidYouMean,
+        string? Message);
+}

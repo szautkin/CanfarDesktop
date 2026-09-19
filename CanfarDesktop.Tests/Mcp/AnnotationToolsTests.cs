@@ -368,4 +368,78 @@ public class AnnotationToolsTests : IDisposable
 
         Assert.Contains("current file", message);
     }
+
+    // ── clear_annotations ───────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Removing a dozen marks one id at a time worked, and cost a listing plus a call per mark. The
+    /// count it answers with is what was actually taken off.
+    /// </summary>
+    [Fact]
+    public async Task ClearTakesEveryMarkOffTheFileOnScreen()
+    {
+        _host.FitsTarget = "C:/data/m31.fits";
+        var store = Store();
+
+        await new AnnotateFitsTool(store, _host).InvokeAsync(Args("""{"x":1,"y":2,"radius":5}"""), Ctx(), default);
+        await new AnnotateFitsTool(store, _host).InvokeAsync(Args("""{"x":3,"y":4,"radius":5}"""), Ctx(), default);
+        Assert.Equal(2, store.LoadFor("C:/data/m31.fits").Count);
+
+        var change = Payload<AnnotationChange>(await new ClearAnnotationsTool(store, _host)
+            .InvokeAsync(Args("{}"), Ctx(), default));
+
+        Assert.True(change.Applied);
+        Assert.Equal(2, change.Removed);
+        Assert.Equal(0, change.Remaining);
+        Assert.Empty(store.LoadFor("C:/data/m31.fits"));
+    }
+
+    /// <summary>Clearing a file with nothing on it reports zero rather than claiming work it did not do.</summary>
+    [Fact]
+    public async Task ClearOnAnUnmarkedFileRemovesNothingAndSaysSo()
+    {
+        _host.FitsTarget = "C:/data/m31.fits";
+
+        var change = Payload<AnnotationChange>(await new ClearAnnotationsTool(Store(), _host)
+            .InvokeAsync(Args("{}"), Ctx(), default));
+
+        Assert.True(change.Applied);
+        Assert.Equal(0, change.Removed);
+    }
+
+    /// <summary>One file's marks, not every file's — the store is keyed by target for a reason.</summary>
+    [Fact]
+    public async Task ClearLeavesOtherFilesAlone()
+    {
+        var store = Store();
+
+        _host.FitsTarget = "C:/data/a.fits";
+        await new AnnotateFitsTool(store, _host).InvokeAsync(Args("""{"x":1,"y":2,"radius":5}"""), Ctx(), default);
+
+        _host.FitsTarget = "C:/data/b.fits";
+        await new AnnotateFitsTool(store, _host).InvokeAsync(Args("""{"x":1,"y":2,"radius":5}"""), Ctx(), default);
+
+        await new ClearAnnotationsTool(store, _host).InvokeAsync(Args("{}"), Ctx(), default);
+
+        Assert.Empty(store.LoadFor("C:/data/b.fits"));
+        Assert.Single(store.LoadFor("C:/data/a.fits"));
+    }
+
+    /// <summary>Nothing open and no target named is a question with no subject.</summary>
+    [Fact]
+    public async Task ClearWithNothingOpenSaysWhatToDoInstead()
+    {
+        _host.FitsTarget = null;
+
+        var change = Payload<AnnotationChange>(await new ClearAnnotationsTool(Store(), _host)
+            .InvokeAsync(Args("{}"), Ctx(), default));
+
+        Assert.False(change.Applied);
+        Assert.Contains("target", change.Message);
+    }
+
+    /// <summary>It is destructive, and gated as such — there is no undo behind it.</summary>
+    [Fact]
+    public void ClearIsDestructive()
+        => Assert.Equal(McpVerbClass.Destructive, new ClearAnnotationsTool(Store(), _host).VerbClass);
 }

@@ -74,7 +74,12 @@ public sealed record AnnotationListView(
         => new(viewer, null, false, 0, Array.Empty<AnnotationView>(), message);
 }
 
-/// <summary>The outcome of adding, changing or removing a mark.</summary>
+/// <summary>
+/// The outcome of adding, changing or removing a mark.
+///
+/// <see cref="Removed"/> is only meaningful for a clear, where the caller did not name what it was
+/// deleting and so cannot tell from <see cref="Remaining"/> how much it just took off.
+/// </summary>
 public sealed record AnnotationChange(
     bool Applied,
     string Viewer,
@@ -82,7 +87,8 @@ public sealed record AnnotationChange(
     bool Shown,
     AnnotationView? Annotation,
     int Remaining,
-    string? Message = null)
+    string? Message = null,
+    int? Removed = null)
 {
     public static AnnotationChange NothingOpen(string viewer, string message)
         => new(false, viewer, null, false, null, 0, message);

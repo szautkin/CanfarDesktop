@@ -230,6 +230,7 @@ public static class McpToolCatalog
             new ListCubeAnnotationsTool(annotations, viewState),
             new UpdateAnnotationTool(annotations, viewState),
             new RemoveAnnotationTool(annotations, viewState),
+            new ClearAnnotationsTool(annotations, viewState),
             new SelectAnnotationTool(annotations, viewState),
 
             // The figure the marks are drawn for.
@@ -372,6 +373,7 @@ public static class McpToolCatalog
         // snapshot taken here would go stale the moment anything else was appended.
         tools.Add(new ListAppsTool(() => tools.Select(t => t.Descriptor.Name).ToList()));
         tools.Add(new SearchToolsTool(() => tools.Select(t => t.Descriptor).ToList()));
+        tools.Add(new ManTool(() => tools.Select(t => t.Descriptor).ToList()));
 
         return tools;
     }
