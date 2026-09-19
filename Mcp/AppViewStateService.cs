@@ -262,6 +262,34 @@ public sealed class AppViewStateService : IAnnotationHost
     public Task<OpenTabsState> ListTabsAsync()
         => _listTabs?.Invoke() ?? Task.FromResult(new OpenTabsState(0, 0, 0));
 
+    // ── Reaching a tab that is not the active one ────────────────────────────
+
+    private volatile Func<string, int, Task<TabActionOutcome>>? _switchTab;
+    private volatile Func<string, int?, Task<TabActionOutcome>>? _closeTabAt;
+    private volatile Func<int?, int?, bool, Task<BlinkOutcome>>? _blinkTabs;
+
+    public void SetTabNavigationActions(
+        Func<string, int, Task<TabActionOutcome>> switchTo,
+        Func<string, int?, Task<TabActionOutcome>> closeAt,
+        Func<int?, int?, bool, Task<BlinkOutcome>> blink)
+    {
+        _switchTab = switchTo;
+        _closeTabAt = closeAt;
+        _blinkTabs = blink;
+    }
+
+    public Task<TabActionOutcome> SwitchTabAsync(string kind, int index)
+        => _switchTab?.Invoke(kind, index)
+           ?? Task.FromResult(new TabActionOutcome(false, kind, index, "viewer unavailable"));
+
+    public Task<TabActionOutcome> CloseTabAtAsync(string kind, int? index)
+        => _closeTabAt?.Invoke(kind, index)
+           ?? Task.FromResult(new TabActionOutcome(false, kind, index, "viewer unavailable"));
+
+    public Task<BlinkOutcome> BlinkFitsTabsAsync(int? indexA, int? indexB, bool stop)
+        => _blinkTabs?.Invoke(indexA, indexB, stop)
+           ?? Task.FromResult(new BlinkOutcome(false, indexA, indexB, "the FITS viewer is not available"));
+
     // ── Search page (resolved lazily: the page is built the first time anyone asks for it) ───────
 
     private volatile Func<Task<ISearchUiBridge?>>? _searchHost;

@@ -293,6 +293,12 @@ public static class McpToolCatalog
             new CloseActiveTabTool(kind => viewState.CloseTabAsync(kind)),
             new ListOpenTabsTool(() => viewState.ListTabsAsync()),
 
+            // Reaching a tab that is not the active one — every other viewer tool acts on the active
+            // one, so without these a second open file was unreachable.
+            new SwitchTabTool((kind, index) => viewState.SwitchTabAsync(kind, index)),
+            new CloseTabTool((kind, index) => viewState.CloseTabAtAsync(kind, index)),
+            new BlinkFitsTabsTool((a, b, stop) => viewState.BlinkFitsTabsAsync(a, b, stop)),
+
             // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
             new SaveQueryTool(),
             new DeleteSavedQueryTool(),

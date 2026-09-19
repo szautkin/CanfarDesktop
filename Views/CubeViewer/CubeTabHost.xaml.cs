@@ -94,6 +94,40 @@ public sealed partial class CubeTabHost : UserControl
     /// <summary>Number of open cube tabs.</summary>
     public int OpenTabCount => TabViewControl.TabItems.Count;
 
+    /// <summary>Every open tab, in order, with the index an agent addresses them by and a real path.</summary>
+    public IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo> ListTabs()
+    {
+        var selected = TabViewControl.SelectedIndex;
+        var tabs = new List<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo>();
+        for (var i = 0; i < TabViewControl.TabItems.Count; i++)
+        {
+            var page = (TabViewControl.TabItems[i] as TabViewItem)?.Content as CubeViewerPage;
+            tabs.Add(new CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo(
+                i,
+                page?.CubeName is { Length: > 0 } n ? n : $"cube {i + 1}",
+                page?.CubePath,
+                i == selected));
+        }
+        return tabs;
+    }
+
+    /// <summary>Make the tab at <paramref name="index"/> the active one. False when there is no such tab.</summary>
+    public bool SwitchToTab(int index)
+    {
+        if (index < 0 || index >= TabViewControl.TabItems.Count) return false;
+        TabViewControl.SelectedIndex = index;
+        return true;
+    }
+
+    /// <summary>Close the tab at <paramref name="index"/>. False when there is no such tab.</summary>
+    public bool CloseTabAt(int index)
+    {
+        if (index < 0 || index >= TabViewControl.TabItems.Count) return false;
+        if (TabViewControl.TabItems[index] is not TabViewItem tab) return false;
+        CloseTabItem(tab);
+        return true;
+    }
+
     private void CloseTabItem(TabViewItem tab)
     {
         if (tab.Content is CubeViewerPage page) page.CleanupForClose();

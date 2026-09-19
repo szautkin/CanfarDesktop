@@ -174,6 +174,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetNotebookActions(NotebookMutateActionAsync, GetNotebookActionAsync, GetCellOutputActionAsync,
                                       GetKernelStateActionAsync, ListNotebooksActionAsync, ListOpenNotebooksActionAsync);
         _viewState.SetTabActions(CloseTabActionAsync, ListOpenTabsActionAsync);
+        _viewState.SetTabNavigationActions(
+            SwitchTabActionAsync, CloseTabByIndexActionAsync, BlinkFitsTabsActionAsync);
         _viewState.SetSearchHost(ResolveSearchBridgeAsync);
         _viewState.SetAnnotationHost(this);
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
@@ -481,8 +483,62 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         => OnUi(() => new OpenTabsState(
             _notebookTabHost?.ViewModel.Tabs.Count ?? 0,
             _fitsHostVm?.Tabs.Count ?? 0,
-            _cubeTabHost?.OpenTabCount ?? 0),
+            _cubeTabHost?.OpenTabCount ?? 0,
+            _fitsTabHost?.ListTabs() ?? [],
+            _cubeTabHost?.ListTabs() ?? []),
             new OpenTabsState(0, 0, 0));
+
+    /// <summary>Make a tab active, so the tools that act on the active tab act on that one.</summary>
+    private Task<TabActionOutcome> SwitchTabActionAsync(string kind, int index)
+        => OnUi(() => kind switch
+        {
+            "fits" => Outcome(_fitsTabHost?.SwitchToTab(index) == true, kind, index, "FITS"),
+            "cube" => Outcome(_cubeTabHost?.SwitchToTab(index) == true, kind, index, "cube"),
+            _ => new TabActionOutcome(false, kind, index, "unknown kind"),
+        }, new TabActionOutcome(false, kind, index, "could not dispatch to UI"));
+
+    /// <summary>Close a tab by index, or the active one when no index is given.</summary>
+    private Task<TabActionOutcome> CloseTabByIndexActionAsync(string kind, int? index)
+        => OnUi(() =>
+        {
+            if (index is not int i)
+            {
+                var closed = kind == "fits"
+                    ? _fitsTabHost?.CloseActiveTab() == true
+                    : _cubeTabHost?.CloseActiveTab() == true;
+                return new TabActionOutcome(closed, kind, null,
+                    closed ? null : $"no {(kind == "fits" ? "FITS" : "cube")} tab is open");
+            }
+
+            return kind switch
+            {
+                "fits" => Outcome(_fitsTabHost?.CloseTabAt(i) == true, kind, i, "FITS"),
+                "cube" => Outcome(_cubeTabHost?.CloseTabAt(i) == true, kind, i, "cube"),
+                _ => new TabActionOutcome(false, kind, i, "unknown kind"),
+            };
+        }, new TabActionOutcome(false, kind, index, "could not dispatch to UI"));
+
+    /// <summary>One shape for "did that index exist", so both tools refuse the same way.</summary>
+    private static TabActionOutcome Outcome(bool ok, string kind, int index, string label)
+        => new(ok, kind, index, ok ? null : $"there is no {label} tab {index}");
+
+    /// <summary>Start or stop a WCS-aligned blink between two FITS tabs.</summary>
+    private Task<BlinkOutcome> BlinkFitsTabsActionAsync(int? indexA, int? indexB, bool stop)
+        => OnUi(() =>
+        {
+            if (_fitsTabHost is null) return new BlinkOutcome(false, indexA, indexB, "no FITS tab is open");
+
+            if (stop)
+            {
+                _fitsTabHost.StopBlinking();
+                return new BlinkOutcome(false, null, null, null);
+            }
+
+            var error = _fitsTabHost.StartBlinkBetween(indexA!.Value, indexB!.Value);
+            return error is null
+                ? new BlinkOutcome(true, indexA, indexB, null)
+                : new BlinkOutcome(false, indexA, indexB, error);
+        }, new BlinkOutcome(false, indexA, indexB, "could not dispatch to UI"));
 
     // ── Analysis-notebook hand-off (SCI-10): resolve the downloaded observation, seed an .ipynb, open it ──
     private Task<NotebookState?> CreateAnalysisNotebookActionAsync(string observationId, string template)

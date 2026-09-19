@@ -58,6 +58,17 @@ public sealed partial class CubeViewerPage : UserControl
     private CubeColormap _currentColormap = CubeColormap.Inferno;
     private string _cubeName = "";
     private string? _cubePath; // source file, for native-resolution slice export
+
+    /// <summary>
+    /// The file this tab was loaded from, or null when nothing is loaded.
+    ///
+    /// A REAL path, because a listing that shows the display name gives an agent something it cannot
+    /// reopen — the one thing a list of open files is for.
+    /// </summary>
+    public string? CubePath => _cubePath;
+
+    /// <summary>The tab's display name — the cube's object or file name.</summary>
+    public string CubeName => _cubeName;
     private NativeSliceSource? _nativeSource; // persistent native-plane reader (plain FITS); null otherwise
     private VolumeData? _volume; // kept for the 2D slice view + spectrum probe
 
