@@ -41,6 +41,37 @@ public class FitsViewerToolsTests
     }
 
     [Fact]
+    public async Task SetFitsView_MapsInteractionArgs()
+    {
+        // UI-parity: HDU switch, pixel crosshair/center, the cross-tab toggles, and the panels.
+        FitsViewArgs? seen = null;
+        var tool = new SetFitsViewTool(a => { seen = a; return Task.FromResult<FitsViewState?>(SampleState()); });
+        await tool.InvokeAsync(Args("""
+            {"hdu":2,"crosshairX":100,"crosshairY":200,"centerX":300,"centerY":400,
+             "syncZoom":true,"linkedCrosshair":false,"showHeaderPanel":true,"showBookmarksPanel":true}
+            """), Ctx, default);
+        Assert.Equal(2, seen!.Hdu);
+        Assert.Equal(100, seen.CrosshairX);
+        Assert.Equal(200, seen.CrosshairY);
+        Assert.Equal(300, seen.CenterX);
+        Assert.Equal(400, seen.CenterY);
+        Assert.True(seen.SyncZoom);
+        Assert.False(seen.LinkedCrosshair);
+        Assert.True(seen.ShowHeaderPanel);
+        Assert.True(seen.ShowBookmarksPanel);
+    }
+
+    [Fact]
+    public async Task SetFitsView_LoneCrosshairCoordinate_InvalidArgument()
+    {
+        var tool = new SetFitsViewTool(_ => Task.FromResult<FitsViewState?>(SampleState()));
+        var r = await tool.InvokeAsync(Args("""{"crosshairX":5}"""), Ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(r).Reason);
+        r = await tool.InvokeAsync(Args("""{"centerY":5}"""), Ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(r).Reason);
+    }
+
+    [Fact]
     public void SetFitsView_IsViewStateVerb()
         => Assert.Equal(McpVerbClass.ViewState,
             new SetFitsViewTool(_ => Task.FromResult<FitsViewState?>(null)).VerbClass);
@@ -82,6 +113,18 @@ public class FitsViewerToolsTests
         Assert.Equal((100, 200), seen);
         Assert.Equal(42.5, doc.GetProperty("value").GetDouble());
         Assert.Equal(202.4, doc.GetProperty("ra").GetDouble());
+    }
+
+    [Fact]
+    public async Task ProbeFitsPixel_BlankedPixel_OmitsValue()
+    {
+        // QA F10a family: a blanked (NaN) pixel must not crash the serializer — `value` is omitted
+        // (the MCP options drop null properties), while the rest of the result survives.
+        var tool = new ProbeFitsPixelTool((x, y) =>
+            Task.FromResult<FitsPixelResult?>(new(x, y, null, true, 202.4, 47.2, "Jy/beam")));
+        var doc = Json(await tool.InvokeAsync(Args("""{"x":1,"y":2}"""), Ctx, default));
+        Assert.False(doc.TryGetProperty("value", out _));
+        Assert.Equal("Jy/beam", doc.GetProperty("unit").GetString());
     }
 
     [Fact]
@@ -190,5 +233,95 @@ public class FitsViewerToolsTests
     {
         Assert.Equal(McpVerbClass.ViewState, new SaveFitsBookmarkTool((_, _, _, _) => Task.FromResult<FitsBookmark?>(null)).VerbClass);
         Assert.Equal(McpVerbClass.ViewState, new DeleteFitsBookmarkTool(_ => Task.FromResult(false)).VerbClass);
+    }
+
+    // ── get_fits_view read parity ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetFitsView_SurfacesHdusAndParityFields()
+    {
+        var state = SampleState() with
+        {
+            Path = @"C:\data\m51.fits",
+            HduIndex = 1,
+            Hdus = new[] { new FitsHduInfo(0, "Primary", "no image", false), new FitsHduInfo(1, "SCI", "1024×1024", true) },
+            Unit = "electron/s",
+            WcsApproximate = true,
+            BlinkActive = true,
+            CrosshairX = 512,
+            CrosshairY = 480,
+        };
+        var tool = new GetFitsViewTool(() => Task.FromResult<FitsViewState?>(state));
+        var doc = Json(await tool.InvokeAsync(Args("""{}"""), Ctx, default));
+        Assert.Equal(@"C:\data\m51.fits", doc.GetProperty("path").GetString());
+        Assert.Equal(1, doc.GetProperty("hduIndex").GetInt32());
+        Assert.Equal("SCI", doc.GetProperty("hdus")[1].GetProperty("name").GetString());
+        Assert.False(doc.GetProperty("hdus")[0].GetProperty("isImage").GetBoolean());
+        Assert.Equal("electron/s", doc.GetProperty("unit").GetString());
+        Assert.True(doc.GetProperty("wcsApproximate").GetBoolean());
+        Assert.True(doc.GetProperty("blinkActive").GetBoolean());
+        Assert.Equal(512, doc.GetProperty("crosshairX").GetInt32());
+    }
+
+    // ── blink_fits_tabs ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task BlinkFitsTabs_Start_PassesPartnerAndInterval()
+    {
+        (string action, int? tab, int? interval)? seen = null;
+        var tool = new BlinkFitsTabsTool((a, t, i) =>
+        {
+            seen = (a, t, i);
+            return Task.FromResult<FitsBlinkOutcome?>(new(true, false, "HST cutout", 1500, null));
+        });
+        var doc = Json(await tool.InvokeAsync(Args("""{"action":"start","withTabIndex":1,"intervalMs":1500}"""), Ctx, default));
+        Assert.Equal(("start", 1, 1500), seen);
+        Assert.True(doc.GetProperty("active").GetBoolean());
+        Assert.Equal("HST cutout", doc.GetProperty("partnerTab").GetString());
+    }
+
+    [Fact]
+    public async Task BlinkFitsTabs_StartWithoutPartner_InvalidArgument()
+    {
+        var tool = new BlinkFitsTabsTool((_, _, _) => Task.FromResult<FitsBlinkOutcome?>(null));
+        var r = await tool.InvokeAsync(Args("""{"action":"start"}"""), Ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(r).Reason);
+    }
+
+    [Fact]
+    public async Task BlinkFitsTabs_UnknownAction_InvalidArgument()
+    {
+        var tool = new BlinkFitsTabsTool((_, _, _) => Task.FromResult<FitsBlinkOutcome?>(null));
+        var r = await tool.InvokeAsync(Args("""{"action":"wiggle"}"""), Ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(r).Reason);
+    }
+
+    [Fact]
+    public async Task BlinkFitsTabs_NoViewer_TargetNotResolved()
+    {
+        var tool = new BlinkFitsTabsTool((_, _, _) => Task.FromResult<FitsBlinkOutcome?>(null));
+        var r = await tool.InvokeAsync(Args("""{"action":"stop"}"""), Ctx, default);
+        Assert.IsType<TargetNotResolved>(Assert.IsType<FailedResult>(r).Reason);
+    }
+
+    // ── switch_fits_tab ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SwitchFitsTab_PassesIndex()
+    {
+        int? seen = null;
+        var tool = new SwitchFitsTabTool(i => { seen = i; return Task.FromResult(new FitsTabSwitchOutcome(true, i, 2, "m51.fits", null)); });
+        var doc = Json(await tool.InvokeAsync(Args("""{"index":1}"""), Ctx, default));
+        Assert.Equal(1, seen);
+        Assert.True(doc.GetProperty("switched").GetBoolean());
+        Assert.Equal("m51.fits", doc.GetProperty("activeName").GetString());
+    }
+
+    [Fact]
+    public async Task SwitchFitsTab_MissingIndex_InvalidArgument()
+    {
+        var tool = new SwitchFitsTabTool(_ => Task.FromResult(new FitsTabSwitchOutcome(false, 0, 0, null, null)));
+        var r = await tool.InvokeAsync(Args("""{}"""), Ctx, default);
+        Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(r).Reason);
     }
 }

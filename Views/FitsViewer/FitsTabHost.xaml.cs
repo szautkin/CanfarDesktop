@@ -177,29 +177,6 @@ public sealed partial class FitsTabHost : UserControl
     /// <summary>Number of open FITS tabs.</summary>
     public int OpenTabCount => TabViewControl.TabItems.Count;
 
-    /// <summary>
-    /// Every open tab, in the order they appear, with the index an agent addresses them by.
-    ///
-    /// The count alone was all `list_open_tabs` gave, which is enough to know there is more than one
-    /// and not enough to reach it — no way to say which, and so no way to switch or to blink.
-    /// </summary>
-    public IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo> ListTabs()
-    {
-        var active = ViewModel.ActiveTab;
-        return ViewModel.Tabs.Select((t, i) => new CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo(
-            i,
-            t.ViewModel.FilePath is { Length: > 0 } fp ? System.IO.Path.GetFileName(fp) : t.ViewModel.Title,
-            t.ViewModel.FilePath,
-            ReferenceEquals(t, active))).ToList();
-    }
-
-    /// <summary>Make the tab at <paramref name="index"/> the active one. False when there is no such tab.</summary>
-    public bool SwitchToTab(int index)
-    {
-        if (index < 0 || index >= ViewModel.Tabs.Count) return false;
-        TabViewControl.SelectedIndex = index;
-        return true;
-    }
 
     /// <summary>Close the tab at <paramref name="index"/>. False when there is no such tab.</summary>
     public bool CloseTabAt(int index)
@@ -662,9 +639,9 @@ public sealed partial class FitsTabHost : UserControl
 
     // ── Blink comparison ────────────────────────────────────────────────────
 
-    private void StartBlink(FitsViewerTabItem tabA, FitsViewerTabItem tabB)
+    private bool StartBlink(FitsViewerTabItem tabA, FitsViewerTabItem tabB)
     {
-        if (_activePage is null) return;
+        if (_activePage is null) return false;
         StopBlink();
 
         var wcsA = tabA.ViewModel.ImageData?.Wcs;
@@ -673,11 +650,11 @@ public sealed partial class FitsTabHost : UserControl
         {
             if (ViewModel.ActiveViewModel is not null)
                 ViewModel.ActiveViewModel.StatusMessage = Loc.T("Fits_BlinkNeedsWcs");
-            return;
+            return false;
         }
 
         var bitmapB = tabB.ViewModel.RenderedImage;
-        if (bitmapB is null) return;
+        if (bitmapB is null) return false;
 
         // Compute overlay transform for image B to match A's current view
         var pos = tabA.ViewModel.CrosshairPosition;
@@ -700,13 +677,13 @@ public sealed partial class FitsTabHost : UserControl
         var fieldA = imgDataA.Width * wcsA.PixelScaleArcsec;
         var fieldB = imgDataB.Width * wcsB.PixelScaleArcsec;
         var minField = Math.Min(fieldA, fieldB);
-        if (minField <= 0) return;
+        if (minField <= 0) return false;
 
         _blinkRestore = (_activePage, ct);
         var signA = ct.scaleX < 0 ? -1.0 : 1.0;
         var zoomA = fieldA / minField; // A frames the overlap (1.0 when A is already the narrower)
         var pixelA = wcsA.WorldToPixel(refRa, refDec);
-        if (pixelA is null) return;
+        if (pixelA is null) return false;
         var displayXA = (pixelA.Value.Px - 1) / imgDataA.Width * fitsDisplayW;
         var displayYA = (imgDataA.Height - 1 - (pixelA.Value.Py - 1)) / imgDataA.Height * fitsDisplayH;
         var (txA, tyA) = ViewportMath.ComputeCenterTranslate(
@@ -724,7 +701,7 @@ public sealed partial class FitsTabHost : UserControl
 
         // Map B's reference pixel to FitsImage's display space (Stretch=Fill)
         var pixelB = wcsB.WorldToPixel(refRa, refDec);
-        if (pixelB is null) return;
+        if (pixelB is null) return false;
         var displayX = (pixelB.Value.Px - 1) / imgDataB.Width * fitsDisplayW;
         var displayY = (imgDataB.Height - 1 - (pixelB.Value.Py - 1)) / imgDataB.Height * fitsDisplayH;
 
@@ -755,6 +732,7 @@ public sealed partial class FitsTabHost : UserControl
         StopBlinkButton.Visibility = Visibility.Visible;
         if (ViewModel.ActiveViewModel is not null)
             ViewModel.ActiveViewModel.StatusMessage = Loc.F("Fits_BlinkingStatus", tabA.Header, tabB.Header);
+        return true;
     }
 
     private void StopBlink()
@@ -938,6 +916,9 @@ public sealed partial class FitsTabHost : UserControl
         var vm = ViewModel.ActiveViewModel;
         var img = vm?.ImageData;
         var cross = vm?.CrosshairPosition;
+        var wcs = img?.Wcs;
+        bool wcsValid = wcs is { IsValid: true };
+        var crossPx = _activePage?.CrosshairDisplayPixel;
         double zoomPct = _activePage is not null ? _activePage.GetZoomMagnitude() * 100.0 : 100.0;
         return new FitsViewState(
             Loaded: vm is not null && img is not null,
@@ -950,17 +931,46 @@ public sealed partial class FitsTabHost : UserControl
             MaxCut: vm?.MaxCut ?? 0,
             ZoomPercent: Math.Round(zoomPct, 1),
             NorthUp: vm?.IsNorthUp ?? false,
-            HasWcs: img?.Wcs is { IsValid: true },
+            HasWcs: wcsValid,
             CrosshairPlaced: cross is not null,
             CrosshairRa: cross?.Ra ?? 0,
-            CrosshairDec: cross?.Dec ?? 0);
+            CrosshairDec: cross?.Dec ?? 0,
+            // Full read parity: the image-info panel, HDUs, toggles, blink, panels, crosshair pixel.
+            Path: vm?.FilePath ?? "",
+            HduIndex: vm?.SelectedHduIndex ?? 0,
+            Hdus: _activePage?.HduInfos().Select(h => new FitsHduInfo(h.Index, h.Name, h.Shape, h.IsImage)).ToList(),
+            Unit: img?.Unit ?? "",
+            DataMin: img?.Min ?? 0,
+            DataMax: img?.Max ?? 0,
+            PixelScaleArcsec: wcsValid ? wcs!.PixelScaleArcsec : 0,
+            NorthAngleDeg: wcsValid ? wcs!.NorthAngle : 0,
+            ParityFlip: wcsValid && wcs!.HasParityFlip,
+            WcsApproximate: wcsValid && wcs!.IsApproximate,
+            SyncZoom: ViewModel.IsSyncZoomEnabled,
+            LinkedCrosshair: ViewModel.IsLinkedCrosshairEnabled,
+            BlinkActive: _blinkSession is not null,
+            HeaderPanelOpen: _activePage?.HeaderPanelVisible ?? false,
+            BookmarksPanelOpen: _coordPanelVisible,
+            CrosshairX: crossPx?.X,
+            CrosshairY: crossPx?.Y,
+            Status: vm?.StatusMessage ?? "");
     }
 
     /// <summary>Apply display settings from MCP to the active tab; each null is left unchanged.</summary>
     public FitsViewState ApplyFitsView(
         string? stretch = null, string? colormap = null, double? minCut = null, double? maxCut = null,
-        double? zoomPercent = null, bool? northUp = null, bool? reset = null, bool? clearCrosshair = null)
+        double? zoomPercent = null, bool? northUp = null, bool? reset = null, bool? clearCrosshair = null,
+        int? hdu = null, int? crosshairX = null, int? crosshairY = null,
+        int? centerX = null, int? centerY = null,
+        bool? syncZoom = null, bool? linkedCrosshair = null,
+        bool? showHeaderPanel = null, bool? showBookmarksPanel = null)
     {
+        // HDU switch FIRST — it resets the cuts to the new extension's auto-cut, so explicit
+        // cut/stretch values passed in the same call win over the reset.
+        if (hdu is not null && _activePage?.SelectHduByIndex(hdu.Value) == false
+            && ViewModel.ActiveViewModel is { } hvm)
+            hvm.StatusMessage = $"HDU {hdu.Value} is not a viewable image extension";
+
         var vm = ViewModel.ActiveViewModel;
         if (vm is not null)
         {
@@ -978,9 +988,105 @@ public sealed partial class FitsTabHost : UserControl
             if (zoomPercent is not null) _activePage.SetZoomLevel(zoomPercent.Value / 100.0);
             if (northUp is not null) _activePage.SetNorthUp(northUp.Value);
             if (clearCrosshair == true) _activePage.ClearCrosshair();
+            if (crosshairX is not null && crosshairY is not null)
+                _activePage.PlaceCrosshairAtPixel(crosshairX.Value, crosshairY.Value);
+            if (centerX is not null && centerY is not null)
+                _activePage.CenterViewportOnPixel(centerX.Value, centerY.Value);
+            if (showHeaderPanel is not null) _activePage.SetHeaderPanelVisible(showHeaderPanel.Value);
+        }
+        // The cross-tab toggles run their toolbar handlers so side effects (auto-North-Up, shared
+        // state seeding, WCS warning) match the user clicking the buttons.
+        if (syncZoom is not null)
+        {
+            SyncZoomToggle.IsChecked = syncZoom.Value;
+            OnToggleSyncZoom(this, new RoutedEventArgs());
+        }
+        if (linkedCrosshair is not null)
+        {
+            LinkedCrosshairToggle.IsChecked = linkedCrosshair.Value;
+            OnToggleLinkedCrosshair(this, new RoutedEventArgs());
+        }
+        if (showBookmarksPanel is not null)
+        {
+            _coordPanelVisible = showBookmarksPanel.Value;
+            CoordPanelColumn.Width = _coordPanelVisible ? new GridLength(280) : new GridLength(0);
         }
         SyncToolbarToActiveTab(); // keep the toolbar in sync with the programmatic change
         return GetFitsViewState();
+    }
+
+    /// <summary>
+    /// Every open FITS tab's index, name, real path and active flag (the MCP list_open_tabs detail).
+    ///
+    /// The path is what makes the listing actionable: a name alone tells an agent that something is
+    /// open and gives it no way to reopen it later.
+    /// </summary>
+    public IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo> TabInfos()
+    {
+        var infos = new List<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo>(TabViewControl.TabItems.Count);
+        for (int i = 0; i < TabViewControl.TabItems.Count; i++)
+        {
+            var tab = TabViewControl.TabItems[i] as TabViewItem;
+            var item = tab?.Tag as FitsViewerTabItem;
+            infos.Add(new CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo(
+                i,
+                item?.Header ?? tab?.Header as string ?? "",
+                item?.ViewModel.FilePath,
+                ReferenceEquals(tab, TabViewControl.SelectedItem)));
+        }
+        return infos;
+    }
+
+    /// <summary>Make the tab at a 0-based index active (the MCP switch_fits_tab tool).</summary>
+    public bool SwitchToTab(int index)
+    {
+        if (index < 0 || index >= TabViewControl.TabItems.Count) return false;
+        TabViewControl.SelectedItem = TabViewControl.TabItems[index];
+        return true;
+    }
+
+    /// <summary>
+    /// MCP blink control (blink_fits_tabs): start against a partner tab (indices match TabInfos),
+    /// stop, pause/resume; intervalMs updates the fade speed with any action. Same code path as
+    /// the toolbar (StartBlink's WCS checks + shared-field framing + view restore on stop).
+    /// </summary>
+    public CanfarDesktop.Mcp.Tools.Write.FitsBlinkOutcome ControlBlink(string action, int? withTabIndex, int? intervalMs)
+    {
+        if (intervalMs is { } iv)
+            BlinkIntervalSlider.Value = Math.Clamp(iv, 500, 5000); // OnBlinkIntervalChanged updates a live session
+
+        switch (action)
+        {
+            case "start":
+            {
+                if (ViewModel.ActiveTab is null || _activePage is null)
+                    return new(false, false, null, CurrentInterval(), "no FITS tab is open");
+                if (withTabIndex is not { } idx || idx < 0 || idx >= TabViewControl.TabItems.Count)
+                    return new(false, false, null, CurrentInterval(),
+                        $"withTabIndex must be 0..{TabViewControl.TabItems.Count - 1} (see list_open_tabs fitsTabs)");
+                if ((TabViewControl.TabItems[idx] as TabViewItem)?.Tag is not FitsViewerTabItem other)
+                    return new(false, false, null, CurrentInterval(), "tab not found");
+                if (other == ViewModel.ActiveTab)
+                    return new(false, false, null, CurrentInterval(), "withTabIndex is the ACTIVE tab — pass the partner tab's index");
+                bool ok = StartBlink(ViewModel.ActiveTab, other);
+                return new(ok, false, ok ? other.Header : null, CurrentInterval(),
+                    ok ? null : ViewModel.ActiveViewModel?.StatusMessage ?? "blink could not start (both images need a valid WCS)");
+            }
+            case "stop":
+                StopBlink();
+                return new(false, false, null, CurrentInterval(), null);
+            case "pause":
+            case "resume":
+                if (_blinkSession is null)
+                    return new(false, false, null, CurrentInterval(), "no blink comparison is running — start one first");
+                _blinkSession.IsPaused = action == "pause";
+                return new(true, _blinkSession.IsPaused, _blinkSession.TabB.Header, _blinkSession.IntervalMs, null);
+            default:
+                return new(_blinkSession is not null, _blinkSession?.IsPaused ?? false,
+                    _blinkSession?.TabB.Header, CurrentInterval(), "unknown action");
+        }
+
+        int CurrentInterval() => _blinkSession?.IntervalMs ?? (int)BlinkIntervalSlider.Value;
     }
 
     /// <summary>Pixel value + sky coordinate at a 0-based display pixel, or null if out of range.</summary>
@@ -990,7 +1096,8 @@ public sealed partial class FitsTabHost : UserControl
         if (img is null || x < 0 || y < 0 || x >= img.Width || y >= img.Height) return null;
 
         var (_, arrayY) = PixelConvention.DisplayToArray(x, y, img.Height);
-        double value = img.Pixels[(int)arrayY * img.Width + x];
+        double raw = img.Pixels[(int)arrayY * img.Width + x];
+        double? value = double.IsFinite(raw) ? raw : null; // blanked pixel → null (NaN is not valid JSON)
         if (img.Wcs is { IsValid: true } wcs)
         {
             var (ra, dec) = PixelConvention.SkyAtDisplay(wcs, img.Height, x, y);

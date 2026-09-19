@@ -106,7 +106,15 @@ print('Pixel units (BUNIT):', header.get('BUNIT'))";
 
     private static string CubeStub() =>
 @"# Spectral cube — moment map + spectrum (edit the spaxel)
-from spectral_cube import SpectralCube
+try:
+    from spectral_cube import SpectralCube
+except ModuleNotFoundError:
+    # Not shipped in every compute image (QA F11) — fail with the fix, not a bare import error.
+    raise SystemExit(
+        'spectral_cube is not installed in this kernel.\n'
+        'Run:  %pip install spectral-cube\n'
+        'then re-run this cell.'
+    )
 
 cube = SpectralCube.read(path)  # carries SPECSYS / RESTFRQ / beam
 print(cube)

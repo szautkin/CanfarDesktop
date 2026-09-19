@@ -30,14 +30,45 @@ public sealed record CubeViewState(
     bool ShowSlicePlane = false,
     bool ShowCaptions = false,
     bool AutoOrbit = false,
-    bool Playing = false);
+    bool Playing = false,
+    // ── Full read parity: everything else the UI shows (info panel, slice view, spectrum panel,
+    //    opacity curve) so get_cube_view is a complete mirror of what the user sees. ──
+    string Instrument = "",
+    double Median = 0,
+    double NanFraction = 0,          // fraction of blanked voxels (0..1)
+    double CutLo = 0,                // physical values of the display-normalization cut (info-panel RANGE)
+    double CutHi = 0,
+    int RenderNx = 0,                // in-memory (GPU-downsampled) dims; Nx/Ny above are NATIVE, Nz is RENDER
+    int RenderNy = 0,
+    int NativeNz = 0,                // header NAXIS3 (Nz above is the renderable channel count)
+    bool Downsampled = false,
+    string Path = "",                // source file of the loaded cube
+    double SliceZoom = 1,            // slice-view zoom (1 = fit)
+    int? SliceCenterX = null,        // NATIVE pixel currently at the slice viewport center (null when off-image)
+    int? SliceCenterY = null,
+    bool SpectrumPanelOpen = false,  // the click-to-probe spectrum panel
+    int? SpectrumX = null,           // probed spaxel shown in the panel title (display pixels, as the UI labels it)
+    int? SpectrumY = null,
+    IReadOnlyList<CubeTransferPoint>? TransferPoints = null); // opacity curve control points
+
+/// <summary>One opacity transfer-function control point: data value → alpha, both normalized [0,1].</summary>
+public sealed record CubeTransferPoint(double X, double Y);
+
+/// <summary>Per-channel mean profile (the scrubber waveform), returned by get_cube_channel_profile.
+/// Means are in physical units; null entries are all-blank channels.</summary>
+public sealed record CubeChannelProfileResult(
+    int Channels,
+    double?[] Mean,          // NaN-aware mean per rendered channel (null = fully blanked channel)
+    string Unit,             // BUNIT ("" when the header has none)
+    double[] SpectralAxis,   // spectral world value per channel (or channel index if no spectral WCS)
+    string SpectralUnit);
 
 /// <summary>The spectrum (flux vs channel) at a spaxel, returned to the MCP layer.</summary>
 public sealed record CubeSpectrumResult(
     int X,
     int Y,
     double[] SpectralAxis,  // spectral world value per channel (or channel index if no WCS)
-    double[] Flux,          // physical flux per channel
+    double?[] Flux,         // physical flux per channel; null = blanked voxel (NaN/Inf in the data)
     string FluxUnit,
     string SpectralUnit,
     // Spectral conventions — surfaced (not converted) so kinematics are done correctly downstream.
@@ -45,24 +76,12 @@ public sealed record CubeSpectrumResult(
     double? RestFrequencyGHz = null,  // for frequency↔velocity conversion at the line rest frequency
     double? BeamMajorArcsec = null,   // synthesized beam (for K↔Jy/beam + flux integration)
     double? BeamMinorArcsec = null,
-    double? BeamPaDeg = null);
+    double? BeamPaDeg = null,
+    int BlankedChannels = 0);         // how many Flux entries are null (all == Flux.Length ⇒ fully masked spaxel)
 
-/// <summary>
-/// The cube's per-channel intensity profile — the waveform under the channel scrubber.
-///
-/// It is the thing a person scrubs against to find where the line is, and it was on screen and
-/// nowhere else: an agent asked to "go to the brightest channel" had to probe a spaxel it had no
-/// reason to trust was on the source, or walk every channel one at a time.
-///
-/// <see cref="Intensity"/> is the whole-plane statistic per channel, indexed by channel. The spectral
-/// axis is beside it so a channel can be named in the units the data is in rather than as an integer.
-/// </summary>
-public sealed record CubeChannelProfileResult(
-    int Channels,
-    double[] SpectralAxis,     // spectral world value per channel (or the channel index if no WCS)
-    double[] Intensity,        // whole-plane intensity per channel
-    string SpectralUnit,
-    int PeakChannel,           // the channel where Intensity is greatest
-    int CurrentChannel,        // what the viewer is showing right now
-    string? SpectralFrame = null,
-    double? RestFrequencyGHz = null);
+/// <summary>How a spectrum probe resolved (distinguishes the failure modes that used to collapse to null).</summary>
+public enum CubeProbeStatus { Ok, NoCube, OutOfRange }
+
+/// <summary>Outcome of a spectrum probe: the status, the spectrum when Ok, and the cube's
+/// native spatial dimensions (populated on OutOfRange so the caller can report the valid range).</summary>
+public sealed record CubeSpectrumProbe(CubeProbeStatus Status, CubeSpectrumResult? Result, int Nx = 0, int Ny = 0);

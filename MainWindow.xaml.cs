@@ -168,15 +168,17 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _fitsHostVm.Tabs.CollectionChanged += (_, _) => PublishOpenFits(_fitsHostVm);
         _viewState.SetActions(NavigateByKeyAsync, SetSearchFocusActionAsync, OpenFitsActionAsync);
         _viewState.SetCubeActions(OpenCubeActionAsync, GetCubeActionAsync, SetCubeActionAsync,
-                                  ExportCubeActionAsync, ProbeCubeActionAsync);
-        _viewState.SetCubeCatalogueActions(GetCubeChannelProfileActionAsync, ListRecentCubesActionAsync);
-        _viewState.SetFitsActions(GetFitsActionAsync, SetFitsActionAsync, ProbeFitsActionAsync, GotoFitsActionAsync);
+                                  ExportCubeActionAsync, ProbeCubeActionAsync,
+                                  ShowCubeSpectrumActionAsync, CloseCubeSpectrumActionAsync,
+                                  SetCubeTransferActionAsync, GetCubeChannelProfileActionAsync,
+                                  SwitchCubeTabActionAsync, ListRecentCubesActionAsync);
+        _viewState.SetFitsActions(GetFitsActionAsync, SetFitsActionAsync, ProbeFitsActionAsync, GotoFitsActionAsync,
+                                  BlinkFitsActionAsync, SwitchFitsTabActionAsync);
         _viewState.SetFitsBookmarkActions(ListFitsBookmarksActionAsync, SaveFitsBookmarkActionAsync, DeleteFitsBookmarkActionAsync);
         _viewState.SetNotebookActions(NotebookMutateActionAsync, GetNotebookActionAsync, GetCellOutputActionAsync,
                                       GetKernelStateActionAsync, ListNotebooksActionAsync, ListOpenNotebooksActionAsync);
         _viewState.SetTabActions(CloseTabActionAsync, ListOpenTabsActionAsync);
-        _viewState.SetTabNavigationActions(
-            SwitchTabActionAsync, CloseTabByIndexActionAsync, BlinkFitsTabsActionAsync);
+        _viewState.SetTabNavigationActions(CloseTabByIndexActionAsync);
         _viewState.SetSearchHost(ResolveSearchBridgeAsync);
         _viewState.SetAnnotationHost(this);
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
@@ -193,30 +195,59 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     // The MCP action methods all share one shape: run `work` on the UI thread, complete a
     // TaskCompletionSource (faulting it if `work` throws), and return `fallback` if the dispatch itself
     // can't be queued. These two helpers collapse that boilerplate to a single expression per action.
+    //
+    // Per-call budget on the dispatch: TryEnqueue succeeding only means the callback is QUEUED — on a
+    // saturated UI thread (long render, playback, a modal) it may not run for minutes, which surfaced
+    // as QA F5's multi-minute tool hangs with no clean error. The budget converts that into a fast,
+    // descriptive failure; a late UI completion after the timeout is simply dropped (TrySet*).
+    private static readonly TimeSpan UiDispatchTimeout = TimeSpan.FromSeconds(30);
+
     private Task<T> OnUi<T>(Func<T> work, T fallback)
     {
-        var tcs = new TaskCompletionSource<T>();
+        var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         if (!DispatcherQueue.TryEnqueue(() =>
         {
-            try { tcs.SetResult(work()); }
-            catch (Exception ex) { tcs.SetException(ex); }
+            try { tcs.TrySetResult(work()); }
+            catch (Exception ex) { tcs.TrySetException(ex); }
         }))
-            tcs.SetResult(fallback);
-        return tcs.Task;
+        {
+            tcs.TrySetResult(fallback);
+            return tcs.Task;
+        }
+        return WithUiDispatchTimeout(tcs);
     }
 
     private Task<T> OnUiAsync<T>(Func<Task<T>> work, T fallback)
     {
-        var tcs = new TaskCompletionSource<T>();
+        var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         // try/catch INSIDE the enqueued async lambda (await inside, not around the TCS) so exception +
         // ordering behaviour matches the hand-written versions.
         if (!DispatcherQueue.TryEnqueue(async () =>
         {
-            try { tcs.SetResult(await work()); }
-            catch (Exception ex) { tcs.SetException(ex); }
+            try { tcs.TrySetResult(await work()); }
+            catch (Exception ex) { tcs.TrySetException(ex); }
         }))
-            tcs.SetResult(fallback);
-        return tcs.Task;
+        {
+            tcs.TrySetResult(fallback);
+            return tcs.Task;
+        }
+        return WithUiDispatchTimeout(tcs);
+    }
+
+    private static async Task<T> WithUiDispatchTimeout<T>(TaskCompletionSource<T> tcs)
+    {
+        var task = tcs.Task;
+        using var cts = new CancellationTokenSource();
+        var delay = Task.Delay(UiDispatchTimeout, cts.Token);
+        if (await Task.WhenAny(task, delay) == task)
+        {
+            cts.Cancel(); // release the timer
+            return await task;
+        }
+        tcs.TrySetException(new TimeoutException(
+            $"the app's UI thread did not process the request within {UiDispatchTimeout.TotalSeconds:0}s " +
+            "— it may be busy (heavy rendering, playback, or an open dialog); retry shortly"));
+        return await task; // faulted above, unless the UI thread won the race at the last instant
     }
 
     private Task<CanfarDesktop.Mcp.Tools.Write.NavigationOutcome> NavigateByKeyAsync(string mode)
@@ -238,85 +269,6 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             default: return new(false, mode, mode);
         }
     }
-
-    // ── Annotations: which viewer is showing what, and "redraw it" ───────────────────────────────
-
-    /// <summary>
-    /// The file the named viewer is showing. Null when it has nothing open — which the annotation tools
-    /// read as "nothing is open", an answer with a way round it, since every one of them takes a target.
-    /// </summary>
-    Task<string?> CanfarDesktop.Mcp.Tools.Write.IAnnotationHost.ActiveTargetAsync(
-        CanfarDesktop.Mcp.Tools.Write.AnnotationViewer viewer)
-        => OnUi<string?>(() => viewer == CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
-            ? _cubeTabHost?.ActivePage?.AnnotationTarget
-            : _fitsTabHost?.ActiveAnnotationTarget, null);
-
-    /// <summary>
-    /// Redraw a viewer's marks, optionally picking one out. False when it is not showing that file: the
-    /// marks are stored against the file, so they will be there when it is opened.
-    /// </summary>
-    Task<bool> CanfarDesktop.Mcp.Tools.Write.IAnnotationHost.RefreshAsync(
-        CanfarDesktop.Mcp.Tools.Write.AnnotationViewer viewer, string target, string? selectId)
-        => OnUi(() => viewer == CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
-            ? _cubeTabHost?.ActivePage?.RefreshAnnotations(target, selectId) ?? false
-            : _fitsTabHost?.RefreshAnnotations(target, selectId) ?? false, false);
-
-    /// <summary>
-    /// Reach the Search page for the <c>search_*</c> tools, creating it if this is the first anyone has
-    /// asked. Runs on the UI thread because building the page is XAML work; the tools then call the
-    /// bridge, which marshals each of its own operations.
-    ///
-    /// The page is NOT brought to the front here: reading the form should not yank the user off what
-    /// they are looking at. The tools that change something do the navigating.
-    /// </summary>
-    private Task<CanfarDesktop.Mcp.Tools.Write.ISearchUiBridge?> ResolveSearchBridgeAsync()
-        => OnUi<CanfarDesktop.Mcp.Tools.Write.ISearchUiBridge?>(() =>
-        {
-            EnsureSearchPage();
-            return _searchPage;
-        }, null);
-
-    /// <summary>Render a figure of the FITS tab on screen. UI-thread work: the plate is a real control.</summary>
-    private Task<CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome> ExportFitsFigureActionAsync(
-        CanfarDesktop.Mcp.Tools.Write.FitsFigureRequest request)
-        => OnUiAsync(
-            () => _fitsTabHost?.ExportFigureAsync(request)
-                  ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("no FITS image is open")),
-            CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("the window is closing"));
-
-    /// <summary>
-    /// What the FITS viewer is showing, for get_fits_image. UI-thread work: the capture rasterises a
-    /// real control.
-    /// </summary>
-    private Task<CanfarDesktop.Mcp.Tools.Write.ViewerCapture> CaptureFitsActionAsync(
-        CanfarDesktop.Mcp.Tools.Write.ViewerCaptureRequest request)
-        => OnUiAsync(
-            () => _fitsTabHost?.CaptureAsync(request)
-                  ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("no FITS image is open")),
-            CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("the window is closing"));
-
-    /// <summary>The cube's channel waveform, for get_cube_channel_profile.</summary>
-    private Task<CanfarDesktop.Services.CubeViewer.CubeChannelProfileResult?> GetCubeChannelProfileActionAsync()
-        => OnUi(() => _cubeTabHost?.ActivePage?.GetChannelProfile(), null);
-
-    /// <summary>The cubes opened before, for list_recent_cubes.</summary>
-    private Task<IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.RecentCubeView>> ListRecentCubesActionAsync()
-        => OnUi(() => _cubeTabHost?.ListRecentCubes() ?? [],
-                (IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.RecentCubeView>)[]);
-
-    /// <summary>What the cube viewer is showing, for get_cube_image.</summary>
-    private Task<CanfarDesktop.Mcp.Tools.Write.ViewerCapture> CaptureCubeActionAsync(
-        CanfarDesktop.Mcp.Tools.Write.ViewerCaptureRequest request)
-        => OnUiAsync(
-            () => _cubeTabHost?.ActivePage?.CaptureAsync(request)
-                  ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("no cube is open")),
-            CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("the window is closing"));
-
-    /// <summary>A notebook cell's figure, for get_cell_image. UI-thread work: it reads the live cell.</summary>
-    private Task<CanfarDesktop.Services.Notebook.NotebookCellImage> GetCellImageActionAsync(int index, string? notebook)
-        => OnUi(() => _notebookTabHost?.GetCellImage(index, notebook)
-                      ?? CanfarDesktop.Services.Notebook.NotebookCellImage.None("no notebook is open"),
-                CanfarDesktop.Services.Notebook.NotebookCellImage.None("the window is closing"));
 
     private Task SetSearchFocusActionAsync(double ra, double dec)
     {
@@ -341,17 +293,31 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     private Task<CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome> OpenFitsActionAsync(string id)
         => OnUiAsync(async () =>
         {
-            var store = App.Services.GetRequiredService<ObservationStore>();
-            var obs = store.Observations.FirstOrDefault(o => o.Id == id || o.PublisherID == id);
-            if (obs is null)
-                return new CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome(false, id, null, "observation not found in Research");
-            if (!obs.FileExists)
-                return new(false, id, obs.LocalPath, "not downloaded yet — use download_observation first");
+            // A local file path opens directly (the UI file-picker equivalent); otherwise resolve a
+            // downloaded observation id — same dual-target behaviour as open_cube.
+            string? localPath;
+            string resolvedId = id;
+            if (System.IO.File.Exists(id))
+            {
+                localPath = id;
+            }
+            else
+            {
+                var store = App.Services.GetRequiredService<ObservationStore>();
+                var obs = store.Observations.FirstOrDefault(o => o.Id == id || o.PublisherID == id);
+                if (obs is null)
+                    return new CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome(false, id, null,
+                        "file not found and observation not in Research");
+                if (!obs.FileExists)
+                    return new(false, id, obs.LocalPath, "not downloaded yet — use download_observation first");
+                localPath = obs.LocalPath;
+                resolvedId = obs.Id;
+            }
             // Await the actual parse and report opened:true only on a confirmed load — so a file that won't
             // parse (e.g. a non-FITS download) returns the real error, not optimism.
-            var page = await OpenFitsViewerAsync(obs.LocalPath);
+            var page = await OpenFitsViewerAsync(localPath);
             var error = page?.ViewModel.LoadError;
-            return error is null ? new(true, obs.Id, obs.LocalPath, null) : new(false, obs.Id, obs.LocalPath, error);
+            return error is null ? new(true, resolvedId, localPath, null) : new(false, resolvedId, localPath, error);
         }, new CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome(false, id, null, "could not dispatch to UI"));
 
     // ── Cube Viewer MCP actions (each marshals to the UI thread) ─────────────────────────────────
@@ -392,7 +358,29 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         CanfarDesktop.Mcp.Tools.Write.FitsViewArgs args)
         => OnUi(() => _fitsTabHost?.ApplyFitsView(
             stretch: args.Stretch, colormap: args.Colormap, minCut: args.MinCut, maxCut: args.MaxCut,
-            zoomPercent: args.ZoomPercent, northUp: args.NorthUp, reset: args.Reset, clearCrosshair: args.ClearCrosshair), null);
+            zoomPercent: args.ZoomPercent, northUp: args.NorthUp, reset: args.Reset, clearCrosshair: args.ClearCrosshair,
+            hdu: args.Hdu, crosshairX: args.CrosshairX, crosshairY: args.CrosshairY,
+            centerX: args.CenterX, centerY: args.CenterY,
+            syncZoom: args.SyncZoom, linkedCrosshair: args.LinkedCrosshair,
+            showHeaderPanel: args.ShowHeaderPanel, showBookmarksPanel: args.ShowBookmarksPanel), null);
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.FitsBlinkOutcome?> BlinkFitsActionAsync(
+        string action, int? withTabIndex, int? intervalMs)
+        => OnUi<CanfarDesktop.Mcp.Tools.Write.FitsBlinkOutcome?>(
+            () => _fitsTabHost?.ControlBlink(action, withTabIndex, intervalMs), null);
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.FitsTabSwitchOutcome> SwitchFitsTabActionAsync(int index)
+        => OnUi(() =>
+        {
+            if (_fitsTabHost is null)
+                return new CanfarDesktop.Mcp.Tools.Write.FitsTabSwitchOutcome(false, index, 0, null, "the FITS viewer is not open");
+            bool ok = _fitsTabHost.SwitchToTab(index);
+            var infos = _fitsTabHost.TabInfos();
+            var active = infos.FirstOrDefault(t => t.Active).Name;
+            return new CanfarDesktop.Mcp.Tools.Write.FitsTabSwitchOutcome(
+                ok, index, infos.Count, string.IsNullOrEmpty(active) ? null : active,
+                ok ? null : $"no FITS tab at index {index} ({infos.Count} open)");
+        }, new CanfarDesktop.Mcp.Tools.Write.FitsTabSwitchOutcome(false, index, 0, null, "could not dispatch to UI"));
 
     private Task<CanfarDesktop.Services.Fits.FitsPixelResult?> ProbeFitsActionAsync(int x, int y)
         => OnUi(() => _fitsTabHost?.ProbeFitsPixel(x, y), null);
@@ -445,23 +433,70 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 azimuth: args.Azimuth, elevation: args.Elevation, distance: args.Distance,
                 density: args.Density, spectralScale: args.SpectralScale, steps: args.Steps,
                 background: args.Background, showSlicePlane: args.ShowSlicePlane, showCaptions: args.ShowCaptions,
-                autoOrbit: args.AutoOrbit, playing: args.Playing, resetCamera: args.ResetCamera);
+                autoOrbit: args.AutoOrbit, playing: args.Playing, resetCamera: args.ResetCamera,
+                windowPreset: args.WindowPreset, sliceZoom: args.SliceZoom,
+                sliceCenterX: args.SliceCenterX, sliceCenterY: args.SliceCenterY,
+                resetSliceView: args.ResetSliceView);
             return cube.GetCubeState();
         }, null);
 
     private Task<CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome> ExportCubeActionAsync(
-        string path, string format, int scale, bool dark)
+        CanfarDesktop.Mcp.Tools.Write.CubeExportRequest req)
         => OnUiAsync(async () =>
         {
             var cube = _cubeTabHost?.ActivePage;
             if (cube is null)
-                return new CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome(false, path, "the cube viewer is not open (use open_cube first)");
-            var err = await cube.ExportCubeToPathAsync(path, format, scale, dark);
-            return err is null ? new(true, path, null) : new(false, path, err);
-        }, new CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome(false, path, "could not dispatch to UI"));
+                return new CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome(false, req.Path, "the cube viewer is not open (use open_cube first)");
+            var err = await cube.ExportCubeToPathAsync(req.Path, req.Format, req.Scale, req.Dark,
+                req.Font, req.TextColor, req.TextScale, req.Annotate, req.Transparent);
+            return err is null ? new(true, req.Path, null) : new(false, req.Path, err);
+        }, new CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome(false, req.Path, "could not dispatch to UI"));
 
-    private Task<CanfarDesktop.Services.CubeViewer.CubeSpectrumResult?> ProbeCubeActionAsync(int x, int y)
-        => OnUi(() => _cubeTabHost?.ActivePage?.ProbeCubeSpectrum(x, y), null);
+    // Typed probe outcome: NoCube when the viewer/tab isn't there; only a failed dispatch yields null.
+    private Task<CanfarDesktop.Services.CubeViewer.CubeSpectrumProbe?> ProbeCubeActionAsync(int x, int y)
+        => OnUi<CanfarDesktop.Services.CubeViewer.CubeSpectrumProbe?>(
+            () => _cubeTabHost?.ActivePage is { } page
+                ? page.ProbeCubeSpectrum(x, y)
+                : new(CanfarDesktop.Services.CubeViewer.CubeProbeStatus.NoCube, null),
+            null);
+
+    private Task<CanfarDesktop.Services.CubeViewer.CubeSpectrumProbe?> ShowCubeSpectrumActionAsync(int x, int y)
+        => OnUi<CanfarDesktop.Services.CubeViewer.CubeSpectrumProbe?>(
+            () => _cubeTabHost?.ActivePage is { } page
+                ? page.ShowCubeSpectrum(x, y)
+                : new(CanfarDesktop.Services.CubeViewer.CubeProbeStatus.NoCube, null),
+            null);
+
+    private Task<bool> CloseCubeSpectrumActionAsync()
+        => OnUi(() => _cubeTabHost?.ActivePage?.CloseCubeSpectrum() == true, false);
+
+    private Task<CanfarDesktop.Services.CubeViewer.CubeViewState?> SetCubeTransferActionAsync(
+        IReadOnlyList<CanfarDesktop.Services.CubeViewer.CubeTransferPoint>? points, bool reset)
+        => OnUi(() => _cubeTabHost?.ActivePage?.ApplyCubeTransfer(points, reset), null);
+
+    private Task<CanfarDesktop.Services.CubeViewer.CubeChannelProfileResult?> GetCubeChannelProfileActionAsync()
+        => OnUi(() => _cubeTabHost?.ActivePage?.GetChannelProfile(), null);
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.CubeTabSwitchOutcome> SwitchCubeTabActionAsync(int index)
+        => OnUi(() =>
+        {
+            if (_cubeTabHost is null)
+                return new CanfarDesktop.Mcp.Tools.Write.CubeTabSwitchOutcome(false, index, 0, null, "the cube viewer is not open");
+            bool ok = _cubeTabHost.SwitchToTab(index);
+            var infos = _cubeTabHost.TabInfos();
+            var active = infos.FirstOrDefault(t => t.Active).Name;
+            return new CanfarDesktop.Mcp.Tools.Write.CubeTabSwitchOutcome(
+                ok, index, infos.Count, string.IsNullOrEmpty(active) ? null : active,
+                ok ? null : $"no cube tab at index {index} ({infos.Count} open)");
+        }, new CanfarDesktop.Mcp.Tools.Write.CubeTabSwitchOutcome(false, index, 0, null, "could not dispatch to UI"));
+
+    // Recents persist on disk, so they are listable even before the cube viewer host exists.
+    private Task<IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.RecentCubeInfo>> ListRecentCubesActionAsync()
+        => OnUi<IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.RecentCubeInfo>>(
+            () => (_cubeTabHost?.RecentCubes ?? new CanfarDesktop.Services.CubeViewer.RecentCubesService().Entries)
+                .Select(e => new CanfarDesktop.Mcp.Tools.Write.RecentCubeInfo(e.Name, e.Path, e.OpenedAt))
+                .ToList(),
+            Array.Empty<CanfarDesktop.Mcp.Tools.Write.RecentCubeInfo>());
 
     // ── Tab management (close the active viewer tab / count open tabs) ──
     private Task<TabCloseOutcome> CloseTabActionAsync(string kind)
@@ -494,61 +529,9 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             _notebookTabHost?.ViewModel.Tabs.Count ?? 0,
             _fitsHostVm?.Tabs.Count ?? 0,
             _cubeTabHost?.OpenTabCount ?? 0,
-            _fitsTabHost?.ListTabs() ?? [],
-            _cubeTabHost?.ListTabs() ?? []),
+            _cubeTabHost?.TabInfos(),
+            _fitsTabHost?.TabInfos()),
             new OpenTabsState(0, 0, 0));
-
-    /// <summary>Make a tab active, so the tools that act on the active tab act on that one.</summary>
-    private Task<TabActionOutcome> SwitchTabActionAsync(string kind, int index)
-        => OnUi(() => kind switch
-        {
-            "fits" => Outcome(_fitsTabHost?.SwitchToTab(index) == true, kind, index, "FITS"),
-            "cube" => Outcome(_cubeTabHost?.SwitchToTab(index) == true, kind, index, "cube"),
-            _ => new TabActionOutcome(false, kind, index, "unknown kind"),
-        }, new TabActionOutcome(false, kind, index, "could not dispatch to UI"));
-
-    /// <summary>Close a tab by index, or the active one when no index is given.</summary>
-    private Task<TabActionOutcome> CloseTabByIndexActionAsync(string kind, int? index)
-        => OnUi(() =>
-        {
-            if (index is not int i)
-            {
-                var closed = kind == "fits"
-                    ? _fitsTabHost?.CloseActiveTab() == true
-                    : _cubeTabHost?.CloseActiveTab() == true;
-                return new TabActionOutcome(closed, kind, null,
-                    closed ? null : $"no {(kind == "fits" ? "FITS" : "cube")} tab is open");
-            }
-
-            return kind switch
-            {
-                "fits" => Outcome(_fitsTabHost?.CloseTabAt(i) == true, kind, i, "FITS"),
-                "cube" => Outcome(_cubeTabHost?.CloseTabAt(i) == true, kind, i, "cube"),
-                _ => new TabActionOutcome(false, kind, i, "unknown kind"),
-            };
-        }, new TabActionOutcome(false, kind, index, "could not dispatch to UI"));
-
-    /// <summary>One shape for "did that index exist", so both tools refuse the same way.</summary>
-    private static TabActionOutcome Outcome(bool ok, string kind, int index, string label)
-        => new(ok, kind, index, ok ? null : $"there is no {label} tab {index}");
-
-    /// <summary>Start or stop a WCS-aligned blink between two FITS tabs.</summary>
-    private Task<BlinkOutcome> BlinkFitsTabsActionAsync(int? indexA, int? indexB, bool stop)
-        => OnUi(() =>
-        {
-            if (_fitsTabHost is null) return new BlinkOutcome(false, indexA, indexB, "no FITS tab is open");
-
-            if (stop)
-            {
-                _fitsTabHost.StopBlinking();
-                return new BlinkOutcome(false, null, null, null);
-            }
-
-            var error = _fitsTabHost.StartBlinkBetween(indexA!.Value, indexB!.Value);
-            return error is null
-                ? new BlinkOutcome(true, indexA, indexB, null)
-                : new BlinkOutcome(false, indexA, indexB, error);
-        }, new BlinkOutcome(false, indexA, indexB, "could not dispatch to UI"));
 
     // ── Analysis-notebook hand-off (SCI-10): resolve the downloaded observation, seed an .ipynb, open it ──
     private Task<NotebookState?> CreateAnalysisNotebookActionAsync(string observationId, string template)
@@ -609,9 +592,6 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
 
     private DispatcherTimer? _agentActivityTimer;
 
-    /// <summary>Turns a burst of per-tool-call signals into one "started" and one "finished".</summary>
-    private readonly AgentCueTracker _agentCues = new();
-
     private void OnAgentActivity(CanfarDesktop.Mcp.AppViewStateService.AgentActivitySignal signal)
     {
         DispatcherQueue.TryEnqueue(() =>
@@ -620,10 +600,6 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 ? Loc.F("MainWindow_AgentWorkingModule", TitleForModule(module))
                 : Loc.T("MainWindow_AgentWorking");
             AgentActivityIndicator.Visibility = Visibility.Visible;
-
-            // The pill says an agent is working to someone looking at this window; the sound says it
-            // started to someone reading a paper in another one.
-            if (_agentCues.Activity() is { } cue) AgentSounds.Play(cue);
 
             _agentActivityTimer ??= CreateAgentActivityTimer();
             _agentActivityTimer.Stop();
@@ -638,7 +614,6 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         {
             timer.Stop();
             AgentActivityIndicator.Visibility = Visibility.Collapsed;
-            if (_agentCues.Idle() is { } cue) AgentSounds.Play(cue);
         };
         return timer;
     }
@@ -1484,4 +1459,99 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     }
 
     #endregion
+
+    /// <summary>Render a figure of the FITS tab on screen. UI-thread work: the plate is a real control.</summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome> ExportFitsFigureActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.FitsFigureRequest request)
+        => OnUiAsync(
+            () => _fitsTabHost?.ExportFigureAsync(request)
+                  ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("no FITS image is open")),
+            CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome.Unavailable("the window is closing"));
+
+    /// <summary>
+    /// What the FITS viewer is showing, for get_fits_image. UI-thread work: the capture rasterises a
+    /// real control.
+    /// </summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.ViewerCapture> CaptureFitsActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.ViewerCaptureRequest request)
+        => OnUiAsync(
+            () => _fitsTabHost?.CaptureAsync(request)
+                  ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("no FITS image is open")),
+            CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("the window is closing"));
+
+    /// <summary>What the cube viewer is showing, for get_cube_image.</summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.ViewerCapture> CaptureCubeActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.ViewerCaptureRequest request)
+        => OnUiAsync(
+            () => _cubeTabHost?.ActivePage?.CaptureAsync(request)
+                  ?? Task.FromResult(CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("no cube is open")),
+            CanfarDesktop.Mcp.Tools.Write.ViewerCapture.Unavailable("the window is closing"));
+
+    /// <summary>A notebook cell's figure, for get_cell_image. UI-thread work: it reads the live cell.</summary>
+    private Task<CanfarDesktop.Services.Notebook.NotebookCellImage> GetCellImageActionAsync(int index, string? notebook)
+        => OnUi(() => _notebookTabHost?.GetCellImage(index, notebook)
+                      ?? CanfarDesktop.Services.Notebook.NotebookCellImage.None("no notebook is open"),
+                CanfarDesktop.Services.Notebook.NotebookCellImage.None("the window is closing"));
+
+    /// <summary>Close a tab by index, or the active one when no index is given.</summary>
+    private Task<TabActionOutcome> CloseTabByIndexActionAsync(string kind, int? index)
+        => OnUi(() =>
+        {
+            if (index is not int i)
+            {
+                var closed = kind == "fits"
+                    ? _fitsTabHost?.CloseActiveTab() == true
+                    : _cubeTabHost?.CloseActiveTab() == true;
+                return new TabActionOutcome(closed, kind, null,
+                    closed ? null : $"no {(kind == "fits" ? "FITS" : "cube")} tab is open");
+            }
+
+            return kind switch
+            {
+                "fits" => Outcome(_fitsTabHost?.CloseTabAt(i) == true, kind, i, "FITS"),
+                "cube" => Outcome(_cubeTabHost?.CloseTabAt(i) == true, kind, i, "cube"),
+                _ => new TabActionOutcome(false, kind, i, "unknown kind"),
+            };
+        }, new TabActionOutcome(false, kind, index, "could not dispatch to UI"));
+
+    /// <summary>
+    /// Reach the Search page for the <c>search_*</c> tools, creating it if this is the first anyone has
+    /// asked. Runs on the UI thread because building the page is XAML work; the tools then call the
+    /// bridge, which marshals each of its own operations.
+    ///
+    /// The page is NOT brought to the front here: reading the form should not yank the user off what
+    /// they are looking at. The tools that change something do the navigating.
+    /// </summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.ISearchUiBridge?> ResolveSearchBridgeAsync()
+        => OnUi<CanfarDesktop.Mcp.Tools.Write.ISearchUiBridge?>(() =>
+        {
+            EnsureSearchPage();
+            return _searchPage;
+        }, null);
+
+
+    /// <summary>
+    /// The file the named viewer is showing. Null when it has nothing open — which the annotation tools
+    /// read as "nothing is open", an answer with a way round it, since every one of them takes a target.
+    /// </summary>
+    Task<string?> CanfarDesktop.Mcp.Tools.Write.IAnnotationHost.ActiveTargetAsync(
+        CanfarDesktop.Mcp.Tools.Write.AnnotationViewer viewer)
+        => OnUi<string?>(() => viewer == CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
+            ? _cubeTabHost?.ActivePage?.AnnotationTarget
+            : _fitsTabHost?.ActiveAnnotationTarget, null);
+
+    /// <summary>
+    /// Redraw a viewer's marks, optionally picking one out. False when it is not showing that file: the
+    /// marks are stored against the file, so they will be there when it is opened.
+    /// </summary>
+    Task<bool> CanfarDesktop.Mcp.Tools.Write.IAnnotationHost.RefreshAsync(
+        CanfarDesktop.Mcp.Tools.Write.AnnotationViewer viewer, string target, string? selectId)
+        => OnUi(() => viewer == CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
+            ? _cubeTabHost?.ActivePage?.RefreshAnnotations(target, selectId) ?? false
+            : _fitsTabHost?.RefreshAnnotations(target, selectId) ?? false, false);
+
+    /// <summary>One shape for "did that index exist", so the close paths refuse the same way.</summary>
+    private static TabActionOutcome Outcome(bool ok, string kind, int index, string label)
+        => new(ok, kind, index, ok ? null : $"there is no {label} tab {index}");
+
 }

@@ -533,31 +533,6 @@ public sealed class ShowObservationDetailTool : JsonReadTool<ShowObservationDeta
     public sealed record Args { public string? PublisherId { get; init; } }
 }
 
-/// <summary><c>remove_recent_search</c> — drop one entry from the recent-searches rail.</summary>
-public sealed class RemoveRecentSearchTool : JsonReadTool<RemoveRecentSearchTool.Args, SearchRecentRemoved>
-{
-    private readonly Func<string, Task<SearchRecentRemoved>> _remove;
-
-    public RemoveRecentSearchTool(Func<string, Task<SearchRecentRemoved>> remove) => _remove = remove;
-
-    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
-
-    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
-        "remove_recent_search",
-        "Remove one entry from the Search page's recent-searches rail, matched by its summary or by its " +
-        "exact ADQL (see list_recent_searches). One entry — clear_recent_searches empties the whole rail.",
-        """{"type":"object","properties":{"match":{"type":"string","description":"The entry's summary, or its exact ADQL."}},"required":["match"],"additionalProperties":false}""");
-
-    protected override async Task<SearchRecentRemoved> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
-    {
-        var match = (args.Match ?? string.Empty).Trim();
-        if (match.Length == 0) throw new McpToolException(new InvalidArgument("match is required"));
-        return await _remove(match);
-    }
-
-    public sealed record Args { public string? Match { get; init; } }
-}
-
 /// <summary>
 /// <c>reset_search_form</c> — empty the form, the way the Clear button does.
 ///
@@ -618,23 +593,32 @@ public sealed class LoadRecentSearchTool : JsonReadTool<LoadRecentSearchTool.Arg
     public sealed record Args { public string? Match { get; init; } }
 }
 
-/// <summary><c>clear_recent_searches</c> — empty the rail, rather than a call per entry.</summary>
-public sealed class ClearRecentSearchesTool : JsonReadTool<EmptyArgs, SearchRecentRemoved>
+/// <summary>
+/// <c>execute_adql_query</c> — the ADQL Editor's Execute button: run the editor's current ADQL (or the
+/// ADQL passed in, which is staged first) and show the Results tab.
+///
+/// Distinct from <c>set_adql_query</c>, which always STAGES text: an agent that wants to run what a
+/// PERSON typed has nothing to stage, and this is the call for that.
+/// </summary>
+public sealed class ExecuteAdqlQueryTool : JsonReadTool<ExecuteAdqlQueryTool.Args, SearchAdqlOutcome>
 {
-    private readonly Func<Task<SearchRecentRemoved>> _clear;
+    private readonly Func<string?, Task<SearchAdqlOutcome>> _execute;
 
-    public ClearRecentSearchesTool(Func<Task<SearchRecentRemoved>> clear) => _clear = clear;
+    public ExecuteAdqlQueryTool(Func<string?, Task<SearchAdqlOutcome>> execute) => _execute = execute;
 
-    /// <summary>Destructive: the rail is the only record of those searches, and nothing brings it back.</summary>
-    public override McpVerbClass VerbClass => McpVerbClass.Destructive;
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
-        "clear_recent_searches",
-        "Empty the Search page's recent-searches rail. There is no undo, and the rail is the only record " +
-        "of those queries — save one with save_query first if it is worth keeping. Saved queries are a " +
-        "separate list and are NOT affected. Use remove_recent_search when you mean one entry.",
-        """{"type":"object","properties":{},"additionalProperties":false}""");
+        "execute_adql_query",
+        "Execute ADQL in the Search page's ADQL Editor and show the Results tab. Pass `adql` to stage and " +
+        "run it, or omit it to run whatever is already in the editor. The query is checked against the " +
+        "service's own schema first, so a query CADC would refuse comes back with the reason instead of " +
+        "spending a round trip. For a headless query that does not touch the user's UI, use " +
+        "search_observations instead. Live-applied (no proposal).",
+        """{"type":"object","properties":{"adql":{"type":"string"}},"additionalProperties":false}""");
 
-    protected override Task<SearchRecentRemoved> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
-        => _clear();
+    protected override Task<SearchAdqlOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+        => _execute(string.IsNullOrWhiteSpace(args.Adql) ? null : args.Adql.Trim());
+
+    public sealed record Args { public string? Adql { get; init; } }
 }

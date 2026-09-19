@@ -72,7 +72,7 @@ public class SearchUiToolsTests
             new ExportSearchResultsTool((f, p) => Task.FromResult(new SearchExportOutcome(true, f, p, 0, 0))),
             new ShowSearchRowDetailTool(_ => Task.FromResult(new SearchRowDetailOutcome(true, 0, "p"))),
             new ShowObservationDetailTool(_ => Task.FromResult(new SearchRowDetailOutcome(true, null, "p"))),
-            new RemoveRecentSearchTool(_ => Task.FromResult(new SearchRecentRemoved(true, "s", 0))),
+            new ExecuteAdqlQueryTool(a => Task.FromResult(new SearchAdqlOutcome(true, a ?? "", true))),
         ];
 
         Assert.All(tools, t => Assert.Equal(McpVerbClass.ViewState, t.VerbClass));
@@ -82,8 +82,8 @@ public class SearchUiToolsTests
         Assert.Equal(names.Count, names.Distinct().Count());
         Assert.Equal(
         [
-            "export_search_results", "get_search_constraints", "get_search_form", "get_search_results",
-            "remove_recent_search", "run_saved_query", "run_search", "set_adql_query",
+            "execute_adql_query", "export_search_results", "get_search_constraints", "get_search_form",
+            "get_search_results", "run_saved_query", "run_search", "set_adql_query",
             "set_search_constraints", "set_search_form", "set_search_results_view",
             "show_observation_detail", "show_search_row_detail",
         ], names);
@@ -309,17 +309,6 @@ public class SearchUiToolsTests
         Assert.Contains("publisherId is required", Failure(await tool.InvokeAsync(Args("""{"publisherId":"  "}"""), Ctx(), default)));
     }
 
-    [Fact]
-    public async Task RemoveRecentSearch_ReportsAMissWithoutFailing()
-    {
-        // Not finding an entry is an ANSWER, not an error: an agent tidying up should be told the rail
-        // no longer holds it, not handed a failure it has to interpret.
-        var tool = new RemoveRecentSearchTool(_ => Task.FromResult(new SearchRecentRemoved(false, null, 3, "no recent search matching 'x'")));
-        var removed = Payload<SearchRecentRemoved>(await tool.InvokeAsync(Args("""{"match":"x"}"""), Ctx(), default));
-
-        Assert.False(removed.Removed);
-        Assert.Equal(3, removed.Remaining);
-    }
 
     // ── An unreachable page ─────────────────────────────────────────────────────────────────────
 
@@ -358,100 +347,6 @@ public class SearchUiToolsTests
 
     // ── Getting back to a known state ───────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// A value left in a field nobody overwrote, or a facet left ticked, silently narrows the next
-    /// query — and the facets are not form fields, so there is nothing on screen to say so.
-    /// </summary>
-    [Fact]
-    public async Task ResetSearchForm_EmptiesTheForm()
-    {
-        var called = false;
-        var tool = new ResetSearchFormTool(() =>
-        {
-            called = true;
-            return Task.FromResult(new SearchFormApplied(
-                true, ["target"], Array.Empty<string>(), ["target"], EmptyForm()));
-        });
 
-        var applied = Payload<SearchFormApplied>(await tool.InvokeAsync(Args("{}"), Ctx(), default));
 
-        Assert.True(called);
-        Assert.True(applied.Applied);
-    }
-
-    /// <summary>It says what it does NOT touch, because "clear" is a word with a wide blast radius.</summary>
-    [Fact]
-    public void ResetSearchForm_SaysWhatItLeavesAlone()
-    {
-        var tool = new ResetSearchFormTool(() => Task.FromResult(
-            new SearchFormApplied(true, [], [], [], EmptyForm())));
-
-        Assert.Contains("facet", tool.Descriptor.Description);
-        Assert.Contains("saved queries are untouched", tool.Descriptor.Description);
-    }
-
-    /// <summary>The rail could be read and its entries deleted, but not USED — the one thing it is for.</summary>
-    [Fact]
-    public async Task LoadRecentSearch_PassesTheMatchThrough()
-    {
-        string? got = null;
-        var tool = new LoadRecentSearchTool(match =>
-        {
-            got = match;
-            return Task.FromResult(new SearchFormApplied(true, [], [], [], EmptyForm()));
-        });
-
-        await tool.InvokeAsync(Args("""{"match":"M31 · CFHT"}"""), Ctx(), default);
-        Assert.Equal("M31 · CFHT", got);
-    }
-
-    /// <summary>Loading a query is not running it, and the description says so rather than implying it.</summary>
-    [Fact]
-    public void LoadRecentSearch_SaysItDoesNotRunTheSearch()
-    {
-        var tool = new LoadRecentSearchTool(_ => Task.FromResult(
-            new SearchFormApplied(true, [], [], [], EmptyForm())));
-
-        Assert.Contains("does NOT run", tool.Descriptor.Description);
-        Assert.Contains("run_search", tool.Descriptor.Description);
-    }
-
-    [Fact]
-    public async Task LoadRecentSearch_EmptyMatch_IsRefused()
-    {
-        var tool = new LoadRecentSearchTool(_ => throw new Xunit.Sdk.XunitException("must not dispatch"));
-        Assert.Contains("match is required", Failure(await tool.InvokeAsync(Args("""{"match":"  "}"""), Ctx(), default)));
-    }
-
-    /// <summary>Emptying the rail is destructive: it is the only record of those queries.</summary>
-    [Fact]
-    public void ClearRecentSearches_IsDestructiveAndSaysSavedQueriesSurvive()
-    {
-        var tool = new ClearRecentSearchesTool(() => Task.FromResult(new SearchRecentRemoved(true, null, 0)));
-
-        Assert.Equal(McpVerbClass.Destructive, tool.VerbClass);
-        Assert.Contains("NOT affected", tool.Descriptor.Description);
-        Assert.Contains("remove_recent_search", tool.Descriptor.Description);
-    }
-
-    [Fact]
-    public async Task ClearRecentSearches_ReportsTheRailIsEmptyAfterwards()
-    {
-        var tool = new ClearRecentSearchesTool(() =>
-            Task.FromResult(new SearchRecentRemoved(true, null, 0, "cleared 4 recent searches")));
-
-        var outcome = Payload<SearchRecentRemoved>(await tool.InvokeAsync(Args("{}"), Ctx(), default));
-
-        Assert.True(outcome.Removed);
-        Assert.Equal(0, outcome.Remaining);
-        Assert.Contains("4", outcome.Message);
-    }
-
-    /// <summary>remove_recent_search used to promise there was no bulk clear. There is one now.</summary>
-    [Fact]
-    public void RemoveRecentSearch_PointsAtTheBulkClear()
-    {
-        var tool = new RemoveRecentSearchTool(_ => Task.FromResult(new SearchRecentRemoved(true, "x", 0)));
-        Assert.Contains("clear_recent_searches", tool.Descriptor.Description);
-    }
 }

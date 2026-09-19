@@ -4,82 +4,88 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
-        <StackPanel Spacing="32" HorizontalAlignment="Center">
+    <!-- Scroll host: without it a short viewport clips the second tile row on BOTH edges (the
+         centered grid overflows symmetrically) with no way to reach the cut-off tiles. Content
+         stays centered while it fits; the scrollbar appears only once it doesn't. -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto"
+                  HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled">
+        <Grid VerticalAlignment="Center" HorizontalAlignment="Center" Padding="0,24">
+            <StackPanel Spacing="32" HorizontalAlignment="Center">
 
-            <!-- Branding -->
-            <StackPanel Spacing="12" HorizontalAlignment="Center">
-                <Image Source="Assets/Verbinal_icon.png" Width="80" Height="80" HorizontalAlignment="Center" />
-                <TextBlock Text="Verbinal" Style="{StaticResource TitleLargeTextBlockStyle}"
-                           HorizontalAlignment="Center" FontWeight="Bold" />
-                <TextBlock x:Uid="Landing_Subtitle" Text="A CANFAR Science Portal Companion and Research Platform"
-                           Style="{StaticResource SubtitleTextBlockStyle}"
-                           HorizontalAlignment="Center"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            </StackPanel>
+                <!-- Branding -->
+                <StackPanel Spacing="12" HorizontalAlignment="Center">
+                    <Image Source="Assets/Verbinal_icon.png" Width="80" Height="80" HorizontalAlignment="Center" />
+                    <TextBlock Text="Verbinal" Style="{StaticResource TitleLargeTextBlockStyle}"
+                               HorizontalAlignment="Center" FontWeight="Bold" />
+                    <TextBlock x:Uid="Landing_Subtitle" Text="A CANFAR Science Portal Companion and Research Platform"
+                               Style="{StaticResource SubtitleTextBlockStyle}"
+                               HorizontalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
 
-            <!-- Tiles: 3 columns × 2 rows -->
-            <ItemsRepeater x:Name="TilesRepeater" HorizontalAlignment="Center">
-                <ItemsRepeater.Layout>
-                    <!-- MaximumRowsOrColumns is adaptive (UpdateTileColumns): wide windows spread
-                         the tiles over more columns (up to 5 → two rows), narrow ones fall back
-                         to the classic 3-column launchpad. -->
-                    <UniformGridLayout x:Name="TilesLayout" Orientation="Horizontal"
-                                       MinItemWidth="190" MinItemHeight="180"
-                                       MinColumnSpacing="20" MinRowSpacing="20"
-                                       MaximumRowsOrColumns="3" />
-                </ItemsRepeater.Layout>
-                <ItemsRepeater.ItemTemplate>
-                    <DataTemplate>
-                        <!-- One rigid three-zone layout for every tile: fixed icon band, fixed
-                             two-line title band, subtitle band — so icons and titles sit at the
-                             same height on every tile regardless of how the (localized) text
-                             wraps. Whole-word wrap + ellipsis keep long strings tidy. -->
-                        <Button Width="190" Height="180" Padding="0"
-                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
-                                CornerRadius="8"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Tag="{Binding Key}"
-                                Click="OnTileClicked"
-                                AutomationProperties.Name="{Binding Title}"
-                                ToolTipService.ToolTip="{Binding ToolTip}">
-                            <Grid>
-                                <Grid Padding="12,16,12,10" Opacity="{Binding TileOpacity}">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="56" />
-                                        <RowDefinition Height="56" />
-                                        <RowDefinition Height="*" />
-                                    </Grid.RowDefinitions>
-                                    <FontIcon Glyph="{Binding Glyph}" FontSize="40"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center"
-                                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                    <TextBlock Grid.Row="1" Text="{Binding Title}"
-                                               Style="{StaticResource BodyStrongTextBlockStyle}" FontSize="17"
-                                               TextWrapping="WrapWholeWords" MaxLines="2"
-                                               TextTrimming="CharacterEllipsis" TextAlignment="Center"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Row="2" Text="{Binding Subtitle}"
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               TextWrapping="WrapWholeWords" MaxLines="2"
-                                               TextTrimming="CharacterEllipsis" TextAlignment="Center"
-                                               HorizontalAlignment="Center" VerticalAlignment="Top"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <!-- Tiles: 3 columns × 2 rows -->
+                <ItemsRepeater x:Name="TilesRepeater" HorizontalAlignment="Center">
+                    <ItemsRepeater.Layout>
+                        <!-- MaximumRowsOrColumns is adaptive (UpdateTileColumns): wide windows spread
+                             the tiles over more columns (up to 5 → two rows), narrow ones fall back
+                             to the classic 3-column launchpad. -->
+                        <UniformGridLayout x:Name="TilesLayout" Orientation="Horizontal"
+                                           MinItemWidth="190" MinItemHeight="180"
+                                           MinColumnSpacing="20" MinRowSpacing="20"
+                                           MaximumRowsOrColumns="3" />
+                    </ItemsRepeater.Layout>
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate>
+                            <!-- One rigid three-zone layout for every tile: fixed icon band, fixed
+                                 two-line title band, subtitle band — so icons and titles sit at the
+                                 same height on every tile regardless of how the (localized) text
+                                 wraps. Whole-word wrap + ellipsis keep long strings tidy. -->
+                            <Button Width="190" Height="180" Padding="0"
+                                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                                    CornerRadius="8"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Tag="{Binding Key}"
+                                    Click="OnTileClicked"
+                                    AutomationProperties.Name="{Binding Title}"
+                                    ToolTipService.ToolTip="{Binding ToolTip}">
+                                <Grid>
+                                    <Grid Padding="12,16,12,10" Opacity="{Binding TileOpacity}">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="56" />
+                                            <RowDefinition Height="56" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <FontIcon Glyph="{Binding Glyph}" FontSize="40"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                        <TextBlock Grid.Row="1" Text="{Binding Title}"
+                                                   Style="{StaticResource BodyStrongTextBlockStyle}" FontSize="17"
+                                                   TextWrapping="WrapWholeWords" MaxLines="2"
+                                                   TextTrimming="CharacterEllipsis" TextAlignment="Center"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="2" Text="{Binding Subtitle}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                   TextWrapping="WrapWholeWords" MaxLines="2"
+                                                   TextTrimming="CharacterEllipsis" TextAlignment="Center"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </Grid>
+                                    <!-- Auth-gate badge: top-right lock while signed out (macOS parity) -->
+                                    <FontIcon Glyph="&#xE72E;" FontSize="12"
+                                              HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,10,0"
+                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                              Visibility="{Binding LockVisibility}" />
                                 </Grid>
-                                <!-- Auth-gate badge: top-right lock while signed out (macOS parity) -->
-                                <FontIcon Glyph="&#xE72E;" FontSize="12"
-                                          HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,10,0"
-                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                          Visibility="{Binding LockVisibility}" />
-                            </Grid>
-                        </Button>
-                    </DataTemplate>
-                </ItemsRepeater.ItemTemplate>
-            </ItemsRepeater>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
 
-            <!-- Status -->
-            <TextBlock x:Name="StatusText" HorizontalAlignment="Center"
-                       Style="{StaticResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-        </StackPanel>
-    </Grid>
+                <!-- Status -->
+                <TextBlock x:Name="StatusText" HorizontalAlignment="Center"
+                           Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
 </UserControl>

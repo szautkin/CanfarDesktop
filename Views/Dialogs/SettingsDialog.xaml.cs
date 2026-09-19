@@ -125,7 +125,10 @@ public sealed partial class SettingsDialog : ContentDialog
     /// </summary>
     private static string DescribeProbe(Helpers.ServiceProbeResult r)
     {
-        if (!r.Reachable) return Loc.F("Settings_ProbeFail", r.Name, r.Error ?? "?");
+        // Unreachable, or reachable but answering 404/5xx — a host that replies is not a service that
+        // works (QA F3), so the status is the reason when there is no exception to name.
+        if (!r.Reachable || !r.Ok)
+            return Loc.F("Settings_ProbeFail", r.Name, r.Error ?? $"HTTP {r.StatusCode}");
 
         var auth = r.RequiresAuth ? Loc.T("Settings_ProbeAuthSuffix") : string.Empty;
         return r.Available == false

@@ -213,14 +213,13 @@ public static class McpToolCatalog
             new SetSearchConstraintsTool(patch => viewState.SetSearchConstraintsAsync(patch)),
             new RunSearchTool(() => viewState.RunSearchAsync()),
             new SetAdqlQueryTool((adql, execute) => viewState.SetAdqlQueryAsync(adql, execute)),
+            new ExecuteAdqlQueryTool(adql => viewState.ExecuteAdqlQueryAsync(adql)),
             new RunSavedQueryTool(name => viewState.RunSavedQueryAsync(name)),
             new GetSearchResultsTool(query => viewState.GetSearchResultsAsync(query)),
             new SetSearchResultsViewTool(patch => viewState.SetSearchResultsViewAsync(patch)),
             new ExportSearchResultsTool((format, path) => viewState.ExportSearchResultsAsync(format, path)),
             new ShowSearchRowDetailTool(row => viewState.ShowSearchRowDetailAsync(row)),
             new ShowObservationDetailTool(id => viewState.ShowObservationDetailAsync(id)),
-            new RemoveRecentSearchTool(match => viewState.RemoveRecentSearchAsync(match)),
-            new ClearRecentSearchesTool(() => viewState.ClearRecentSearchesAsync()),
             new LoadRecentSearchTool(match => viewState.LoadRecentSearchAsync(match)),
             new ResetSearchFormTool(() => viewState.ResetSearchFormAsync()),
 
@@ -235,9 +234,6 @@ public static class McpToolCatalog
             new RemoveAnnotationTool(annotations, viewState),
             new ClearAnnotationsTool(annotations, viewState),
 
-            // The cube reads that are about the whole file rather than one view of it.
-            new GetCubeChannelProfileTool(() => viewState.GetCubeChannelProfileAsync()),
-            new ListRecentCubesTool(() => viewState.ListRecentCubesAsync()),
             new SelectAnnotationTool(annotations, viewState),
 
             // The figure the marks are drawn for.
@@ -248,17 +244,25 @@ public static class McpToolCatalog
             new GetCubeImageTool(request => viewState.CaptureCubeAsync(request)),
 
             // 3D Cube Viewer: open + steer + read + probe + export figure
+            // 3D Cube Viewer: open + steer + read + probe + export figure + transfer curve + tabs/recents
             new OpenCubeTool(target => viewState.OpenCubeAsync(target)),
             new SetCubeViewTool(args => viewState.SetCubeAsync(args)),
             new GetCubeViewTool(() => viewState.GetCubeAsync()),
             new ProbeCubeSpectrumTool((x, y) => viewState.ProbeCubeAsync(x, y)),
-            new ExportCubeFigureTool((path, format, scale, dark) => viewState.ExportCubeAsync(path, format, scale, dark)),
+            new ShowCubeSpectrumTool((x, y) => viewState.ShowCubeSpectrumAsync(x, y), () => viewState.CloseCubeSpectrumAsync()),
+            new SetCubeTransferTool((points, reset) => viewState.SetCubeTransferAsync(points, reset)),
+            new GetCubeChannelProfileTool(() => viewState.GetCubeChannelProfileAsync()),
+            new SwitchCubeTabTool(index => viewState.SwitchCubeTabAsync(index)),
+            new ListRecentCubesTool(() => viewState.ListRecentCubesAsync()),
+            new ExportCubeFigureTool(req => viewState.ExportCubeAsync(req)),
 
-            // 2D FITS Viewer: steer + read + probe pixel + go-to coordinate (active tab)
+            // 2D FITS Viewer: steer + read + probe pixel + go-to coordinate + blink + tabs (active tab)
             new SetFitsViewTool(args => viewState.SetFitsAsync(args)),
             new GetFitsViewTool(() => viewState.GetFitsAsync()),
             new ProbeFitsPixelTool((x, y) => viewState.ProbeFitsAsync(x, y)),
             new FitsGotoCoordinateTool((ra, dec) => viewState.GotoFitsAsync(ra, dec)),
+            new BlinkFitsTabsTool((action, tab, interval) => viewState.BlinkFitsAsync(action, tab, interval)),
+            new SwitchFitsTabTool(index => viewState.SwitchFitsTabAsync(index)),
             // FITS coordinate bookmarks (persisted saved coordinates)
             new ListFitsBookmarksTool(() => viewState.ListFitsBookmarksAsync()),
             new SaveFitsBookmarkTool((ra, dec, label, src) => viewState.SaveFitsBookmarkAsync(ra, dec, label, src)),
@@ -303,9 +307,7 @@ public static class McpToolCatalog
 
             // Reaching a tab that is not the active one — every other viewer tool acts on the active
             // one, so without these a second open file was unreachable.
-            new SwitchTabTool((kind, index) => viewState.SwitchTabAsync(kind, index)),
             new CloseTabTool((kind, index) => viewState.CloseTabAtAsync(kind, index)),
-            new BlinkFitsTabsTool((a, b, stop) => viewState.BlinkFitsTabsAsync(a, b, stop)),
 
             // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
             new SaveQueryTool(),
@@ -425,6 +427,21 @@ public static class McpToolCatalog
             new DeleteSavedQueryApplier(payload =>
             {
                 searchStore.DeleteQuery(payload.Name);
+                return Task.CompletedTask;
+            }),
+            new RemoveRecentSearchApplier(payload =>
+            {
+                // Keyed by (searchedAt, summary), not index, so the right entry is removed even if the
+                // history shifted between the proposal and the user's approval.
+                var remaining = searchStore.LoadRecentSearches()
+                    .Where(s => s.SearchedAt != payload.SearchedAt || !string.Equals(s.Summary, payload.Summary, StringComparison.Ordinal))
+                    .ToList();
+                searchStore.SaveAllRecentSearches(remaining);
+                return Task.CompletedTask;
+            }),
+            new ClearRecentSearchesApplier(() =>
+            {
+                searchStore.ClearRecentSearches();
                 return Task.CompletedTask;
             }),
             new UpdateObservationNoteApplier((payload, attribution) =>
@@ -650,7 +667,7 @@ public static class McpToolCatalog
     private static async Task<IReadOnlyList<ServiceHealthEntry>> ProbeServicesAsync(IHttpClientFactory factory, ApiEndpoints endpoints)
         => (await CanfarDesktop.Services.ServiceHealthProbe.ProbeCoreAsync(factory, endpoints))
             .Select(r => new ServiceHealthEntry(
-                r.Name, r.Url, r.Reachable, r.StatusCode, r.LatencyMs, r.Error,
+                r.Name, r.Url, r.Reachable, r.Ok, r.StatusCode, r.LatencyMs, r.Error,
                 r.Available, r.Note, r.RequiresAuth))
             .ToList();
 

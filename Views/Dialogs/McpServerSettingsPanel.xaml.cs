@@ -149,6 +149,18 @@ public sealed partial class McpServerSettingsPanel : UserControl
     private void OnConnectClick(object sender, RoutedEventArgs e)
     {
         if (_bridgeCommand is null) return;
+
+        // MSIX virtualization would sandbox our write to a traditional-install config (Claude would
+        // never see it) — be honest: hand the user the merged JSON and the path instead.
+        if (_repair.RequiresManualEdit)
+        {
+            var data = new DataPackage();
+            data.SetText(_repair.Preview(_bridgeCommand));
+            Clipboard.SetContent(data);
+            ShowResult(InfoBarSeverity.Warning, Helpers.Loc.F("Mcp_ManualConfigCopied", _repair.ConfigPath));
+            return;
+        }
+
         ConfirmTargetText.Text = Helpers.Loc.T("Mcp_ConfirmTarget") + "\n" + _repair.ConfigPath;
         ConfirmCommandText.Text = $"{_bridgeCommand} mcp";
         ResultBar.IsOpen = false;

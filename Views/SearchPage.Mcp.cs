@@ -757,6 +757,13 @@ public sealed partial class SearchPage : ISearchUiBridge
             return new SearchRecentRemoved(true, found.Summary, ViewModel.RecentSearches.Count);
         }, SearchRecentRemoved.Unavailable("the Search page could not be reached"));
 
+    /// <summary>
+    /// The Execute button. Staging is optional here — with no `adql` it runs what is already in the
+    /// editor, which is how an agent runs a query the PERSON wrote rather than one it supplied.
+    /// </summary>
+    Task<SearchAdqlOutcome> ISearchUiBridge.ExecuteAdqlAsync(string? adql)
+        => ((ISearchUiBridge)this).SetAdqlAsync(adql ?? ViewModel.AdqlText ?? string.Empty, execute: true);
+
     // ── Getting back to a known state ───────────────────────────────────────────────────────────
 
     /// <summary>

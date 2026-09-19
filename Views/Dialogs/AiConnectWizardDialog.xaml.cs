@@ -171,6 +171,18 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
     private void OnAddToDesktopClick(object sender, RoutedEventArgs e)
     {
         if (_bridgeCommand is null) return;
+
+        // MSIX virtualization would sandbox our write to a traditional-install config (Claude would
+        // never see it) — be honest: hand the user the merged JSON and the path instead.
+        if (_repair.RequiresManualEdit)
+        {
+            var data = new DataPackage();
+            data.SetText(_repair.Preview(_bridgeCommand));
+            Clipboard.SetContent(data);
+            ShowResult(InfoBarSeverity.Warning, Helpers.Loc.F("Mcp_ManualConfigCopied", _repair.ConfigPath));
+            return;
+        }
+
         try
         {
             _repair.Apply(_bridgeCommand);

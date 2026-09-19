@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
+
 /// <summary>
 /// Manages a local Python subprocess for code execution.
 /// Communicates via JSON over stdin/stdout with a sentinel delimiter.
@@ -23,6 +24,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
     private int _executionCount;
     private volatile bool _disposed;
     private string? _harnessPath;
+    private EventHandler? _exitedHandler;
     private readonly object _lock = new();
     private readonly SemaphoreSlim _executionGate = new(1, 1);
     private CancellationTokenSource? _executionCts;
@@ -36,70 +38,107 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
         _pythonDiscovery = pythonDiscovery;
     }
 
-    public async Task StartAsync(string? workingDirectory = null)
+    private static string GetRealLocalCachePath()
     {
-        lock (_lock)
-        {
-            if (State is KernelState.Idle or KernelState.Busy or KernelState.Starting) return;
-            SetState(KernelState.Starting);
-        }
-
-        var pythonPath = await _pythonDiscovery.FindPythonAsync();
-        NotebookLogger.Info($"Kernel start: Python={pythonPath ?? "NOT FOUND"}, WorkDir={workingDirectory}");
-        if (pythonPath is null)
-        {
-            SetState(KernelState.Dead);
-            throw new InvalidOperationException(
-                "Python 3.8+ not found. Install Python from python.org or add it to PATH.");
-        }
-
-        var harnessDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "CanfarDesktop", "Kernel");
-        Directory.CreateDirectory(harnessDir);
-        _harnessPath = Path.Combine(harnessDir, $"harness_{Environment.ProcessId}_{Path.GetRandomFileName()}.py");
-        await WriteHarnessAsync(_harnessPath);
-
         try
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = pythonPath,
-                Arguments = $"-u \"{_harnessPath}\"",
-                WorkingDirectory = workingDirectory ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8,
-            };
-            psi.Environment["PYTHONIOENCODING"] = "utf-8";
-            psi.Environment["PYTHONUNBUFFERED"] = "1";
+            return Windows.Storage.ApplicationData.Current.LocalCacheFolder.Path;
+        }
+        catch (InvalidOperationException)
+        {
+            return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        }
+    }
 
-            _process = Process.Start(psi);
-            if (_process is null || _process.HasExited)
+    public async Task StartAsync(string? workingDirectory = null)
+    {
+        // Participate in the same gate as Execute/Interrupt/Restart/Shutdown so
+        // process-lifecycle mutations can never overlap, even though callers
+        // (interrupt_kernel/restart_kernel) may now be dispatched concurrently
+        // at the UI layer (see commit 3db3aca).
+        await _executionGate.WaitAsync();
+        try
+        {
+            lock (_lock)
             {
-                SetState(KernelState.Dead);
-                throw new InvalidOperationException("Failed to start Python process.");
+                if (State is KernelState.Idle or KernelState.Busy or KernelState.Starting) return;
+                SetState(KernelState.Starting);
             }
 
-            _stdin = _process.StandardInput;
-            _stdin.AutoFlush = true;
-            _executionCount = 0;
+            var pythonPath = await _pythonDiscovery.FindPythonAsync();
+            NotebookLogger.Info($"Kernel start: Python={pythonPath ?? "NOT FOUND"}, WorkDir={workingDirectory}");
+            if (pythonPath is null)
+            {
+                SetState(KernelState.Dead);
+                throw new InvalidOperationException(
+                    "Python 3.8+ not found. Install Python from python.org or add it to PATH.");
+            }
 
-            _process.EnableRaisingEvents = true;
-            _process.Exited += OnProcessExited;
+            var harnessDir = Path.Combine(
+                GetRealLocalCachePath(),
+                "CanfarDesktop", "Kernel");
+            Directory.CreateDirectory(harnessDir);
+            // Capture the path locally — this specific launch owns this specific
+            // file. Never resolve the file to delete via the shared _harnessPath
+            // field, or a stale event from a superseded process can delete a
+            // newer process's still-in-use harness file.
+            var harnessPath = Path.Combine(harnessDir, $"harness_{Environment.ProcessId}_{Path.GetRandomFileName()}.py");
+            _harnessPath = harnessPath;
+            await WriteHarnessAsync(harnessPath);
 
-            await ReadUntilBoundaryAsync(CancellationToken.None);
-            SetState(KernelState.Idle);
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = pythonPath,
+                    Arguments = $"-u \"{harnessPath}\"",
+                    WorkingDirectory = workingDirectory ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    StandardOutputEncoding = Encoding.UTF8,
+                    StandardErrorEncoding = Encoding.UTF8,
+                };
+                psi.Environment["PYTHONIOENCODING"] = "utf-8";
+                psi.Environment["PYTHONUNBUFFERED"] = "1";
+
+                var process = Process.Start(psi);
+                if (process is null || process.HasExited)
+                {
+                    SetState(KernelState.Dead);
+                    throw new InvalidOperationException("Failed to start Python process.");
+                }
+                _process = process;
+
+                _stdin = process.StandardInput;
+                _stdin.AutoFlush = true;
+                _executionCount = 0;
+
+                process.EnableRaisingEvents = true;
+                // Bind this specific process + its own harness path into the handler,
+                // instead of letting the handler read shared mutable fields later.
+                // Keep the delegate instance so KillProcess/ShutdownAsync can unhook
+                // this exact subscription (a method-group reference won't match a
+                // closure created with `+=`).
+                EventHandler handler = (s, e) => OnProcessExited(process, harnessPath);
+                process.Exited += handler;
+                _exitedHandler = handler;
+
+                await ReadUntilBoundaryAsync(CancellationToken.None);
+                SetState(KernelState.Idle);
+            }
+            catch
+            {
+                CleanupHarness(harnessPath);
+                SetState(KernelState.Dead);
+                throw;
+            }
         }
-        catch
+        finally
         {
-            CleanupHarness();
-            SetState(KernelState.Dead);
-            throw;
+            _executionGate.Release();
         }
     }
 
@@ -300,7 +339,8 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
             var proc = _process;
             if (proc is null) return;
 
-            proc.Exited -= OnProcessExited;
+            try { if (_exitedHandler is not null) proc.Exited -= _exitedHandler; } catch { }
+            _exitedHandler = null;
 
             try
             {
@@ -314,7 +354,6 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
             catch { /* stdin write may fail if process already exiting */ }
 
             // Kill + dispose on background thread (fast, non-blocking)
-            try { proc.Exited -= OnProcessExited; } catch { }
             _ = Task.Run(() =>
             {
                 try { if (!proc.HasExited) proc.Kill(); } catch { }
@@ -343,7 +382,9 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
 
         if (proc is null) return;
 
-        try { proc.Exited -= OnProcessExited; } catch { }
+        var harnessPath = _harnessPath;
+        try { if (_exitedHandler is not null) proc.Exited -= _exitedHandler; } catch { }
+        _exitedHandler = null;
 
         // Kill on a background thread to avoid blocking UI.
         // Kill(false) = just the process, not the entire tree (fast).
@@ -355,7 +396,7 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
         });
 
         SetState(KernelState.Dead);
-        CleanupHarness();
+        CleanupHarness(harnessPath);
     }
 
     /// <summary>
@@ -425,22 +466,28 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
         return dict;
     }
 
-    private void OnProcessExited(object? sender, EventArgs e)
+    private void OnProcessExited(Process proc, string harnessPath)
     {
         if (_disposed) return;
 
+        // If this process has already been superseded (e.g. Interrupt/Restart
+        // already swapped in a newer _process), this is a stale event from an
+        // old, already-detached process — do nothing, and critically, do NOT
+        // delete harnessPath, which may belong to whatever launch is current.
+        if (!ReferenceEquals(proc, _process)) return;
+
         int exitCode = -1;
+        string stderrText = "";
         try
         {
-            var proc = _process;
-            if (proc is not null)
-                exitCode = proc.ExitCode;
+            exitCode = proc.ExitCode;
+            stderrText = proc.StandardError.ReadToEnd();
         }
         catch { }
 
-        NotebookLogger.Warn($"Kernel process exited unexpectedly (exit code: {exitCode})");
+        NotebookLogger.Warn($"Kernel process exited unexpectedly (exit code: {exitCode}) stderr: {stderrText}");
         SetState(KernelState.Dead);
-        CleanupHarness();
+        CleanupHarness(harnessPath);
     }
 
     private void SetState(KernelState newState)
@@ -450,11 +497,12 @@ public class LocalKernelService : IKernelService, IAsyncDisposable
         StateChanged?.Invoke(newState);
     }
 
-    private void CleanupHarness()
+    private void CleanupHarness(string? path = null)
     {
-        if (_harnessPath is not null && File.Exists(_harnessPath))
+        path ??= _harnessPath;
+        if (path is not null && File.Exists(path))
         {
-            try { File.Delete(_harnessPath); }
+            try { File.Delete(path); }
             catch { }
         }
     }

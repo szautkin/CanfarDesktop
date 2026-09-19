@@ -163,30 +163,24 @@ public static partial class WorkflowFormat
     /// </summary>
     public static string WithStepDone(string text, int stepIndex, bool done)
     {
-        // Walked as spans of the ORIGINAL text rather than split-and-rejoined. Splitting on any of
-        // CRLF/CR/LF and joining with "\n" rewrites every line ending in the file, which is the one
-        // thing this method promises not to do: a CRLF workflow — what a Windows editor writes —
-        // came back wholly reformatted from ticking one box, and the file is the state.
-        var seen = 0;
-        var pos = 0;
-        while (pos <= text.Length)
+        // Scan lines IN PLACE (no split/rejoin): normalizing line endings here rewrote every CRLF in
+        // a Windows-authored file as LF, breaking the only-one-byte-changes contract above.
+        var probe = 0;
+        var i = 0;
+        while (i <= text.Length)
         {
-            var rel = text.AsSpan(pos).IndexOfAny('\r', '\n');
-            var end = rel < 0 ? text.Length : pos + rel;
-            var line = text[pos..end];
-
-            if (StepStart().IsMatch(line.TrimEnd()) && seen++ == stepIndex)
+            var end = i;
+            while (end < text.Length && text[end] is not ('\n' or '\r')) end++;
+            var line = text.AsSpan(i, end - i);
+            if (StepStart().IsMatch(line) && probe++ == stepIndex)
             {
-                // The character between the brackets, addressed in the original string.
-                var marker = pos + line.IndexOf('[') + 1;
-                return string.Concat(text.AsSpan(0, marker), done ? "x" : " ", text.AsSpan(marker + 1));
+                var open = i + line.IndexOf('[');
+                return string.Concat(text.AsSpan(0, open + 1), done ? "x" : " ", text.AsSpan(open + 2));
             }
-
-            if (end == text.Length) break;
-            // A CRLF is one break, not two empty lines.
-            pos = end + (text[end] == '\r' && end + 1 < text.Length && text[end + 1] == '\n' ? 2 : 1);
+            if (end >= text.Length) break;
+            i = text[end] == '\r' && end + 1 < text.Length && text[end + 1] == '\n' ? end + 2 : end + 1;
         }
-        throw new ArgumentOutOfRangeException(nameof(stepIndex), $"workflow has {seen} steps; step {stepIndex} does not exist.");
+        throw new ArgumentOutOfRangeException(nameof(stepIndex), $"workflow has {probe} steps; step {stepIndex} does not exist.");
     }
 
     /// <summary>A starter document for the "New workflow" action.</summary>

@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
+using CanfarDesktop.Services;
 using CanfarDesktop.Services.CubeViewer;
 using static CanfarDesktop.Views.WindowHelper;
 
@@ -36,12 +37,6 @@ public sealed partial class CubeTabHost : UserControl
     public async Task<CubeViewerPage> AddTabForFileAsync(string filePath)
     {
         var page = new CubeViewerPage();
-
-        // One store for every tab: the marks are keyed by the cube file, and the page works out which
-        // file is its own.
-        page.AttachAnnotationStore(
-            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                .GetRequiredService<CanfarDesktop.Services.Fits.IAnnotationStore>(App.Services));
         var tab = new TabViewItem
         {
             Content = page,
@@ -94,44 +89,24 @@ public sealed partial class CubeTabHost : UserControl
     /// <summary>Number of open cube tabs.</summary>
     public int OpenTabCount => TabViewControl.TabItems.Count;
 
-    /// <summary>
-    /// The cubes this viewer has opened before — the list its empty state offers.
-    ///
-    /// `exists` is checked here rather than remembered, because a recents list outlives the files in
-    /// it and "open this" failing after the fact is worse than knowing before.
-    /// </summary>
-    public IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.RecentCubeView> ListRecentCubes()
-        => _recents.Entries
-            .Select(e => new CanfarDesktop.Mcp.Tools.Write.RecentCubeView(
-                e.Path, e.Name, System.IO.File.Exists(e.Path)))
-            .ToList();
-
-    /// <summary>Every open tab, in order, with the index an agent addresses them by and a real path.</summary>
-    public IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo> ListTabs()
+    /// <summary>Every open cube tab's index, name, real path and active flag (the MCP list_open_tabs detail).</summary>
+    public IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo> TabInfos()
     {
-        var selected = TabViewControl.SelectedIndex;
-        var tabs = new List<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo>();
-        for (var i = 0; i < TabViewControl.TabItems.Count; i++)
+        var infos = new List<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo>(TabViewControl.TabItems.Count);
+        for (int i = 0; i < TabViewControl.TabItems.Count; i++)
         {
-            var page = (TabViewControl.TabItems[i] as TabViewItem)?.Content as CubeViewerPage;
-            tabs.Add(new CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo(
+            var tab = TabViewControl.TabItems[i] as TabViewItem;
+            var page = tab?.Content as CubeViewerPage;
+            infos.Add(new CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo(
                 i,
-                page?.CubeName is { Length: > 0 } n ? n : $"cube {i + 1}",
+                page?.CubeName is { Length: > 0 } n ? n : tab?.Header as string ?? "",
                 page?.CubePath,
-                i == selected));
+                ReferenceEquals(tab, TabViewControl.SelectedItem)));
         }
-        return tabs;
+        return infos;
     }
 
-    /// <summary>Make the tab at <paramref name="index"/> the active one. False when there is no such tab.</summary>
-    public bool SwitchToTab(int index)
-    {
-        if (index < 0 || index >= TabViewControl.TabItems.Count) return false;
-        TabViewControl.SelectedIndex = index;
-        return true;
-    }
-
-    /// <summary>Close the tab at <paramref name="index"/>. False when there is no such tab.</summary>
+    /// <summary>Close the tab at <paramref name="index"/> (the MCP close_tab tool). False when there is none.</summary>
     public bool CloseTabAt(int index)
     {
         if (index < 0 || index >= TabViewControl.TabItems.Count) return false;
@@ -139,6 +114,17 @@ public sealed partial class CubeTabHost : UserControl
         CloseTabItem(tab);
         return true;
     }
+
+    /// <summary>Make the tab at a 0-based index active (the MCP switch_cube_tab tool).</summary>
+    public bool SwitchToTab(int index)
+    {
+        if (index < 0 || index >= TabViewControl.TabItems.Count) return false;
+        TabViewControl.SelectedItem = TabViewControl.TabItems[index];
+        return true;
+    }
+
+    /// <summary>The persisted recently-opened cubes (the MCP list_recent_cubes tool).</summary>
+    public IReadOnlyList<RecentFileEntry> RecentCubes => _recents.Entries;
 
     private void CloseTabItem(TabViewItem tab)
     {

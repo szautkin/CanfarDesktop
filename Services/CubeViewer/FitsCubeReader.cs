@@ -101,7 +101,7 @@ internal static class FitsCubeReader
             normHi = finite[Math.Min(finite.Count - 1, (int)(finite.Count * 0.995f))];
         }
 
-        var meta = BuildMetadata(header, nx, ny, nz, onx, ony, oz,
+        var meta = BuildMetadata(header, nx, ny, nz, onx, ony, oz, step,
                                  gmin, gmax, median, (double)nan / Math.Max(1, totalVox),
                                  normLo, normHi, path);
 
@@ -171,7 +171,7 @@ internal static class FitsCubeReader
     /// </summary>
     private static CubeMetadata BuildMetadata(
         Models.Fits.FitsHeader header,
-        int nx, int ny, int nz, int rnx, int rny, int rnz,
+        int nx, int ny, int nz, int rnx, int rny, int rnz, int stride,
         double min, double max, double median, double nanFraction,
         double normLo, double normHi, string path)
     {
@@ -186,6 +186,7 @@ internal static class FitsCubeReader
             Bunit = (header.GetString("BUNIT") ?? "").Trim(),
             Nx = nx, Ny = ny, Nz = nz,
             RenderNx = rnx, RenderNy = rny, RenderNz = rnz,
+            Stride = stride,
             DataMin = min, DataMax = max, Median = median,
             NormLo = normLo, NormHi = normHi,
             NanFraction = nanFraction,

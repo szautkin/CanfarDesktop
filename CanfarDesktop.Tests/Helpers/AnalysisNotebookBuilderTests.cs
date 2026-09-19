@@ -61,6 +61,16 @@ public class AnalysisNotebookBuilderTests
     }
 
     [Fact]
+    public void Build_CubeTemplate_GuardsSpectralCubeImport()
+    {
+        // QA F11: the configured compute image lacks spectral_cube, so the bare import died with a
+        // ModuleNotFoundError. The cell must guard the import and tell the user the pip command.
+        var cube = AnalysisNotebookBuilder.Build(Obs(), "cube").Cells[2].SourceText;
+        Assert.Contains("except ModuleNotFoundError", cube);
+        Assert.Contains("pip install spectral-cube", cube);
+    }
+
+    [Fact]
     public void Build_PhotometryTemplate_UsesPhotutils()
     {
         var all = string.Join("\n", AnalysisNotebookBuilder.Build(Obs(), "photometry").Cells.Select(c => c.SourceText));

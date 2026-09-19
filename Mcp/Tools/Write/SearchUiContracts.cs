@@ -19,6 +19,13 @@ public interface ISearchUiBridge
     Task<SearchConstraintsApplied> SetConstraintsAsync(SearchConstraintsPatch patch);
     Task<SearchRunOutcome> RunSearchAsync();
     Task<SearchAdqlOutcome> SetAdqlAsync(string adql, bool execute);
+
+    /// <summary>
+    /// Run the editor's ADQL — the Execute button. Null <paramref name="adql"/> means "whatever is
+    /// already in the editor", which is the case <c>set_adql_query</c> cannot express: it always
+    /// stages text, and an agent that wants to run what a PERSON typed has nothing to stage.
+    /// </summary>
+    Task<SearchAdqlOutcome> ExecuteAdqlAsync(string? adql);
     Task<SearchResultsView> GetResultsAsync(SearchResultsQuery query);
     Task<SearchResultsViewApplied> SetResultsViewAsync(SearchResultsViewPatch patch);
     Task<SearchExportOutcome> ExportResultsAsync(string format, string path);

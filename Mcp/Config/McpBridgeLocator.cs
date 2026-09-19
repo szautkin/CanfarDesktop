@@ -22,7 +22,11 @@ public static class McpBridgeLocator
     /// For a packaged install the in-package path lives under a version-numbered WindowsApps folder —
     /// it breaks silently on every app update and is ACL-restricted for other processes — so the exe
     /// is copied (and refreshed when it changes) to a stable per-user location and THAT path is
-    /// returned. A dev-tree bridge is returned as-is: devs iterate on it, a copy would go stale.
+    /// returned. The copy goes under <see cref="Helpers.PackagePaths.WritableInteropRoot"/>: MSIX
+    /// write virtualization would silently sandbox a copy to the real %LOCALAPPDATA%, but the
+    /// package's own LocalCache is exempt, real, and launchable by Claude Desktop. It survives app
+    /// updates (not uninstall — the wizard re-registers). A dev-tree bridge is returned as-is: devs
+    /// iterate on it, a copy would go stale.
     /// </summary>
     public static string? ResolveStable(string? baseDirectory = null)
     {
@@ -30,7 +34,7 @@ public static class McpBridgeLocator
         if (source is null || !RequiresStableCopy(source)) return source;
 
         var stable = Path.Combine(
-            Helpers.PackagePaths.RealLocalAppData(), "Verbinal", "mcp-bridge", BridgeExeName);
+            Helpers.PackagePaths.WritableInteropRoot(), "Verbinal", "mcp-bridge", BridgeExeName);
         try
         {
             var src = new FileInfo(source);

@@ -15,10 +15,19 @@ namespace CanfarDesktop.Helpers;
 /// </summary>
 public sealed record ServiceProbeResult(
     string Name, string Url, bool Reachable, int? StatusCode, long LatencyMs, string? Error,
-    bool? Available = null, string? Note = null, bool RequiresAuth = false)
+    bool? Available = null, string? Note = null, bool RequiresAuth = false, bool Ok = true)
 {
-    /// <summary>Up as far as anyone can tell: reachable, and not declaring itself down.</summary>
-    public bool IsHealthy => Reachable && Available != false;
+    /// <summary>
+    /// Up as far as anyone can tell: the host answered, the endpoint answered SANELY, and the service
+    /// is not declaring itself down.
+    ///
+    /// <para>All three are needed and none subsumes the others. <see cref="Ok"/> catches an endpoint
+    /// that is not there (404) or failing (5xx), which matters for the services that publish no
+    /// availability document and would otherwise be called healthy just because the host replied —
+    /// QA F3. <see cref="Available"/> catches a service that is up and says it should not be used,
+    /// which no status code can express.</para>
+    /// </summary>
+    public bool IsHealthy => Reachable && Ok && Available != false;
 
     /// <summary>Healthy AND not gated behind a sign-in the caller may not have.</summary>
     public bool IsUsableAnonymously => IsHealthy && !RequiresAuth;
@@ -83,4 +92,19 @@ public static class ServiceAvailability
     /// <summary>Counts over a set of results: healthy, and of those, usable without signing in.</summary>
     public static ServiceHealthSummary Summarize(IReadOnlyList<ServiceProbeResult> results)
         => new(results.Count, results.Count(r => r.IsHealthy), results.Count(r => r.IsUsableAnonymously));
+
+    /// <summary>
+    /// Whether a status line is one a live service gives.
+    ///
+    /// 2xx/3xx and the auth-gated answers (401/403/405…) all prove something is there and working;
+    /// 404 means the endpoint is not, and 5xx means it is failing. Neither may be called healthy just
+    /// because the host replied.
+    /// </summary>
+    public static bool IsHealthyStatus(int status) => status != 404 && status < 500;
+
+    /// <summary>
+    /// True when a status says "this service publishes no availability document", so the caller should
+    /// judge it on its working endpoint instead of reporting it down for the wrong reason.
+    /// </summary>
+    public static bool LacksAvailabilityDocument(int status) => status is 404 or 405 or 501;
 }
