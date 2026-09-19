@@ -527,7 +527,10 @@ public sealed partial class SearchPage : ISearchUiBridge
             Columns: chosen.Select(c => c.Key).ToList(),
             RowColumns: rowColumns,
             SelectedRow: PrimaryRow,
-            Rows: rows);
+            Rows: rows,
+            // The whole highlighted set, not just the primary: a person can Ctrl- or Shift-click four
+            // rows to compare them, and an agent reading one index cannot tell that happened.
+            SelectedRows: _selection.Selected);
     }
 
     Task<SearchResultsViewApplied> ISearchUiBridge.SetResultsViewAsync(SearchResultsViewPatch patch)

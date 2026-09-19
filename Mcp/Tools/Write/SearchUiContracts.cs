@@ -181,7 +181,8 @@ public sealed record SearchResultsView(
     IReadOnlyList<ResultColumnView> RowColumns,
     int? SelectedRow,
     IReadOnlyList<IReadOnlyList<string>> Rows,
-    string? Message = null)
+    string? Message = null,
+    IReadOnlyList<int>? SelectedRows = null)
 {
     public static SearchResultsView Unavailable(string message) => new(
         false, 0, 0, 1, 1, 0, Array.Empty<int>(), null, true,

@@ -51,6 +51,7 @@
     <Compile Include="..\Helpers\PollCadence.cs" Link="Linked\PollCadence.cs" />
     <Compile Include="..\Helpers\AgentCapture.cs" Link="Linked\AgentCapture.cs" />
     <Compile Include="..\Helpers\AtomicFile.cs" Link="Linked\AtomicFile.cs" />
+    <Compile Include="..\Helpers\RowSelection.cs" Link="Linked\RowSelection.cs" />
     <Compile Include="..\Helpers\StreamToFile.cs" Link="Linked\StreamToFile.cs" />
     <Compile Include="..\Services\RecentFilesStore.cs" Link="Linked\RecentFilesStore.cs" />
     <Compile Include="..\Services\Fits\RecentFitsService.cs" Link="Linked\Fits\RecentFitsService.cs" />

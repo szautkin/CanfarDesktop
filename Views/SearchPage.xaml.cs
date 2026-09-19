@@ -448,8 +448,7 @@ public sealed partial class SearchPage : Page
         // rows after a filter) is dropped rather than pointing at the wrong observation.
         _rowBorders.Clear();
         var pageRows = ViewModel.GetCurrentPageRows();
-        if (_primaryRow >= pageRows.Count) _primaryRow = null;
-        _selectedRows.RemoveWhere(ix => ix >= pageRows.Count);
+        _selection.ClampTo(pageRows.Count);
 
         for (var i = 0; i < pageRows.Count; i++)
         {
@@ -458,7 +457,7 @@ public sealed partial class SearchPage : Page
             var capturedRow = row;
             var capturedIndex = i;
             var stripeBg = capturedIndex % 2 == 1 ? altBg : null;
-            Microsoft.UI.Xaml.Media.Brush? RestingBg() => _selectedRows.Contains(capturedIndex) ? selectedBg : stripeBg;
+            Microsoft.UI.Xaml.Media.Brush? RestingBg() => _selection.Contains(capturedIndex) ? selectedBg : stripeBg;
 
             rowBorder.Background = RestingBg();
 
@@ -468,12 +467,22 @@ public sealed partial class SearchPage : Page
                     (fe.Tag as string == "action" || FrameworkElementExtensions.FindParentWithTag(fe, "action") is not null))
                     return;
 
-                // Ctrl-click adds or removes a row from the selection; a plain click means "show me
-                // this one", which is what it has always meant.
-                var ctrl = Microsoft.UI.Input.InputKeyboardSource
-                    .GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
-                    .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-                if (ctrl)
+                // Ctrl-click adds or removes one row, Shift-click takes the range, and a plain click
+                // means "show me this one", which is what it has always meant.
+                //
+                // NEITHER modifier opens the dialog: adding a fourth row to a comparison should not put
+                // a window over the three you are reading.
+                static bool Held(Windows.System.VirtualKey key)
+                    => Microsoft.UI.Input.InputKeyboardSource
+                        .GetKeyStateForCurrentThread(key)
+                        .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+                if (Held(Windows.System.VirtualKey.Shift))
+                {
+                    SelectRowRange(capturedIndex);
+                    return;
+                }
+                if (Held(Windows.System.VirtualKey.Control))
                 {
                     ToggleRowSelection(capturedIndex);
                     return;
@@ -885,14 +894,14 @@ public sealed partial class SearchPage : Page
     /// <summary>The row Borders currently on screen, in page order. Rebuilt by every render.</summary>
     private readonly List<Border> _rowBorders = [];
 
-    /// <summary>Page-relative indices of the highlighted rows.</summary>
-    private readonly HashSet<int> _selectedRows = [];
-
-    /// <summary>The row a detail request means when none is named. Always also in <see cref="_selectedRows"/>.</summary>
-    private int? _primaryRow;
+    /// <summary>
+    /// Which rows are highlighted, which one a detail request means, and where a Shift-click measures
+    /// from. The rules live in <see cref="RowSelection"/> so they can be checked without clicking.
+    /// </summary>
+    private readonly RowSelection _selection = new();
 
     /// <summary>The highlighted row, if any (page-relative).</summary>
-    internal int? PrimaryRow => _primaryRow;
+    internal int? PrimaryRow => _selection.Primary;
 
     /// <summary>
     /// A theme brush by key, or <paramref name="fallback"/> when the key is not in the merged
@@ -904,26 +913,20 @@ public sealed partial class SearchPage : Page
 
     private void ToggleRowSelection(int index)
     {
-        if (_selectedRows.Add(index))
-        {
-            // Newly selected: this is now the row a detail request without an index means.
-            _primaryRow = index;
-        }
-        else
-        {
-            _selectedRows.Remove(index);
-            if (_primaryRow == index)
-                _primaryRow = _selectedRows.Count > 0 ? _selectedRows.Min() : null;
-        }
+        _selection.Toggle(index);
+        RenderResultsPage(rebuildHeader: false);
+    }
+
+    private void SelectRowRange(int index)
+    {
+        _selection.SelectRange(index);
         RenderResultsPage(rebuildHeader: false);
     }
 
     /// <summary>Make one row the only selected row (a plain click, or an agent's selectRow).</summary>
     private void SetPrimaryRow(int index)
     {
-        _selectedRows.Clear();
-        _selectedRows.Add(index);
-        _primaryRow = index;
+        _selection.SetPrimary(index);
         RenderResultsPage(rebuildHeader: false);
     }
 
@@ -937,11 +940,7 @@ public sealed partial class SearchPage : Page
     }
 
     /// <summary>Drop the selection — a new result set has nothing to do with the old highlighted row.</summary>
-    private void ClearRowSelection()
-    {
-        _selectedRows.Clear();
-        _primaryRow = null;
-    }
+    private void ClearRowSelection() => _selection.Clear();
 
     #endregion
 

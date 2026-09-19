@@ -342,7 +342,10 @@ public sealed class GetSearchResultsTool : JsonReadTool<GetSearchResultsTool.Arg
         "and sort applied. `rowColumns` lists EVERY column the query returned (with its display unit and " +
         "any active filter), not just the ones on screen, and is answered even when there are no rows. " +
         "Pass allColumns:true to get every column's cells rather than only the visible ones — the grid " +
-        "shows about a dozen of roughly forty.",
+        "shows about a dozen of roughly forty. `selectedRow` is the row a detail request acts on and " +
+        "`selectedRows` is everything highlighted: a person can Ctrl- or Shift-click several rows to " +
+        "compare them, and the two differ whenever they have. Pagination is reported as `page` " +
+        "(1-based), `totalPages` and `rowsPerPage`.",
         """
         {"type":"object","properties":{
           "allColumns":{"type":"boolean","description":"Return every column's cells, not just the visible ones."},
