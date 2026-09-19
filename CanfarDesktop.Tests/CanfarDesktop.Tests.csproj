@@ -126,6 +126,8 @@
     <Compile Include="..\Helpers\AdqlValidator.cs" Link="Linked\AdqlValidator.cs" />
     <Compile Include="..\Mcp\Tools\Read\TapSchemaTools.cs" Link="Linked\Mcp\TapSchemaTools.cs" />
     <Compile Include="..\Services\DataLinkService.cs" Link="Linked\DataLinkService.cs" />
+    <Compile Include="..\Services\DownloadFaults.cs" Link="Linked\DownloadFaults.cs" />
+    <Compile Include="..\Services\ObservationDownloadService.cs" Link="Linked\ObservationDownloadService.cs" />
     <!-- CAOM2 metadata (M2c) -->
     <Compile Include="..\Models\Caom2\CAOM2Observation.cs" Link="Linked\Caom2\CAOM2Observation.cs" />
     <Compile Include="..\Helpers\Caom2Uri.cs" Link="Linked\Caom2Uri.cs" />

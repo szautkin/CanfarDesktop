@@ -530,27 +530,47 @@ public static class McpToolCatalog
         store.Save(observation);
     }
 
-    /// <summary>Fill the research-record metadata fields from a CAOM2 document (RA/Dec from the plane footprint centroid).</summary>
+    /// <summary>
+    /// Fill the research-record metadata fields from a CAOM2 document (RA/Dec from the plane footprint
+    /// centroid). Only EMPTY fields are written: a record saved from a search row already carries the
+    /// grid's own values, and this must top it up rather than overwrite it.
+    /// </summary>
     private static void PopulateFromCaom2(DownloadedObservation obs, CAOM2Observation? caom2)
     {
         if (caom2 is null) return;
         var inv = System.Globalization.CultureInfo.InvariantCulture;
-        obs.Collection = caom2.Collection;
-        obs.ObservationID = caom2.ObservationID;
-        obs.TargetName = caom2.Target?.Name ?? string.Empty;
-        obs.Instrument = caom2.Instrument?.Name ?? string.Empty;
+
+        static void Fill(Func<string> read, Action<string> write, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(read()) || string.IsNullOrWhiteSpace(value)) return;
+            write(value!);
+        }
+
+        Fill(() => obs.Collection, v => obs.Collection = v, caom2.Collection);
+        Fill(() => obs.ObservationID, v => obs.ObservationID = v, caom2.ObservationID);
+        Fill(() => obs.TargetName, v => obs.TargetName = v, caom2.Target?.Name);
+        Fill(() => obs.Instrument, v => obs.Instrument = v, caom2.Instrument?.Name);
         if (caom2.Proposal is { } prop)
         {
-            obs.ProposalId = prop.Id ?? string.Empty;
-            obs.ProposalPi = prop.Pi ?? string.Empty;
-            obs.ProposalTitle = prop.Title ?? string.Empty;
+            Fill(() => obs.ProposalId, v => obs.ProposalId = v, prop.Id);
+            Fill(() => obs.ProposalPi, v => obs.ProposalPi = v, prop.Pi);
+            Fill(() => obs.ProposalTitle, v => obs.ProposalTitle = v, prop.Title);
         }
 
         var plane = caom2.Planes.FirstOrDefault();
         if (plane is null) return;
-        if (plane.CalibrationLevel is int cl) obs.CalLevel = cl.ToString(inv);
-        if (plane.DataRelease is { } dr) obs.DataRelease = dr.ToString("yyyy-MM-dd", inv);
-        if (plane.Position?.Polygon is { Count: > 0 } poly)
+        Fill(() => obs.CalLevel, v => obs.CalLevel = v,
+            plane.CalibrationLevel is int cl ? cl.ToString(inv) : null);
+        Fill(() => obs.DataRelease, v => obs.DataRelease = v,
+            plane.DataRelease is { } dr ? dr.ToString("yyyy-MM-dd", inv) : null);
+
+        // The two the record used to stay anonymous in even when CAOM2 had them: the bandpass IS the
+        // filter, and the temporal lower bound is the start of the observation.
+        Fill(() => obs.Filter, v => obs.Filter = v, plane.Energy?.BandpassName);
+        Fill(() => obs.StartDate, v => obs.StartDate = v,
+            plane.Time?.LowerMJD is { } mjd ? Caom2Format.MjdToDate(mjd) : null);
+
+        if (plane.Position?.Polygon is { Count: > 0 } poly && string.IsNullOrWhiteSpace(obs.RA))
         {
             obs.RA = poly.Average(v => v.Ra).ToString("F6", inv);
             obs.Dec = poly.Average(v => v.Dec).ToString("F6", inv);

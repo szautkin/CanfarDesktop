@@ -39,11 +39,11 @@ public sealed class ObservationDownloadService
             response.EnsureSuccessStatusCode();
             var total = response.Content.Headers.ContentLength;
 
+            long downloaded = 0;
             await using (var stream = await response.Content.ReadAsStreamAsync(ct))
             await using (var fs = new FileStream(tmp, FileMode.Create))
             {
                 var buffer = new byte[81920];
-                long downloaded = 0;
                 int read;
                 while ((read = await stream.ReadAsync(buffer, ct)) > 0)
                 {
@@ -52,6 +52,11 @@ public sealed class ObservationDownloadService
                     progress?.Report((downloaded, total));
                 }
             }
+
+            // A 200 that produced no bytes is not a download. The `pkg` endpoint answers exactly this
+            // for a publisher id it cannot resolve, so the empty file is removed rather than filed.
+            if (downloaded == 0)
+                throw new EmptyDownloadException(url, IsPackageEndpoint(url));
 
             if (File.Exists(localPath)) File.Delete(localPath);
             File.Move(tmp, localPath);
@@ -62,4 +67,14 @@ public sealed class ObservationDownloadService
             throw;
         }
     }
+
+    /// <summary>
+    /// True when the URL is the <c>caom2ops/pkg</c> fallback rather than a resolved DataLink artifact.
+    /// It decides which of the two empty-response messages is the honest one: a package endpoint that
+    /// returned nothing almost always means the id did not resolve, while an empty DataLink artifact
+    /// is an empty artifact.
+    /// </summary>
+    internal static bool IsPackageEndpoint(string url)
+        => url.Contains("caom2ops/pkg", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("/pkg?", StringComparison.OrdinalIgnoreCase);
 }

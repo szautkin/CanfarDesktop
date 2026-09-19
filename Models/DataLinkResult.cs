@@ -1,3 +1,5 @@
+using CanfarDesktop.Helpers;
+
 namespace CanfarDesktop.Models;
 
 public class DataLinkResult
@@ -8,8 +10,24 @@ public class DataLinkResult
     /// <summary>All downloadable files from DataLink #this semantic.</summary>
     public List<DataLinkFile> DirectFiles { get; set; } = [];
 
-    /// <summary>First direct file URL for convenience.</summary>
-    public string? DirectFileUrl => DirectFiles.Count > 0 ? DirectFiles[0].Url : null;
+    /// <summary>
+    /// The <c>error_message</c> text of every faulted row. A fault beside real rows is not fatal — the
+    /// service is entitled to refuse part of a request — but a response that is ENTIRELY faults used to
+    /// parse to an empty file list, which reads as "resolved, nothing here" rather than
+    /// "UsageFault: invalid ID". <see cref="IsEntirelyFaults"/> is the difference.
+    /// </summary>
+    public List<string> Faults { get; set; } = [];
+
+    /// <summary>True when the service answered with faults and nothing else.</summary>
+    public bool IsEntirelyFaults =>
+        Faults.Count > 0 && DirectFiles.Count == 0 && Previews.Count == 0 && Thumbnails.Count == 0;
+
+    /// <summary>
+    /// The direct file to download when the caller did not pick one. Not simply the first: a `#this`
+    /// row marks a science product and most collections publish exactly one, but JWST publishes
+    /// several and the four-kilobyte `_asn.json` index is usually ahead of the 46 MB `_i2d.fits`.
+    /// </summary>
+    public string? DirectFileUrl => DataLinkArtifactSelector.PreferScienceFile(DirectFiles)?.Url;
 }
 
 /// <summary>
