@@ -102,9 +102,10 @@ public sealed partial class SettingsDialog : ContentDialog
             var factory = App.Services.GetRequiredService<System.Net.Http.IHttpClientFactory>();
             var endpoints = App.Services.GetRequiredService<Helpers.ApiEndpoints>();
             var results = await Services.ServiceHealthProbe.ProbeAllAsync(factory, endpoints);
-            ProbeResultsList.ItemsSource = results.Select(r => r.Reachable
-                ? Loc.F("Settings_ProbeOk", r.Name, r.LatencyMs)
-                : Loc.F("Settings_ProbeFail", r.Name, r.Error ?? "?")).ToList();
+            var summary = Services.ServiceHealthProbe.Summarize(results);
+            var rows = results.Select(DescribeProbe).ToList();
+            rows.Add(Loc.F("Settings_ProbeSummary", summary.HealthyCount, summary.Count, summary.UsableCount));
+            ProbeResultsList.ItemsSource = rows;
         }
         catch (Exception ex)
         {
@@ -115,6 +116,21 @@ public sealed partial class SettingsDialog : ContentDialog
             _probing = false;
             TestConnectionsButton.IsEnabled = true;
         }
+    }
+
+    /// <summary>
+    /// One probe result as a line. Three outcomes, not two: unreachable, reachable but declaring
+    /// itself unavailable (its own note is the useful part), and up. A service that needs a sign-in
+    /// says so, because "healthy" and "usable to you right now" are different answers.
+    /// </summary>
+    private static string DescribeProbe(Helpers.ServiceProbeResult r)
+    {
+        if (!r.Reachable) return Loc.F("Settings_ProbeFail", r.Name, r.Error ?? "?");
+
+        var auth = r.RequiresAuth ? Loc.T("Settings_ProbeAuthSuffix") : string.Empty;
+        return r.Available == false
+            ? Loc.F("Settings_ProbeDown", r.Name, r.Note ?? "?") + auth
+            : Loc.F("Settings_ProbeOk", r.Name, r.LatencyMs) + auth;
     }
 
     private void PopulatePortal()

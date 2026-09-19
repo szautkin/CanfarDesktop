@@ -3802,6 +3802,15 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Settings_ProbeFail" xml:space="preserve">
     <value>✗ {0} — unreachable ({1})</value>
   </data>
+  <data name="Settings_ProbeDown" xml:space="preserve">
+    <value>⚠ {0} — reports unavailable ({1})</value>
+  </data>
+  <data name="Settings_ProbeAuthSuffix" xml:space="preserve">
+    <value> · needs sign-in</value>
+  </data>
+  <data name="Settings_ProbeSummary" xml:space="preserve">
+    <value>{0} of {1} healthy · {2} usable without signing in</value>
+  </data>
   <data name="Search_LoadedRecent" xml:space="preserve">
     <value>Loaded your recent search: {0}</value>
   </data>

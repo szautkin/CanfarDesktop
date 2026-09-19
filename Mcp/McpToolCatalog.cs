@@ -622,10 +622,12 @@ public static class McpToolCatalog
         return name.Length > 80 ? name[^80..] : name;
     }
 
-    /// <summary>Probe the upstream services concurrently: any HTTP response = host reachable.</summary>
+    /// <summary>Probe the upstream services concurrently by reading each one's IVOA availability document.</summary>
     private static async Task<IReadOnlyList<ServiceHealthEntry>> ProbeServicesAsync(IHttpClientFactory factory, ApiEndpoints endpoints)
         => (await CanfarDesktop.Services.ServiceHealthProbe.ProbeCoreAsync(factory, endpoints))
-            .Select(r => new ServiceHealthEntry(r.Name, r.Url, r.Reachable, r.StatusCode, r.LatencyMs, r.Error))
+            .Select(r => new ServiceHealthEntry(
+                r.Name, r.Url, r.Reachable, r.StatusCode, r.LatencyMs, r.Error,
+                r.Available, r.Note, r.RequiresAuth))
             .ToList();
 
     /// <summary>A safe Skaha session name (lowercase, hyphenated) — generated when the agent omits one.</summary>

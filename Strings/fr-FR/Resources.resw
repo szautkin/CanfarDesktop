@@ -3802,6 +3802,15 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Settings_ProbeFail" xml:space="preserve">
     <value>✗ {0} — injoignable ({1})</value>
   </data>
+  <data name="Settings_ProbeDown" xml:space="preserve">
+    <value>⚠ {0} — se déclare indisponible ({1})</value>
+  </data>
+  <data name="Settings_ProbeAuthSuffix" xml:space="preserve">
+    <value> · connexion requise</value>
+  </data>
+  <data name="Settings_ProbeSummary" xml:space="preserve">
+    <value>{0} sur {1} en service · {2} utilisables sans connexion</value>
+  </data>
   <data name="Search_LoadedRecent" xml:space="preserve">
     <value>Recherche récente chargée : {0}</value>
   </data>
