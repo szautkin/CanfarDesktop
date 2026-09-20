@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
+using Windows.Foundation;
 using Windows.UI;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
@@ -22,6 +23,21 @@ namespace CanfarDesktop.Views.Controls;
 /// </summary>
 public sealed class AnnotationLayer : Canvas
 {
+    /// <summary>
+    /// Nothing drawn here may leave this layer.
+    ///
+    /// <para>A Canvas does not clip its children, and a mark's position comes from data rather than
+    /// from layout — so a mark far outside the frame is drawn far outside the CONTROL, over whatever
+    /// the window has there. A cube mark landing beyond the box painted across the app's own header
+    /// and toolbar. Clipping is the one place that can be stated once for every viewer and every
+    /// plate: a mark belongs to its picture.</para>
+    ///
+    /// <para>The clip follows the size, so it is right after a resize, and on an export plate, where
+    /// the layer is sized explicitly rather than stretched.</para>
+    /// </summary>
+    public AnnotationLayer() => SizeChanged += (_, e) =>
+        Clip = new RectangleGeometry { Rect = new Rect(0, 0, e.NewSize.Width, e.NewSize.Height) };
+
     /// <summary>The mark being edited: grips out, drawn in the editing ink.</summary>
     public string? EditingId { get; set; }
 

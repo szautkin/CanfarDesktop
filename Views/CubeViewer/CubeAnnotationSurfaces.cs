@@ -147,8 +147,27 @@ public sealed class CubeSliceAnnotationSurface : IAnnotationSurface
     /// pre-scaled.
     /// </summary>
     private (double X, double Y) VoxelToDisplay(double x, double y)
-        => (_volumeNx > 0 ? x * _displayNx / _volumeNx : x,
-            _volumeNy > 0 ? y * _displayNy / _volumeNy : y);
+        => (AcrossTheData(x, _volumeNx) * _displayNx, AcrossTheData(y, _volumeNy) * _displayNy);
+
+    /// <summary>
+    /// How far across the data a voxel index sits, as a fraction from 0 to 1.
+    ///
+    /// <para>This is the one thing the slice and the volume have to agree about. The volume stretches
+    /// indices 0 .. N-1 across the whole box — <c>CubeProjector.Fraction</c>, which is also how the
+    /// wireframe and the axis captions are placed — while the slice used to divide by N, treating an
+    /// index as a pixel offset. The two disagreed by a whole voxel at the far edge, so a mark put at
+    /// the right of the slice projected outside the box in the volume and floated beside the cube.</para>
+    ///
+    /// <para>Matching the volume rather than the other way round: the box and the captions are already
+    /// built on it, and a mark half a voxel off the pixel it names is a far smaller wrong than a mark
+    /// drawn outside the cube it belongs to.</para>
+    /// </summary>
+    private static double AcrossTheData(double index, int count)
+        => count > 1 ? index / (count - 1) : 0;
+
+    /// <summary>The inverse of <see cref="AcrossTheData"/>.</summary>
+    private static double IndexAcross(double fraction, int count)
+        => count > 1 ? fraction * (count - 1) : 0;
 
     public (double X, double Y)? Project(AnnotationAnchor anchor)
     {
@@ -213,11 +232,18 @@ public sealed class CubeSliceAnnotationSurface : IAnnotationSurface
         var dx = (fx - OriginX(fit)) / fit;
         var dy = (fy - OriginY(fit)) / fit;
 
-        var vx = _displayNx > 0 ? dx * _volumeNx / _displayNx : dx;
-        var vy = _displayNy > 0 ? dy * _volumeNy / _displayNy : dy;
+        var vx = _displayNx > 0 ? IndexAcross(dx / _displayNx, _volumeNx) : 0;
+        var vy = _displayNy > 0 ? IndexAcross(dy / _displayNy, _volumeNy) : 0;
 
         // Outside the plane is the letterbox margin, where there is no data under the pointer.
-        if (vx < 0 || vy < 0 || vx > _volumeNx || vy > _volumeNy) return null;
+        //
+        // The bound is the INDEX range, 0 .. N-1, not 0 .. N. An anchor names a voxel, and the volume
+        // view stretches indices 0 .. N-1 across the whole box (CubeProjector.Fraction). A mark placed
+        // at the slice's far edge with x = N therefore projected to 1.5 box units in the volume — three
+        // times outside it — which is how marks ended up floating beside the cube. The old integer
+        // mapping clamped to N-1 and hid this; going continuous removed the clamp along with the
+        // rounding, so the bound has to say it outright.
+        if (vx < 0 || vy < 0 || vx > _volumeNx - 1 || vy > _volumeNy - 1) return null;
 
         var anchor = AnnotationAnchor.Data(vx, vy, _channel);
         return anchor.IsValid ? anchor : null;
@@ -230,7 +256,11 @@ public sealed class CubeSliceAnnotationSurface : IAnnotationSurface
     /// </summary>
     public double UnitsToPixels(AnnotationAnchor anchor)
     {
-        var scale = DisplayScale * (_volumeNx > 0 ? (double)_displayNx / _volumeNx : 1);
+        // One voxel is one step of AcrossTheData, so it spans 1/(N-1) of the plane — the same step the
+        // volume view measures. Dividing by N instead would size a mark by a different voxel than the
+        // one it is drawn at, which on a coarse cube is a visible disagreement between the two views.
+        var perVoxel = _volumeNx > 1 ? (double)_displayNx / (_volumeNx - 1) : _displayNx;
+        var scale = DisplayScale * perVoxel;
         return double.IsFinite(scale) && scale > 0 ? scale : 1.0;
     }
 }

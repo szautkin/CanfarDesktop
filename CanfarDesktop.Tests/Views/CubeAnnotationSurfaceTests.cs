@@ -100,6 +100,61 @@ public class CubeAnnotationSurfaceTests
         => new(channel, Nx, Ny, displayNx, displayNy,
                viewportWidth: 400, viewportHeight: 400, zoom, panX, panY);
 
+    // ── The two views agree about where a voxel is ───────────────────────────────────
+
+    /// <summary>
+    /// A mark is one thing seen two ways, so both views must put it at the same fraction across the
+    /// cube. They did not: the volume stretches indices 0 .. N-1 across its box, while the slice
+    /// divided by N and treated an index as a pixel offset.
+    ///
+    /// The gap is a whole voxel at the far edge. A mark placed at the right of the slice came out at
+    /// index N, which the volume projects to 1.5 box units — three times outside the box — so marks
+    /// drawn on the slice floated in empty space beside the cube in the volume view.
+    ///
+    /// Stated here as the property rather than as one number, because it is the AGREEMENT that matters.
+    /// </summary>
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(0.25)]
+    [InlineData(0.5)]
+    [InlineData(1.0)]
+    public void TheSlicePutsAVoxelWhereTheVolumeDoes(double fraction)
+    {
+        // Where the volume view places this index, as a fraction of the box: CubeProjector maps index
+        // i to i/(N-1), so the fraction across the data IS i/(N-1).
+        var index = fraction * (Nx - 1);
+
+        // The slice, with display resolution equal to the volume's and no zoom or pan, should land the
+        // same fraction across its fitted plane.
+        var surface = Slice();
+        var at = surface.Project(AnnotationAnchor.Data(index, 0, 10));
+        Assert.NotNull(at);
+
+        var planeWidth = 400.0;                       // 100x80 fitted into 400x400 is width-limited
+        Assert.Equal(fraction * planeWidth, at!.Value.X, 6);
+    }
+
+    /// <summary>
+    /// Every voxel index the slice will accept is one the volume can place inside its box. This is the
+    /// invariant that failed: index N is off the end, and the volume drew it outside the cube.
+    /// </summary>
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(6.0)]
+    public void EveryPressTheSliceAcceptsIsAVoxelTheVolumeCanDraw(double zoom)
+    {
+        var surface = Slice(zoom: zoom);
+
+        for (var x = -200.0; x <= 600; x += 7)
+        for (var y = -200.0; y <= 600; y += 37)
+        {
+            if (surface.VoxelAt(x, y) is not { } voxel) continue;
+
+            Assert.InRange(voxel.X, 0.0, Nx - 1);
+            Assert.InRange(voxel.Y, 0.0, Ny - 1);
+        }
+    }
+
     // ── Placing a mark, and drawing it, are one mapping ────────────────────────────────
 
     /// <summary>
@@ -242,23 +297,32 @@ public class CubeAnnotationSurfaceTests
 
         Assert.Equal(0, origin.X, 6);
         Assert.Equal(40, origin.Y, 6);
-        Assert.Equal(4.0, Slice().UnitsToPixels(AnnotationAnchor.Data(0, 0, 10)), 6);
+
+        // 100x80 fitted into 400x400 is 4 viewport pixels per display pixel, and the 100 indices are
+        // stretched across 99 steps, so one voxel is a shade over 4.
+        Assert.Equal(4.0 * Nx / (Nx - 1), Slice().UnitsToPixels(AnnotationAnchor.Data(0, 0, 10)), 6);
     }
 
     [Fact]
     public void ZoomAndPanMoveAMarkWithTheImage()
     {
-        var at1 = Slice().Project(AnnotationAnchor.Data(50, 40, 10))!.Value;
-        var zoomed = Slice(zoom: 2).Project(AnnotationAnchor.Data(50, 40, 10))!.Value;
-        var panned = Slice(panX: 25, panY: -10).Project(AnnotationAnchor.Data(50, 40, 10))!.Value;
+        // The middle of the data is index (N-1)/2: indices run 0 .. N-1 across the plane, the same way
+        // the volume view stretches them across its box.
+        var middle = AnnotationAnchor.Data((Nx - 1) / 2.0, (Ny - 1) / 2.0, 10);
 
-        // The centre voxel is at the viewport centre, so zooming about the centre leaves it there.
+        var at1 = Slice().Project(middle)!.Value;
+        var zoomed = Slice(zoom: 2).Project(middle)!.Value;
+        var panned = Slice(panX: 25, panY: -10).Project(middle)!.Value;
+
+        // The middle is at the viewport centre, so zooming about the centre leaves it there.
         Assert.Equal(at1.X, zoomed.X, 6);
         Assert.Equal(at1.Y, zoomed.Y, 6);
 
         Assert.Equal(at1.X + 25, panned.X, 6);
         Assert.Equal(at1.Y - 10, panned.Y, 6);
-        Assert.Equal(8.0, Slice(zoom: 2).UnitsToPixels(AnnotationAnchor.Data(0, 0, 10)), 6);
+
+        // Zooming doubles the pixels a voxel spans.
+        Assert.Equal(2 * Slice().UnitsToPixels(middle), Slice(zoom: 2).UnitsToPixels(middle), 6);
     }
 
     /// <summary>
@@ -272,10 +336,13 @@ public class CubeAnnotationSurfaceTests
         var halved = Slice(displayNx: Nx / 2, displayNy: Ny / 2);
 
         // 50x40 display pixels fitted into 400x400 → 8 per display pixel, and one voxel is half of one.
-        Assert.Equal(4.0, halved.UnitsToPixels(AnnotationAnchor.Data(0, 0, 10)), 6);
+        Assert.Equal(halved.UnitsToPixels(AnnotationAnchor.Data(0, 0, 10)),
+                     Slice().UnitsToPixels(AnnotationAnchor.Data(0, 0, 10)), 6);
 
-        var lastVoxel = halved.Project(AnnotationAnchor.Data(Nx, Ny, 10))!.Value;
-        var full = Slice().Project(AnnotationAnchor.Data(Nx, Ny, 10))!.Value;
+        // The display resolution cancels: a voxel lands in the same place whatever the slice was
+        // rendered at, which is the whole reason anchors are kept in the cube's own voxels.
+        var lastVoxel = halved.Project(AnnotationAnchor.Data(Nx - 1, Ny - 1, 10))!.Value;
+        var full = Slice().Project(AnnotationAnchor.Data(Nx - 1, Ny - 1, 10))!.Value;
         Assert.Equal(full.X, lastVoxel.X, 6);
         Assert.Equal(full.Y, lastVoxel.Y, 6);
     }
