@@ -23,6 +23,27 @@ namespace CanfarDesktop.Views.Controls;
 /// </summary>
 internal static class PlateRasterizer
 {
+    /// <summary>
+    /// Whether to assemble an oversized figure from pieces. OFF, because it does not work yet.
+    ///
+    /// <para>The idea is sound and the arithmetic is right — TiledRaster is tested down to "every
+    /// pixel is written exactly once". What does not work is the rasterising: a plate scaled up and
+    /// slid under a window renders its top correctly and loses the rest. Measured on the cube figure,
+    /// a 4x export comes out the full 5800x5140 with content reaching only 63% of the height; the
+    /// colorbar and metadata are simply not there.</para>
+    ///
+    /// <para>Two attempts failed to fix it — first suspecting the per-piece window resize, then
+    /// guarding against a piece coming back empty. The guard does not catch this because the missing
+    /// pieces are not empty: they carry the plate's background and none of its content, so they look
+    /// rendered. That is precisely the failure that must not ship, because a cropped figure reads as
+    /// a deliberate crop.</para>
+    ///
+    /// <para>So exports take the single rasterisation, which is correct at up to about 2.8x on these
+    /// plates and says which scale it really achieved. Turning this on again needs a debugger on the
+    /// visual tree, not another guess.</para>
+    /// </summary>
+    private const bool TilingWorks = false;
+
     /// <summary>The assembled figure: BGRA8 pixels and the size they make up.</summary>
     /// <param name="Scale">
     /// The scale actually rendered. Equal to the request unless the whole figure would be too large to
@@ -53,14 +74,19 @@ internal static class PlateRasterizer
         if (plan.IsEmpty) return null;
 
         // One rasterisation is the ordinary case, and it needs none of the machinery below.
-        if (!plan.IsTiled)
+        if (!plan.IsTiled || !TilingWorks)
         {
+            // What a single rasterisation can actually produce, which for a figure past the limit is
+            // less than was asked for. Reported as such rather than silently delivered.
+            var fit = RasterLimit.Fit(naturalWidth, naturalHeight, scale);
+            if (fit.Width < 1 || fit.Height < 1) return null;
+
             var single = new RenderTargetBitmap();
-            await single.RenderAsync(plate, plan.Width, plan.Height);
+            await single.RenderAsync(plate, fit.Width, fit.Height);
             var pixels = (await single.GetPixelsAsync()).ToArray();
 
             return single.PixelWidth > 0 && single.PixelHeight > 0
-                ? new Result(pixels, single.PixelWidth, single.PixelHeight, plan.Scale)
+                ? new Result(pixels, single.PixelWidth, single.PixelHeight, fit.Scale)
                 : null;
         }
 
