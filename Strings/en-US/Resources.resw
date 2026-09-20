@@ -1021,6 +1021,15 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Cube_ExpAnnotateToggle.OnContent" xml:space="preserve">
     <value>On</value>
   </data>
+  <data name="Cube_ExpMarksToggle.Header" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Cube_ExpMarksToggle.OffContent" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="Cube_ExpMarksToggle.OnContent" xml:space="preserve">
+    <value>On</value>
+  </data>
   <data name="Cube_ExpColorAmber.Content" xml:space="preserve">
     <value>Amber</value>
   </data>

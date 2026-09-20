@@ -70,6 +70,8 @@
 
                 <ToggleSwitch x:Name="AnnotateToggle" x:Uid="Cube_ExpAnnotateToggle" Header="Annotations" IsOn="True"
                               OffContent="Off" OnContent="On" Toggled="OnStyleChanged" />
+                <ToggleSwitch x:Name="MarksToggle" x:Uid="Cube_ExpMarksToggle" Header="Marks" IsOn="True"
+                              Toggled="OnStyleChanged" />
                 <ToggleSwitch x:Name="TransparentToggle" x:Uid="Cube_ExpTransparentToggle" Header="Transparent background"
                               OffContent="Off" OnContent="On" Toggled="OnStyleChanged" />
 

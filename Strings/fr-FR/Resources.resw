@@ -1021,6 +1021,15 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Cube_ExpAnnotateToggle.OnContent" xml:space="preserve">
     <value>Activées</value>
   </data>
+  <data name="Cube_ExpMarksToggle.Header" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Cube_ExpMarksToggle.OffContent" xml:space="preserve">
+    <value>Désactivés</value>
+  </data>
+  <data name="Cube_ExpMarksToggle.OnContent" xml:space="preserve">
+    <value>Activés</value>
+  </data>
   <data name="Cube_ExpColorAmber.Content" xml:space="preserve">
     <value>Ambre</value>
   </data>

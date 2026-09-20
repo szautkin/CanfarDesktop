@@ -29,7 +29,8 @@ public sealed record CubeExportRequest(
     string TextColor = "auto",        // auto | white | black | cyan | amber
     double TextScale = 1.0,           // 0.75–1.5 (the dialog's text-size slider)
     bool Annotate = true,             // camera/metadata annotations line
-    bool Transparent = false);        // transparent background (PNG)
+    bool Transparent = false,         // transparent background (PNG)
+    bool Marks = true);               // the marks drawn on the cube
 
 /// <summary>
 /// <c>open_cube</c> — open a FITS spectral cube (NAXIS=3) in the 3D Cube Viewer, by local file path or
@@ -144,9 +145,10 @@ public sealed class ExportCubeFigureTool : JsonReadTool<ExportCubeFigureTool.Arg
         "Export the current 3D Cube Viewer view as a publication figure (box + axis captions + legend + " +
         "colorbar) to a local PNG or PDF path, at 2× or 4× resolution. Style options mirror the export " +
         "dialog: theme (dark/light), font (sans/mono/serif), textColor (auto/white/black/cyan/amber), " +
-        "textScale (0.75–1.5), annotate (the camera/metadata line), transparent (background, PNG). The " +
-        "viewer must be visible. Live-applied.",
-        """{"type":"object","properties":{"path":{"type":"string"},"format":{"type":"string","enum":["png","pdf"]},"scale":{"type":"integer","enum":[2,4]},"theme":{"type":"string","enum":["dark","light"]},"font":{"type":"string","enum":["sans","mono","serif"]},"textColor":{"type":"string","enum":["auto","white","black","cyan","amber"]},"textScale":{"type":"number","minimum":0.75,"maximum":1.5},"annotate":{"type":"boolean"},"transparent":{"type":"boolean"}},"required":["path"],"additionalProperties":false}""");
+        "textScale (0.75–1.5), annotate (the camera/metadata line), marks (the marks drawn on the cube, " +
+        "default true — a slice figure shows only the marks on the channel it is of), transparent " +
+        "(background, PNG). The viewer must be visible. Live-applied.",
+        """{"type":"object","properties":{"path":{"type":"string"},"format":{"type":"string","enum":["png","pdf"]},"scale":{"type":"integer","enum":[2,4]},"theme":{"type":"string","enum":["dark","light"]},"font":{"type":"string","enum":["sans","mono","serif"]},"textColor":{"type":"string","enum":["auto","white","black","cyan","amber"]},"textScale":{"type":"number","minimum":0.75,"maximum":1.5},"annotate":{"type":"boolean"},"marks":{"type":"boolean"},"transparent":{"type":"boolean"}},"required":["path"],"additionalProperties":false}""");
 
     protected override async Task<CubeExportOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
@@ -166,7 +168,8 @@ public sealed class ExportCubeFigureTool : JsonReadTool<ExportCubeFigureTool.Arg
         double textScale = Math.Clamp(args.TextScale ?? 1.0, 0.75, 1.5);
         return await _export(new CubeExportRequest(
             path, format, scale, dark, font, textColor, textScale,
-            Annotate: args.Annotate ?? true, Transparent: args.Transparent ?? false));
+            Annotate: args.Annotate ?? true, Transparent: args.Transparent ?? false,
+            Marks: args.Marks ?? true));
     }
 
     public sealed record Args
@@ -180,6 +183,7 @@ public sealed class ExportCubeFigureTool : JsonReadTool<ExportCubeFigureTool.Arg
         public double? TextScale { get; init; }
         public bool? Annotate { get; init; }
         public bool? Transparent { get; init; }
+        public bool? Marks { get; init; }
     }
 }
 

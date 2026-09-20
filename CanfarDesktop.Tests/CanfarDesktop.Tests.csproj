@@ -302,6 +302,7 @@
     <!-- Marks: the model, the shared geometry, and the store keyed by the file drawn on. -->
     <Compile Include="..\Models\Annotation.cs" Link="Linked\Annotation.cs" />
     <Compile Include="..\Helpers\AnnotationGeometry.cs" Link="Linked\AnnotationGeometry.cs" />
+    <Compile Include="..\Helpers\PlateInk.cs" Link="Linked\PlateInk.cs" />
     <Compile Include="..\Services\Fits\AnnotationStore.cs" Link="Linked\Fits\AnnotationStore.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationContracts.cs" Link="Linked\Mcp\AnnotationContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />

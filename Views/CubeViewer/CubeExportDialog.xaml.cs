@@ -55,6 +55,7 @@ public sealed partial class CubeExportDialog : ContentDialog
         TextColor = TextColorCombo.SelectedIndex switch { 1 => "white", 2 => "black", 3 => "cyan", 4 => "amber", _ => "auto" },
         TextScale = ScaleSlider.Value,
         Annotate = AnnotateToggle.IsOn,
+        ShowMarks = MarksToggle.IsOn,
         Transparent = TransparentToggle.IsOn,
     };
 

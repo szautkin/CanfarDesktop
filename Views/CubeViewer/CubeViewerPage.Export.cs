@@ -21,6 +21,15 @@ public sealed partial class CubeViewerPage
 {
     private bool _exporting;
 
+    /// <summary>
+    /// The dimensions of the plane the last slice frame was rendered from.
+    ///
+    /// The exported slice is read at NATIVE resolution, which is not the down-sampled volume the marks
+    /// are anchored in, so placing a mark on that frame needs both numbers. Recorded when the frame is
+    /// captured rather than recomputed, because working it out again means reading the plane again.
+    /// </summary>
+    private (int Nx, int Ny, int FrameW)? _lastSlicePlane;
+
     private async void OnExportClick(object sender, RoutedEventArgs e)
     {
         if (_volume is null) { ShowStatus(Helpers.Loc.T("Cube_OpenFirst")); return; }
@@ -122,7 +131,32 @@ public sealed partial class CubeViewerPage
         double target = Math.Clamp(Math.Max(nx, ny), 900, 1600);
         double k = target / Math.Max(nx, ny);
         int dw = Math.Max(1, (int)Math.Round(nx * k)), dh = Math.Max(1, (int)Math.Round(ny * k));
+        _lastSlicePlane = (nx, ny, dw);
         return (wb, dw, dh);
+    }
+
+    /// <summary>
+    /// How much bigger the exported picture is than the one on screen — what the marks are drawn at.
+    ///
+    /// <para>A volume figure is a fixed 1400px snapshot and a slice figure is framed at 900–1600px,
+    /// while the viewport they came from is whatever size the window happens to be. Marks are stroked
+    /// and labelled in device pixels, so without this they would be drawn at screen weight on a
+    /// picture two or three times the size — finer, relative to the figure, than the user drew them.</para>
+    ///
+    /// <para>The 2x/4x resolution choice is deliberately NOT part of this: the dialog rasterises the
+    /// whole plate at that factor, so the text and the marks grow together there.</para>
+    ///
+    /// <para>The clamping and the degenerate cases live in <see cref="Helpers.PlateInk"/>, which is
+    /// where they can be tested; this only picks which two numbers to compare.</para>
+    /// </summary>
+    private double PlateInkScale()
+    {
+        double frame = ViewModel.ViewMode == CubeViewMode.Slice ? _lastSlicePlane?.FrameW ?? 0 : 1400;
+        double onScreen = ViewModel.ViewMode == CubeViewMode.Slice
+            ? SliceViewport.ActualWidth
+            : RenderPanel.ActualWidth;
+
+        return Helpers.PlateInk.ScaleFor(frame, onScreen);
     }
 
     /// <summary>Read the native-resolution plane matching the current (down-sampled) channel, or null.</summary>
@@ -152,7 +186,7 @@ public sealed partial class CubeViewerPage
     /// textScale 0.75–1.5, annotations line, transparent background).</summary>
     public async Task<string?> ExportCubeToPathAsync(string path, string format, int scale, bool dark,
         string font = "sans", string textColor = "auto", double textScale = 1.0,
-        bool annotate = true, bool transparent = false)
+        bool annotate = true, bool transparent = false, bool marks = true)
     {
         if (_exporting) return "an export is already in progress";
         if (_volume is null) return "no cube is loaded";
@@ -182,6 +216,7 @@ public sealed partial class CubeViewerPage
                     TextColor = textColor,
                     TextScale = Math.Clamp(textScale, 0.75, 1.5),
                     Annotate = annotate,
+                    ShowMarks = marks,
                     Transparent = transparent,
                 });
             ExportHost.Children.Add(plate);
@@ -251,6 +286,18 @@ public sealed partial class CubeViewerPage
             Meta = _meta,
             // Box + captions only make sense over the 3D volume, not the flat slice.
             CaptionsOn = ViewModel.ViewMode == CubeViewMode.Volume && _captionsOn,
+
+            // The marks, and what each surface needs to place them. The anchor space is the volume's
+            // own voxels, which is NOT VolNx/VolNy above — those size the wireframe box.
+            Marks = Marks.Marks,
+            IsSlice = ViewModel.ViewMode == CubeViewMode.Slice,
+            AnchorNx = _volume?.Nx ?? 1,
+            AnchorNy = _volume?.Ny ?? 1,
+            AnchorNz = _volume?.Nz ?? 1,
+            Channel = ViewModel.Channel,
+            SliceDispNx = _lastSlicePlane?.Nx ?? _volume?.Nx ?? 1,
+            SliceDispNy = _lastSlicePlane?.Ny ?? _volume?.Ny ?? 1,
+            InkScale = PlateInkScale(),
         };
 
         if (_meta is not null)

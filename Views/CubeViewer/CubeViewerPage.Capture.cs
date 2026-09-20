@@ -53,7 +53,7 @@ public sealed partial class CubeViewerPage
             var style = new CubeExportPlate.PlateStyle
             {
                 Dark = true, Font = "sans", TextColor = "auto", TextScale = 1.0,
-                Annotate = false, Transparent = false,
+                Annotate = false, ShowMarks = true, Transparent = false,
             };
 
             plate = new CubeExportPlate();

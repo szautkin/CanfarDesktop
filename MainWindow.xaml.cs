@@ -448,7 +448,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             if (cube is null)
                 return new CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome(false, req.Path, "the cube viewer is not open (use open_cube first)");
             var err = await cube.ExportCubeToPathAsync(req.Path, req.Format, req.Scale, req.Dark,
-                req.Font, req.TextColor, req.TextScale, req.Annotate, req.Transparent);
+                req.Font, req.TextColor, req.TextScale, req.Annotate, req.Transparent, req.Marks);
             return err is null ? new(true, req.Path, null) : new(false, req.Path, err);
         }, new CanfarDesktop.Mcp.Tools.Write.CubeExportOutcome(false, req.Path, "could not dispatch to UI"));
 
