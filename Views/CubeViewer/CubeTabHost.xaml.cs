@@ -37,6 +37,16 @@ public sealed partial class CubeTabHost : UserControl
     public async Task<CubeViewerPage> AddTabForFileAsync(string filePath)
     {
         var page = new CubeViewerPage();
+
+        // The marks are keyed by the file, so every tab reads the same store — exactly as the FITS tab
+        // host does. Without this the page's MarkEditor is built with a NULL store, and the failure is
+        // silent in both directions: nothing written by an agent ever loads, and nothing drawn by hand
+        // is ever saved. Refresh even answers "shown" on a matching file while its list stays empty,
+        // because it checks the target and not the store.
+        page.AttachAnnotationStore(
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetRequiredService<CanfarDesktop.Services.Fits.IAnnotationStore>(App.Services));
+
         var tab = new TabViewItem
         {
             Content = page,

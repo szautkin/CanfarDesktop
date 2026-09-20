@@ -57,7 +57,8 @@ public sealed partial class CubeViewerPage
             };
 
             plate = new CubeExportPlate();
-            plate.Populate(frame.Value.Frame, frame.Value.W, frame.Value.H, BuildPlateData(), style);
+            plate.Populate(frame.Value.Frame, frame.Value.W, frame.Value.H,
+                BuildPlateData(asSlice: wanted == CubeCaptureView.Slice), style);
             ExportHost.Children.Add(plate);
             Canvas.SetLeft(plate, -100000);
             plate.UpdateLayout();

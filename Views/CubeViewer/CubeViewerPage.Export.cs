@@ -149,12 +149,10 @@ public sealed partial class CubeViewerPage
     /// <para>The clamping and the degenerate cases live in <see cref="Helpers.PlateInk"/>, which is
     /// where they can be tested; this only picks which two numbers to compare.</para>
     /// </summary>
-    private double PlateInkScale()
+    private double PlateInkScale(bool isSlice)
     {
-        double frame = ViewModel.ViewMode == CubeViewMode.Slice ? _lastSlicePlane?.FrameW ?? 0 : 1400;
-        double onScreen = ViewModel.ViewMode == CubeViewMode.Slice
-            ? SliceViewport.ActualWidth
-            : RenderPanel.ActualWidth;
+        double frame = isSlice ? _lastSlicePlane?.FrameW ?? 0 : 1400;
+        double onScreen = isSlice ? SliceViewport.ActualWidth : RenderPanel.ActualWidth;
 
         return Helpers.PlateInk.ScaleFor(frame, onScreen);
     }
@@ -261,8 +259,16 @@ public sealed partial class CubeViewerPage
     }
 
     /// <summary>Build the plate's content (text + colorbar + the camera/metadata for the live overlay).</summary>
-    private CubeExportPlate.PlateData BuildPlateData()
+    /// <param name="asSlice">
+    /// Whether the picture this data describes is a SLICE. Null means "whatever the viewer is showing",
+    /// which is right for an export but not for a capture: get_cube_image takes an explicit view, so it
+    /// can ask for the slice while the viewer is orbiting the volume. Taking the mode from the viewer
+    /// in that case put a volume surface under a slice frame, and every mark landed where the box would
+    /// have projected it rather than where it is on the plane.
+    /// </param>
+    private CubeExportPlate.PlateData BuildPlateData(bool? asSlice = null)
     {
+        var isSlice = asSlice ?? (ViewModel.ViewMode == CubeViewMode.Slice);
         string title = !string.IsNullOrEmpty(_meta?.Object) ? _meta!.Object
             : (string.IsNullOrEmpty(_cubeName) ? Helpers.Loc.T("Cube_DefaultTitle") : _cubeName);
 
@@ -285,19 +291,19 @@ public sealed partial class CubeViewerPage
             VolNy = _volNy,
             Meta = _meta,
             // Box + captions only make sense over the 3D volume, not the flat slice.
-            CaptionsOn = ViewModel.ViewMode == CubeViewMode.Volume && _captionsOn,
+            CaptionsOn = !isSlice && _captionsOn,
 
             // The marks, and what each surface needs to place them. The anchor space is the volume's
             // own voxels, which is NOT VolNx/VolNy above — those size the wireframe box.
             Marks = Marks.Marks,
-            IsSlice = ViewModel.ViewMode == CubeViewMode.Slice,
+            IsSlice = isSlice,
             AnchorNx = _volume?.Nx ?? 1,
             AnchorNy = _volume?.Ny ?? 1,
             AnchorNz = _volume?.Nz ?? 1,
             Channel = ViewModel.Channel,
             SliceDispNx = _lastSlicePlane?.Nx ?? _volume?.Nx ?? 1,
             SliceDispNy = _lastSlicePlane?.Ny ?? _volume?.Ny ?? 1,
-            InkScale = PlateInkScale(),
+            InkScale = PlateInkScale(isSlice),
         };
 
         if (_meta is not null)

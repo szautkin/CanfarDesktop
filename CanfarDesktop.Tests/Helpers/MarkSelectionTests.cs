@@ -266,6 +266,26 @@ public class MarkSelectionTests
         Assert.Equal(mark.Id, editor.SelectedId);
     }
 
+    // ── A viewer with no store ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// The silent failure this cost us. The cube viewer was never given an annotation store, so its
+    /// editor was built with a null one — and Refresh still answered TRUE on a matching file while its
+    /// list stayed empty. An agent wrote a mark, the store kept it, list_cube_annotations reported it,
+    /// the tool said "shown", and nothing was ever drawn, in the viewer or in an exported figure.
+    ///
+    /// A viewer that cannot read the marks has not shown them.
+    /// </summary>
+    [Fact]
+    public void AViewerWithNoStoreDoesNotClaimToHaveShownAnything()
+    {
+        var canvas = new Canvas();
+        var editor = new MarkEditor(canvas, store: null, new InMemoryMarkStylePreference());
+
+        Assert.False(editor.Refresh("image.fits", selectId: null));
+        Assert.Empty(editor.Marks);
+    }
+
     [Fact]
     public void DeselectingWithNothingPickedOutIsStillAnAnswer()
     {

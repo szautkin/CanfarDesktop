@@ -183,7 +183,13 @@ public sealed class MarkEditor
         if (_canvas.Target is not { } mine || !string.Equals(mine, target, StringComparison.OrdinalIgnoreCase))
             return false;
 
-        _marks = _store?.LoadFor(target).ToList() ?? [];
+        // No store, nothing to re-read. Answering "shown" here is how a viewer that was never given
+        // one stayed silently blind: an agent wrote a mark, the store kept it, list_* reported it, and
+        // the viewer said it had shown something while its own list stayed empty. The cube viewer was
+        // in exactly that state. A viewer that cannot read the marks has not shown them.
+        if (_store is null) return false;
+
+        _marks = _store.LoadFor(target).ToList();
 
         // This IS a load for that target, so say so. Otherwise the render below reloads a second time
         // and clears the selection this was called to set.
