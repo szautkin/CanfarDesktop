@@ -243,7 +243,8 @@ public sealed class MarkEditor
                     Kind = Kind,
                     Anchor = anchor,
                     Extent = Kind.NeedsExtent()
-                        ? Extent.Square(AnnotationGeometry.HalfFromDrag(surface, anchor, 12))
+                        ? Extent.Square(AnnotationGeometry.HalfFromDrag(
+                            surface, anchor, AnnotationGeometry.InitialHalfPixels))
                         : null,
                     Author = MarkAuthor.User,
                     // What the style controls say. A style chosen and then not applied to the next mark

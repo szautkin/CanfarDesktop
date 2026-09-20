@@ -1,4 +1,4 @@
-﻿using CanfarDesktop.Helpers;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.Fits;
 

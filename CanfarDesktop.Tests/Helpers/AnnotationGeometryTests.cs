@@ -279,10 +279,18 @@ public class AnnotationGeometryTests
         Assert.Equal(30, AnnotationGeometry.ResizeHalf(mark, new Flat(), 105, 70)!.Value, 6);
     }
 
-    /// <summary>A resize never produces a shape with no area — that is a mark that has vanished.</summary>
+    /// <summary>
+    /// A resize never produces a shape with no area — that is a mark that has vanished.
+    ///
+    /// The floor is in SCREEN pixels, so on this surface's 1 pixel per unit it reads back unchanged.
+    /// It used to be half a UNIT, which on a sky anchor meant half a degree and produced boxes wider
+    /// than the image — see MarkSizingTests.
+    /// </summary>
     [Fact]
     public void AResizeToNothingStillLeavesSomethingVisible()
-        => Assert.Equal(0.5, AnnotationGeometry.ResizeHalf(Circle("m", 100, 100), new Flat(), 100, 100)!.Value, 6);
+        => Assert.Equal(
+            AnnotationGeometry.MinimumHalfPixels,
+            AnnotationGeometry.ResizeHalf(Circle("m", 100, 100), new Flat(), 100, 100)!.Value, 6);
 
     // ── The words are part of the mark ──────────────────────────────────────────────────────────
 

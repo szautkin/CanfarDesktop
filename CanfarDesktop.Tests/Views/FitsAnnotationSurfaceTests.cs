@@ -1,4 +1,4 @@
-﻿using Xunit;
+using Xunit;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.Fits;
 using CanfarDesktop.Views.FitsViewer;

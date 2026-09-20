@@ -1,4 +1,4 @@
-﻿namespace CanfarDesktop.Models.Fits;
+namespace CanfarDesktop.Models.Fits;
 
 /// <summary>
 /// A rectangle of an image, in DISPLAY pixels — 0-based, y down from the top, the same coordinates the

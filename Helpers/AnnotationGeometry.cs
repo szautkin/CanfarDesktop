@@ -88,6 +88,31 @@ public static class AnnotationGeometry
 
     public const double HandleRadius = 5.0;
 
+    /// <summary>
+    /// The smallest half-size a mark is ever drawn or dragged out at, in DEVICE pixels.
+    ///
+    /// <para>In device pixels, and nowhere near the anchor's own units, because a floor written in
+    /// those units means something different in each space and something catastrophic in one of them.
+    /// A floor of half a unit is half a voxel to a cube — and half a DEGREE to a sky-anchored mark. On
+    /// a 0.187 arcsec/pixel image that is a box 19,000 pixels across, four times wider than the whole
+    /// frame, which is exactly the "I drew a small box and got a gigantic one" report: every mark came
+    /// out at the floor no matter how small the drag.</para>
+    ///
+    /// <para>A screen-pixel floor is the same promise in every space — a mark you can see and grab —
+    /// and the conversion to the anchor's units is <see cref="HalfFromDrag"/>, which already exists and
+    /// is already the one place that knows how.</para>
+    /// </summary>
+    public const double MinimumHalfPixels = 4.0;
+
+    /// <summary>
+    /// The half-size, in DEVICE pixels, a shape is born at before the drag that sizes it.
+    ///
+    /// A mark placed with no extent is invisible until the drag ends, so a press that starts a drag
+    /// looks like it did nothing. Comfortably above <see cref="MinimumHalfPixels"/>, so a mark that is
+    /// clicked rather than dragged is a shape someone meant to make rather than a speck.
+    /// </summary>
+    public const double InitialHalfPixels = 12.0;
+
     /// <summary>The four corner offsets a grip sits at.</summary>
     private static readonly (double Dx, double Dy)[] HandleCorners = [(-1, -1), (1, -1), (1, 1), (-1, 1)];
 
@@ -161,19 +186,40 @@ public static class AnnotationGeometry
         return new Leader(sx, sy, elbowX, elbowY, ruleEnd, textX, rightwards);
     }
 
-    /// <summary>A mark's centre and half-size on screen, or null when it is not on this surface.</summary>
+    /// <summary>
+    /// A mark's centre and half-size on screen, or null when it is not on this surface.
+    ///
+    /// <para>A mark's size is stored in the anchor's units, so it tracks the image the way a circle
+    /// drawn on a photograph does: zoom in and it grows with what it encloses. Zoom far enough OUT,
+    /// though, and a small mark is a fraction of a pixel across — present, hit-testable in principle,
+    /// and invisible. So the drawn size is floored at <see cref="MinimumHalfPixels"/>.</para>
+    ///
+    /// <para>The floor is applied symmetrically about the projected anchor, so a mark held at the
+    /// minimum still sits exactly on the position it was pinned to; it stops shrinking, it does not
+    /// drift. And it is floored HERE rather than in each viewer's renderer, so what you can see and
+    /// what you can grab are the same rectangle — hit-testing and the grips read this too.</para>
+    /// </summary>
     public static (double Cx, double Cy, double HalfW, double HalfH)? HalfSize(
         Annotation mark, IAnnotationSurface surface, double fallback)
     {
         if (surface.Project(mark.Anchor) is not { } centre) return null;
 
         var scale = surface.UnitsToPixels(mark.Anchor);
+        var floor = MinimumHalfPixels * UsableInkScale(surface);
+
         var (hw, hh) = mark.Extent is { } e
-            ? (e.HalfWidth * scale, e.HalfHeight * scale)
+            ? (Math.Max(e.HalfWidth * scale, floor), Math.Max(e.HalfHeight * scale, floor))
             : (fallback, fallback);
 
         return (centre.X, centre.Y, hw, hh);
     }
+
+    /// <summary>
+    /// A surface's ink scale, guarded. An export plate renders bigger than the screen and says so, and
+    /// a minimum size in SCREEN pixels has to grow with it or the floor is invisible on the plate.
+    /// </summary>
+    private static double UsableInkScale(IAnnotationSurface surface)
+        => double.IsFinite(surface.InkScale) && surface.InkScale > 0 ? surface.InkScale : 1.0;
 
     /// <summary>
     /// Where the four resize grips are. Screen-sized, not data-sized: a grip has to be grabbable at any
@@ -349,9 +395,15 @@ public static class AnnotationGeometry
     /// <summary>
     /// The half-size a resize drag is asking for, in the anchor's own units.
     ///
-    /// The grip is a corner, so the half-size is the LARGER of the two offsets — dragging away from the
-    /// centre grows the shape whichever way you go, rather than only along the axis you happened to
-    /// move furthest on.
+    /// <para>The grip is a corner, so the half-size is the LARGER of the two offsets — dragging away
+    /// from the centre grows the shape whichever way you go, rather than only along the axis you
+    /// happened to move furthest on.</para>
+    ///
+    /// <para>The drag is measured and floored entirely in SCREEN pixels, and converted once at the end
+    /// through <see cref="HalfFromDrag"/>. Flooring after the conversion is what produced a minimum of
+    /// half a degree on a sky-anchored mark — see <see cref="MinimumHalfPixels"/>. Measuring on screen
+    /// is also what <see cref="HalfFromDrag"/> exists to do, so the drag that CREATES a mark and the
+    /// drag that resizes it now go through one conversion rather than two that can disagree.</para>
     /// </summary>
     public static double? ResizeHalf(Annotation mark, IAnnotationSurface surface, double sx, double sy)
     {
@@ -360,6 +412,9 @@ public static class AnnotationGeometry
         var scale = surface.UnitsToPixels(mark.Anchor);
         if (!double.IsFinite(scale) || scale <= 0) return null;
 
-        return Math.Max(Math.Max(Math.Abs(sx - centre.X), Math.Abs(sy - centre.Y)) / scale, 0.5);
+        var dragged = Math.Max(Math.Abs(sx - centre.X), Math.Abs(sy - centre.Y));
+        if (!double.IsFinite(dragged)) return null;
+
+        return HalfFromDrag(surface, mark.Anchor, Math.Max(dragged, MinimumHalfPixels));
     }
 }
