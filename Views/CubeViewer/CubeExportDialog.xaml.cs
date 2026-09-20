@@ -94,10 +94,17 @@ public sealed partial class CubeExportDialog : ContentDialog
             Canvas.SetLeft(raster, -100000);
             raster.UpdateLayout();
 
-            int reqW = (int)Math.Ceiling(raster.ActualWidth * scale);
-            int reqH = (int)Math.Ceiling(raster.ActualHeight * scale);
+            // What this plate can actually be rasterised at. Asking for more than the limit does not
+            // fail, it silently renders smaller — which is how 4x came out barely larger than 2x.
+            var fitted = Helpers.RasterLimit.Fit(raster.ActualWidth, raster.ActualHeight, scale);
+            if (fitted.Width < 1 || fitted.Height < 1)
+            {
+                StatusLabel.Text = Helpers.Loc.T("Cube_ExpRenderFailed");
+                return;
+            }
+
             var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(raster, reqW, reqH);
+            await rtb.RenderAsync(raster, fitted.Width, fitted.Height);
             int rw = rtb.PixelWidth, rh = rtb.PixelHeight;
             byte[] buf = (await rtb.GetPixelsAsync()).ToArray();
             if (rw <= 0 || rh <= 0 || buf.Length < (long)rw * rh * 4)
@@ -137,7 +144,12 @@ public sealed partial class CubeExportDialog : ContentDialog
                     (uint)rw, (uint)rh, 96, 96, buf);
                 await encoder.FlushAsync();
             }
-            StatusLabel.Text = Helpers.Loc.F("Cube_Saved", file.Name);
+            // Say what was really produced when the limit got in the way, rather than letting the
+            // 4x button quietly hand back something closer to 3x.
+            StatusLabel.Text = fitted.Clamped
+                ? Helpers.Loc.F("Cube_SavedLimited", file.Name, $"{fitted.Scale:0.#}", scale,
+                                Helpers.RasterLimit.MaxEdge)
+                : Helpers.Loc.F("Cube_Saved", file.Name);
         }
         catch (Exception ex)
         {

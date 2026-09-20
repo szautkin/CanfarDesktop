@@ -247,8 +247,14 @@ public sealed partial class FitsViewerPage
             Canvas.SetLeft(plate, -100000);
             plate.UpdateLayout();
 
+            // The plate is already laid out at the export's scale, so a 4x figure of a large region
+            // can exceed what RenderTargetBitmap will produce. It does not fail when asked for more,
+            // it renders smaller in silence — so ask for what is achievable.
+            var fitted = Helpers.RasterLimit.Fit(plate.ActualWidth, plate.ActualHeight, 1.0);
+            if (fitted.Width < 1 || fitted.Height < 1) return "the figure has no size to render";
+
             var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(plate, (int)Math.Ceiling(plate.ActualWidth), (int)Math.Ceiling(plate.ActualHeight));
+            await rtb.RenderAsync(plate, fitted.Width, fitted.Height);
 
             int rw = rtb.PixelWidth, rh = rtb.PixelHeight;
             var pixels = (await rtb.GetPixelsAsync()).ToArray();
