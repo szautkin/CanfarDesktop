@@ -41,4 +41,30 @@ public class FitsHeader
     public int NAxis2 => GetInt("NAXIS2");
     public double BScale => GetDouble("BSCALE", 1.0);
     public double BZero => GetDouble("BZERO", 0.0);
+
+    // ── The IMAGE, as opposed to what the HDU is stored as ──────────────────────────────────────
+
+    /// <summary>
+    /// Whether this HDU holds a tile-compressed image.
+    ///
+    /// The FITS tile-compression convention keeps the image inside a BINARY TABLE, so NAXISn describes
+    /// the TABLE — for an fpack'd MegaCam frame, "8 bytes wide by 4644 rows" — and ZNAXISn describes
+    /// the picture, 2112 by 4644. Asking for NAXIS1 and getting 8 is not a bug in the file; it is the
+    /// right answer to the wrong question.
+    /// </summary>
+    public bool IsTileCompressed
+        => GetString("ZIMAGE")?.StartsWith("T", StringComparison.OrdinalIgnoreCase) == true;
+
+    /// <summary>How many axes the IMAGE has, whichever way the HDU stores it.</summary>
+    public int ImageAxes => IsTileCompressed ? GetInt("ZNAXIS") : NAxis;
+
+    /// <summary>
+    /// The IMAGE's length along one 1-based axis, whichever way the HDU stores it.
+    ///
+    /// Every caller that means the picture should ask this rather than NAXISn, or it gets the table's
+    /// shape on a compressed file. The HDU list did, and showed every extension of a .fits.fz as
+    /// "8x4644".
+    /// </summary>
+    public int ImageAxis(int axis) => GetInt((IsTileCompressed ? "ZNAXIS" : "NAXIS") + axis);
+
 }

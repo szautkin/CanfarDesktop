@@ -543,10 +543,13 @@ public sealed partial class FitsViewerPage : UserControl
             string shape;
             if (hdu.HasImage)
             {
-                var n3 = hdu.Header.GetInt("NAXIS3");
+                // The IMAGE's axes, not the HDU's. A tile-compressed extension stores its picture in
+                // a binary table, so NAXISn is the table's shape and every extension of a .fits.fz
+                // read "8×4644" — the width of a table row in bytes.
+                var n3 = hdu.Header.ImageAxis(3);
                 shape = n3 > 1
-                    ? $"{hdu.Header.NAxis1}×{hdu.Header.NAxis2}×{n3}"
-                    : $"{hdu.Header.NAxis1}×{hdu.Header.NAxis2}";
+                    ? $"{hdu.Header.ImageAxis(1)}×{hdu.Header.ImageAxis(2)}×{n3}"
+                    : $"{hdu.Header.ImageAxis(1)}×{hdu.Header.ImageAxis(2)}";
             }
             else
             {

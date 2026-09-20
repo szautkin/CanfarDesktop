@@ -9,5 +9,6 @@ public class FitsHdu
     public FitsImageData? ImageData { get; init; }
     public int Index { get; init; }
     public string Name => Header.GetString("EXTNAME") ?? $"HDU {Index}";
-    public bool HasImage => Header.NAxis >= 2 && Header.NAxis1 > 0 && Header.NAxis2 > 0;
+    public bool HasImage
+        => Header.ImageAxes >= 2 && Header.ImageAxis(1) > 0 && Header.ImageAxis(2) > 0;
 }

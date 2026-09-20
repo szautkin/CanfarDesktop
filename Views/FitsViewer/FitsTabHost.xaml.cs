@@ -53,8 +53,23 @@ public sealed partial class FitsTabHost : UserControl
         return page;
     }
 
+    /// <summary>
+    /// Open a file, or come back to it if it is already open.
+    ///
+    /// <para>Opening the same path twice used to give two identical tabs. That is wrong on its own —
+    /// nobody means "another copy" by opening a file they already have open — and it turned a
+    /// harmless retry into damage: open_fits_file on a large multi-extension file takes longer than
+    /// the MCP dispatch will wait, so an agent is told it failed when it did not, tries again, and
+    /// ends up with duplicates.</para>
+    /// </summary>
     public async Task<FitsViewerPage> AddTabForFileAsync(string filePath)
     {
+        if (FindTabFor(filePath) is { } already)
+        {
+            SelectTab(already);
+            return already;
+        }
+
         var tabItem = ViewModel.AddNewTab();
         var page = CreateTabViewItem(tabItem);
         await page.OpenFileAsync(filePath);
@@ -180,6 +195,45 @@ public sealed partial class FitsTabHost : UserControl
     /// <summary>Number of open FITS tabs.</summary>
     public int OpenTabCount => TabViewControl.TabItems.Count;
 
+
+    /// <summary>
+    /// The open tab showing this file, if there is one.
+    ///
+    /// Compared as full paths, case-insensitively, because Windows treats them that way and the same
+    /// file arrives here spelled differently depending on the route in — a picker, a recents entry, a
+    /// downloaded observation's stored path, or an agent's argument.
+    /// </summary>
+    private FitsViewerPage? FindTabFor(string filePath)
+    {
+        string full;
+        try { full = System.IO.Path.GetFullPath(filePath); }
+        catch { return null; }
+
+        foreach (var item in TabViewControl.TabItems)
+        {
+            if (item is not TabViewItem { Content: FitsViewerPage page }) continue;
+            if (page.ViewModel.FilePath is not { Length: > 0 } open) continue;
+
+            string openFull;
+            try { openFull = System.IO.Path.GetFullPath(open); }
+            catch { continue; }
+
+            if (string.Equals(openFull, full, StringComparison.OrdinalIgnoreCase)) return page;
+        }
+
+        return null;
+    }
+
+    /// <summary>Bring a tab to the front.</summary>
+    private void SelectTab(FitsViewerPage page)
+    {
+        foreach (var item in TabViewControl.TabItems)
+            if (item is TabViewItem { Content: FitsViewerPage p } tab && ReferenceEquals(p, page))
+            {
+                TabViewControl.SelectedItem = tab;
+                return;
+            }
+    }
 
     /// <summary>Close the tab at <paramref name="index"/>. False when there is no such tab.</summary>
     public bool CloseTabAt(int index)
