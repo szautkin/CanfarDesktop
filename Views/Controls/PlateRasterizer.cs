@@ -36,7 +36,14 @@ internal static class PlateRasterizer
     /// <paramref name="host"/> is an off-screen container the pieces are laid out in; it is left as it
     /// was found. Null when the plate has no size to render, or a piece could not be rasterised.
     /// </summary>
-    public static async Task<Result?> RenderAsync(FrameworkElement plate, Panel host, double scale)
+    /// <param name="expectOpaque">
+    /// Whether every piece should come back with something in it. True for a figure with a background,
+    /// which is all of them except a transparent PNG. It is how a piece that silently failed to render
+    /// is told from one that is legitimately empty, and it is worth knowing: a figure missing its
+    /// bottom row of pieces has lost its colorbar and its metadata, and looks merely cropped.
+    /// </param>
+    public static async Task<Result?> RenderAsync(
+        FrameworkElement plate, Panel host, double scale, bool expectOpaque = true)
     {
         // The plate's own size, before any scaling: everything below is measured from it.
         plate.UpdateLayout();
@@ -75,29 +82,47 @@ internal static class PlateRasterizer
         plate.Height = naturalHeight;
         plate.RenderTransform = new TransformGroup { Children = { scaling, sliding } };
 
+        // ONE size for every piece, set once. Resizing the window between pieces looked tidier and
+        // did not work: the pieces that changed its height came back blank, which took the figure's
+        // whole bottom row with them — the colorbar and the metadata. Whatever the cause, a window
+        // that never changes shape has nothing to get wrong between one piece and the next. The
+        // pieces at the right and bottom edges simply have blank space in them, and the copy back
+        // takes only the part that belongs to the figure.
+        var windowWidth = plan.Tiles.Max(t => t.Width);
+        var windowHeight = plan.Tiles.Max(t => t.Height);
+
+        window.Width = windowWidth;
+        window.Height = windowHeight;
+        window.Clip = new RectangleGeometry { Rect = new Rect(0, 0, windowWidth, windowHeight) };
+
         window.Children.Add(plate);
         host.Children.Add(window);
         Canvas.SetLeft(window, -100000);
+        host.UpdateLayout();
+
+        var lostAPiece = false;
 
         try
         {
             foreach (var tile in plan.Tiles)
             {
-                window.Width = tile.Width;
-                window.Height = tile.Height;
-                window.Clip = new RectangleGeometry { Rect = new Rect(0, 0, tile.Width, tile.Height) };
-
                 sliding.X = -tile.X;
                 sliding.Y = -tile.Y;
-                window.UpdateLayout();
 
                 var bitmap = new RenderTargetBitmap();
-                await bitmap.RenderAsync(window, tile.Width, tile.Height);
+                await bitmap.RenderAsync(window, windowWidth, windowHeight);
                 if (bitmap.PixelWidth < 1 || bitmap.PixelHeight < 1) return null;
 
-                Blit((await bitmap.GetPixelsAsync()).ToArray(),
-                     bitmap.PixelWidth, bitmap.PixelHeight,
-                     assembled, plan.Width, plan.Height, tile.X, tile.Y);
+                var piece = (await bitmap.GetPixelsAsync()).ToArray();
+
+                // A piece of a figure that has a background cannot legitimately be empty. One that is
+                // empty did not render, and carrying on would assemble a figure with a hole in it that
+                // reads as a crop rather than as a fault.
+                if (expectOpaque && IsBlank(piece)) { lostAPiece = true; break; }
+
+                Blit(piece, bitmap.PixelWidth, bitmap.PixelHeight,
+                     assembled, plan.Width, plan.Height,
+                     tile.X, tile.Y, tile.Width, tile.Height);
             }
         }
         finally
@@ -114,7 +139,31 @@ internal static class PlateRasterizer
             if (parent is not null && indexInParent >= 0) parent.Children.Insert(indexInParent, plate);
         }
 
-        return new Result(assembled, plan.Width, plan.Height, plan.Scale);
+        if (!lostAPiece) return new Result(assembled, plan.Width, plan.Height, plan.Scale);
+
+        // Assembling it did not work. A smaller figure that is whole beats a large one missing its
+        // bottom, so fall back to the one rasterisation that is known to work — and report the scale
+        // it really is, which is the honest half of this that was always true.
+        var fallback = RasterLimit.Fit(naturalWidth, naturalHeight, scale);
+        if (fallback.Width < 1 || fallback.Height < 1) return null;
+
+        var whole = new RenderTargetBitmap();
+        await whole.RenderAsync(plate, fallback.Width, fallback.Height);
+        if (whole.PixelWidth < 1 || whole.PixelHeight < 1) return null;
+
+        return new Result((await whole.GetPixelsAsync()).ToArray(),
+                          whole.PixelWidth, whole.PixelHeight, fallback.Scale);
+    }
+
+    /// <summary>Whether a rasterised piece came back with nothing in it at all.</summary>
+    private static bool IsBlank(byte[] pixels)
+    {
+        // Every fourth byte is alpha. Checking that alone is four times less work than checking all of
+        // them, and a piece that rendered anything at all over a background has alpha somewhere.
+        for (var i = 3; i < pixels.Length; i += 4)
+            if (pixels[i] != 0) return false;
+
+        return true;
     }
 
     /// <summary>
@@ -125,10 +174,14 @@ internal static class PlateRasterizer
     /// </summary>
     private static void Blit(
         byte[] source, int sourceWidth, int sourceHeight,
-        byte[] destination, int destinationWidth, int destinationHeight, int atX, int atY)
+        byte[] destination, int destinationWidth, int destinationHeight,
+        int atX, int atY, int takeWidth, int takeHeight)
     {
-        var rows = Math.Min(sourceHeight, destinationHeight - atY);
-        var columns = Math.Min(sourceWidth, destinationWidth - atX);
+        // Three things bound this: what the piece asked for, what came back, and what is left of the
+        // figure. An edge piece is rendered full size with blank space in it, so taking all of it
+        // would write that blank over the neighbour already copied in.
+        var rows = Math.Min(takeHeight, Math.Min(sourceHeight, destinationHeight - atY));
+        var columns = Math.Min(takeWidth, Math.Min(sourceWidth, destinationWidth - atX));
         if (rows < 1 || columns < 1) return;
 
         var bytes = columns * 4;

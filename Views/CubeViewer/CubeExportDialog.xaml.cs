@@ -96,7 +96,8 @@ public sealed partial class CubeExportDialog : ContentDialog
 
             // Rendered in pieces when the figure is past what one rasterisation can produce, which
             // is how 4x becomes an actual 4x rather than the 2.8x the limit used to quietly impose.
-            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(raster, RasterHost, scale);
+            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(
+                raster, RasterHost, scale, expectOpaque: !TransparentToggle.IsOn);
             if (rendered is not { } figure)
             {
                 StatusLabel.Text = scale >= 4 ? Helpers.Loc.T("Cube_ExpTooLarge") : Helpers.Loc.T("Cube_ExpRenderFailed");

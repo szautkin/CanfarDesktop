@@ -226,7 +226,8 @@ public sealed partial class CubeViewerPage
             // RenderTargetBitmap will not exceed its longest-edge limit and does not say so — it
             // quietly renders smaller. Ask for what is actually achievable, so the figure's size and
             // the scale reported back are the same number.
-            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(plate, ExportHost, sc);
+            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(
+                plate, ExportHost, sc, expectOpaque: !transparent);
             if (rendered is not { } figure) return "plate rasterization failed";
 
             int rw = figure.Width, rh = figure.Height;

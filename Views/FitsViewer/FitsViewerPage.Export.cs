@@ -249,7 +249,8 @@ public sealed partial class FitsViewerPage
 
             // The plate is already laid out at the export's scale, so a 4x figure of a large region
             // can be past what a single rasterisation produces. Rendered in pieces when so.
-            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(plate, ExportHost, 1.0);
+            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(
+                plate, ExportHost, 1.0, expectOpaque: !style.Transparent);
             if (rendered is not { } figure) return "plate rasterization failed";
 
             int rw = figure.Width, rh = figure.Height;
