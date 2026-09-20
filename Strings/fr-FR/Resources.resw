@@ -3146,6 +3146,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Search_DownloadedFile" xml:space="preserve">
     <value>{0} téléchargé</value>
   </data>
+  <data name="Search_DownloadedSoFar" xml:space="preserve">
+    <value>{0} téléchargés — taille totale inconnue</value>
+  </data>
   <data name="Search_DownloadingFile" xml:space="preserve">
     <value>Téléchargement de {0}...</value>
   </data>

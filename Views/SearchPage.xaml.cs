@@ -75,7 +75,9 @@ public sealed partial class SearchPage : Page
     {
         try
         {
-            await ViewModel.LoadDataTrainAsync();
+            // Ensure, not Load: LoadDataTrainAsync forgets its network fetch, so on a FIRST run with no
+            // cache the facets stayed empty until the next launch — the fetch only wrote the cache.
+            await ViewModel.EnsureDataTrainAsync();
             var rows = ViewModel.AllDataTrainRows.ToList();
 
             DispatcherQueue.TryEnqueue(() =>
@@ -1048,10 +1050,20 @@ public sealed partial class SearchPage : Page
             var suggestedName = !string.IsNullOrEmpty(selectedFilename)
                 ? selectedFilename
                 : ExtractFilenameFromPublisherID(publisherID);
-            if (!Path.HasExtension(suggestedName))
-                suggestedName += ".fits";
-            picker.SuggestedFileName = suggestedName;
-            picker.FileTypeChoices.Add(Loc.T("Search_FileTypeFits"), new List<string> { ".fits" });
+
+            // The picker appends the SELECTED file-type extension to SuggestedFileName. Handing it a
+            // complete name AND offering only ".fits" therefore doubled the extension on everything
+            // that is not literally a .fits — an fpack artifact came back as `x.fits.fz.fits`. Offer
+            // the file's OWN extension first, and give the picker the stem, so there is nothing left
+            // to append.
+            var (stem, ext) = SaveFileName.ForPicker(suggestedName);
+
+            picker.SuggestedFileName = stem;
+            picker.FileTypeChoices.Add(
+                ext.Equals(".fits", StringComparison.OrdinalIgnoreCase) ? Loc.T("Search_FileTypeFits") : ext,
+                new List<string> { ext });
+            if (!ext.Equals(".fits", StringComparison.OrdinalIgnoreCase))
+                picker.FileTypeChoices.Add(Loc.T("Search_FileTypeFits"), new List<string> { ".fits" });
             picker.FileTypeChoices.Add(Loc.T("Search_FileTypeAll"), new List<string> { "." });
 
             var file = await picker.PickSaveFileAsync();
@@ -1068,9 +1080,18 @@ public sealed partial class SearchPage : Page
                 DownloadProgressBar.IsIndeterminate = true;
                 DownloadProgressText.Text = "";
 
+                // Reported once per 80 KB chunk, which for a 46 MB artifact is ~575 posts to the UI
+                // thread. Throttled to ~10/s so the bar animates without the readout flickering through
+                // numbers nobody can read.
+                var lastReport = 0L;
                 var progress = new Progress<(long Downloaded, long? Total)>(p =>
                 {
-                    if (p.Total is { } total)
+                    var now = Environment.TickCount64;
+                    var complete = p.Total is { } t && p.Downloaded >= t;
+                    if (!complete && now - lastReport < 100) return;
+                    lastReport = now;
+
+                    if (p.Total is { } total && total > 0)
                     {
                         DownloadProgressBar.IsIndeterminate = false;
                         DownloadProgressBar.Maximum = total;
@@ -1079,7 +1100,11 @@ public sealed partial class SearchPage : Page
                     }
                     else
                     {
-                        DownloadProgressText.Text = FormatBytes(p.Downloaded);
+                        // CADC does not send Content-Length for a package it builds on the fly, so there
+                        // is no total to show a percentage against. Say so, rather than leaving a bare
+                        // number beside a bar that looks stuck.
+                        DownloadProgressBar.IsIndeterminate = true;
+                        DownloadProgressText.Text = Loc.F("Search_DownloadedSoFar", FormatBytes(p.Downloaded));
                     }
                 });
                 await _downloads.DownloadToPathAsync(url, file.Path, progress: progress);

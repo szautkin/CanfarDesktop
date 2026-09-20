@@ -192,6 +192,50 @@ public partial class SearchViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Load the data train and WAIT for rows: cache first, then a synchronous network fetch when the
+    /// cache is empty.
+    ///
+    /// <para><see cref="LoadDataTrainAsync"/> fires its network refresh and forgets it, which is right
+    /// when the cache already has something to show. On a FIRST run there is no cache, so that path
+    /// leaves Additional Constraints empty until the next launch — the facets appear only once the
+    /// forgotten fetch has written the cache for next time.</para>
+    /// </summary>
+    public async Task EnsureDataTrainAsync()
+    {
+        if (_allDataTrainRows.Count > 0) return;
+        IsLoadingDataTrain = true;
+        try
+        {
+            var cached = await Task.Run(LoadDataTrainFromCache);
+            if (cached.Count > 0)
+            {
+                _allDataTrainRows = cached;
+                RefreshDataTrainOptions();
+                return;
+            }
+
+            var fresh = await _tapService.GetDataTrainAsync();
+            if (fresh.Count > 0)
+            {
+                _allDataTrainRows = fresh;
+                SaveDataTrainToCache(fresh);
+                RefreshDataTrainOptions();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Data train ensure failed: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingDataTrain = false;
+        }
+    }
+
+    /// <summary>Row count after the active filters (equals TotalRows when none are set).</summary>
+    public int FilteredRowCount => GetProcessedRows().Count;
+
     private static List<DataTrainRow> LoadDataTrainFromCache()
     {
         if (DataTrainCachePath is null || !File.Exists(DataTrainCachePath)) return [];

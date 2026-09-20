@@ -3146,6 +3146,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Search_DownloadedFile" xml:space="preserve">
     <value>Downloaded {0}</value>
   </data>
+  <data name="Search_DownloadedSoFar" xml:space="preserve">
+    <value>{0} downloaded — total size unknown</value>
+  </data>
   <data name="Search_DownloadingFile" xml:space="preserve">
     <value>Downloading {0}...</value>
   </data>
