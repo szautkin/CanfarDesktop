@@ -94,24 +94,17 @@ public sealed partial class CubeExportDialog : ContentDialog
             Canvas.SetLeft(raster, -100000);
             raster.UpdateLayout();
 
-            // What this plate can actually be rasterised at. Asking for more than the limit does not
-            // fail, it silently renders smaller — which is how 4x came out barely larger than 2x.
-            var fitted = Helpers.RasterLimit.Fit(raster.ActualWidth, raster.ActualHeight, scale);
-            if (fitted.Width < 1 || fitted.Height < 1)
-            {
-                StatusLabel.Text = Helpers.Loc.T("Cube_ExpRenderFailed");
-                return;
-            }
-
-            var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(raster, fitted.Width, fitted.Height);
-            int rw = rtb.PixelWidth, rh = rtb.PixelHeight;
-            byte[] buf = (await rtb.GetPixelsAsync()).ToArray();
-            if (rw <= 0 || rh <= 0 || buf.Length < (long)rw * rh * 4)
+            // Rendered in pieces when the figure is past what one rasterisation can produce, which
+            // is how 4x becomes an actual 4x rather than the 2.8x the limit used to quietly impose.
+            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(raster, RasterHost, scale);
+            if (rendered is not { } figure)
             {
                 StatusLabel.Text = scale >= 4 ? Helpers.Loc.T("Cube_ExpTooLarge") : Helpers.Loc.T("Cube_ExpRenderFailed");
                 return;
             }
+
+            int rw = figure.Width, rh = figure.Height;
+            byte[] buf = figure.Pixels;
 
             var hwnd = WindowHelper.ActiveWindows.Count > 0
                 ? WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0]) : nint.Zero;
@@ -146,9 +139,10 @@ public sealed partial class CubeExportDialog : ContentDialog
             }
             // Say what was really produced when the limit got in the way, rather than letting the
             // 4x button quietly hand back something closer to 3x.
-            StatusLabel.Text = fitted.Clamped
-                ? Helpers.Loc.F("Cube_SavedLimited", file.Name, $"{fitted.Scale:0.#}", scale,
-                                Helpers.RasterLimit.MaxEdge)
+            // Say what was really produced when the figure had to be reduced to something the
+            // machine could assemble, rather than letting the 4x button quietly hand back less.
+            StatusLabel.Text = figure.Scale < scale - 1e-9
+                ? Helpers.Loc.F("Cube_SavedLimited", file.Name, $"{figure.Scale:0.#}", scale, rw, rh)
                 : Helpers.Loc.F("Cube_Saved", file.Name);
         }
         catch (Exception ex)

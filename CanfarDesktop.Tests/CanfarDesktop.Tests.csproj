@@ -305,6 +305,7 @@
     <Compile Include="..\Helpers\PlateInk.cs" Link="Linked\PlateInk.cs" />
     <Compile Include="..\Helpers\RasterLimit.cs" Link="Linked\RasterLimit.cs" />
     <Compile Include="..\Helpers\PanelSlide.cs" Link="Linked\PanelSlide.cs" />
+    <Compile Include="..\Helpers\TiledRaster.cs" Link="Linked\TiledRaster.cs" />
     <Compile Include="..\Helpers\MarkCommands.cs" Link="Linked\MarkCommands.cs" />
     <Compile Include="..\Services\Fits\AnnotationStore.cs" Link="Linked\Fits\AnnotationStore.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationContracts.cs" Link="Linked\Mcp\AnnotationContracts.cs" />

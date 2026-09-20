@@ -43,6 +43,8 @@
                             PointerPressed="OnPointerPressed"
                             PointerMoved="OnPointerMoved"
                             PointerReleased="OnPointerReleased"
+                            PointerCanceled="OnPointerReleased"
+                            PointerCaptureLost="OnPointerReleased"
                             PointerWheelChanged="OnPointerWheelChanged"
                             SizeChanged="OnPanelSizeChanged" />
 

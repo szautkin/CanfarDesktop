@@ -1232,7 +1232,7 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
     <value>{0} enregistré</value>
   </data>
   <data name="Cube_SavedLimited" xml:space="preserve">
-    <value>{0} enregistré à {1}× — {2}× dépasserait la limite de rendu de {3} px</value>
+    <value>{0} enregistré à {1}× — {2}× serait trop grand à assembler ({3}×{4} px)</value>
   </data>
   <data name="Cube_SliceModeButton.Content" xml:space="preserve">
     <value>Tranche</value>

@@ -226,14 +226,11 @@ public sealed partial class CubeViewerPage
             // RenderTargetBitmap will not exceed its longest-edge limit and does not say so — it
             // quietly renders smaller. Ask for what is actually achievable, so the figure's size and
             // the scale reported back are the same number.
-            var raster = Helpers.RasterLimit.Fit(plate.ActualWidth, plate.ActualHeight, sc);
-            if (raster.Width < 1 || raster.Height < 1) return "the figure has no size to render";
+            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(plate, ExportHost, sc);
+            if (rendered is not { } figure) return "plate rasterization failed";
 
-            var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(plate, raster.Width, raster.Height);
-            int rw = rtb.PixelWidth, rh = rtb.PixelHeight;
-            byte[] buf = (await rtb.GetPixelsAsync()).ToArray();
-            if (rw <= 0 || rh <= 0 || buf.Length < (long)rw * rh * 4) return "plate rasterization failed";
+            int rw = figure.Width, rh = figure.Height;
+            byte[] buf = figure.Pixels;
 
             using (var fs = new FileStream(full, FileMode.Create))
             {

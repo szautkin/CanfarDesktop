@@ -248,17 +248,12 @@ public sealed partial class FitsViewerPage
             plate.UpdateLayout();
 
             // The plate is already laid out at the export's scale, so a 4x figure of a large region
-            // can exceed what RenderTargetBitmap will produce. It does not fail when asked for more,
-            // it renders smaller in silence — so ask for what is achievable.
-            var fitted = Helpers.RasterLimit.Fit(plate.ActualWidth, plate.ActualHeight, 1.0);
-            if (fitted.Width < 1 || fitted.Height < 1) return "the figure has no size to render";
+            // can be past what a single rasterisation produces. Rendered in pieces when so.
+            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(plate, ExportHost, 1.0);
+            if (rendered is not { } figure) return "plate rasterization failed";
 
-            var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(plate, fitted.Width, fitted.Height);
-
-            int rw = rtb.PixelWidth, rh = rtb.PixelHeight;
-            var pixels = (await rtb.GetPixelsAsync()).ToArray();
-            if (rw <= 0 || rh <= 0 || pixels.Length < (long)rw * rh * 4) return "plate rasterization failed";
+            int rw = figure.Width, rh = figure.Height;
+            var pixels = figure.Pixels;
 
             using var file = new System.IO.FileStream(full, System.IO.FileMode.Create);
             if (pdf)

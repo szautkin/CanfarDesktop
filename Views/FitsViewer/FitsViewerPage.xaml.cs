@@ -974,6 +974,14 @@ public sealed partial class FitsViewerPage : UserControl
             return;
         }
 
+        // A pan needs its button too, for the same reason the cube's orbit does: a release this
+        // canvas never saw would otherwise leave the image following the pointer around.
+        if (_isDragging && !e.GetCurrentPoint(ImageCanvas).Properties.IsLeftButtonPressed)
+        {
+            _isDragging = false;
+            ImageCanvas.ReleasePointerCapture(e.Pointer);
+        }
+
         if (_isDragging)
         {
             var pos = e.GetCurrentPoint(ImageCanvas).Position;

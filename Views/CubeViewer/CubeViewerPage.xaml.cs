@@ -574,8 +574,16 @@ public sealed partial class CubeViewerPage : UserControl
             return;
         }
 
+        var point = e.GetCurrentPoint(RenderPanel);
+
+        // A drag needs its button. Orbiting purely on "a drag started once" meant that if the release
+        // was ever missed — the capture taken by something else, the button let go off-window — every
+        // later movement of the mouse kept turning the cube, with nothing holding it. Ending the drag
+        // here makes a missed release heal itself on the next move instead of sticking.
+        if (_isDragging && !point.Properties.IsLeftButtonPressed) EndOrbit(e.Pointer);
+
         if (!_isDragging) return;
-        var pos = e.GetCurrentPoint(RenderPanel).Position;
+        var pos = point.Position;
         float dx = (float)(pos.X - _lastPointer.X);
         float dy = (float)(pos.Y - _lastPointer.Y);
         _lastPointer = pos;
@@ -593,9 +601,21 @@ public sealed partial class CubeViewerPage : UserControl
         }
 
         if (!_isDragging) return;
-        _isDragging = false;
-        RenderPanel.ReleasePointerCapture(e.Pointer);
+        EndOrbit(e.Pointer);
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// Stop orbiting and let the pointer go.
+    ///
+    /// One place, because a drag can end in more ways than a button coming up: the capture can be
+    /// taken, the gesture cancelled, or the button released somewhere this panel never hears about.
+    /// All of them arrive here.
+    /// </summary>
+    private void EndOrbit(Pointer pointer)
+    {
+        _isDragging = false;
+        RenderPanel.ReleasePointerCapture(pointer);
     }
 
     private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)

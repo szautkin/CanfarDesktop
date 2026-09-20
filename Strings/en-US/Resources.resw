@@ -1232,7 +1232,7 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
     <value>Saved {0}</value>
   </data>
   <data name="Cube_SavedLimited" xml:space="preserve">
-    <value>Saved {0} at {1}× — {2}× would exceed the {3} px rendering limit</value>
+    <value>Saved {0} at {1}× — {2}× would be too large to assemble ({3}×{4} px)</value>
   </data>
   <data name="Cube_SliceModeButton.Content" xml:space="preserve">
     <value>Slice</value>
