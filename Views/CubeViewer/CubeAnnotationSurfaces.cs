@@ -115,6 +115,21 @@ public sealed class CubeSliceAnnotationSurface : IAnnotationSurface
 
     public double InkScale { get; init; } = 1.0;
 
+    /// <summary>
+    /// The aspect-fit factor: viewport pixels per DISPLAY pixel before the zoom.
+    ///
+    /// One definition, used by the forward mapping and by its inverse, so the two cannot drift apart.
+    /// Zero when anything needed is not a usable measurement.
+    /// </summary>
+    private double Fit
+        => _viewportWidth > 0 && _viewportHeight > 0 && _displayNx > 0 && _displayNy > 0
+            ? Math.Min(_viewportWidth / _displayNx, _viewportHeight / _displayNy)
+            : 0;
+
+    /// <summary>Where the fitted plane starts inside the viewport — the letterbox margin.</summary>
+    private double OriginX(double fit) => (_viewportWidth - _displayNx * fit) / 2;
+    private double OriginY(double fit) => (_viewportHeight - _displayNy * fit) / 2;
+
     /// <summary>How many viewport pixels one DISPLAY pixel of the slice spans, after the fit and the zoom.</summary>
     private double DisplayScale
     {
@@ -151,18 +166,61 @@ public sealed class CubeSliceAnnotationSurface : IAnnotationSurface
         var (dx, dy) = VoxelToDisplay(anchor.X, anchor.Y);
 
         // Undo of MapToPixel: fit-space, then the zoom about the viewport centre, then the pan.
-        var fit = Math.Min(_viewportWidth / _displayNx, _viewportHeight / _displayNy);
-        var originX = (_viewportWidth - _displayNx * fit) / 2;
-        var originY = (_viewportHeight - _displayNy * fit) / 2;
-
-        var fx = originX + dx * fit;
-        var fy = originY + dy * fit;
+        var fit = Fit;
+        var fx = OriginX(fit) + dx * fit;
+        var fy = OriginY(fit) + dy * fit;
 
         var centreX = _viewportWidth / 2;
         var centreY = _viewportHeight / 2;
 
         return (centreX + (fx - centreX) * _zoom + _panX,
                 centreY + (fy - centreY) * _zoom + _panY);
+    }
+
+    /// <summary>
+    /// The voxel a point on the viewport is over — the exact inverse of <see cref="Project"/>, on the
+    /// channel this surface is showing.
+    ///
+    /// <para>CONTINUOUS, and that is the point. A voxel index is a whole number, but a mark's position
+    /// is not: the anchor holds doubles precisely so a mark can sit between voxels. The viewer used to
+    /// answer this by reusing the pixel readout's mapping, which floors to a whole display pixel and
+    /// then floors again to a whole voxel — so a drag could only ever put a mark on an integer voxel.
+    /// On a cube down-sampled to a couple of voxels across, that is a handful of places a mark is
+    /// allowed to be, and dragging it looked broken: nothing for a long sweep of the pointer, then a
+    /// jump of a whole voxel. Zooming in made the dead zone wider and zooming out made the jumps
+    /// wilder, which is exactly how it was reported.</para>
+    ///
+    /// <para>Here, beside the forward mapping, because the two have to cancel. Kept apart they drifted
+    /// — the readout's version quantises deliberately, and borrowing it for a drag inherited a
+    /// rounding that placement must not have. The readout still has its own: a pixel probe genuinely
+    /// wants a whole pixel.</para>
+    /// </summary>
+    public AnnotationAnchor? VoxelAt(double screenX, double screenY)
+    {
+        if (!double.IsFinite(screenX) || !double.IsFinite(screenY)) return null;
+
+        var fit = Fit;
+        if (fit <= 0 || _zoom <= 0) return null;
+
+        // Undo Project, in the order it applied things: the zoom about the viewport centre and the
+        // pan, then the aspect-fit origin, then the display-pixel-to-voxel scaling.
+        var centreX = _viewportWidth / 2;
+        var centreY = _viewportHeight / 2;
+
+        var fx = centreX + (screenX - _panX - centreX) / _zoom;
+        var fy = centreY + (screenY - _panY - centreY) / _zoom;
+
+        var dx = (fx - OriginX(fit)) / fit;
+        var dy = (fy - OriginY(fit)) / fit;
+
+        var vx = _displayNx > 0 ? dx * _volumeNx / _displayNx : dx;
+        var vy = _displayNy > 0 ? dy * _volumeNy / _displayNy : dy;
+
+        // Outside the plane is the letterbox margin, where there is no data under the pointer.
+        if (vx < 0 || vy < 0 || vx > _volumeNx || vy > _volumeNy) return null;
+
+        var anchor = AnnotationAnchor.Data(vx, vy, _channel);
+        return anchor.IsValid ? anchor : null;
     }
 
     /// <summary>

@@ -123,20 +123,15 @@ public sealed partial class CubeViewerPage : IMarkCanvas
     /// <summary>
     /// The voxel a press on the slice is over, on the channel currently shown. Null in the letterbox
     /// margin, where there is no data under the pointer.
+    ///
+    /// <para>Answered by the surface that DRAWS the marks, so placing one and drawing it are exact
+    /// inverses. This used to go through MapToPixel, the pixel readout's mapping, which floors to a
+    /// whole display pixel and then to a whole voxel — correct for a readout, wrong for a position.
+    /// A mark could only land on an integer voxel, so on a down-sampled cube dragging one did nothing
+    /// until it jumped a whole voxel, and the dead zone grew with the zoom.</para>
     /// </summary>
     private AnnotationAnchor? VoxelOnSlice(Point at)
-    {
-        if (_volume is null || MapToPixel(at) is not { } display) return null;
-
-        // MapToPixel answers in the slice's DISPLAY pixels, which are the down-sampled volume's; the
-        // anchor is in the cube's own voxels, so it goes back through the same mapping the readout uses.
-        var voxel = AnnotationAnchor.Data(
-            MapDispToVolume(display.x, _sliceDispNx, _volume.Nx),
-            MapDispToVolume(display.y, _sliceDispNy, _volume.Ny),
-            ViewModel.Channel);
-
-        return voxel.IsValid ? voxel : null;
-    }
+        => _volume is null ? null : SliceSurface().VoxelAt(at.X, at.Y);
 
     /// <summary>
     /// Both views are told, every time. They are one set of marks seen two ways, and drawing only the

@@ -100,6 +100,115 @@ public class CubeAnnotationSurfaceTests
         => new(channel, Nx, Ny, displayNx, displayNy,
                viewportWidth: 400, viewportHeight: 400, zoom, panX, panY);
 
+    // ── Placing a mark, and drawing it, are one mapping ────────────────────────────────
+
+    /// <summary>
+    /// Where a press lands and where the mark is drawn have to cancel exactly, at any zoom and pan.
+    ///
+    /// They did not. The press went through the PIXEL READOUT's mapping, which floors to a whole
+    /// display pixel and then to a whole voxel — right for a readout, wrong for a position. A mark
+    /// could only ever land on an integer voxel, so dragging one on a down-sampled cube did nothing
+    /// until it jumped a whole voxel, and zooming made the dead zone wider.
+    /// </summary>
+    [Theory]
+    [InlineData(1.0, 0, 0)]
+    [InlineData(4.0, 0, 0)]
+    [InlineData(0.35, 0, 0)]
+    [InlineData(2.5, 60, -40)]
+    [InlineData(12.0, -150, 90)]
+    public void APressAndTheMarkItPlacesLandInTheSameSpot(double zoom, double panX, double panY)
+    {
+        var surface = Slice(zoom: zoom, panX: panX, panY: panY);
+
+        foreach (var (x, y) in new[] { (200.0, 200.0), (150.5, 240.25), (201.0, 199.0) })
+        {
+            var voxel = surface.VoxelAt(x, y);
+            Assert.NotNull(voxel);
+
+            var back = surface.Project(voxel!);
+            Assert.NotNull(back);
+
+            Assert.Equal(x, back!.Value.X, 6);
+            Assert.Equal(y, back.Value.Y, 6);
+        }
+    }
+
+    /// <summary>And the other way round: a mark projected and then read back is the same mark.</summary>
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(3.0)]
+    [InlineData(0.5)]
+    public void AMarkProjectedAndReadBackIsUnchanged(double zoom)
+    {
+        var surface = Slice(zoom: zoom);
+        var voxel = AnnotationAnchor.Data(37.25, 44.75, 10);
+
+        var at = surface.Project(voxel);
+        Assert.NotNull(at);
+
+        var back = surface.VoxelAt(at!.Value.X, at.Value.Y);
+        Assert.NotNull(back);
+
+        Assert.Equal(voxel.X, back!.X, 6);
+        Assert.Equal(voxel.Y, back.Y, 6);
+    }
+
+    /// <summary>
+    /// The heart of the bug. A drag is a smooth gesture, so a small movement of the pointer has to
+    /// move the mark a LITTLE — not nothing, and not a whole voxel. An integer answer could do
+    /// neither.
+    /// </summary>
+    [Fact]
+    public void ASmallDragMovesTheMarkASmallAmount()
+    {
+        var surface = Slice(zoom: 8);
+
+        var a = surface.VoxelAt(200, 200);
+        var b = surface.VoxelAt(203, 200);
+
+        Assert.NotNull(a);
+        Assert.NotNull(b);
+        Assert.NotEqual(a!.X, b!.X);
+        Assert.True(Math.Abs(b.X - a.X) < 1.0,
+            $"three pixels at 8x moved the mark {Math.Abs(b.X - a.X)} voxels");
+    }
+
+    /// <summary>
+    /// The case the app actually hits: a cube down-sampled to a couple of voxels across. With integer
+    /// voxels there were four places a mark could be on the whole plane.
+    /// </summary>
+    [Fact]
+    public void AVeryCoarseCubeStillPlacesMarksBetweenItsVoxels()
+    {
+        var coarse = new CubeSliceAnnotationSurface(
+            channel: 125, volumeNx: 2, volumeNy: 2, displayNx: 2, displayNy: 2,
+            viewportWidth: 900, viewportHeight: 900, zoom: 1, panX: 0, panY: 0);
+
+        var left = coarse.VoxelAt(300, 450);
+        var right = coarse.VoxelAt(600, 450);
+
+        Assert.NotNull(left);
+        Assert.NotNull(right);
+        Assert.NotEqual(left!.X, right!.X);
+        Assert.InRange(left.X, 0.0, 2.0);
+        Assert.InRange(right.X, 0.0, 2.0);
+    }
+
+    /// <summary>A press keeps the channel the slice is showing.</summary>
+    [Fact]
+    public void APressTakesTheChannelOnScreen()
+        => Assert.Equal(10, Slice(channel: 10).VoxelAt(200, 200)!.Z, 6);
+
+    /// <summary>The letterbox margin is not on the plane, so there is nothing under the pointer.</summary>
+    [Theory]
+    [InlineData(-50.0, 200.0)]
+    [InlineData(200.0, -50.0)]
+    [InlineData(100000.0, 200.0)]
+    [InlineData(200.0, 100000.0)]
+    [InlineData(double.NaN, 200.0)]
+    public void APressOutsideThePlaneIsNotAVoxel(double x, double y)
+        => Assert.Null(Slice().VoxelAt(x, y));
+
     /// <summary>
     /// A mark belongs to its channel. Drawing every mark on every slice would make a cube with marks on
     /// forty channels unreadable — and would say something false, because the mark is about that channel.
