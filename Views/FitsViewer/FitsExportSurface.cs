@@ -1,4 +1,4 @@
-using CanfarDesktop.Helpers;
+﻿using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.Fits;
 
@@ -65,8 +65,7 @@ public sealed class FitsExportSurface : IAnnotationSurface
 
         // A mark outside the region is NOT on this plate. Skipped rather than clamped to the border,
         // where it would sit on the frame edge claiming to point at something inside the picture.
-        if (at.X < _region.X || at.X > _region.Right || at.Y < _region.Y || at.Y > _region.Bottom)
-            return null;
+        if (!_region.Contains(at.X, at.Y)) return null;
 
         return ((at.X - _region.X) * ScaleX, (at.Y - _region.Y) * ScaleY);
     }

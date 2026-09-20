@@ -1,8 +1,9 @@
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using Windows.Foundation;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
+using CanfarDesktop.Models.Fits;
 using CanfarDesktop.Services.Fits;
 
 namespace CanfarDesktop.Views.FitsViewer;
@@ -61,7 +62,7 @@ public sealed partial class FitsViewerPage : IMarkCanvas
     public IAnnotationSurface Surface => new FitsAnnotationSurface(
         (x, y) => { var p = ImageToScreen(new Point(x, y)); return (p.X, p.Y); },
         () => ViewModel.ImageData?.Wcs is { IsValid: true } wcs ? wcs : null,
-        () => ViewModel.ImageData?.Height ?? 0);
+        () => ViewModel.ImageData is { } img ? (img.Width, img.Height) : (0, 0));
 
     public IMarkLabelField Label => MarkEditorField;
 
@@ -85,7 +86,23 @@ public sealed partial class FitsViewerPage : IMarkCanvas
     /// </summary>
     public AnnotationAnchor? AnchorFor(double x, double y, Annotation? moving)
     {
-        var pixel = e_PointToImage(new Point(x, y));
+        if (ImageFrame() is not { } frame) return null;
+
+        var pressed = e_PointToImage(new Point(x, y));
+
+        // Kept on the image, through the same rectangle the surface tests marks against.
+        //
+        // The canvas is larger than the picture whenever the view is zoomed out, so a press can land in
+        // the margin beside it, and a drag can carry a mark past the edge. Both used to produce an
+        // anchor at a pixel the image does not have; the surface now declines to place those, so left
+        // alone the mark would be created and never drawn, or would disappear mid-drag.
+        //
+        // The two cases want different answers, and which one this is is exactly what `moving` says.
+        // A press in the margin is a miss: no mark. A drag that runs off the edge is a gesture, and the
+        // mark slides along the border rather than sticking or vanishing.
+        if (moving is null && !frame.Contains(pressed.X, pressed.Y)) return null;
+
+        var pixel = frame.Clamp(pressed.X, pressed.Y);
         var wcs = ViewModel.ImageData?.Wcs is { IsValid: true } valid ? valid : null;
         var wanted = moving?.Anchor.Space ?? (wcs is not null ? AnchorSpace.Sky : AnchorSpace.ImagePixel);
 
@@ -103,6 +120,15 @@ public sealed partial class FitsViewerPage : IMarkCanvas
         var imagePixel = AnnotationAnchor.ImagePixel(pixel.X, pixel.Y);
         return imagePixel.IsValid ? imagePixel : null;
     }
+
+    /// <summary>
+    /// The loaded image's extent in display pixels, or null when there is nothing to annotate.
+    /// The one rectangle both the placing of a mark and the drawing of it are measured against.
+    /// </summary>
+    private FitsRegion? ImageFrame()
+        => ViewModel.ImageData is { Width: > 0, Height: > 0 } img
+            ? FitsRegion.WholeImage(img.Width, img.Height)
+            : null;
 
     public void Draw(IReadOnlyList<Annotation> marks, string? selectedId, string? editingId)
     {

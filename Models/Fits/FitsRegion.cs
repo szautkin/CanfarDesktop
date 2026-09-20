@@ -1,4 +1,4 @@
-namespace CanfarDesktop.Models.Fits;
+﻿namespace CanfarDesktop.Models.Fits;
 
 /// <summary>
 /// A rectangle of an image, in DISPLAY pixels — 0-based, y down from the top, the same coordinates the
@@ -19,6 +19,27 @@ public readonly record struct FitsRegion(double X, double Y, double Width, doubl
     public bool IsValid => double.IsFinite(X) && double.IsFinite(Y)
                         && double.IsFinite(Width) && double.IsFinite(Height)
                         && Width > 0 && Height > 0;
+
+    /// <summary>
+    /// Whether a display pixel falls inside this rectangle.
+    ///
+    /// Inclusive on all four edges: a mark sitting exactly on the border is on the image, and excluding
+    /// it would make the frame's own edge the one place a mark silently disappears.
+    ///
+    /// Here rather than written out at each call site because two surfaces ask it — the export plate,
+    /// of its region, and the canvas, of the whole image — and an answer that differed between them
+    /// would mean a mark that shows on screen and not in the figure, or the reverse.
+    /// </summary>
+    public bool Contains(double x, double y)
+        => double.IsFinite(x) && double.IsFinite(y)
+        && x >= X && x <= Right && y >= Y && y <= Bottom;
+
+    /// <summary>
+    /// The nearest point inside, for a point that may be outside. The companion to <see cref="Contains"/>:
+    /// one asks whether a mark is on the image, this puts it back on.
+    /// </summary>
+    public (double X, double Y) Clamp(double x, double y)
+        => (Math.Clamp(x, X, Right), Math.Clamp(y, Y, Bottom));
 
     /// <summary>A region from two corners, in any order — a drag can go up and to the left.</summary>
     public static FitsRegion FromCorners(double x1, double y1, double x2, double y2)

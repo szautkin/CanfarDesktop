@@ -15,33 +15,80 @@ public sealed class FitsAnnotationSurface : IAnnotationSurface
 {
     private readonly Func<double, double, (double X, double Y)> _imageToScreen;
     private readonly Func<WcsInfo?> _wcs;
-    private readonly Func<int> _imageHeight;
+    private readonly Func<(int Width, int Height)> _imageSize;
 
     /// <param name="imageToScreen">A DISPLAY pixel (0-based, y down from the top) to a canvas point.</param>
     /// <param name="wcs">The image's WCS, or null when it has none.</param>
-    /// <param name="imageHeight">
-    /// The image height in pixels, which is what converts between the two pixel conventions in play —
-    /// see <see cref="ProjectSky"/>. A function rather than a value because the height changes with the
-    /// HDU, and a surface built once per render would otherwise hold a stale one.
+    /// <param name="imageSize">
+    /// The image's pixel dimensions. The height converts between the two pixel conventions in play — see
+    /// <see cref="ProjectSky"/> — and both together are the frame a mark has to be inside to be on this
+    /// image at all.
+    ///
+    /// <para>One function rather than two because the width and the height change TOGETHER, when the HDU
+    /// does. Asked separately they could be answered from different extensions, and a frame half a
+    /// megapixel wide and a quarter of one tall is a bounds check that passes what it should reject.</para>
+    ///
+    /// <para>A function rather than a value because a surface is built once per render and the HDU
+    /// changes under it.</para>
     /// </param>
     public FitsAnnotationSurface(
-        Func<double, double, (double X, double Y)> imageToScreen, Func<WcsInfo?> wcs, Func<int> imageHeight)
+        Func<double, double, (double X, double Y)> imageToScreen,
+        Func<WcsInfo?> wcs,
+        Func<(int Width, int Height)> imageSize)
     {
         _imageToScreen = imageToScreen;
         _wcs = wcs;
-        _imageHeight = imageHeight;
+        _imageSize = imageSize;
     }
 
     /// <summary>1.0 on screen. An export plate constructs its own surface with its own factor.</summary>
     public double InkScale { get; init; } = 1.0;
 
+    /// <summary>
+    /// Where the mark goes on the canvas, or null when it is not on this image.
+    ///
+    /// <para>The bounds test is the point. A sky anchor is projected through whatever WCS the CURRENT
+    /// extension carries, and a mosaic's extensions each have their own — so a mark pinned on one CCD,
+    /// asked of another, comes back as a perfectly finite pixel some thousands of rows off the frame.
+    /// The canvas has no edges to stop it, so it was drawn anyway: parked at a corner, over the image,
+    /// pointing at nothing. Off the frame is an ANSWER, and it is the same one the export plate has
+    /// always given for a mark outside its region.</para>
+    /// </summary>
     public (double X, double Y)? Project(AnnotationAnchor anchor)
+    {
+        if (ToDisplay(anchor) is not { } at) return null;
+        if (Frame() is not { } frame || !frame.Contains(at.X, at.Y)) return null;
+
+        return _imageToScreen(at.X, at.Y);
+    }
+
+    /// <summary>The image's own extent, in display pixels, or null when nothing is loaded.</summary>
+    private FitsRegion? Frame()
+    {
+        var (width, height) = _imageSize();
+        return width > 0 && height > 0 ? FitsRegion.WholeImage(width, height) : null;
+    }
+
+    /// <summary>
+    /// The same projection WITHOUT the bounds test — what <see cref="UnitsToPixels"/> needs.
+    ///
+    /// The scale is measured by projecting a point one unit away, and for a mark sitting on the edge of
+    /// the frame that point is off it. Clipped, the measurement would fail and fall back to one pixel
+    /// per unit, so a mark would shrink to a dot at exactly the moment it reached the border. The plate
+    /// avoids this by deriving its scale instead; here the mapping carries a zoom, a rotation and a
+    /// parity flip, so it is measured — and measured against an unclipped projection.
+    /// </summary>
+    private (double X, double Y)? ProjectUnclipped(AnnotationAnchor anchor)
+        => ToDisplay(anchor) is { } at ? _imageToScreen(at.X, at.Y) : null;
+
+    /// <summary>The anchor as a display pixel, whatever space it is pinned in.</summary>
+    private (double X, double Y)? ToDisplay(AnnotationAnchor anchor)
     {
         if (!anchor.IsValid) return null;
 
         return anchor.Space switch
         {
-            AnchorSpace.ImagePixel => _imageToScreen(anchor.X, anchor.Y),
+            AnchorSpace.ImagePixel => (anchor.X, anchor.Y),
             AnchorSpace.Sky => ProjectSky(anchor.X, anchor.Y),
 
             // A cube mark on a FITS canvas. Not an error and not clamped: it belongs to another
@@ -51,7 +98,7 @@ public sealed class FitsAnnotationSurface : IAnnotationSurface
     }
 
     /// <summary>
-    /// A sky position, through the WCS and then the canvas transform.
+    /// A sky position as a display pixel.
     ///
     /// The two ends count pixels differently, and mixing them is how a mark ends up mirrored and one
     /// pixel out — near enough to look like a rendering wobble rather than a coordinate bug. Both
@@ -63,11 +110,10 @@ public sealed class FitsAnnotationSurface : IAnnotationSurface
     {
         if (_wcs() is not { } wcs) return null;
 
-        var height = _imageHeight();
+        var height = _imageSize().Height;
         if (height <= 0) return null;
-        if (PixelConvention.DisplayOfSky(wcs, height, raDeg, decDeg) is not { } d) return null;
 
-        return _imageToScreen(d.X, d.Y);
+        return PixelConvention.DisplayOfSky(wcs, height, raDeg, decDeg);
     }
 
     /// <summary>
@@ -94,7 +140,7 @@ public sealed class FitsAnnotationSurface : IAnnotationSurface
     /// </summary>
     public double UnitsToPixels(AnnotationAnchor anchor)
     {
-        if (Project(anchor) is not { } here) return 1.0;
+        if (ProjectUnclipped(anchor) is not { } here) return 1.0;
 
         var stepped = anchor.Space switch
         {
@@ -107,7 +153,7 @@ public sealed class FitsAnnotationSurface : IAnnotationSurface
             _ => null,
         };
 
-        if (stepped is null || Project(stepped) is not { } there) return 1.0;
+        if (stepped is null || ProjectUnclipped(stepped) is not { } there) return 1.0;
 
         var span = Math.Sqrt(Math.Pow(there.X - here.X, 2) + Math.Pow(there.Y - here.Y, 2));
         var perUnit = anchor.Space == AnchorSpace.Sky ? span / SkyStep : span;
