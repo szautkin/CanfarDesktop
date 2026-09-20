@@ -61,9 +61,10 @@ public sealed partial class CubeViewerPage
         var showVol = slice ? Visibility.Collapsed : Visibility.Visible;
         var showSlice = slice ? Visibility.Visible : Visibility.Collapsed;
 
-        // Collapsing RenderPanel pauses the GPU loop (its ActualWidth → 0).
-        RenderPanel.Visibility = showVol;
-        OverlayCanvas.Visibility = showVol;
+        // One visibility per view, so the two can never disagree. Collapsing VolumeViewport collapses
+        // RenderPanel with it, which pauses the GPU loop (its ActualWidth → 0), and takes the wireframe
+        // and the volume's marks down too — the marks used to be left behind, painting over the slice.
+        VolumeViewport.Visibility = showVol;
         VolumeSection.Visibility = showVol;
         SliceViewport.Visibility = showSlice;
         SliceCoordBar.Visibility = slice && _volume is not null ? Visibility.Visible : Visibility.Collapsed;

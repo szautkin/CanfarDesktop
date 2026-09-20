@@ -33,21 +33,27 @@
             <KeyboardAccelerator Key="Right" Modifiers="Shift" Invoked="OnChannelStepAccel" />
         </Grid.KeyboardAccelerators>
 
-        <!-- GPU volume render surface -->
-        <SwapChainPanel x:Name="RenderPanel"
-                        PointerPressed="OnPointerPressed"
-                        PointerMoved="OnPointerMoved"
-                        PointerReleased="OnPointerReleased"
-                        PointerWheelChanged="OnPointerWheelChanged"
-                        SizeChanged="OnPanelSizeChanged" />
+        <!-- The volume view, as ONE thing. The slice's layers live inside SliceViewport and so are
+             shown and hidden with it; the volume's used to be three siblings at this level, and
+             SetViewMode hid two of them — leaving VolumeAnnotationCanvas painting its marks over the
+             slice. Grouped, the mode switch has one visibility to set and cannot get it half-right. -->
+        <Grid x:Name="VolumeViewport">
+            <!-- GPU volume render surface -->
+            <SwapChainPanel x:Name="RenderPanel"
+                            PointerPressed="OnPointerPressed"
+                            PointerMoved="OnPointerMoved"
+                            PointerReleased="OnPointerReleased"
+                            PointerWheelChanged="OnPointerWheelChanged"
+                            SizeChanged="OnPanelSizeChanged" />
 
-        <!-- Wireframe box + WCS axis captions, projected to match the GPU render.
-             Hit-test transparent so it never steals orbit/zoom input. -->
-        <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
+            <!-- Wireframe box + WCS axis captions, projected to match the GPU render.
+                 Hit-test transparent so it never steals orbit/zoom input. -->
+            <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
 
-        <!-- Marks in the volume. Above the wireframe: a mark inside the box would otherwise be lost
-             behind an edge crossing it, and the box is chrome while the mark is the point. -->
-        <controls:AnnotationLayer x:Name="VolumeAnnotationCanvas" IsHitTestVisible="False" />
+            <!-- Marks in the volume. Above the wireframe: a mark inside the box would otherwise be lost
+                 behind an edge crossing it, and the box is chrome while the mark is the point. -->
+            <controls:AnnotationLayer x:Name="VolumeAnnotationCanvas" IsHitTestVisible="False" />
+        </Grid>
 
         <!-- Off-screen host: the export figure plate is parented here, laid out, and
              rasterized via RenderTargetBitmap, then removed. Children are positioned
