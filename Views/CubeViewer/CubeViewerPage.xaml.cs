@@ -78,6 +78,13 @@ public sealed partial class CubeViewerPage : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+
+        // A parked panel has to STAY parked when its size changes under it: the scrubber is collapsed
+        // in volume mode and has no width to measure until it comes back, and the control column grows
+        // and shrinks with the window. Re-measuring on size is what keeps a panel against its edge
+        // rather than half-way across the picture.
+        foreach (var panel in new FrameworkElement[] { TitlePanel, InfoPanel, ControlColumnBounds, SliceBar })
+            panel.SizeChanged += (_, _) => { if (!PanelsVisible) ApplyPanelSlide(animate: false); };
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -222,8 +229,6 @@ public sealed partial class CubeViewerPage : UserControl
     /// <summary>Fill the bottom-left info panel from the cube metadata (hidden for the synthetic volume).</summary>
     private void PopulateInfoPanel(CubeMetadata? meta)
     {
-        _infoPanelHasContent = meta is not null;
-
         if (meta is null)
         {
             InfoPanel.Visibility = Visibility.Collapsed;
@@ -250,43 +255,72 @@ public sealed partial class CubeViewerPage : UserControl
         InfoMedian.Text = meta.MedianText;
         InfoNan.Text = meta.NanText;
         InfoMode.Text = meta.ModeText;
-        ApplyPanelVisibility();
+        InfoPanel.Visibility = Visibility.Visible;
+        ApplyPanelSlide(animate: false);
     }
 
-    /// <summary>
-    /// Whether the info panel has anything to say. Kept apart from whether it is SHOWN: the panel is
-    /// empty for the synthetic volume, and it is hidden when the panels are hidden, and those are two
-    /// different reasons that must not overwrite each other.
-    /// </summary>
-    private bool _infoPanelHasContent;
-
-    /// <summary>Whether the floating panels are shown. They cover the picture on a small window.</summary>
+    /// <summary>Whether the floating panels are parked. They cover the picture on a small window.</summary>
     internal bool PanelsVisible { get; private set; } = true;
 
     private void OnTogglePanels(object sender, RoutedEventArgs e)
         => SetPanelsVisible(PanelsToggle.IsChecked == true);
 
     /// <summary>
-    /// Show or hide the panels that float over the render.
+    /// Park the floating panels against their nearest edge, or bring them back.
     ///
-    /// The mode buttons and the channel scrubber are deliberately left alone: one is how the panels
-    /// come back, and the other is the thing a person is looking at the cube to move.
+    /// The mode buttons stay put: they are how the panels come back.
     /// </summary>
     internal void SetPanelsVisible(bool visible)
     {
         PanelsVisible = visible;
         if (PanelsToggle.IsChecked != visible) PanelsToggle.IsChecked = visible;
         PanelsToggleIcon.Glyph = visible ? "" : "";
-        ApplyPanelVisibility();
+        ApplyPanelSlide(animate: true);
     }
 
-    private void ApplyPanelVisibility()
+    /// <summary>
+    /// Move each panel to its own nearest edge, leaving a sliver showing.
+    ///
+    /// <para>Moved rather than hidden, and that is the point of doing it this way. Visibility here
+    /// already belongs to other rules — the info panel is empty for a cube with no metadata, the
+    /// scrubber is pointless for a cube with one channel — and a second opinion about it would fight
+    /// them. A transform cannot: a panel those rules have hidden simply slides while invisible.</para>
+    ///
+    /// <para>Each goes to the edge it is already against, so nothing crosses the picture on its way
+    /// out: the title and the info panel leave to the left, the controls to the right, the scrubber
+    /// downwards.</para>
+    /// </summary>
+    private void ApplyPanelSlide(bool animate)
     {
-        var shown = PanelsVisible ? Visibility.Visible : Visibility.Collapsed;
+        var parked = !PanelsVisible;
 
-        TitlePanel.Visibility = shown;
-        ControlColumnBounds.Visibility = shown;
-        InfoPanel.Visibility = PanelsVisible && _infoPanelHasContent ? Visibility.Visible : Visibility.Collapsed;
+        Park(TitlePanel, -1, 0, parked, animate);
+        Park(InfoPanel, -1, 0, parked, animate);
+        Park(ControlColumnBounds, 1, 0, parked, animate);
+        Park(SliceBar, 0, 1, parked, animate);
+    }
+
+    /// <summary>
+    /// Send one panel towards (dirX, dirY) — each either -1, 0 or 1 — or bring it home.
+    ///
+    /// The distance is measured from the panel's own size and its own margin, so a panel that is wider
+    /// on one cube than another still ends up against the edge rather than short of it or past it.
+    /// </summary>
+    private static void Park(FrameworkElement? panel, int dirX, int dirY, bool parked, bool animate)
+    {
+        if (panel is null) return;
+
+        if (!parked)
+        {
+            Controls.SlideTo.Offset(panel, 0, 0, animate);
+            return;
+        }
+
+        var margin = panel.Margin;
+        var x = dirX * Helpers.PanelSlide.Offset(panel.ActualWidth, dirX < 0 ? margin.Left : margin.Right);
+        var y = dirY * Helpers.PanelSlide.Offset(panel.ActualHeight, dirY < 0 ? margin.Top : margin.Bottom);
+
+        Controls.SlideTo.Offset(panel, x, y, animate);
     }
 
     private void HookRendering()
