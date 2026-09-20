@@ -29,6 +29,7 @@ public sealed record CubeViewState(
     string Background = "dark",
     bool ShowSlicePlane = false,
     bool ShowCaptions = false,
+    bool ShowPanels = true,
     bool AutoOrbit = false,
     bool Playing = false,
     // ── Full read parity: everything else the UI shows (info panel, slice view, spectrum panel,

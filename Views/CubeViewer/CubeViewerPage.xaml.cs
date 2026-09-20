@@ -222,6 +222,8 @@ public sealed partial class CubeViewerPage : UserControl
     /// <summary>Fill the bottom-left info panel from the cube metadata (hidden for the synthetic volume).</summary>
     private void PopulateInfoPanel(CubeMetadata? meta)
     {
+        _infoPanelHasContent = meta is not null;
+
         if (meta is null)
         {
             InfoPanel.Visibility = Visibility.Collapsed;
@@ -248,7 +250,43 @@ public sealed partial class CubeViewerPage : UserControl
         InfoMedian.Text = meta.MedianText;
         InfoNan.Text = meta.NanText;
         InfoMode.Text = meta.ModeText;
-        InfoPanel.Visibility = Visibility.Visible;
+        ApplyPanelVisibility();
+    }
+
+    /// <summary>
+    /// Whether the info panel has anything to say. Kept apart from whether it is SHOWN: the panel is
+    /// empty for the synthetic volume, and it is hidden when the panels are hidden, and those are two
+    /// different reasons that must not overwrite each other.
+    /// </summary>
+    private bool _infoPanelHasContent;
+
+    /// <summary>Whether the floating panels are shown. They cover the picture on a small window.</summary>
+    internal bool PanelsVisible { get; private set; } = true;
+
+    private void OnTogglePanels(object sender, RoutedEventArgs e)
+        => SetPanelsVisible(PanelsToggle.IsChecked == true);
+
+    /// <summary>
+    /// Show or hide the panels that float over the render.
+    ///
+    /// The mode buttons and the channel scrubber are deliberately left alone: one is how the panels
+    /// come back, and the other is the thing a person is looking at the cube to move.
+    /// </summary>
+    internal void SetPanelsVisible(bool visible)
+    {
+        PanelsVisible = visible;
+        if (PanelsToggle.IsChecked != visible) PanelsToggle.IsChecked = visible;
+        PanelsToggleIcon.Glyph = visible ? "" : "";
+        ApplyPanelVisibility();
+    }
+
+    private void ApplyPanelVisibility()
+    {
+        var shown = PanelsVisible ? Visibility.Visible : Visibility.Collapsed;
+
+        TitlePanel.Visibility = shown;
+        ControlColumnBounds.Visibility = shown;
+        InfoPanel.Visibility = PanelsVisible && _infoPanelHasContent ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void HookRendering()

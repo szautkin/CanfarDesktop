@@ -15,6 +15,7 @@ public sealed record CubeViewArgs(
     double? Azimuth = null, double? Elevation = null, double? Distance = null,
     double? Density = null, double? SpectralScale = null, int? Steps = null,
     string? Background = null, bool? ShowSlicePlane = null, bool? ShowCaptions = null,
+    bool? ShowPanels = null,
     bool? AutoOrbit = null, bool? Playing = null, bool? ResetCamera = null,
     string? WindowPreset = null,      // "minmax" | "p99" (the two window buttons)
     double? SliceZoom = null,         // slice-view zoom 1–20 (1 = fit)
@@ -78,12 +79,14 @@ public sealed class SetCubeViewTool : JsonReadTool<SetCubeViewTool.Args, CubeVie
         "stretch, render mode, window levels (or windowPreset minmax/p99, the two window buttons). Camera: " +
         "azimuth/elevation (radians) and distance (zoom), or resetCamera to recenter. Volume tuning: density " +
         "(opacity 0.1–3), spectralScale (z-stretch 0.5–4), steps (ray-march quality 96–768). Visibility: " +
-        "background (dark/black/light), showSlicePlane, showCaptions, autoOrbit. Playback: playing " +
+        "background (dark/black/light), showSlicePlane, showCaptions, autoOrbit, and showPanels — the " +
+        "floating info and controls panels, which cover the render on a small window, so hiding them " +
+        "is how to see the whole cube. Playback: playing " +
         "(start/stop the channel animation). Slice navigation: sliceZoom (1–20, 1 = fit) with " +
         "sliceCenterX/Y (the NATIVE cube pixel to center on — use to zoom the user into a region), or " +
         "resetSliceView for the fit view. Only the fields you pass change. Returns the resulting cube view " +
         "state. Live-applied.",
-        """{"type":"object","properties":{"mode":{"type":"string","enum":["volume","slice"]},"channel":{"type":"integer","minimum":0},"colormap":{"type":"string","enum":["grayscale","inverted","heat","cool","viridis","inferno","magma","plasma"]},"stretch":{"type":"string","enum":["linear","log","sqrt","squared","asinh"]},"renderMode":{"type":"string","enum":["emission","maxIntensity"]},"windowLo":{"type":"number","minimum":0,"maximum":1},"windowHi":{"type":"number","minimum":0,"maximum":1},"windowPreset":{"type":"string","enum":["minmax","p99"]},"azimuth":{"type":"number"},"elevation":{"type":"number"},"distance":{"type":"number","minimum":0.5,"maximum":8},"density":{"type":"number","minimum":0.1,"maximum":3},"spectralScale":{"type":"number","minimum":0.5,"maximum":4},"steps":{"type":"integer","minimum":96,"maximum":768},"background":{"type":"string","enum":["dark","black","light"]},"showSlicePlane":{"type":"boolean"},"showCaptions":{"type":"boolean"},"autoOrbit":{"type":"boolean"},"playing":{"type":"boolean"},"resetCamera":{"type":"boolean"},"sliceZoom":{"type":"number","minimum":1,"maximum":20},"sliceCenterX":{"type":"integer","minimum":0},"sliceCenterY":{"type":"integer","minimum":0},"resetSliceView":{"type":"boolean"}},"additionalProperties":false}""");
+        """{"type":"object","properties":{"mode":{"type":"string","enum":["volume","slice"]},"channel":{"type":"integer","minimum":0},"colormap":{"type":"string","enum":["grayscale","inverted","heat","cool","viridis","inferno","magma","plasma"]},"stretch":{"type":"string","enum":["linear","log","sqrt","squared","asinh"]},"renderMode":{"type":"string","enum":["emission","maxIntensity"]},"windowLo":{"type":"number","minimum":0,"maximum":1},"windowHi":{"type":"number","minimum":0,"maximum":1},"windowPreset":{"type":"string","enum":["minmax","p99"]},"azimuth":{"type":"number"},"elevation":{"type":"number"},"distance":{"type":"number","minimum":0.5,"maximum":8},"density":{"type":"number","minimum":0.1,"maximum":3},"spectralScale":{"type":"number","minimum":0.5,"maximum":4},"steps":{"type":"integer","minimum":96,"maximum":768},"background":{"type":"string","enum":["dark","black","light"]},"showSlicePlane":{"type":"boolean"},"showCaptions":{"type":"boolean"},"showPanels":{"type":"boolean"},"autoOrbit":{"type":"boolean"},"playing":{"type":"boolean"},"resetCamera":{"type":"boolean"},"sliceZoom":{"type":"number","minimum":1,"maximum":20},"sliceCenterX":{"type":"integer","minimum":0},"sliceCenterY":{"type":"integer","minimum":0},"resetSliceView":{"type":"boolean"}},"additionalProperties":false}""");
 
     protected override async Task<CubeViewState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
@@ -94,7 +97,8 @@ public sealed class SetCubeViewTool : JsonReadTool<SetCubeViewTool.Args, CubeVie
         var state = await _apply(new CubeViewArgs(
             args.Mode, args.Channel, args.Colormap, args.Stretch, args.RenderMode, args.WindowLo, args.WindowHi,
             args.Azimuth, args.Elevation, args.Distance, args.Density, args.SpectralScale, args.Steps,
-            args.Background, args.ShowSlicePlane, args.ShowCaptions, args.AutoOrbit, args.Playing, args.ResetCamera,
+            args.Background, args.ShowSlicePlane, args.ShowCaptions, args.ShowPanels,
+            args.AutoOrbit, args.Playing, args.ResetCamera,
             args.WindowPreset, args.SliceZoom, args.SliceCenterX, args.SliceCenterY, args.ResetSliceView));
         return state ?? throw new McpToolException(new TargetNotResolved("the cube viewer is not open — open a cube with open_cube first"));
     }
@@ -118,6 +122,7 @@ public sealed class SetCubeViewTool : JsonReadTool<SetCubeViewTool.Args, CubeVie
         public string? Background { get; init; }
         public bool? ShowSlicePlane { get; init; }
         public bool? ShowCaptions { get; init; }
+        public bool? ShowPanels { get; init; }
         public bool? AutoOrbit { get; init; }
         public bool? Playing { get; init; }
         public bool? ResetCamera { get; init; }

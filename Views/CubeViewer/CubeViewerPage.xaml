@@ -141,6 +141,22 @@
                         <TextBlock x:Uid="Cube_MarksPanelToggleLabel" Text="Marks" />
                     </StackPanel>
                 </ToggleButton>
+
+                <!-- Get the picture back. The panels float OVER the render, so on a small window
+                     they cover most of the cube. Checked means shown, so the control reads the same
+                     way round as the two beside it. The mode buttons and the channel scrubber stay:
+                     one is how you get the panels back, and the other is the thing you are looking
+                     at the cube to move. -->
+                <AppBarSeparator Margin="4,0" />
+                <ToggleButton x:Name="PanelsToggle" x:Uid="Cube_PanelsToggle" IsChecked="True"
+                              MinWidth="84" Click="OnTogglePanels"
+                              ToolTipService.ToolTip="Show or hide the side panels"
+                              AutomationProperties.Name="Panels">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon x:Name="PanelsToggleIcon" Glyph="&#xE7B3;" FontSize="14" />
+                        <TextBlock x:Uid="Cube_PanelsToggleLabel" Text="Panels" />
+                    </StackPanel>
+                </ToggleButton>
             </StackPanel>
         </Border>
 
@@ -154,7 +170,7 @@
                    Style="{StaticResource BodyTextBlockStyle}" />
 
         <!-- Title / status -->
-        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top"
+        <StackPanel x:Name="TitlePanel" HorizontalAlignment="Left" VerticalAlignment="Top"
                     Margin="20" Spacing="2" IsHitTestVisible="False">
             <TextBlock x:Uid="Cube_Title" Text="Cube Viewer" FontWeight="Bold"
                        Foreground="#FFF0F0F0"

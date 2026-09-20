@@ -428,6 +428,30 @@
   <data name="Marks_RowDelete" xml:space="preserve">
     <value>Supprimer ce repère</value>
   </data>
+  <data name="Marks_CmdEditLabel" xml:space="preserve">
+    <value>Modifier l'étiquette</value>
+  </data>
+  <data name="Marks_CmdCopyCoordinates" xml:space="preserve">
+    <value>Copier les coordonnées</value>
+  </data>
+  <data name="Marks_CmdCentre" xml:space="preserve">
+    <value>Centrer sur ce repère</value>
+  </data>
+  <data name="Marks_CmdSearchHere" xml:space="preserve">
+    <value>Rechercher ici</value>
+  </data>
+  <data name="Marks_CmdExportFigure" xml:space="preserve">
+    <value>Exporter une figure autour</value>
+  </data>
+  <data name="Marks_CmdDelete" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Marks_CmdNeedsWcs" xml:space="preserve">
+    <value>Cette image n'a pas de WCS, ce repère n'a donc pas de position céleste</value>
+  </data>
+  <data name="Marks_CopiedCoordinates" xml:space="preserve">
+    <value>Coordonnées copiées</value>
+  </data>
   <data name="Marks_ClearTitle" xml:space="preserve">
     <value>Supprimer tous les repères ?</value>
   </data>
@@ -484,6 +508,15 @@
   </data>
   <data name="Cube_MarksPanelToggleLabel.Text" xml:space="preserve">
     <value>Repères</value>
+  </data>
+  <data name="Cube_PanelsToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip" xml:space="preserve">
+    <value>Afficher ou masquer les panneaux latéraux</value>
+  </data>
+  <data name="Cube_PanelsToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name" xml:space="preserve">
+    <value>Panneaux</value>
+  </data>
+  <data name="Cube_PanelsToggleLabel.Text" xml:space="preserve">
+    <value>Panneaux</value>
   </data>
   <data name="Cube_MarksHeader.Text" xml:space="preserve">
     <value>REPÈRES</value>

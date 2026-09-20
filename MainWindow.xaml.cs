@@ -433,6 +433,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 azimuth: args.Azimuth, elevation: args.Elevation, distance: args.Distance,
                 density: args.Density, spectralScale: args.SpectralScale, steps: args.Steps,
                 background: args.Background, showSlicePlane: args.ShowSlicePlane, showCaptions: args.ShowCaptions,
+                showPanels: args.ShowPanels,
                 autoOrbit: args.AutoOrbit, playing: args.Playing, resetCamera: args.ResetCamera,
                 windowPreset: args.WindowPreset, sliceZoom: args.SliceZoom,
                 sliceCenterX: args.SliceCenterX, sliceCenterY: args.SliceCenterY,
