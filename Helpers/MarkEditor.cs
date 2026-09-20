@@ -100,6 +100,22 @@ public sealed class MarkEditor
     private List<Annotation> _marks = [];
     private string? _loadedTarget;
     private MarkGrab _grab = new MarkGrab.None();
+
+    /// <summary>
+    /// How far the pointer may travel and still count as a click rather than a drag.
+    ///
+    /// A press on a mark both picks it out and takes hold of it, so "click it again to let it go" can
+    /// only be decided on RELEASE — deciding it on the press would mean a selected mark could never
+    /// be dragged at all. A few pixels of slop, because a mouse shifts a little under a finger, and a
+    /// click that silently became a one-pixel drag would leave the mark selected for no visible reason.
+    /// </summary>
+    private const double ClickSlop = 3.0;
+
+    private double _pressX, _pressY;
+    private bool _pressMoved;
+
+    /// <summary>The press landed on the mark that was ALREADY picked out — so releasing lets it go.</summary>
+    private bool _pressOnSelected;
     private bool _fieldWired;
 
     public MarkEditor(IMarkCanvas canvas, IMarkStore? store, IMarkStylePreference style)
@@ -224,11 +240,27 @@ public sealed class MarkEditor
         Reload();
 
         var surface = _canvas.Surface;
+        var wasSelected = SelectedId;
+
+        _pressX = x;
+        _pressY = y;
+        _pressMoved = false;
+        _pressOnSelected = false;
+
         _grab = AnnotationGeometry.GrabAt(_marks, surface, SelectedId, DrawArmed, x, y);
 
         switch (_grab)
         {
             case MarkGrab.None:
+                // Nothing of ours is under the pointer, so the press belongs to the canvas. It still
+                // means something here: pressing away from the marks is how a person puts one down.
+                if (wasSelected is not null)
+                {
+                    SelectedId = null;
+                    EndEditing();
+                    Render();
+                    Announce();
+                }
                 return false;
 
             case MarkGrab.Place:
@@ -265,6 +297,7 @@ public sealed class MarkEditor
                 return true;
 
             case MarkGrab.Move move:
+                _pressOnSelected = string.Equals(wasSelected, move.Id, StringComparison.Ordinal);
                 SelectedId = move.Id;
                 Render();
                 Announce();
@@ -284,6 +317,10 @@ public sealed class MarkEditor
     public bool Continue(double x, double y)
     {
         var surface = _canvas.Surface;
+
+        if (!_pressMoved &&
+            (Math.Abs(x - _pressX) > ClickSlop || Math.Abs(y - _pressY) > ClickSlop))
+            _pressMoved = true;
 
         switch (_grab)
         {
@@ -330,7 +367,19 @@ public sealed class MarkEditor
         // is where the field opens.
         var justDrawn = _grab is MarkGrab.Resize resize && resize.Id == EditingId ? resize.Id : null;
 
+        // Clicking the mark that was already picked out lets it go. Only on a click: the same press
+        // is how a mark is dragged, so a gesture that moved has said what it meant already.
+        var letGo = _pressOnSelected && !_pressMoved && _grab is MarkGrab.Move;
+
         _grab = new MarkGrab.None();
+        _pressOnSelected = false;
+        _pressMoved = false;
+
+        if (letGo)
+        {
+            SelectedId = null;
+            EndEditing();
+        }
 
         // Anything that failed its own validation during the drag — a shape dragged to nothing — is
         // dropped rather than stored: the store would refuse it, and a mark that is there until you
@@ -448,6 +497,22 @@ public sealed class MarkEditor
     }
 
     public void SetKind(AnnotationKind kind) => Kind = kind;
+
+    /// <summary>
+    /// Let go of whatever is picked out, if this editor is showing that file.
+    ///
+    /// Separate from <see cref="Refresh"/> because that one's null selectId means "leave the selection
+    /// alone" — every caller that redraws after a change relies on it. Clearing is a third thing, and
+    /// a string cannot say three things.
+    /// </summary>
+    public bool Deselect(string target)
+    {
+        if (_canvas.Target is not { } mine || !string.Equals(mine, target, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        Select(null);
+        return true;
+    }
 
     /// <summary>Pick a mark out, and go to it if the viewer can.</summary>
     public void Select(string? id)

@@ -591,18 +591,19 @@ public sealed class SelectAnnotationTool : JsonReadTool<SelectAnnotationTool.Arg
         "select_annotation",
         "Pick out a mark on the user's screen — the way you would point at it. Nothing is changed; the " +
         "mark is highlighted in the viewer that is showing its file. Use this to refer to a specific " +
-        "mark while talking about it, rather than describing where on the image it is.",
+        "mark while talking about it, rather than describing where on the image it is. OMIT id to stop " +
+        "pointing and leave nothing picked out — the same as clicking the mark again, or clicking away " +
+        "from it, in the viewer.",
         """
         {"type":"object","properties":{
-          "id":{"type":"string"},
+          "id":{"type":"string","description":"The mark to point at. Omit to let go of whatever is picked out."},
           "viewer":{"type":"string","enum":["fits","cube"],"description":"Default fits."}
-        },"required":["id"],"additionalProperties":false}
+        },"additionalProperties":false}
         """);
 
     protected override async Task<AnnotationChange> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
         var id = (args.Id ?? string.Empty).Trim();
-        if (id.Length == 0) throw new McpToolException(new InvalidArgument("id is required"));
 
         var viewer = UpdateAnnotationTool.ParseViewer(args.Viewer);
         var name = AnnotationArgs.Name(viewer);
@@ -610,6 +611,16 @@ public sealed class SelectAnnotationTool : JsonReadTool<SelectAnnotationTool.Arg
         var target = await _host.ActiveTargetAsync(viewer);
         if (target is null)
             return AnnotationChange.NothingOpen(name, $"nothing is open in the {name} viewer to point at");
+
+        // No id: stop pointing. The gesture a person makes by clicking the mark again, so an agent
+        // that picked something out can put it down without having to name it a second time.
+        if (id.Length == 0)
+        {
+            var cleared = await _host.DeselectAsync(viewer, target);
+            return new AnnotationChange(cleared, name, target, cleared, null,
+                _store.LoadFor(target).Count,
+                cleared ? null : "the viewer did not take the change");
+        }
 
         var mark = _store.LoadFor(target).FirstOrDefault(a => a.Id == id);
         if (mark is null)

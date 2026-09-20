@@ -154,6 +154,9 @@ public sealed partial class FitsViewerPage : IMarkCanvas
     /// <summary>Re-read and redraw after an agent has changed something.</summary>
     public bool RefreshAnnotations(string target, string? selectId) => Marks.Refresh(target, selectId);
 
+    /// <summary>Let go of whatever mark is picked out.</summary>
+    public bool DeselectAnnotation(string target) => Marks.Deselect(target);
+
     private bool TryBeginAnnotationGesture(Point at) => Marks.TryBegin(at.X, at.Y);
 
     private bool ContinueAnnotationGesture(Point at) => Marks.Continue(at.X, at.Y);

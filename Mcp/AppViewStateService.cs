@@ -416,6 +416,9 @@ public sealed class AppViewStateService : IAnnotationHost
     public Task<bool> RefreshAsync(AnnotationViewer viewer, string target, string? selectId)
         => _annotations?.RefreshAsync(viewer, target, selectId) ?? Task.FromResult(false);
 
+    public Task<bool> DeselectAsync(AnnotationViewer viewer, string target)
+        => _annotations?.DeselectAsync(viewer, target) ?? Task.FromResult(false);
+
     // ── Figure export ───────────────────────────────────────────────────────────────────────────
 
     private volatile Func<FitsFigureRequest, Task<FitsFigureOutcome>>? _exportFitsFigure;

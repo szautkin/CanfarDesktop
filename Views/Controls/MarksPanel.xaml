@@ -113,6 +113,7 @@
              of reach while the column's own scrollbar never appeared. -->
         <ListView Grid.Row="3" x:Name="MarkList" SelectionMode="Single" MaxHeight="240"
                   SelectionChanged="OnSelectionChanged"
+                  IsItemClickEnabled="True" ItemClick="OnItemClick"
                   AutomationProperties.Name="Marks">
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">

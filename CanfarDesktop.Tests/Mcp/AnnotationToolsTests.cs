@@ -32,6 +32,9 @@ public class AnnotationToolsTests : IDisposable
         public bool Refreshed { get; private set; }
         public string? LastSelected { get; private set; }
 
+        /// <summary>Set when the viewer was told to stop pointing at anything.</summary>
+        public bool Deselected { get; private set; }
+
         public Task<string?> ActiveTargetAsync(AnnotationViewer viewer)
             => Task.FromResult(viewer == AnnotationViewer.Cube ? CubeTarget : FitsTarget);
 
@@ -39,6 +42,14 @@ public class AnnotationToolsTests : IDisposable
         {
             Refreshed = true;
             LastSelected = selectId;
+            var open = viewer == AnnotationViewer.Cube ? CubeTarget : FitsTarget;
+            return Task.FromResult(string.Equals(open, target, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public Task<bool> DeselectAsync(AnnotationViewer viewer, string target)
+        {
+            Deselected = true;
+            LastSelected = null;
             var open = viewer == AnnotationViewer.Cube ? CubeTarget : FitsTarget;
             return Task.FromResult(string.Equals(open, target, StringComparison.OrdinalIgnoreCase));
         }
@@ -367,6 +378,56 @@ public class AnnotationToolsTests : IDisposable
             .InvokeAsync(Args($$"""{"id":"{{id}}"}"""), Ctx(), default));
 
         Assert.Contains("current file", message);
+    }
+
+    /// <summary>
+    /// Omitting the id stops pointing — the tool's half of the gesture a person makes by clicking the
+    /// mark again. An agent that picked something out could previously only move the selection to
+    /// another mark, never put it down.
+    /// </summary>
+    [Fact]
+    public async Task SelectingWithNoIdLetsGoOfWhateverWasPickedOut()
+    {
+        var (store, id) = await OneMark();
+
+        await new SelectAnnotationTool(store, _host).InvokeAsync(Args($$"""{"id":"{{id}}"}"""), Ctx(), default);
+        Assert.Equal(id, _host.LastSelected);
+
+        var change = Payload<AnnotationChange>(await new SelectAnnotationTool(store, _host)
+            .InvokeAsync(Args("{}"), Ctx(), default));
+
+        Assert.True(change.Applied);
+        Assert.True(_host.Deselected);
+        Assert.Null(_host.LastSelected);
+        Assert.Null(change.Annotation);
+    }
+
+    /// <summary>Letting go changes nothing about the marks themselves.</summary>
+    [Fact]
+    public async Task LettingGoLeavesEveryMarkExactlyAsItWas()
+    {
+        var (store, _) = await OneMark();
+        var before = store.LoadFor("a.fits")[0];
+
+        var change = Payload<AnnotationChange>(await new SelectAnnotationTool(store, _host)
+            .InvokeAsync(Args("{}"), Ctx(), default));
+
+        Assert.Equal(before, store.LoadFor("a.fits")[0]);
+        Assert.Equal(1, change.Remaining);
+    }
+
+    /// <summary>With nothing open there is nothing to stop pointing at, and that is said rather than thrown.</summary>
+    [Fact]
+    public async Task LettingGoWithNothingOpenIsReported()
+    {
+        var (store, _) = await OneMark();
+        _host.FitsTarget = null;
+
+        var change = Payload<AnnotationChange>(await new SelectAnnotationTool(store, _host)
+            .InvokeAsync(Args("{}"), Ctx(), default));
+
+        Assert.False(change.Applied);
+        Assert.Contains("nothing is open", change.Message);
     }
 
     // ── clear_annotations ───────────────────────────────────────────────────────────────────────

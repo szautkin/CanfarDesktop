@@ -1550,6 +1550,12 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             ? _cubeTabHost?.ActivePage?.RefreshAnnotations(target, selectId) ?? false
             : _fitsTabHost?.RefreshAnnotations(target, selectId) ?? false, false);
 
+    Task<bool> CanfarDesktop.Mcp.Tools.Write.IAnnotationHost.DeselectAsync(
+        CanfarDesktop.Mcp.Tools.Write.AnnotationViewer viewer, string target)
+        => OnUi(() => viewer == CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
+            ? _cubeTabHost?.ActivePage?.DeselectAnnotation(target) ?? false
+            : _fitsTabHost?.DeselectAnnotation(target) ?? false, false);
+
     /// <summary>One shape for "did that index exist", so the close paths refuse the same way.</summary>
     private static TabActionOutcome Outcome(bool ok, string kind, int index, string label)
         => new(ok, kind, index, ok ? null : $"there is no {label} tab {index}");

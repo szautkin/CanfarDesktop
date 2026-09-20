@@ -87,6 +87,9 @@ public sealed partial class FitsTabHost : UserControl
     public bool RefreshAnnotations(string target, string? selectId)
         => _activePage?.RefreshAnnotations(target, selectId) ?? false;
 
+    public bool DeselectAnnotation(string target)
+        => _activePage?.DeselectAnnotation(target) ?? false;
+
     /// <summary>Render a figure of the active tab, for <c>export_fits_figure</c>.</summary>
     public Task<CanfarDesktop.Mcp.Tools.Write.FitsFigureOutcome> ExportFigureAsync(
         CanfarDesktop.Mcp.Tools.Write.FitsFigureRequest request)

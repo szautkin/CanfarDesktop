@@ -298,6 +298,30 @@ public sealed partial class MarksPanel : UserControl
     }
 
     /// <summary>
+    /// Clicking the row that is already picked out lets the mark go — the same gesture the canvas
+    /// answers to, so the two agree about what a second click means.
+    ///
+    /// <para>This exists because a ListView does NOT raise SelectionChanged when you click the item
+    /// that is already selected, so selecting was reachable and deselecting was not. Clicking a
+    /// DIFFERENT row also lands here, first; that case returns and lets SelectionChanged do its
+    /// ordinary work, so the two handlers never both act on one click.</para>
+    ///
+    /// <para>Item click also fires on Enter and Space, so this is reachable from the keyboard.</para>
+    /// </summary>
+    private void OnItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (_settling) return;
+        if ((e.ClickedItem as FrameworkElement)?.Tag as string is not { } clicked) return;
+        if ((MarkList.SelectedItem as FrameworkElement)?.Tag as string != clicked) return;
+
+        _settling = true;
+        try { MarkList.SelectedItem = null; }
+        finally { _settling = false; }
+
+        SelectionChanged?.Invoke(null);
+    }
+
+    /// <summary>
     /// Ask before clearing: it takes a person's own marks along with an agent's, and nothing brings
     /// them back. Deleting ONE mark does not ask — one mark is easy to redraw and its button is right
     /// beside it.

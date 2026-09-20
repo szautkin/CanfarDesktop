@@ -22,6 +22,15 @@ public interface IAnnotationHost
     /// showing that target — the marks are stored either way, and will be there when it is opened.
     /// </summary>
     Task<bool> RefreshAsync(AnnotationViewer viewer, string target, string? selectId);
+
+    /// <summary>
+    /// Let go of whatever mark the viewer has picked out. False when it is not showing that target.
+    ///
+    /// Its own method rather than a null <c>selectId</c> on <see cref="RefreshAsync"/>: null there
+    /// means "leave the selection as it is", which every redraw-after-a-change caller depends on.
+    /// Pointing at nothing is a third thing, and one nullable string cannot say three things.
+    /// </summary>
+    Task<bool> DeselectAsync(AnnotationViewer viewer, string target);
 }
 
 /// <summary>One mark, as an agent sees it.</summary>
