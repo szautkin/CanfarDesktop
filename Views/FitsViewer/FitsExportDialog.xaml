@@ -13,7 +13,9 @@
         <x:Double x:Key="ContentDialogMaxHeight">920</x:Double>
     </ContentDialog.Resources>
 
-    <Grid Width="1000" Height="600" ColumnSpacing="16">
+    <!-- Sized from the window at open time rather than fixed: a ContentDialog clips what it cannot
+         fit rather than shrinking it, and the bottom of this column is where the Save button lives. -->
+    <Grid x:Name="DialogRoot" Width="1000" Height="600" MinWidth="520" MinHeight="360" ColumnSpacing="16">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="264" />
@@ -27,7 +29,15 @@
             <Viewbox x:Name="PreviewBox" Stretch="Uniform" StretchDirection="DownOnly" />
         </Border>
 
-        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Disabled">
+        <!-- The options scroll; the Save button does NOT. A button that scrolls out of reach is a
+             button that is not there, and it is the reason the dialog is open. -->
+        <Grid Grid.Column="1" RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Disabled">
             <StackPanel Spacing="12">
 
                 <TextBlock x:Name="RegionSummary" Style="{StaticResource CaptionTextBlockStyle}"
@@ -66,6 +76,10 @@
                 <ToggleSwitch x:Name="MarksToggle" Header="Marks" IsOn="True" Toggled="OnStyleChanged" />
                 <ToggleSwitch x:Name="TransparentToggle" Header="Transparent background" Toggled="OnStyleChanged" />
 
+            </StackPanel>
+        </ScrollViewer>
+
+            <StackPanel Grid.Row="1" Spacing="8">
                 <Button x:Name="SaveButton" HorizontalAlignment="Stretch" Style="{StaticResource AccentButtonStyle}"
                         Click="OnSaveClick">
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -76,6 +90,6 @@
 
                 <InfoBar x:Name="ResultBar" IsOpen="False" IsClosable="False" />
             </StackPanel>
-        </ScrollViewer>
+        </Grid>
     </Grid>
 </ContentDialog>

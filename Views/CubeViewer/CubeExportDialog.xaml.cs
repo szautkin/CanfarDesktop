@@ -27,7 +27,30 @@ public sealed partial class CubeExportDialog : ContentDialog
     private bool _ready;
     private CubeExportPlate? _plate;
 
-    public CubeExportDialog() => InitializeComponent();
+    public CubeExportDialog()
+    {
+        InitializeComponent();
+        Opened += FitToWindow;
+    }
+
+    /// <summary>
+    /// Take the size the window can actually give, rather than the size this dialog would prefer.
+    ///
+    /// A ContentDialog clips content it cannot fit rather than shrinking it, so a fixed size is a
+    /// promise the window may not be able to keep — and what gets clipped is the bottom, which is
+    /// where the buttons are. Done on Opened, because that is when the root is measurable.
+    /// </summary>
+    private void FitToWindow(object sender, ContentDialogOpenedEventArgs args)
+    {
+        if (XamlRoot is null) return;
+
+        DialogRoot.Width = Helpers.DialogSize.Fit(XamlRoot.Size.Width, PreferredWidth, DialogRoot.MinWidth);
+        DialogRoot.Height = Helpers.DialogSize.Fit(XamlRoot.Size.Height, PreferredHeight, DialogRoot.MinHeight);
+    }
+
+    /// <summary>What this dialog asks for when there is room. Matches the size set in its markup.</summary>
+    private const double PreferredWidth = 1000, PreferredHeight = 600;
+
 
     /// <summary>Provide the captured (transparent) volume snapshot + plate content, and show the live preview.</summary>
     public void Initialize(WriteableBitmap frame, int frameW, int frameH, CubeExportPlate.PlateData data, string baseName)

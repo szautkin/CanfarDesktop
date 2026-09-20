@@ -13,7 +13,11 @@
         <x:Double x:Key="ContentDialogMaxHeight">920</x:Double>
     </ContentDialog.Resources>
 
-    <Grid Width="1000" Height="600" ColumnSpacing="16">
+    <!-- Sized from the window at open time rather than fixed: a ContentDialog clips content it cannot
+         fit rather than shrinking it, and what got clipped here was the bottom of the options column,
+         where the export buttons are. MinWidth/MinHeight are the point below which the preview stops
+         being worth showing. -->
+    <Grid x:Name="DialogRoot" Width="1000" Height="600" MinWidth="520" MinHeight="360" ColumnSpacing="16">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="264" />
@@ -30,8 +34,15 @@
             <Viewbox x:Name="PreviewBox" Stretch="Uniform" StretchDirection="DownOnly" />
         </Border>
 
-        <!-- Style controls -->
-        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Disabled">
+        <!-- Style controls. The options scroll; the actions do NOT — a button that scrolls out of
+             reach is a button that is not there, and these are the reason the dialog is open. -->
+        <Grid Grid.Column="1" RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Disabled">
             <StackPanel Spacing="12">
 
                 <StackPanel Spacing="2">
@@ -83,14 +94,18 @@
                     </ComboBox>
                 </StackPanel>
 
+            </StackPanel>
+        </ScrollViewer>
+
+            <StackPanel Grid.Row="1" Spacing="8">
                 <Button x:Uid="Cube_ExpPngButton" Content="Export PNG…" Click="OnExportPng" HorizontalAlignment="Stretch"
-                        Style="{StaticResource AccentButtonStyle}" Margin="0,4,0,0" />
+                        Style="{StaticResource AccentButtonStyle}" />
                 <Button x:Uid="Cube_ExpPdfButton" Content="Export PDF…" Click="OnExportPdf" HorizontalAlignment="Stretch" />
 
                 <TextBlock x:Name="StatusLabel" TextWrapping="Wrap"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Style="{StaticResource CaptionTextBlockStyle}" />
             </StackPanel>
-        </ScrollViewer>
+        </Grid>
     </Grid>
 </ContentDialog>
