@@ -40,6 +40,8 @@
         <Grid x:Name="VolumeViewport">
             <!-- GPU volume render surface -->
             <SwapChainPanel x:Name="RenderPanel"
+                            IsTabStop="True" UseSystemFocusVisuals="True"
+                            AutomationProperties.Name="Volume canvas"
                             PointerPressed="OnPointerPressed"
                             ContextRequested="OnMarkContextRequested"
                             PointerMoved="OnPointerMoved"
@@ -73,6 +75,8 @@
              Short of that the slice runs UNDER the column, and a mark drawn near the right edge is
              hidden behind the very controls that drew it. -->
         <Grid x:Name="SliceViewport" Visibility="Collapsed" Background="Transparent"
+              IsTabStop="True" UseSystemFocusVisuals="True"
+              AutomationProperties.Name="Slice canvas"
               Margin="60,72,320,96"
               SizeChanged="OnSliceViewportSizeChanged"
               PointerPressed="OnSlicePointerPressed"

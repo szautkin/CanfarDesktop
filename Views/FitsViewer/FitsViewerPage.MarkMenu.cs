@@ -175,6 +175,11 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
     /// menu takes the press only when it lands on a mark. That handler marks the press handled, so a
     /// mouse context request never reaches here — and a keyboard one carries no position, which is
     /// exactly how the two are told apart.</para>
+    ///
+    /// <para>The canvas is a tab stop so that this can happen at all: a Grid cannot take focus by
+    /// default, and an element that never holds focus never receives the Menu key. Without that it
+    /// would be a handler that compiles, reads as keyboard support, and runs on no press anyone can
+    /// make.</para>
     /// </summary>
     private void OnCanvasContextRequested(
         UIElement sender, Microsoft.UI.Xaml.Input.ContextRequestedEventArgs args)

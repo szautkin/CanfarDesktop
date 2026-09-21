@@ -111,7 +111,9 @@ public sealed partial class CubeViewerPage : IMarkCommandHost
     /// already means something there.</para>
     ///
     /// <para>With a position it is a click, and the mark is whichever one is under it. Without one
-    /// the keyboard asked, and the mark is the one already picked out.</para>
+    /// the keyboard asked, and the mark is the one already picked out — which both canvases can
+    /// receive because both are tab stops; neither could take focus on its own, and an element that
+    /// never holds focus never sees the Menu key.</para>
     /// </summary>
     private void OnMarkContextRequested(
         UIElement sender, Microsoft.UI.Xaml.Input.ContextRequestedEventArgs args)
