@@ -131,6 +131,10 @@ public sealed partial class FitsTabHost : UserControl
         Action<double, double> searchHandler = (ra, dec) => SearchAtPositionRequested?.Invoke(ra, dec);
         page.SearchAtPositionRequested += searchHandler;
 
+        // The mode turns itself off after one region, and the button has to follow it rather than
+        // keep claiming to be on.
+        page.SelectingAreaChanged += OnPageSelectingAreaChanged;
+
         var tab = new TabViewItem
         {
             Content = page,
@@ -287,6 +291,7 @@ public sealed partial class FitsTabHost : UserControl
             if (tab.Content is FitsViewerPage page)
             {
                 page.SearchAtPositionRequested -= handlers.SearchHandler;
+                page.SelectingAreaChanged -= OnPageSelectingAreaChanged;
                 page.ZoomChanged -= handlers.ZoomHandler;
                 page.CleanupForClose();
             }
@@ -400,6 +405,9 @@ public sealed partial class FitsTabHost : UserControl
         _suppressToolbarSync = true;
         try
         {
+            // Select-area belongs to the page, so switching tabs shows that tab's state.
+            SelectAreaToggle.IsChecked = _activePage?.SelectingArea == true;
+
             // Stretch combo
             var stretchName = vm.Stretch.ToString();
             for (var i = 0; i < StretchCombo.Items.Count; i++)
@@ -518,6 +526,28 @@ public sealed partial class FitsTabHost : UserControl
         if (_activePage is null) return;
         _activePage.SetNorthUp(NorthUpToggle.IsChecked == true);
     }
+
+    /// <summary>Arm or disarm select-area on the tab in front.</summary>
+    private void OnToggleSelectArea(object s, RoutedEventArgs e)
+    {
+        if (_activePage is null)
+        {
+            SelectAreaToggle.IsChecked = false;
+            return;
+        }
+
+        _activePage.SetSelectingArea(SelectAreaToggle.IsChecked == true);
+    }
+
+    /// <summary>
+    /// Follow the page when the mode turns ITSELF off, which it does after one region.
+    ///
+    /// The button is a picture of the page's state, not a second copy of it — a toggle left lit over
+    /// a mode that has already ended is worse than no button, because the next drag pans and nobody
+    /// can see why.
+    /// </summary>
+    private void OnPageSelectingAreaChanged()
+        => SelectAreaToggle.IsChecked = _activePage?.SelectingArea == true;
 
     // ── Zoom slider ─────────────────────────────────────────────────────────
 
@@ -988,6 +1018,7 @@ public sealed partial class FitsTabHost : UserControl
             MaxCut: vm?.MaxCut ?? 0,
             ZoomPercent: Math.Round(zoomPct, 1),
             NorthUp: vm?.IsNorthUp ?? false,
+            SelectingArea: _activePage?.SelectingArea ?? false,
             HasWcs: wcsValid,
             CrosshairPlaced: cross is not null,
             CrosshairRa: cross?.Ra ?? 0,
@@ -1020,8 +1051,15 @@ public sealed partial class FitsTabHost : UserControl
         int? hdu = null, int? crosshairX = null, int? crosshairY = null,
         int? centerX = null, int? centerY = null,
         bool? syncZoom = null, bool? linkedCrosshair = null,
-        bool? showHeaderPanel = null, bool? showBookmarksPanel = null)
+        bool? showHeaderPanel = null, bool? showBookmarksPanel = null,
+        bool? selectArea = null)
     {
+        if (selectArea is not null && _activePage is not null)
+        {
+            _activePage.SetSelectingArea(selectArea.Value);
+            SelectAreaToggle.IsChecked = _activePage.SelectingArea;
+        }
+
         // HDU switch FIRST — it resets the cuts to the new extension's auto-cut, so explicit
         // cut/stretch values passed in the same call win over the reset.
         if (hdu is not null && _activePage?.SelectHduByIndex(hdu.Value) == false

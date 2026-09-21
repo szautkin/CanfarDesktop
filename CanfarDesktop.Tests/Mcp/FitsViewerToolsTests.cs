@@ -16,7 +16,7 @@ public class FitsViewerToolsTests
     private static FitsViewState SampleState() => new(
         Loaded: true, FileName: "m51.fits", Width: 1024, Height: 1024,
         Stretch: "Asinh", Colormap: "Viridis", MinCut: -0.5, MaxCut: 12.3,
-        ZoomPercent: 150, NorthUp: true, HasWcs: true,
+        ZoomPercent: 150, NorthUp: true, SelectingArea: false, HasWcs: true,
         CrosshairPlaced: true, CrosshairRa: 202.47, CrosshairDec: 47.2);
 
     // ── set_fits_view ─────────────────────────────────────────────────────────

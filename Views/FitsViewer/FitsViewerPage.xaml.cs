@@ -791,8 +791,9 @@ public sealed partial class FitsViewerPage : UserControl
             return;
         }
 
-        // Ctrl says what this drag is FOR, so it is asked first. A modifier that loses to whatever else
-        // claims the press is a modifier nobody can rely on.
+        // Who owns this press is decided in ONE place (CanvasPress), and select-area is asked first
+        // because it owns every press while armed — marks included. The region someone wants almost
+        // always starts on top of something interesting, and marks are what people put on those.
         if (point.Properties.IsLeftButtonPressed && TryBeginRegionDrag(point.Position))
         {
             ImageCanvas.CapturePointer(e.Pointer);

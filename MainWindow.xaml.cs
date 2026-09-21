@@ -359,6 +359,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         => OnUi(() => _fitsTabHost?.ApplyFitsView(
             stretch: args.Stretch, colormap: args.Colormap, minCut: args.MinCut, maxCut: args.MaxCut,
             zoomPercent: args.ZoomPercent, northUp: args.NorthUp, reset: args.Reset, clearCrosshair: args.ClearCrosshair,
+            selectArea: args.SelectArea,
             hdu: args.Hdu, crosshairX: args.CrosshairX, crosshairY: args.CrosshairY,
             centerX: args.CenterX, centerY: args.CenterY,
             syncZoom: args.SyncZoom, linkedCrosshair: args.LinkedCrosshair,

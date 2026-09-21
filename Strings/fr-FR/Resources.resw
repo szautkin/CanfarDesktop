@@ -1714,6 +1714,12 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Fits_ResetButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Réinitialiser l'étirement et la vue</value>
   </data>
+  <data name="Fits_SelectAreaToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip" xml:space="preserve">
+    <value>Sélectionner une zone à exporter (ou maintenir Ctrl et faire glisser)</value>
+  </data>
+  <data name="Fits_SelectAreaToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name" xml:space="preserve">
+    <value>Sélectionner une zone</value>
+  </data>
   <data name="Fits_ResetButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Réinitialiser l'étirement et la vue</value>
   </data>

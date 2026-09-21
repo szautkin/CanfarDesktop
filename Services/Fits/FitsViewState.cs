@@ -12,6 +12,7 @@ public sealed record FitsViewState(
     double MaxCut,         // white-level cut (physical pixel value)
     double ZoomPercent,    // current zoom (100 = 1:1)
     bool NorthUp,
+    bool SelectingArea,   // the toolbar's Select area toggle is armed
     bool HasWcs,
     bool CrosshairPlaced,
     double CrosshairRa,    // degrees (0 when no crosshair is placed)

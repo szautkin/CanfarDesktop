@@ -14,7 +14,8 @@ public sealed record FitsViewArgs(
     bool? SyncZoom = null,            // the sync-zoom toolbar toggle
     bool? LinkedCrosshair = null,     // the linked-crosshair toolbar toggle
     bool? ShowHeaderPanel = null,     // show/hide the header + image-info panel
-    bool? ShowBookmarksPanel = null); // show/hide the saved-coordinates panel
+    bool? ShowBookmarksPanel = null, // show/hide the saved-coordinates panel
+    bool? SelectArea = null);         // arm the select-area mode (the toolbar's Select area toggle)
 
 /// <summary>
 /// <c>set_fits_view</c> — steer the 2D FITS viewer's ACTIVE tab: stretch, colormap, black/white cut
@@ -36,9 +37,11 @@ public sealed class SetFitsViewTool : JsonReadTool<SetFitsViewTool.Args, FitsVie
         "(works without WCS; fits_goto_coordinate is the RA/Dec route), clearCrosshair removes it. " +
         "Navigation: centerX/Y pans the viewport to a display pixel. Cross-tab: syncZoom and " +
         "linkedCrosshair (the toolbar toggles). Panels: showHeaderPanel (header + image info), " +
-        "showBookmarksPanel (saved coordinates). Only the fields you pass change. Returns the resulting " +
+        "showBookmarksPanel (saved coordinates), and selectArea — the toolbar's Select area toggle, "
+        + "which arms the next drag on the image to pick a region to export rather than pan, and turns "
+        + "itself off once one is picked. Only the fields you pass change. Returns the resulting " +
         "view state. Live-applied.",
-        """{"type":"object","properties":{"stretch":{"type":"string","enum":["linear","log","sqrt","squared","asinh"]},"colormap":{"type":"string","enum":["grayscale","inverted","heat","cool","viridis"]},"minCut":{"type":"number"},"maxCut":{"type":"number"},"zoomPercent":{"type":"number","minimum":5,"maximum":2000},"northUp":{"type":"boolean"},"reset":{"type":"boolean"},"clearCrosshair":{"type":"boolean"},"hdu":{"type":"integer","minimum":0},"crosshairX":{"type":"integer","minimum":0},"crosshairY":{"type":"integer","minimum":0},"centerX":{"type":"integer","minimum":0},"centerY":{"type":"integer","minimum":0},"syncZoom":{"type":"boolean"},"linkedCrosshair":{"type":"boolean"},"showHeaderPanel":{"type":"boolean"},"showBookmarksPanel":{"type":"boolean"}},"additionalProperties":false}""");
+        """{"type":"object","properties":{"stretch":{"type":"string","enum":["linear","log","sqrt","squared","asinh"]},"colormap":{"type":"string","enum":["grayscale","inverted","heat","cool","viridis"]},"minCut":{"type":"number"},"maxCut":{"type":"number"},"zoomPercent":{"type":"number","minimum":5,"maximum":2000},"northUp":{"type":"boolean"},"reset":{"type":"boolean"},"clearCrosshair":{"type":"boolean"},"hdu":{"type":"integer","minimum":0},"crosshairX":{"type":"integer","minimum":0},"crosshairY":{"type":"integer","minimum":0},"centerX":{"type":"integer","minimum":0},"centerY":{"type":"integer","minimum":0},"syncZoom":{"type":"boolean"},"linkedCrosshair":{"type":"boolean"},"showHeaderPanel":{"type":"boolean"},"showBookmarksPanel":{"type":"boolean"},"selectArea":{"type":"boolean"}},"additionalProperties":false}""");
 
     protected override async Task<FitsViewState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
@@ -50,7 +53,8 @@ public sealed class SetFitsViewTool : JsonReadTool<SetFitsViewTool.Args, FitsVie
             args.Stretch, args.Colormap, args.MinCut, args.MaxCut,
             args.ZoomPercent, args.NorthUp, args.Reset, args.ClearCrosshair,
             args.Hdu, args.CrosshairX, args.CrosshairY, args.CenterX, args.CenterY,
-            args.SyncZoom, args.LinkedCrosshair, args.ShowHeaderPanel, args.ShowBookmarksPanel));
+            args.SyncZoom, args.LinkedCrosshair, args.ShowHeaderPanel, args.ShowBookmarksPanel,
+            SelectArea: args.SelectArea));
         return state ?? throw new McpToolException(new TargetNotResolved("the FITS viewer is not open — open a FITS file first"));
     }
 
@@ -62,6 +66,7 @@ public sealed class SetFitsViewTool : JsonReadTool<SetFitsViewTool.Args, FitsVie
         public double? MaxCut { get; init; }
         public double? ZoomPercent { get; init; }
         public bool? NorthUp { get; init; }
+        public bool? SelectArea { get; init; }
         public bool? Reset { get; init; }
         public bool? ClearCrosshair { get; init; }
         public int? Hdu { get; init; }

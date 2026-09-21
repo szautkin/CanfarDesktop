@@ -64,6 +64,16 @@ public sealed partial class FitsViewerPage : IMarkCanvas
         () => ViewModel.ImageData?.Wcs is { IsValid: true } wcs ? wcs : null,
         () => ViewModel.ImageData is { } img ? (img.Width, img.Height) : (0, 0));
 
+    /// <summary>
+    /// The mark under a point on the canvas, if any.
+    ///
+    /// Asked by the press-owner decision, which has to know whether a press would land on a mark
+    /// before deciding whose press it is — through the same hit test the marks themselves use, so the
+    /// two cannot disagree about what "on a mark" means.
+    /// </summary>
+    private string? MarkAt(Point at)
+        => AnnotationGeometry.AnnotationAt(Marks.Marks, Surface, at.X, at.Y);
+
     public IMarkLabelField Label => MarkEditorField;
 
     /// <summary>The field hangs off the same element presses are measured against, so no translation.</summary>

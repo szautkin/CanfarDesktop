@@ -1714,6 +1714,12 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Fits_ResetButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Reset stretch and view</value>
   </data>
+  <data name="Fits_SelectAreaToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip" xml:space="preserve">
+    <value>Select an area to export (or hold Ctrl and drag)</value>
+  </data>
+  <data name="Fits_SelectAreaToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name" xml:space="preserve">
+    <value>Select area</value>
+  </data>
   <data name="Fits_ResetButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Reset stretch and view</value>
   </data>

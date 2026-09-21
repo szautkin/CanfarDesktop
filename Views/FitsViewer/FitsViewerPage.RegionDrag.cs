@@ -20,6 +20,39 @@ public sealed partial class FitsViewerPage
     private bool _regionDragging;
     private Windows.Foundation.Point _regionStart;
 
+    /// <summary>
+    /// Select-area mode, armed from the toolbar.
+    ///
+    /// Ctrl works without it and always did, but a modifier nobody is told about is a feature only
+    /// its author can find. The button is the way in; the modifier is the way that does not make you
+    /// put the mouse down and come back.
+    /// </summary>
+    public bool SelectingArea { get; private set; }
+
+    /// <summary>Raised when the mode turns itself off, so the toolbar button can follow.</summary>
+    public event Action? SelectingAreaChanged;
+
+    /// <summary>Arm or disarm select-area, and say so with the pointer.</summary>
+    public void SetSelectingArea(bool on)
+    {
+        if (SelectingArea == on) return;
+
+        SelectingArea = on;
+
+        // A crosshair is the only thing on screen saying the next drag will not pan.
+        ProtectedCursor = Microsoft.UI.Input.InputSystemCursor.Create(
+            on ? Microsoft.UI.Input.InputSystemCursorShape.Cross
+               : Microsoft.UI.Input.InputSystemCursorShape.Arrow);
+
+        if (!on && _regionDragging)
+        {
+            _regionDragging = false;
+            RegionRect.Visibility = Visibility.Collapsed;
+        }
+
+        SelectingAreaChanged?.Invoke();
+    }
+
     /// <summary>The rubber band's current corners, in canvas points.</summary>
     private (double X1, double Y1, double X2, double Y2) _regionBand;
 
@@ -35,7 +68,19 @@ public sealed partial class FitsViewerPage
         var ctrl = Microsoft.UI.Input.InputKeyboardSource
             .GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-        if (!ctrl) return false;
+        var shift = Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        // One question, one answer, asked before any gesture starts helping itself to the press.
+        var owner = Helpers.CanvasPress.Owner(new Helpers.CanvasPress.Intent(
+            SelectingArmed: SelectingArea,
+            ModifierSelects: ctrl,
+            PanModifier: shift,
+            DrawingArmed: DrawingArmed,
+            OverMark: MarkAt(at) is not null));
+
+        if (owner != Helpers.PressOwner.Selecting) return false;
 
         _regionDragging = true;
         _regionStart = at;
@@ -70,6 +115,10 @@ public sealed partial class FitsViewerPage
         var a = e_PointToImage(new Windows.Foundation.Point(x1, y1));
         var b = e_PointToImage(new Windows.Foundation.Point(x2, y2));
         var region = FitsRegion.FromCorners(a.X, a.Y, b.X, b.Y);
+
+        // One region per arming. Left armed, the next click near the modal starts a drag nobody asked
+        // for; and the mode has done what it was turned on to do.
+        SetSelectingArea(false);
 
         // Dispatched so the press finishes being handled before a modal opens over the canvas.
         DispatcherQueue.TryEnqueue(() => _ = ShowExportDialogAsync(region));
