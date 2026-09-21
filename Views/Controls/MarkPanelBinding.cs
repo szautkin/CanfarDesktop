@@ -16,10 +16,16 @@ public sealed class MarkPanelBinding
     private readonly MarksPanel _panel;
     private readonly MarkEditor _editor;
 
-    private MarkPanelBinding(MarksPanel panel, MarkEditor editor)
+    private MarkPanelBinding(MarksPanel panel, MarkEditor editor, IMarkCommandHost? commands)
     {
         _panel = panel;
         _editor = editor;
+
+        // The row menu and the export button both belong to the viewer, not to the list. Handing the
+        // panel its host here keeps that in the one place that already knows about both.
+        panel.Commands = commands;
+        if (commands is not null)
+            panel.ExportRequested += () => commands.InvokeMarkCommand(MarkCommand.ExportMarks, string.Empty);
 
         panel.DrawArmedChanged += editor.SetDrawArmed;
         panel.KindChanged += editor.SetKind;
@@ -43,7 +49,9 @@ public sealed class MarkPanelBinding
     /// would fire every handler as many times as it had been opened, so deleting one mark would delete
     /// several.
     /// </summary>
-    public static MarkPanelBinding Attach(MarksPanel panel, MarkEditor editor) => new(panel, editor);
+    public static MarkPanelBinding Attach(
+        MarksPanel panel, MarkEditor editor, IMarkCommandHost? commands = null)
+        => new(panel, editor, commands);
 
     /// <summary>Show the panel what there is. Cheap enough to call after any change.</summary>
     public void Show()

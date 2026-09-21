@@ -443,6 +443,9 @@
   <data name="Marks_CmdExportFigure" xml:space="preserve">
     <value>Exporter une figure autour</value>
   </data>
+  <data name="Marks_CmdExportMarks" xml:space="preserve">
+    <value>Exporter les repères…</value>
+  </data>
   <data name="Marks_CmdDelete" xml:space="preserve">
     <value>Supprimer</value>
   </data>
@@ -451,6 +454,18 @@
   </data>
   <data name="Marks_CopiedCoordinates" xml:space="preserve">
     <value>Coordonnées copiées</value>
+  </data>
+  <data name="Marks_ExportFailed" xml:space="preserve">
+    <value>Impossible d'écrire les repères : {0}</value>
+  </data>
+  <data name="Marks_ExportedCount" xml:space="preserve">
+    <value>{0} repère(s) écrit(s) dans {1}</value>
+  </data>
+  <data name="Marks_ExportTooltip" xml:space="preserve">
+    <value>Écrire ces repères en JSON avec la provenance, ou en fichier de régions DS9</value>
+  </data>
+  <data name="Marks_ExportButton" xml:space="preserve">
+    <value>Exporter les repères…</value>
   </data>
   <data name="Marks_ClearTitle" xml:space="preserve">
     <value>Supprimer tous les repères ?</value>

@@ -12,7 +12,7 @@ public sealed partial class FitsViewerPage
 {
     private void OnMarksExpanding(Expander sender, ExpanderExpandingEventArgs args)
     {
-        _panelBinding ??= Views.Controls.MarkPanelBinding.Attach(MarksPanelControl, Marks);
+        _panelBinding ??= Views.Controls.MarkPanelBinding.Attach(MarksPanelControl, Marks, this);
         _panelBinding.Show();
     }
 

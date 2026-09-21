@@ -114,6 +114,7 @@
         <ListView Grid.Row="3" x:Name="MarkList" SelectionMode="Single" MaxHeight="240"
                   SelectionChanged="OnSelectionChanged"
                   IsItemClickEnabled="True" ItemClick="OnItemClick"
+                  ContextRequested="OnListContextRequested"
                   AutomationProperties.Name="Marks">
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
@@ -136,8 +137,15 @@
                        Text="Click a mark to edit it: drag a grip to resize, the shape to move it, then confirm."
                        TextWrapping="Wrap" Opacity="0.6"
                        Style="{StaticResource CaptionTextBlockStyle}" />
-            <Button x:Name="ClearButton" Click="OnClearAll" HorizontalAlignment="Left"
-                    x:Uid="Marks_ClearButton" Content="Clear all marks" />
+            <!-- Two things to do with the whole list, side by side: take it with you, or throw it
+                 away. Export was reachable only over MCP until now, which made "write my marks out"
+                 an agent-only capability and left a person with no way to get them off the screen. -->
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button x:Name="ExportButton" Click="OnExportMarks"
+                        x:Uid="Marks_ExportButton" Content="Export marks…" />
+                <Button x:Name="ClearButton" Click="OnClearAll"
+                        x:Uid="Marks_ClearButton" Content="Clear all marks" />
+            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>

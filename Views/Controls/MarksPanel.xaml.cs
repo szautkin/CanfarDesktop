@@ -58,6 +58,18 @@ public sealed partial class MarksPanel : UserControl
     /// <summary>Delete every mark. Already confirmed by the time this is raised.</summary>
     public event Action? ClearAllRequested;
 
+    /// <summary>Write these marks out. The viewer knows where they live and what to call the file.</summary>
+    public event Action? ExportRequested;
+
+    /// <summary>
+    /// The viewer, for the right-click menu on a row.
+    ///
+    /// Set rather than injected because the panel outlives any one file and a viewer attaches once.
+    /// Left null, rows simply have no menu — every command in it is reachable another way, so a panel
+    /// without a host is poorer, not broken.
+    /// </summary>
+    public IMarkCommandHost? Commands { get; set; }
+
     // ── What the viewer tells it ────────────────────────────────────────────────────────────────
 
     /// <summary>Whether the pencil is on. Set by the viewer too, since a toolbar may arm it as well.</summary>
@@ -179,6 +191,7 @@ public sealed partial class MarksPanel : UserControl
 
         HintText.Visibility = _marks.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         ClearButton.IsEnabled = _marks.Count > 0;
+        ExportButton.IsEnabled = _marks.Count > 0;
     }
 
     /// <summary>One mark: what it says, where it is, and the two things to do to it.</summary>
@@ -341,6 +354,54 @@ public sealed partial class MarksPanel : UserControl
         };
 
         if (await dialog.ShowAsync() == ContentDialogResult.Primary) ClearAllRequested?.Invoke();
+    }
+
+    private void OnExportMarks(object sender, RoutedEventArgs e) => ExportRequested?.Invoke();
+
+    /// <summary>
+    /// The same menu the canvas shows, on the row that names the mark.
+    ///
+    /// <para>Handled on the list rather than on each row because this one event covers BOTH ways of
+    /// asking: a right-click, which arrives with a position, and the Menu key or Shift+F10 on the
+    /// focused row, which arrives without one. Wiring it per row would have caught the mouse and
+    /// missed the keyboard, since the key lands on the container and never reaches the row's own
+    /// content.</para>
+    /// </summary>
+    private void OnListContextRequested(
+        UIElement sender, Microsoft.UI.Xaml.Input.ContextRequestedEventArgs args)
+    {
+        if (Commands is not { } host) return;
+        var row = RowIdFrom(args.OriginalSource)
+                  ?? (MarkList.SelectedItem as FrameworkElement)?.Tag as string;
+        if (row is not { } id) return;
+
+        // Picked out first: a menu acting on something not visibly chosen is how people delete the
+        // wrong thing. Announcing it also moves the canvas to the mark the menu is about.
+        if (_selectedId != id) SelectionChanged?.Invoke(id);
+
+        var menu = MarkContextMenu.Build(
+            MarkCommands.For(host.CommandContextFor(id)),
+            command => host.InvokeMarkCommand(command, id));
+
+        // No position means the keyboard asked, so the menu goes on the row itself.
+        var at = args.TryGetPosition(MarkList, out var point)
+            ? point
+            : new Windows.Foundation.Point(8, 8);
+
+        MarkContextMenu.ShowAt(menu, MarkList, at.X, at.Y);
+        args.Handled = true;
+    }
+
+    /// <summary>Which row an event came from, by walking up to the element carrying the mark's id.</summary>
+    private static string? RowIdFrom(object? source)
+    {
+        for (var node = source as DependencyObject; node is not null;
+             node = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(node))
+        {
+            if (node is FrameworkElement { Tag: string id } && !string.IsNullOrEmpty(id)) return id;
+        }
+
+        return null;
     }
 
     private static byte Byte(double channel) => (byte)Math.Round(Math.Clamp(channel, 0, 1) * 255);

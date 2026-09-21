@@ -818,7 +818,10 @@ public sealed partial class FitsViewerPage : UserControl
 
         if (point.Properties.IsRightButtonPressed)
         {
-            PlaceCrosshair(point.Position);
+            // On a mark, the right button asks about that mark; anywhere else it keeps its older
+            // meaning. Taking the press away from the crosshair everywhere would have cost a gesture
+            // people already use, to buy a menu that is only ever wanted over a mark.
+            if (!TryShowMarkMenu(point.Position)) PlaceCrosshair(point.Position);
             e.Handled = true;
             return;
         }

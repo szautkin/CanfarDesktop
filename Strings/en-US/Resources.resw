@@ -443,6 +443,9 @@
   <data name="Marks_CmdExportFigure" xml:space="preserve">
     <value>Export figure around this</value>
   </data>
+  <data name="Marks_CmdExportMarks" xml:space="preserve">
+    <value>Export marks…</value>
+  </data>
   <data name="Marks_CmdDelete" xml:space="preserve">
     <value>Delete</value>
   </data>
@@ -451,6 +454,18 @@
   </data>
   <data name="Marks_CopiedCoordinates" xml:space="preserve">
     <value>Coordinates copied</value>
+  </data>
+  <data name="Marks_ExportFailed" xml:space="preserve">
+    <value>Could not write the marks: {0}</value>
+  </data>
+  <data name="Marks_ExportedCount" xml:space="preserve">
+    <value>Wrote {0} mark(s) to {1}</value>
+  </data>
+  <data name="Marks_ExportTooltip" xml:space="preserve">
+    <value>Write these marks out as JSON with provenance, or as a DS9 region file</value>
+  </data>
+  <data name="Marks_ExportButton" xml:space="preserve">
+    <value>Export marks…</value>
   </data>
   <data name="Marks_ClearTitle" xml:space="preserve">
     <value>Delete every mark?</value>

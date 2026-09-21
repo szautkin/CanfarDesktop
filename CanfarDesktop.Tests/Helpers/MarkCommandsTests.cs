@@ -82,6 +82,39 @@ public class MarkCommandsTests
         }
     }
 
+    /// <summary>
+    /// Writing the marks out is offered wherever there are marks, which is both viewers.
+    ///
+    /// It is the one entry that is not about the mark it was opened on — it takes the whole file —
+    /// and it is in the menu because the menu is where somebody is already thinking about marks.
+    /// </summary>
+    [Fact]
+    public void BothViewersOfferToWriteTheMarksOut()
+    {
+        Assert.Contains(MarkCommand.ExportMarks, Commands(Fits()));
+        Assert.Contains(MarkCommand.ExportMarks, Commands(Cube()));
+    }
+
+    /// <summary>
+    /// And it is never greyed. Marks can always be written out — there is no image state that makes
+    /// it impossible, which is what separates it from Search here.
+    /// </summary>
+    [Fact]
+    public void WritingTheMarksOutIsNeverGreyed()
+        => Assert.All(
+            new[] { Fits(), Cube(), Fits(sky: false), Cube(sky: false) },
+            context => Assert.True(
+                MarkCommands.For(context).Single(i => i.Command == MarkCommand.ExportMarks).Enabled));
+
+    /// <summary>It comes before Delete, so the last thing in the menu stays the destructive one.</summary>
+    [Fact]
+    public void WritingTheMarksOutComesBeforeDelete()
+    {
+        var items = MarkCommands.For(Fits()).Select(i => i.Command).ToList();
+
+        Assert.True(items.IndexOf(MarkCommand.ExportMarks) < items.IndexOf(MarkCommand.Delete));
+    }
+
     /// <summary>Every entry needs words and a glyph, or it renders as a blank row.</summary>
     [Fact]
     public void EveryItemHasAResourceKeyAndAGlyph()

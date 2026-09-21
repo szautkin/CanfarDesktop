@@ -41,6 +41,7 @@
             <!-- GPU volume render surface -->
             <SwapChainPanel x:Name="RenderPanel"
                             PointerPressed="OnPointerPressed"
+                            ContextRequested="OnMarkContextRequested"
                             PointerMoved="OnPointerMoved"
                             PointerReleased="OnPointerReleased"
                             PointerCanceled="OnPointerReleased"
@@ -75,6 +76,7 @@
               Margin="60,72,320,96"
               SizeChanged="OnSliceViewportSizeChanged"
               PointerPressed="OnSlicePointerPressed"
+              ContextRequested="OnMarkContextRequested"
               PointerMoved="OnSlicePointerMoved"
               PointerReleased="OnSlicePointerReleased"
               PointerExited="OnSlicePointerExited"

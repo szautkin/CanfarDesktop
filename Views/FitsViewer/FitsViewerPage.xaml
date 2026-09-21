@@ -101,6 +101,7 @@
                   PointerReleased="OnCanvasPointerReleased"
                   PointerCanceled="OnCanvasPointerReleased"
                   PointerWheelChanged="OnCanvasWheelChanged"
+                  ContextRequested="OnCanvasContextRequested"
                   DoubleTapped="OnCanvasDoubleTapped">
                 <Image x:Name="FitsImage"
                        Stretch="Uniform"

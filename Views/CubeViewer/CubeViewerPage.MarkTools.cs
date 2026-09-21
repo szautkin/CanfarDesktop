@@ -83,7 +83,7 @@ public sealed partial class CubeViewerPage
 
         if (_marksOpen)
         {
-            _panelBinding ??= Views.Controls.MarkPanelBinding.Attach(MarksPanelControl, Marks);
+            _panelBinding ??= Views.Controls.MarkPanelBinding.Attach(MarksPanelControl, Marks, this);
             _panelBinding.Show();
 
             // The header to the TOP of the scroller, not merely on screen: brought just into view it
