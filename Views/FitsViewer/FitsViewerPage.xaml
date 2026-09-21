@@ -139,6 +139,24 @@
                      removed. Its children sit far off-screen so they never appear over the viewer. -->
                 <Canvas x:Name="ExportHost" IsHitTestVisible="False" />
 
+                <!-- What is happening while a file is read.
+                     A mosaic has forty-one extensions and takes tens of seconds; the only thing on
+                     screen for that was a twenty-pixel spinner in the toolbar, which says something
+                     is happening and not whether it is nearly done or stuck. -->
+                <Border x:Name="LoadingPanel" Visibility="Collapsed"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Padding="20,16" CornerRadius="8" MinWidth="280"
+                        Background="#D0101622" BorderBrush="#40FFFFFF" BorderThickness="1"
+                        IsHitTestVisible="False">
+                    <StackPanel Spacing="10">
+                        <TextBlock x:Name="LoadingTitle" FontWeight="SemiBold"
+                                   Foreground="#FFF0F0F0" TextTrimming="CharacterEllipsis" />
+                        <ProgressBar x:Name="LoadingBar" Minimum="0" Maximum="1" Width="240" />
+                        <TextBlock x:Name="LoadingDetail" FontSize="12" Opacity="0.75"
+                                   Foreground="#FFE0E0E0" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+
                 <!-- The region being dragged out for a figure. -->
                 <Canvas x:Name="RegionCanvas" IsHitTestVisible="False">
                     <Rectangle x:Name="RegionRect" Visibility="Collapsed"

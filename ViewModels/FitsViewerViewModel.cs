@@ -20,6 +20,14 @@ public partial class FitsViewerViewModel : ObservableObject
 
     [ObservableProperty] private string _title = "FITS Viewer";
     [ObservableProperty] private string _statusMessage = "No file loaded";
+
+    /// <summary>
+    /// How far through the file the parser is, 0 to 1 — or null while that cannot be known.
+    ///
+    /// Null is a real answer and not a zero: a stream that cannot report its length should leave the
+    /// bar indeterminate rather than sit at the left pretending nothing has happened.
+    /// </summary>
+    [ObservableProperty] private double? _loadFraction;
     [ObservableProperty] private string _coordinateText = "";
     [ObservableProperty] private WorldCoordinate? _crosshairPosition;
 
@@ -51,6 +59,7 @@ public partial class FitsViewerViewModel : ObservableObject
     public async Task OpenFileAsync(string filePath)
     {
         IsLoading = true;
+        LoadFraction = null;
         StatusMessage = $"Loading {Path.GetFileName(filePath)}...";
         LoadError = null;
 
@@ -59,12 +68,21 @@ public partial class FitsViewerViewModel : ObservableObject
             FilePath = filePath;
             Title = Path.GetFileName(filePath);
 
+            // Reported from the parse thread, so it is marshalled back before anything is bound to.
+            // A mosaic takes tens of seconds and every extension of it is visible progress.
+            var name = Path.GetFileName(filePath);
+            var progress = new Progress<Helpers.FitsParseProgress>(p =>
+            {
+                LoadFraction = Helpers.FitsLoadProgress.Fraction(p);
+                StatusMessage = Helpers.FitsLoadProgress.Describe(name, p);
+            });
+
             _hdus = await Task.Run(() =>
             {
                 // Unwrap a tar/gzip container (CADC ships multi-product downloads as tar bundles)
                 // so the parser sees a single FITS member, not the archive header.
                 using var stream = FitsContainer.OpenFits(filePath);
-                return FitsParser.Parse(stream);
+                return FitsParser.Parse(stream, progress);
             });
 
             // Find first image HDU
@@ -96,6 +114,7 @@ public partial class FitsViewerViewModel : ObservableObject
         finally
         {
             IsLoading = false;
+            LoadFraction = null;
         }
     }
 

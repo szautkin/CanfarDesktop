@@ -10,13 +10,31 @@ using CanfarDesktop.Models.Fits;
 /// </summary>
 public static class FitsParser
 {
+    /// <summary>A stream that cannot say where it is reports nothing rather than throwing mid-parse.</summary>
+    private static long SafePosition(Stream stream)
+    {
+        try { return stream.CanSeek ? stream.Position : 0; }
+        catch { return 0; }
+    }
+
+    private static long SafeLength(Stream stream)
+    {
+        try { return stream.CanSeek ? stream.Length : 0; }
+        catch { return 0; }
+    }
+
     private const int BlockSize = 2880;
     private const int CardSize = 80;
 
     /// <summary>
     /// Parse all HDUs from a FITS file stream. Only reads image data for HDUs with NAXIS >= 2.
     /// </summary>
-    public static List<FitsHdu> Parse(Stream stream)
+    /// <param name="progress">
+    /// Told after each extension, so a caller can show something moving. A mosaic frame has forty-one
+    /// of them and each is decompressed in turn; without this the whole read is one opaque call and
+    /// the viewer can only spin.
+    /// </param>
+    public static List<FitsHdu> Parse(Stream stream, IProgress<Helpers.FitsParseProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(stream);
         var hdus = new List<FitsHdu>();
@@ -107,6 +125,14 @@ public static class FitsParser
                 ImageData = imageData,
                 Index = index++,
             });
+
+            // After the extension rather than before it: reporting the one about to be read would
+            // name a thing the file might not have, and the bytes would not have moved yet.
+            progress?.Report(new Helpers.FitsParseProgress(
+                HdusParsed: hdus.Count,
+                BytesRead: SafePosition(stream),
+                TotalBytes: SafeLength(stream),
+                CurrentHdu: header.GetString("EXTNAME")));
         }
 
         if (sawCompressedImage && !hasReadableImage)

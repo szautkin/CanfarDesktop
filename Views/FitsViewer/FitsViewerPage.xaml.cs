@@ -105,6 +105,11 @@ public sealed partial class FitsViewerPage : UserControl
             {
                 case nameof(ViewModel.StatusMessage):
                     StatusLabel.Text = ViewModel.StatusMessage;
+                    LoadingDetail.Text = ViewModel.StatusMessage;
+                    break;
+                case nameof(ViewModel.IsLoading):
+                case nameof(ViewModel.LoadFraction):
+                    ShowLoadingProgress();
                     break;
                 case nameof(ViewModel.CoordinateText):
                     CoordLabel.Text = ViewModel.CoordinateText;
@@ -172,6 +177,33 @@ public sealed partial class FitsViewerPage : UserControl
         UpdateHeaderList();
         UpdateImageInfo();
         ComputeSliderRange();
+    }
+
+    /// <summary>
+    /// Show what the parse is doing, or take the panel away when it is finished.
+    ///
+    /// <para>The bar goes indeterminate when the fraction is unknown rather than sitting at zero: a
+    /// bar that has not moved and a bar that cannot move look the same, and only one of them means
+    /// something is wrong.</para>
+    /// </summary>
+    private void ShowLoadingProgress()
+    {
+        var loading = ViewModel.IsLoading;
+        LoadingPanel.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+        if (!loading) return;
+
+        LoadingTitle.Text = ViewModel.Title;
+        LoadingDetail.Text = ViewModel.StatusMessage;
+
+        if (ViewModel.LoadFraction is { } fraction)
+        {
+            LoadingBar.IsIndeterminate = false;
+            LoadingBar.Value = fraction;
+        }
+        else
+        {
+            LoadingBar.IsIndeterminate = true;
+        }
     }
 
     public void ToggleHeader() => SetHeaderPanelVisible(!_headerVisible);
