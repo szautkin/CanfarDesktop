@@ -72,6 +72,13 @@ public sealed partial class FitsTabHost : UserControl
 
         var tabItem = ViewModel.AddNewTab();
         var page = CreateTabViewItem(tabItem);
+
+        // Before the await, not after it. The parse of a multi-extension file takes seconds, and this
+        // call used to sit below it — so for all of that time the tab existed, its progress panel was
+        // up, and "No image open" was still painted over the top of it, offering a button to open the
+        // file that was already opening. The cube viewer has always hidden its empty state here.
+        UpdateEmptyState();
+
         await page.OpenFileAsync(filePath);
         SyncToolbarToActiveTab();
         UpdateWcsSyncWarning(); // WCS is loaded now — re-check if opening this file made sync approximate
@@ -79,7 +86,6 @@ public sealed partial class FitsTabHost : UserControl
         // Every route in — picker, empty state, recents, Research, Storage, MCP — lands here, so this
         // is the one place that has to remember it.
         _recents.AddOrUpdate(filePath, System.IO.Path.GetFileNameWithoutExtension(filePath));
-        UpdateEmptyState();
         return page;
     }
 
