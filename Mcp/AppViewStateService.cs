@@ -423,6 +423,15 @@ public sealed class AppViewStateService : IAnnotationHost
 
     private volatile Func<FitsFigureRequest, Task<FitsFigureOutcome>>? _exportFitsFigure;
 
+    private volatile Func<AnnotationExportRequest, Task<AnnotationExportOutcome>>? _exportAnnotations;
+
+    public void SetAnnotationExportAction(Func<AnnotationExportRequest, Task<AnnotationExportOutcome>> export)
+        => _exportAnnotations = export;
+
+    public Task<AnnotationExportOutcome> ExportAnnotationsAsync(AnnotationExportRequest request)
+        => _exportAnnotations?.Invoke(request)
+           ?? Task.FromResult(new AnnotationExportOutcome(false, request.Path, null, 0, "the viewer is unavailable"));
+
     public void SetFitsFigureAction(Func<FitsFigureRequest, Task<FitsFigureOutcome>> export)
         => _exportFitsFigure = export;
 

@@ -309,10 +309,13 @@
     <Compile Include="..\Helpers\DialogSize.cs" Link="Linked\DialogSize.cs" />
     <Compile Include="..\Helpers\PressOwner.cs" Link="Linked\PressOwner.cs" />
     <Compile Include="..\Helpers\FitsLoadProgress.cs" Link="Linked\FitsLoadProgress.cs" />
+    <Compile Include="..\Helpers\MarkExport.cs" Link="Linked\MarkExport.cs" />
+    <Compile Include="..\Helpers\Ds9Regions.cs" Link="Linked\Ds9Regions.cs" />
     <Compile Include="..\Helpers\MarkCommands.cs" Link="Linked\MarkCommands.cs" />
     <Compile Include="..\Services\Fits\AnnotationStore.cs" Link="Linked\Fits\AnnotationStore.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationContracts.cs" Link="Linked\Mcp\AnnotationContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\AnnotationExportTools.cs" Link="Linked\Mcp\AnnotationExportTools.cs" />
     <!-- The FITS projection. No XAML in it: it takes the transform as a function, so it can be tested. -->
     <Compile Include="..\Views\FitsViewer\FitsAnnotationSurface.cs" Link="Linked\Fits\FitsAnnotationSurface.cs" />
     <!-- Figure export: the region a figure is of, and the plate the marks land on. -->

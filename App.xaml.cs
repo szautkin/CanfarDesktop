@@ -175,7 +175,7 @@ public partial class App : Application
         }
     }
 
-    private static string AppVersion()
+    internal static string AppVersion()
     {
         try
         {

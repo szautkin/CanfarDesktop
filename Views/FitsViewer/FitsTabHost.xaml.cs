@@ -95,6 +95,9 @@ public sealed partial class FitsTabHost : UserControl
     /// <summary>The file the tab on screen is showing, for the annotation tools. Null when none is.</summary>
     public string? ActiveAnnotationTarget => _activePage?.AnnotationTarget;
 
+    /// <summary>The image the active tab's marks are on, for an export. Null when it shows another file.</summary>
+    internal Helpers.MarkExport.Source? MarkExportSource(string target) => _activePage?.MarkExportSource(target);
+
     /// <summary>
     /// Redraw the active tab's marks after something changed them elsewhere. False when this viewer is
     /// not showing that file — the marks are stored against the file either way.

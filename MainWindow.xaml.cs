@@ -182,6 +182,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetSearchHost(ResolveSearchBridgeAsync);
         _viewState.SetAnnotationHost(this);
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
+        _viewState.SetAnnotationExportAction(ExportAnnotationsActionAsync);
         _viewState.SetFitsCaptureAction(CaptureFitsActionAsync);
         _viewState.SetCubeCaptureAction(CaptureCubeActionAsync);
         _viewState.SetNotebookImageAction(GetCellImageActionAsync);
@@ -1557,6 +1558,89 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         => OnUi(() => viewer == CanfarDesktop.Mcp.Tools.Write.AnnotationViewer.Cube
             ? _cubeTabHost?.ActivePage?.DeselectAnnotation(target) ?? false
             : _fitsTabHost?.DeselectAnnotation(target) ?? false, false);
+
+    /// <summary>
+    /// Write a file's marks out as JSON or a DS9 region file.
+    ///
+    /// <para>Everything the document needs is in three places and none of them is the marks: the
+    /// STORE has the marks, the VIEWER has the image they are on, and the observation store knows
+    /// where that image came from. Gathered here because this is the only object that can see all
+    /// three; the shaping is <see cref="Helpers.MarkExport"/>, which is pure and tested.</para>
+    /// </summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome> ExportAnnotationsActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.AnnotationExportRequest request)
+        => OnUiAsync(async () =>
+        {
+            var cube = string.Equals(request.Viewer, "cube", StringComparison.OrdinalIgnoreCase);
+
+            var target = request.Target
+                ?? (cube ? _cubeTabHost?.ActivePage?.Target : _fitsTabHost?.ActiveAnnotationTarget);
+
+            if (string.IsNullOrWhiteSpace(target))
+                return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
+                    false, request.Path, null, 0, $"nothing is open in the {request.Viewer} viewer");
+
+            var store = App.Services.GetRequiredService<CanfarDesktop.Services.Fits.IAnnotationStore>();
+            var marks = store.LoadFor(target);
+
+            // The image the marks are on. A cube has no WCS of the flat kind, so it exports its marks
+            // with positions and without a sky — which is what a voxel is.
+            var source = cube
+                ? new Helpers.MarkExport.Source(target, System.IO.Path.GetFileName(target), 0, null, 0, 0, null)
+                : _fitsTabHost?.MarkExportSource(target);
+
+            if (source is null)
+                return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
+                    false, request.Path, null, 0, "that file is not the one on screen, so its image is not loaded");
+
+            var document = Helpers.MarkExport.Build(
+                marks, source, ProvenanceFor(target), App.AppVersion(), DateTime.UtcNow);
+
+            var extension = System.IO.Path.GetExtension(request.Path).ToLowerInvariant();
+            var text = extension == ".reg"
+                ? Helpers.Ds9Regions.Write(document)
+                : System.Text.Json.JsonSerializer.Serialize(document, MarkExportJson);
+
+            try
+            {
+                await Helpers.AtomicFile.WriteAllTextAsync(request.Path, text);
+            }
+            catch (Exception ex)
+            {
+                return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
+                    false, request.Path, extension.TrimStart('.'), 0, ex.Message);
+            }
+
+            return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
+                true, request.Path, extension.TrimStart('.'), document.Marks.Count, null);
+        }, new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
+            false, request.Path, null, 0, "could not dispatch to UI"));
+
+    /// <summary>Where a local file came from, when the app downloaded it. Null when it was opened off disk.</summary>
+    private static Helpers.MarkExport.Provenance? ProvenanceFor(string localPath)
+    {
+        var store = App.Services.GetRequiredService<ObservationStore>();
+
+        var obs = store.Observations.FirstOrDefault(o =>
+            !string.IsNullOrWhiteSpace(o.LocalPath) &&
+            string.Equals(System.IO.Path.GetFullPath(o.LocalPath), System.IO.Path.GetFullPath(localPath),
+                          StringComparison.OrdinalIgnoreCase));
+
+        return obs is null ? null : new Helpers.MarkExport.Provenance(
+            obs.PublisherID, obs.Collection, obs.ObservationID, obs.TargetName, obs.Instrument, obs.Filter,
+            obs.StartDate, obs.CalLevel, obs.DataRelease,
+            obs.ProposalId, obs.ProposalPi, obs.ProposalTitle,
+            obs.DownloadedAt.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
+            obs.PreviewURL, obs.ThumbnailURL);
+    }
+
+    /// <summary>Indented and camel-cased: this file is meant to be read by a person as well as a script.</summary>
+    private static readonly System.Text.Json.JsonSerializerOptions MarkExportJson = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
 
     /// <summary>One shape for "did that index exist", so the close paths refuse the same way.</summary>
     private static TabActionOutcome Outcome(bool ok, string kind, int index, string label)

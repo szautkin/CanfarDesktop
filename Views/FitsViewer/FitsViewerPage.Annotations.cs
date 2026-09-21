@@ -74,6 +74,30 @@ public sealed partial class FitsViewerPage : IMarkCanvas
     private string? MarkAt(Point at)
         => AnnotationGeometry.AnnotationAt(Marks.Marks, Surface, at.X, at.Y);
 
+    /// <summary>
+    /// The image these marks are on, for an export.
+    ///
+    /// Null when this page is showing a different file: an export must describe the picture the marks
+    /// were drawn on, and the WCS of whatever happens to be in front is not it.
+    /// </summary>
+    internal Helpers.MarkExport.Source? MarkExportSource(string target)
+    {
+        if (Target is not { } mine ||
+            !string.Equals(mine, target, StringComparison.OrdinalIgnoreCase)) return null;
+
+        var image = ViewModel.ImageData;
+        var hdu = ViewModel.Hdus?.FirstOrDefault(h => h.Index == ViewModel.SelectedHduIndex);
+
+        return new Helpers.MarkExport.Source(
+            LocalPath: mine,
+            FileName: System.IO.Path.GetFileName(mine),
+            HduIndex: ViewModel.SelectedHduIndex,
+            HduName: hdu?.Header.GetString("EXTNAME"),
+            Width: image?.Width ?? 0,
+            Height: image?.Height ?? 0,
+            Wcs: image?.Wcs);
+    }
+
     public IMarkLabelField Label => MarkEditorField;
 
     /// <summary>The field hangs off the same element presses are measured against, so no translation.</summary>
