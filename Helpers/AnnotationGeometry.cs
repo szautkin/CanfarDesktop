@@ -113,6 +113,26 @@ public static class AnnotationGeometry
     /// </summary>
     public const double InitialHalfPixels = 12.0;
 
+    /// <summary>
+    /// The part of a selected mark that always takes hold of it, in DEVICE pixels, whatever the grips
+    /// are doing.
+    ///
+    /// <para>A grip is a corner with <c>HandleRadius + 4</c> of reach, and there are four of them. On a
+    /// mark drawn near <see cref="MinimumHalfPixels"/> those four squares blanket the entire shape and
+    /// overlap in the middle of it, so there was no part of a small mark left that meant "move". It
+    /// could be dragged while unselected — no grips — and the moment it was picked out, every drag
+    /// resized it instead.</para>
+    ///
+    /// <para>That is the cube's slice view in ordinary use: a mark's size is kept in voxels, so it
+    /// shrinks on screen as you zoom out, and marks there routinely sit at the floor. A flat image
+    /// hides it because the same mark is usually far bigger in screen pixels.</para>
+    ///
+    /// <para>Small enough that it never steals a corner on a mark big enough to have real ones, and
+    /// large enough to hit: the middle of a selected shape moving it is what every drawing tool
+    /// does.</para>
+    /// </summary>
+    public const double CoreHalfPixels = 4.0;
+
     /// <summary>The four corner offsets a grip sits at.</summary>
     private static readonly (double Dx, double Dy)[] HandleCorners = [(-1, -1), (1, -1), (1, 1), (-1, 1)];
 
@@ -247,6 +267,22 @@ public static class AnnotationGeometry
     }
 
     /// <summary>
+    /// Whether a point is in the middle of a mark — the part that moves it however small it is.
+    ///
+    /// Measured against the DRAWN size, which is floored at <see cref="MinimumHalfPixels"/> — so with
+    /// today's constants the core is exactly that floor and the Math.Min below changes nothing. It is
+    /// there to keep the rule true if the floor is ever lowered: a core bigger than its own mark would
+    /// claim presses on the empty canvas beside it.
+    /// </summary>
+    public static bool CoreAt(Annotation mark, IAnnotationSurface surface, double sx, double sy)
+    {
+        if (HalfSize(mark, surface, MinimumHalfPixels) is not { } box) return false;
+
+        var core = Math.Min(CoreHalfPixels, Math.Max(box.HalfW, box.HalfH));
+        return Math.Abs(sx - box.Cx) <= core && Math.Abs(sy - box.Cy) <= core;
+    }
+
+    /// <summary>
     /// The topmost mark whose shape covers a point. Last drawn is tested first, so the mark on top is
     /// the one you get.
     /// </summary>
@@ -359,7 +395,9 @@ public static class AnnotationGeometry
             ? null
             : annotations.FirstOrDefault(a => a.Id == activeId);
 
-        if (active is not null && HandleAt(active, surface, sx, sy))
+        // The core first, because a grip that has swallowed the whole mark leaves nothing to grab it
+        // by. Corners still win over the shape everywhere else — see AGripOfTheEditedMarkWinsOverItsOwnShape.
+        if (active is not null && !CoreAt(active, surface, sx, sy) && HandleAt(active, surface, sx, sy))
             return new MarkGrab.Resize(active.Id);
 
         if (AnnotationAt(annotations, surface, sx, sy) is { } id)

@@ -221,6 +221,51 @@ public class AnnotationGeometryTests
     }
 
     /// <summary>
+    /// A small selected mark can still be MOVED.
+    ///
+    /// <para>The grips are at the four corners with nine pixels of reach each, so once a mark is
+    /// drawn near its minimum size those four squares blanket the whole shape and there is no part of
+    /// it left that means "move". The mark could be dragged freely until you selected it, and then
+    /// every drag resized it instead — which is the cube's slice view in normal use, because a
+    /// mark's size is stored in voxels and shrinks on screen as you zoom out.</para>
+    /// </summary>
+    [Fact]
+    public void ASmallSelectedMarkCanStillBeMoved()
+    {
+        var mark = Circle("m", 100, 100, half: 4);
+        var grab = AnnotationGeometry.GrabAt([mark], new Flat(), activeId: "m", drawing: false, sx: 100, sy: 100);
+
+        var move = Assert.IsType<MarkGrab.Move>(grab);
+        Assert.Equal("m", move.Id);
+    }
+
+    /// <summary>
+    /// And it can still be RESIZED. The core buys back the middle, not the corners — a fix that made
+    /// small marks movable by making them unresizable would just be the same bug facing the other way.
+    /// </summary>
+    [Fact]
+    public void ASmallSelectedMarkCanStillBeResized()
+    {
+        var mark = Circle("m", 100, 100, half: 4);
+        var grab = AnnotationGeometry.GrabAt([mark], new Flat(), activeId: "m", drawing: false, sx: 106, sy: 106);
+
+        Assert.Equal(new MarkGrab.Resize("m"), grab);
+    }
+
+    /// <summary>
+    /// The core does not reach outside the mark it belongs to, so it cannot swallow a press on the
+    /// canvas beside a small mark — that press still means "put one down" or "let go".
+    /// </summary>
+    [Fact]
+    public void TheCoreStaysInsideItsOwnMark()
+    {
+        var mark = Circle("m", 100, 100, half: 4);
+
+        Assert.False(AnnotationGeometry.CoreAt(mark, new Flat(), 140, 140));
+        Assert.True(AnnotationGeometry.CoreAt(mark, new Flat(), 100, 100));
+    }
+
+    /// <summary>
     /// Drawing armed is checked LAST. Checked first, every press made a new mark — so a mark could not
     /// be moved without disarming the pencil, and pressing on the mark you were editing dropped another
     /// one on top of it.
