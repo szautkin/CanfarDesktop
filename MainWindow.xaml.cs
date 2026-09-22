@@ -900,7 +900,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         if (_workflowsPage is not null) return;
         _workflowsPage = App.Services.GetRequiredService<Views.WorkflowsPage>();
         // Step "View:" deep-links route through the same key navigation the MCP navigate tool uses.
-        _workflowsPage.NavigateRequested += key => NavigateByKey(key);
+        // Fire and forget: a deep link is a request to go there, and nothing here waits on arrival.
+        _workflowsPage.NavigateRequested += key => _ = NavigateByKey(key);
         WorkflowsContainer.Child = _workflowsPage;
     }
 
@@ -982,7 +983,15 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             _storagePage.OpenInFitsViewerRequested += path => OpenFitsViewer(path);
             _storagePage.OpenInCubeViewerRequested += path => OpenCubeViewer(path);
             StorageContainer.Child = _storagePage;
-            await _storagePage.LoadAsync(_viewModel.Username);
+
+            // Shown first, filled second. Listing VOSpace is a network round trip, and awaiting it
+            // before navigating meant the app sat on the previous screen for as long as the server
+            // took — past the agent dispatch budget on a cold first open, so navigate_to reported a
+            // thirty-second timeout for a page that was going to arrive perfectly well. The page has
+            // its own spinner for precisely this; the empty folder list is what it is for.
+            NavigateTo(AppMode.Storage);
+            _ = _storagePage.LoadAsync(_viewModel.Username);
+            return true;
         }
 
         NavigateTo(AppMode.Storage);
@@ -1149,15 +1158,15 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     /// </summary>
     private async Task<Views.FitsViewer.FitsViewerPage?> OpenFitsViewerAsync(string? filePath)
     {
-        EnsureFitsHost();
+        var host = EnsureFitsHost();
 
         Views.FitsViewer.FitsViewerPage? page = null;
         if (filePath is not null)
         {
-            page = await _fitsTabHost.AddTabForFileAsync(filePath);
+            page = await host.AddTabForFileAsync(filePath);
             // The tab's FilePath is only set during the (async) load — after the CollectionChanged publish
             // already ran with an empty path. Re-publish now so get_current_view.openFitsPaths is correct.
-            PublishOpenFits(_fitsTabHost.ViewModel);
+            PublishOpenFits(host.ViewModel);
         }
 
         NavigateTo(AppMode.FitsViewer);

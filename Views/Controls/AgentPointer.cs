@@ -258,7 +258,7 @@ public static class AgentPointer
     {
         Close(Live.FirstOrDefault(t => ReferenceEquals(t.Target, target)));
 
-        target.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = true });
+        Reveal(target);
 
         var tip = new TeachingTip
         {
@@ -287,10 +287,56 @@ public static class AgentPointer
 
         host.Children.Add(tip);
         Live.Add(tip);
-        tip.IsOpen = true;
+
+        // Opened after a layout pass, not now. The tail is placed against where the target IS, and
+        // revealing it may have just moved it — expanding a section above it, or scrolling it up
+        // from below the fold. Opening in the same breath anchored the tail to the old position and
+        // left it pointing at whatever had taken that spot.
+        target.DispatcherQueue?.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => { if (Live.Contains(tip)) tip.IsOpen = true; });
+
         timer.Start();
 
         return Live.Count;
+    }
+
+    /// <summary>
+    /// Get the target actually on screen before pointing at it.
+    ///
+    /// <para>Two different problems wear the same face. A control can be off the bottom of a
+    /// scroller, which scrolling fixes; or it can be inside a section somebody has collapsed, which
+    /// scrolling cannot fix at all — there is nothing to scroll to. Both end with a tip anchored to
+    /// something the person cannot see, which reads as the app pointing at nothing.</para>
+    ///
+    /// <para>The scroll is deliberately NOT animated. A tip has to be placed against a settled
+    /// position, and waiting out an animation to find out where the target landed is a race with a
+    /// worse failure than a jump: a tail pointing confidently at the wrong control.</para>
+    /// </summary>
+    private static void Reveal(FrameworkElement target)
+    {
+        Expand(target);
+        target.UpdateLayout();
+        target.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false });
+    }
+
+    /// <summary>
+    /// Open any collapsed section the target is inside, outermost first.
+    ///
+    /// Outermost first because an Expander nested in a collapsed one has no layout of its own yet;
+    /// opening the inner one before its parent does nothing that survives.
+    /// </summary>
+    private static void Expand(FrameworkElement target)
+    {
+        var closed = new List<Expander>();
+
+        for (DependencyObject? node = target; node is not null;
+             node = VisualTreeHelper.GetParent(node))
+        {
+            if (node is Expander { IsExpanded: false } expander) closed.Add(expander);
+        }
+
+        for (var i = closed.Count - 1; i >= 0; i--) closed[i].IsExpanded = true;
     }
 
     /// <summary>Take one away.</summary>
