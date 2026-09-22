@@ -4109,4 +4109,64 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Fits_HduNoImage" xml:space="preserve">
     <value>no image</value>
   </data>
+  <data name="Fits_ExpFontLabel.Text" xml:space="preserve">
+    <value>Font</value>
+  </data>
+  <data name="Fits_ExpScaleLabel.Text" xml:space="preserve">
+    <value>Scale</value>
+  </data>
+  <data name="Fits_ExpThemeLabel.Text" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Fits_ExpSaveText.Text" xml:space="preserve">
+    <value>Save figure…</value>
+  </data>
+  <data name="Fits_ExportDialog.Title" xml:space="preserve">
+    <value>Export figure</value>
+  </data>
+  <data name="Images_DetailDialog.Title" xml:space="preserve">
+    <value>Image details</value>
+  </data>
+  <data name="Images_RegistryDialog.Title" xml:space="preserve">
+    <value>Browse the image registry</value>
+  </data>
+  <data name="Images_FindInRegistryBtn.Content" xml:space="preserve">
+    <value>Registry…</value>
+  </data>
+  <data name="Marks_KindCombo.AutomationProperties.Name" xml:space="preserve">
+    <value>Mark shape</value>
+  </data>
+  <data name="Settings_AboutTermsLink.Content" xml:space="preserve">
+    <value>Terms of Use</value>
+  </data>
+  <data name="Images_AllProjects" xml:space="preserve">
+    <value>All projects</value>
+  </data>
+  <data name="Images_AlreadyAdded" xml:space="preserve">
+    <value>Already added</value>
+  </data>
+  <data name="Images_ContentsBtn" xml:space="preserve">
+    <value>Contents</value>
+  </data>
+  <data name="Images_ContentsTooltip" xml:space="preserve">
+    <value>List the packages inside this image</value>
+  </data>
+  <data name="Images_RowInspectBtn" xml:space="preserve">
+    <value>Inspect</value>
+  </data>
+  <data name="Images_InspectTooltip" xml:space="preserve">
+    <value>Show this image's details</value>
+  </data>
+  <data name="Images_NoRegistryMatches" xml:space="preserve">
+    <value>No images match that search</value>
+  </data>
+  <data name="Images_NoSessionTypes" xml:space="preserve">
+    <value>No session types available</value>
+  </data>
+  <data name="Images_Searching" xml:space="preserve">
+    <value>Searching the registry…</value>
+  </data>
+  <data name="Images_TypeSomething" xml:space="preserve">
+    <value>Type to search the image registry</value>
+  </data>
 </root>

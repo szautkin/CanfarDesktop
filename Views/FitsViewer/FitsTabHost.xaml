@@ -230,7 +230,8 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Style="{StaticResource BodyTextBlockStyle}"
                            Text="Open a FITS image to inspect it — stretch and colormap, WCS readout, pixel probing, marks, and multi-tab comparison." />
-                <Button Click="OnOpenFileEmpty" HorizontalAlignment="Center"
+                <Button x:Name="OpenImageButton" Click="OnOpenFileEmpty" HorizontalAlignment="Center"
+                        AutomationProperties.Name="Open image"
                         Style="{StaticResource AccentButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE8E5;" FontSize="16" />

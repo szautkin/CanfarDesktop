@@ -41,6 +41,24 @@ public static class UiPointer
     public readonly record struct Target(string Id, string Kind, string? Label);
 
     /// <summary>
+    /// Whether a label is nothing but icon font.
+    ///
+    /// <para>A great many buttons here show only a glyph, and a glyph lives in the Private Use Area —
+    /// so the "words on the button" come back as U+E721 or U+E768. That is not a label: an agent told
+    /// "press the search button" cannot match it, and offering it as a candidate is offering a
+    /// character nobody can type. Better to have no label and fall back to the control's name.</para>
+    /// </summary>
+    public static bool IsGlyphOnly(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        var meaningful = text.Where(c => !char.IsWhiteSpace(c)).ToList();
+        // The Private Use Area, by code point rather than by literal: the characters themselves
+        // are unrenderable and would not survive a copy between editors intact.
+        return meaningful.Count > 0 && meaningful.All(c => c >= (char)0xE000 && c <= (char)0xF8FF);
+    }
+
+    /// <summary>
     /// Case, spaces, punctuation and the decorations a label carries — an ellipsis, a colon, an
     /// access-key ampersand — are not part of what somebody meant.
     /// </summary>

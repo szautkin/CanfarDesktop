@@ -4109,4 +4109,64 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Fits_HduNoImage" xml:space="preserve">
     <value>sans image</value>
   </data>
+  <data name="Fits_ExpFontLabel.Text" xml:space="preserve">
+    <value>Police</value>
+  </data>
+  <data name="Fits_ExpScaleLabel.Text" xml:space="preserve">
+    <value>Échelle</value>
+  </data>
+  <data name="Fits_ExpThemeLabel.Text" xml:space="preserve">
+    <value>Thème</value>
+  </data>
+  <data name="Fits_ExpSaveText.Text" xml:space="preserve">
+    <value>Enregistrer la figure…</value>
+  </data>
+  <data name="Fits_ExportDialog.Title" xml:space="preserve">
+    <value>Exporter la figure</value>
+  </data>
+  <data name="Images_DetailDialog.Title" xml:space="preserve">
+    <value>Détails de l'image</value>
+  </data>
+  <data name="Images_RegistryDialog.Title" xml:space="preserve">
+    <value>Parcourir le registre d'images</value>
+  </data>
+  <data name="Images_FindInRegistryBtn.Content" xml:space="preserve">
+    <value>Registre…</value>
+  </data>
+  <data name="Marks_KindCombo.AutomationProperties.Name" xml:space="preserve">
+    <value>Forme du repère</value>
+  </data>
+  <data name="Settings_AboutTermsLink.Content" xml:space="preserve">
+    <value>Conditions d'utilisation</value>
+  </data>
+  <data name="Images_AllProjects" xml:space="preserve">
+    <value>Tous les projets</value>
+  </data>
+  <data name="Images_AlreadyAdded" xml:space="preserve">
+    <value>Déjà ajoutée</value>
+  </data>
+  <data name="Images_ContentsBtn" xml:space="preserve">
+    <value>Contenu</value>
+  </data>
+  <data name="Images_ContentsTooltip" xml:space="preserve">
+    <value>Lister les paquets de cette image</value>
+  </data>
+  <data name="Images_RowInspectBtn" xml:space="preserve">
+    <value>Inspecter</value>
+  </data>
+  <data name="Images_InspectTooltip" xml:space="preserve">
+    <value>Afficher les détails de cette image</value>
+  </data>
+  <data name="Images_NoRegistryMatches" xml:space="preserve">
+    <value>Aucune image ne correspond à cette recherche</value>
+  </data>
+  <data name="Images_NoSessionTypes" xml:space="preserve">
+    <value>Aucun type de session disponible</value>
+  </data>
+  <data name="Images_Searching" xml:space="preserve">
+    <value>Recherche dans le registre…</value>
+  </data>
+  <data name="Images_TypeSomething" xml:space="preserve">
+    <value>Saisissez du texte pour rechercher dans le registre</value>
+  </data>
 </root>

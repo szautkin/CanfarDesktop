@@ -140,6 +140,39 @@ public class UiPointerTests
         Assert.Equal(2, UiPointer.Suggest(ambiguous, "Export").Count);
     }
 
+    // ── Labels that are not labels ──────────────────────────────────────────
+
+    /// <summary>Built from code points: the characters themselves do not survive an editor intact.</summary>
+    private static string Glyph(params int[] codes) => new([.. codes.Select(c => (char)c)]);
+
+    /// <summary>
+    /// An icon-only button's content is a Private Use Area character. It is not a label an agent can
+    /// be told to look for, and not one anybody can type — the tour turned up a search button whose
+    /// "words" were U+E721 and a launch button reading U+E768.
+    /// </summary>
+    [Fact]
+    public void IconFontIsNotALabel()
+    {
+        Assert.True(UiPointer.IsGlyphOnly(Glyph(0xE721)));
+        Assert.True(UiPointer.IsGlyphOnly(Glyph(0xE768)));
+        Assert.True(UiPointer.IsGlyphOnly($"  {Glyph(0xE74D)}  "));
+        Assert.True(UiPointer.IsGlyphOnly(Glyph(0xE721, 0xE768)));
+    }
+
+    /// <summary>
+    /// Anything with real words in it is a label, including an icon WITH a caption beside it — that
+    /// caption is exactly what somebody would have been told to look for.
+    /// </summary>
+    [Fact]
+    public void RealWordsAreALabel()
+    {
+        Assert.False(UiPointer.IsGlyphOnly("Export"));
+        Assert.False(UiPointer.IsGlyphOnly("Save figure…"));
+        Assert.False(UiPointer.IsGlyphOnly($"{Glyph(0xE721)} Search"));
+        Assert.False(UiPointer.IsGlyphOnly(""));
+        Assert.False(UiPointer.IsGlyphOnly(null));
+    }
+
     // ── How long it stays ───────────────────────────────────────────────────────────────────────
 
     [Fact]

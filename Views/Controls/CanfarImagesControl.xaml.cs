@@ -53,7 +53,7 @@ public partial class CanfarImageRow : ObservableObject
     /// </summary>
     public string ActionLabel => Status == ImageDiscoveryStatus.Discovered
         ? Helpers.Loc.T("Images_ContentsBtn")
-        : Helpers.Loc.T("Images_InspectBtn");
+        : Helpers.Loc.T("Images_RowInspectBtn");
 
     public string ActionTooltip => Status == ImageDiscoveryStatus.Discovered
         ? Helpers.Loc.T("Images_ContentsTooltip")

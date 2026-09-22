@@ -147,6 +147,12 @@
                 Visibility="Collapsed" IsHitTestVisible="False"
                 AutomationProperties.Name="Agent activity">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <!-- Leftmost, before the spinner: the spinner says something is happening, the robot
+                     says WHO is doing it. On an accent-filled pill that reads as the app being busy,
+                     that distinction is the whole message — this is not the app thinking, it is an
+                     agent acting on the user's behalf. -->
+                <FontIcon Glyph="&#xE99A;" FontSize="14" VerticalAlignment="Center"
+                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                 <ProgressRing IsActive="True" Width="16" Height="16"
                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                 <TextBlock x:Name="AgentActivityText" x:Uid="MainWindow_AgentActivityText" Text="Agent is working&#x2026;"
