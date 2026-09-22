@@ -22,7 +22,7 @@ public static class CubeSpectrumProber
 
         // Native pixel → volume voxel: the reader keeps every Stride-th sample, so the sample
         // at-or-below the probed pixel is floor(x / stride) (clamped for safety at the far edge).
-        int stride = Math.Max(1, meta?.Stride ?? 1);
+        int stride = Math.Max(1, meta?.StrideXY ?? 1);
         int vx = Math.Min(x / stride, vol.Nx - 1);
         int vy = Math.Min(y / stride, vol.Ny - 1);
 

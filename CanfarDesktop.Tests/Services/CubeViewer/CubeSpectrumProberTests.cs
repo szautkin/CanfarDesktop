@@ -26,7 +26,8 @@ public class CubeSpectrumProberTests
         {
             Nx = 8, Ny = 6, Nz = 5,
             RenderNx = nx, RenderNy = ny, RenderNz = nz,
-            Stride = 2,
+            StrideXY = 2,
+            StrideZ = 2,
             NormLo = 0, NormHi = 10,
             Bunit = "Jy/beam",
             Wcs = new CubeWcs { Nx = 8, Ny = 6, Nz = 5, SpecCType = "FREQ", SpecCrpix = 1, SpecCrval = 100, SpecCdelt = 5 },

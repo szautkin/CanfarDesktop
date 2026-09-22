@@ -252,12 +252,25 @@ public sealed class CubeMetadata
     public int RenderNy { get; init; }
     public int RenderNz { get; init; }
 
-    /// <summary>Down-sample stride: rendered voxel i on any axis is native sample i·Stride (1 = full res).</summary>
-    public int Stride { get; init; } = 1;
+    /// <summary>
+    /// Sky-plane down-sample stride: rendered voxel i on x or y is native sample i·StrideXY
+    /// (1 = full res). Shared by the two spatial axes, which are strided together.
+    /// </summary>
+    public int StrideXY { get; init; } = 1;
+
+    /// <summary>
+    /// Spectral down-sample stride, taken from NAXIS3 alone.
+    ///
+    /// Separate from <see cref="StrideXY"/> because the axes are not comparable quantities: one
+    /// stride for all three came from the longest of them, so a deep cube's spectral length chose the
+    /// sampling of its sky plane and collapsed a small one to a single voxel. See
+    /// <see cref="Helpers.CubeDownsample"/>.
+    /// </summary>
+    public int StrideZ { get; init; } = 1;
 
     /// <summary>The native (NAXIS3) channel a rendered channel corresponds to — required wherever a
     /// slider/volume channel index meets the native-resolution spectral WCS (CRPIX3/CDELT3).</summary>
-    public int NativeChannel(int renderChannel) => Math.Min(renderChannel * Stride, Math.Max(0, Nz - 1));
+    public int NativeChannel(int renderChannel) => Math.Min(renderChannel * StrideZ, Math.Max(0, Nz - 1));
 
     public double DataMin { get; init; }
     public double DataMax { get; init; }
