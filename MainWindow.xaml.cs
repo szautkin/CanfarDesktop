@@ -266,7 +266,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             case "research": EnsureResearchPage(); NavigateTo(AppMode.Research); return new(true, "research", "Research");
             case "storage": OpenStorageBrowser(); return new(true, "storage", "Storage");
             case "notebook": OpenNotebook(); return new(true, "notebook", "Notebook");
-            case "fitsViewer": NavigateTo(AppMode.FitsViewer); return new(true, "fitsViewer", "FITS Viewer");
+            case "fitsViewer": EnsureFitsHost(); NavigateTo(AppMode.FitsViewer); return new(true, "fitsViewer", "FITS Viewer");
+            case "cubeViewer": EnsureCubeHost(); NavigateTo(AppMode.CubeViewer); return new(true, "cubeViewer", "Cube Viewer");
             case "aiGuide": OpenAiGuidePage(); return new(true, "aiGuide", "AI Guide");
             case "workflows": OpenWorkflowsPage(); return new(true, "workflows", "Workflows");
             default: return new(false, mode, mode);
@@ -1125,15 +1126,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     /// </summary>
     private async Task<Views.FitsViewer.FitsViewerPage?> OpenFitsViewerAsync(string? filePath)
     {
-        if (_fitsTabHost is null)
-        {
-            var hostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
-            _fitsTabHost = new Views.FitsViewer.FitsTabHost(hostVm);
-            _fitsTabHost.SearchAtPositionRequested += OnSearchAtFitsPosition;
-            // GoHome (not NavigateTo) so the empty host doesn't stay on the back stack.
-            _fitsTabHost.AllTabsClosed += GoHome;
-            FitsViewerContainer.Child = _fitsTabHost;
-        }
+        EnsureFitsHost();
 
         Views.FitsViewer.FitsViewerPage? page = null;
         if (filePath is not null)
@@ -1146,6 +1139,29 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
 
         NavigateTo(AppMode.FitsViewer);
         return page;
+    }
+
+    /// <summary>
+    /// Build the FITS host if it is not there yet.
+    ///
+    /// Its own method because navigating to the viewer needs it as much as opening a file does. It
+    /// used to be built only on the way in with a file, so going to the FITS viewer with nothing open
+    /// showed an empty container — and the "No image open" state, which exists for exactly that
+    /// moment and offers the Open button and the recent files, lives INSIDE the host and so could
+    /// never appear.
+    /// </summary>
+    private Views.FitsViewer.FitsTabHost EnsureFitsHost()
+    {
+        if (_fitsTabHost is null)
+        {
+            var hostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
+            _fitsTabHost = new Views.FitsViewer.FitsTabHost(hostVm);
+            _fitsTabHost.SearchAtPositionRequested += OnSearchAtFitsPosition;
+            // GoHome (not NavigateTo) so the empty host doesn't stay on the back stack.
+            _fitsTabHost.AllTabsClosed += GoHome;
+            FitsViewerContainer.Child = _fitsTabHost;
+        }
+        return _fitsTabHost;
     }
 
     private void OnSearchAtFitsPosition(double ra, double dec)

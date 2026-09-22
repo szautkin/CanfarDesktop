@@ -51,7 +51,8 @@ Time: ~10 min
 - [ ] **Cube viewer — spectral cubes in 3D** — Volume rendering with an opacity curve you can shape,
       or slice mode one channel at a time; click a spaxel for its spectrum. Point at the slice and
       volume toggles. Say marks here live on a channel rather than on the whole cube.
-      Tool: open_cube, list_ui_targets, point_at_ui
+      Tool: navigate_to, open_cube, list_ui_targets, point_at_ui
+      View: cubeViewer
 - [ ] **Notebook — a real editor, not a web view** — Code and markdown cells against a live kernel
       you can interrupt or restart, with plots inline. Point at Run all cells and at the kernel
       controls.
