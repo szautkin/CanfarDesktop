@@ -9,8 +9,15 @@ namespace CanfarDesktop.Tests.Services;
 /// </summary>
 public class AiGuideCatalogTests
 {
-    /// <summary>The full live Windows MCP tool surface (from McpToolCatalog.Build). Kept here so adding
-    /// a tool without categorizing it trips this test — the same "never silently dropped" guard macOS has.</summary>
+    /// <summary>
+    /// The Windows MCP tool surface, copied by hand.
+    ///
+    /// <para>Copied because McpToolCatalog.Build wants a whole service provider, which a unit test has
+    /// no way to stand up. That is a real limit and worth naming: this guard catches a tool that is
+    /// listed here and NOT categorised, and it cannot catch a tool that was added to neither. The two
+    /// UI-pointing tools shipped uncategorised for exactly that reason and showed up under "Other" in
+    /// the live app, which is where that was noticed.</para>
+    /// </summary>
     private static readonly string[] LiveToolNames =
     {
         // Foundational
@@ -60,6 +67,7 @@ public class AiGuideCatalogTests
         "run_code", "run_code_output", "start_compute", "stop_compute",
         // View & Navigation
         "navigate_to", "set_search_focus", "close_active_tab", "list_open_tabs",
+        "point_at_ui", "list_ui_targets",
         // Agent Control
         "list_pending_proposals", "get_proposal_state", "withdraw_proposal", "list_events",
         // AI Guide management
