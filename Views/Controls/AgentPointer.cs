@@ -187,43 +187,90 @@ public static class AgentPointer
     }
 
     /// <summary>
-    /// Point at it: bring it into view, then put the tip on it for a while.
+    /// The hints that are up, so several can be shown at once and all of them can be taken away
+    /// together when the page changes.
+    /// </summary>
+    private static readonly List<TeachingTip> Live = [];
+
+    /// <summary>
+    /// Point at it: bring it into view, then put a tip on it. Returns how many are now up.
     ///
     /// <para>Brought into view first because a control inside a scrolled panel may be perfectly
     /// present and forty pixels below the fold, and a tail pointing off the edge of a scroller is
     /// worse than no tip at all.</para>
+    ///
+    /// <para>One tip per control: pointing at the same thing twice replaces rather than stacks, since
+    /// two tails on one button is two things claiming to be it. Pointing at a DIFFERENT control adds
+    /// another, because walking somebody through three controls is three tips.</para>
     /// </summary>
-    public static void Show(
-        TeachingTip tip, FrameworkElement target, string? title, string message, double seconds)
+    public static int Show(
+        Panel host, FrameworkElement target, string? title, string message, double seconds)
     {
+        Close(Live.FirstOrDefault(t => ReferenceEquals(t.Target, target)));
+
         target.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = true });
 
-        tip.IsOpen = false;          // a tip already up would otherwise keep its old target
-        tip.Target = target;
-        tip.Title = title ?? string.Empty;
-        tip.Subtitle = message;
-        tip.IsOpen = true;
+        var tip = new TeachingTip
+        {
+            Target = target,
+            Title = title ?? string.Empty,
+            Subtitle = message,
+            PreferredPlacement = TeachingTipPlacementMode.Auto,
 
-        Close(tip, seconds);
+            // Not light-dismiss: that is what puts the close button in the corner, and it is what
+            // lets a tip survive the very click a person makes to act on the control it points at.
+            IsLightDismissEnabled = false,
+        };
+
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(tip, title ?? message);
+
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds) };
+        timer.Tick += (_, _) => Close(tip);
+
+        // Reading it should not race it. Once somebody has moved onto the tip they have said they
+        // are paying attention, so the countdown stops for good and the close button is how it goes
+        // — a tip that vanished mid-sentence because the mouse was there is the worst of both.
+        tip.PointerEntered += (_, _) => timer.Stop();
+
+        tip.CloseButtonClick += (sender, _) => Close(sender as TeachingTip);
+        tip.Closed += (sender, _) => Forget(sender as TeachingTip);
+
+        host.Children.Add(tip);
+        Live.Add(tip);
+        tip.IsOpen = true;
+        timer.Start();
+
+        return Live.Count;
     }
 
-    private static DispatcherTimer? _timer;
+    /// <summary>Take one away.</summary>
+    private static void Close(TeachingTip? tip)
+    {
+        if (tip is null) return;
+
+        tip.IsOpen = false;   // Closed then removes it from the tree
+        Forget(tip);
+    }
+
+    /// <summary>Drop a tip from the live set and out of the tree, however it came to be closed.</summary>
+    private static void Forget(TeachingTip? tip)
+    {
+        if (tip is null) return;
+
+        Live.Remove(tip);
+        if (tip.Parent is Panel host) host.Children.Remove(tip);
+    }
 
     /// <summary>
-    /// Take it away again on its own.
+    /// Take them all away, now.
     ///
-    /// One timer, restarted — a second point-at while the first is still up must not leave an older
-    /// timer alive to close the newer tip early.
+    /// Called when the app changes page: a hint points at a control on the page being left, and a
+    /// tail reaching across a screen that has changed underneath it points at whatever is now in
+    /// that spot.
     /// </summary>
-    private static void Close(TeachingTip tip, double seconds)
+    public static void CloseAll()
     {
-        _timer?.Stop();
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds) };
-        _timer.Tick += (sender, _) =>
-        {
-            if (sender is DispatcherTimer running) running.Stop();
-            tip.IsOpen = false;
-        };
-        _timer.Start();
+        foreach (var tip in Live.ToList()) Close(tip);
+        Live.Clear();
     }
 }

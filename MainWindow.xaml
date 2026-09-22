@@ -200,11 +200,10 @@
             </Border>
         </Grid>
 
-        <!-- An agent pointing at one of our own controls. One tip, reused: two at once would be two
-             things claiming to be the thing you were just told about. Last in the root grid so it
-             draws over every page, and its tail reaches controls on any of them. -->
-        <TeachingTip x:Name="AgentPointerTip" Grid.Row="0" Grid.RowSpan="3"
-                     PreferredPlacement="Auto" IsLightDismissEnabled="True"
-                     AutomationProperties.Name="Agent hint" />
+        <!-- Where an agent's hints live. A panel rather than one fixed tip, because several can be up
+             at once — walking somebody through three controls is three tips, not one that keeps
+             replacing itself. Last in the root grid so they draw over every page, and their tails
+             reach controls on any of them. Empty and hit-test-invisible until something is shown. -->
+        <Grid x:Name="AgentPointerHost" Grid.Row="0" Grid.RowSpan="3" IsHitTestVisible="True" />
     </Grid>
 </Window>

@@ -773,6 +773,11 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     /// <summary>Shared visibility swap for forward, back, and home navigation.</summary>
     private void ApplyMode(AppMode mode)
     {
+        // A hint points at a control on the page being left, so it goes the instant the page does —
+        // not when its timer happens to run out. A tail reaching across a screen that has changed
+        // underneath it points at whatever is now in that spot, which is worse than no hint.
+        Views.Controls.AgentPointer.CloseAll();
+
         var target = ContainerFor(mode);
         var appearing = target.Visibility == Visibility.Collapsed;
 
@@ -1662,11 +1667,12 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
                     false, id, "that control went off screen before it could be pointed at");
 
-            Views.Controls.AgentPointer.Show(
-                AgentPointerTip, element, request.Title, request.Message,
+            var showing = Views.Controls.AgentPointer.Show(
+                AgentPointerHost, element, request.Title, request.Message,
                 Helpers.UiPointer.Seconds(request.Seconds));
 
-            return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(true, id, null);
+            return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
+                true, id, showing > 1 ? $"{showing} hints are up" : null);
         }, new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(false, request.Target, "could not dispatch to UI"));
 
     private Task<IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.UiTarget>> ListUiTargetsActionAsync(string? contains)

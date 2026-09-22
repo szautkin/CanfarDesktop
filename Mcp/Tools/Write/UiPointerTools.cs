@@ -50,7 +50,10 @@ public sealed class PointAtUiTool : JsonReadTool<PointAtUiTool.Args, UiPointOutc
         "safe. 'target' is a control's name or the words on it, as listed by list_ui_targets; only " +
         "what is on screen right now can be pointed at, so navigate first if you need to. If the name " +
         "matches nothing, or two things equally, nothing is shown and the reply lists what is there. " +
-        "Live-applied.",
+        "Call it several times to put several hints up at once — one per control, so pointing at the " +
+        "same one twice replaces rather than stacks. Each has its own close button; the countdown " +
+        "stops if the person hovers it, and they all go the moment the app changes page, so hints " +
+        "never outlive the screen they describe. Live-applied.",
         """
         {"type":"object","properties":{
           "target":{"type":"string","description":"The control's name, or the words on it. See list_ui_targets."},
