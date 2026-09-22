@@ -100,6 +100,7 @@ public sealed partial class CubeViewerPage : UserControl
             {
                 var (rw, rh) = PhysicalSize();
                 _renderer.Resize(rw, rh);
+                MarkRenderDirty();
             }
             HookRendering();
             return;
@@ -144,6 +145,7 @@ public sealed partial class CubeViewerPage : UserControl
         if (!_initialized || _closed) return;
         var (w, h) = PhysicalSize();
         _renderer.Resize(w, h);
+        MarkRenderDirty();
     }
 
     private string? _pendingCubePath; // a cube requested before the renderer finished initializing
@@ -210,6 +212,7 @@ public sealed partial class CubeViewerPage : UserControl
         float[]? channelProfile = null)
     {
         _renderer.SetVolume(volume);
+        MarkRenderDirty();
         _meta = volume.Meta;
         _volume = volume;
         _cubeName = volume.Name;
@@ -348,9 +351,50 @@ public sealed partial class CubeViewerPage : UserControl
 
         ViewModel.AdvanceAutoOrbit();
         PushRenderState();
+
+        // Only when the picture would differ. This tick fires ~60 times a second and used to ray
+        // march the volume every single time — hundreds of steps per pixel — whether or not anything
+        // had changed. A cube sitting still on screen held the UI thread hard enough that queued
+        // work waited behind it: navigate_to timed out at thirty seconds with the cube merely OPEN,
+        // not doing anything.
+        var state = CurrentRenderState();
+        if (!_renderDirty && _lastRenderState == state) return;
+
+        _renderDirty = false;
+        _lastRenderState = state;
+
         _renderer.Render();
         UpdateOverlay();
     }
+
+    /// <summary>
+    /// Everything that changes the picture but does not arrive through <see cref="PushRenderState"/>
+    /// — a new volume, colormap, background, transfer curve, or a resize.
+    ///
+    /// A flag rather than more snapshot fields because these are not values to compare; the caller
+    /// knows it changed something and says so.
+    /// </summary>
+    private bool _renderDirty = true;
+
+    private RenderState? _lastRenderState;
+
+    private void MarkRenderDirty() => _renderDirty = true;
+
+    /// <summary>
+    /// The renderer's whole visible input, as one comparable value.
+    ///
+    /// A record struct on purpose: adding a field to <see cref="PushRenderState"/> and forgetting it
+    /// here would freeze the view on that setting, so the two lists are meant to be read together.
+    /// </summary>
+    private readonly record struct RenderState(
+        double Azimuth, double Elevation, double Distance,
+        double WindowLo, double WindowHi, double Density, double SpectralScale,
+        float Steps, int Stretch, bool Mip, bool Interacting);
+
+    private RenderState CurrentRenderState() => new(
+        ViewModel.CameraAzimuth, ViewModel.CameraElevation, ViewModel.CameraDistance,
+        ViewModel.WindowLo, ViewModel.WindowHi, ViewModel.Density, ViewModel.SpectralScale,
+        ViewModel.VolumeSteps, ViewModel.StretchIndex, ViewModel.Mip, _isDragging);
 
     /// <summary>Push the current view-model state into the renderer (camera + render params).</summary>
     private void PushRenderState()
@@ -539,6 +583,7 @@ public sealed partial class CubeViewerPage : UserControl
         if (!_initialized || _closed) return;
         var (w, h) = PhysicalSize();
         _renderer.Resize(w, h);
+        MarkRenderDirty();
     }
 
 
@@ -664,6 +709,7 @@ public sealed partial class CubeViewerPage : UserControl
         ViewModel.Colormap = _currentColormap;
         var lut = CubeColormaps.Build(_currentColormap);
         _renderer.SetColormap(lut);
+        MarkRenderDirty();
         UpdateColorbar(lut);
         RefreshSliceIfActive();
     }
@@ -759,6 +805,7 @@ public sealed partial class CubeViewerPage : UserControl
             case 2: _renderer.SetBackground(0.96f, 0.96f, 0.96f); break;   // Light
             default: _renderer.SetBackground(0.02f, 0.03f, 0.06f); break;  // Dark
         }
+        MarkRenderDirty();
     }
 
     private void OnAutoOrbitToggled(object sender, RoutedEventArgs e)

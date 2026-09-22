@@ -130,6 +130,7 @@ public static class AgentPointer
     /// </summary>
     private static string? Label(FrameworkElement element, string? automation)
         => Words(automation)
+           ?? Words(LabelledBy(element))
            ?? Words(Header(element))
            ?? Words(ToolTipService.GetToolTip(element) as string)
            ?? element switch
@@ -142,6 +143,18 @@ public static class AgentPointer
 
     private static string? Text(params string?[] candidates)
         => candidates.Select(Words).FirstOrDefault(s => s is not null);
+
+    /// <summary>
+    /// The separate element a control is labelled by, when its caption sits beside it rather than on
+    /// it — the Portal's launch form is built that way, a TextBlock above each combo box.
+    ///
+    /// This is the accessible pattern rather than a workaround: a screen reader reads LabeledBy for
+    /// exactly this case, so wiring it serves both and keeps one translated copy of the words.
+    /// </summary>
+    private static string? LabelledBy(FrameworkElement element)
+        => Microsoft.UI.Xaml.Automation.AutomationProperties.GetLabeledBy(element) is TextBlock label
+            ? label.Text
+            : null;
 
     /// <summary>
     /// The caption a form field is written under — what a person reads to know what the box is for.
@@ -176,7 +189,12 @@ public static class AgentPointer
     private static string? FirstText(DependencyObject node, int depth = 0)
     {
         if (depth > 4) return null;
-        if (node is TextBlock { Text: var text } && !string.IsNullOrWhiteSpace(text)) return text.Trim();
+
+        // Glyph-only text is skipped rather than returned: an icon renders through a TextBlock of its
+        // own, so a button built as icon-then-caption used to answer with the icon and stop. The
+        // Portal's Launch button reported U+E768 for exactly this reason, and the caption sitting
+        // right beside it went unread.
+        if (node is TextBlock { Text: var text } && Words(text) is { } words) return words;
 
         var children = VisualTreeHelper.GetChildrenCount(node);
         for (var i = 0; i < children; i++)

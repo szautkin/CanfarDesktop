@@ -75,6 +75,7 @@ public sealed partial class CubeViewerPage
             _freezeRenderLoop = true;
             PushRenderState();
             _renderer.CameraDistance = dist;
+            MarkRenderDirty();
             float steps = Math.Max(ViewModel.VolumeSteps, 384f);
             byte[]? volume = _renderer.RenderToBgra(w, h, steps, transparent: true);
             if (volume is null) return null;
