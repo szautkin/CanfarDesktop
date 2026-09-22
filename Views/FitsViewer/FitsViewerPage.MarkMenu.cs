@@ -28,7 +28,7 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
     /// a search, and the entry is greyed rather than hidden so that is visible.
     /// </summary>
     public MarkCommands.Context CommandContextFor(string id)
-        => new(CanLocateOnSky: SkyOf(MarkById(id)) is not null, CanExportFigure: true);
+        => new(CanLocateOnSky: SkyOf(Marks.ById(id)) is not null, CanExportFigure: true);
 
     /// <summary>What each entry does here. Every one of them is also an MCP tool.</summary>
     public void InvokeMarkCommand(MarkCommand command, string id)
@@ -41,7 +41,7 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
             return;
         }
 
-        if (MarkById(id) is not { } mark) return;
+        if (Marks.ById(id) is not { } mark) return;
 
         switch (command)
         {
@@ -73,8 +73,6 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
                 break;
         }
     }
-
-    private Annotation? MarkById(string id) => Marks.Marks.FirstOrDefault(m => m.Id == id);
 
     // ── Where a mark is ─────────────────────────────────────────────────────────────────────────
 
@@ -152,18 +150,8 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
         if (MarkAt(at) is not { } id) return false;
 
         Marks.Select(id);
-        ShowMarkMenuFor(id, at);
+        Controls.MarkContextMenu.ShowFor(this, id, ImageCanvas, at.X, at.Y);
         return true;
-    }
-
-    /// <summary>One way to put the menu on screen, so the pointer and the keyboard cannot differ.</summary>
-    private void ShowMarkMenuFor(string id, Point at)
-    {
-        var menu = Controls.MarkContextMenu.Build(
-            MarkCommands.For(CommandContextFor(id)),
-            command => InvokeMarkCommand(command, id));
-
-        Controls.MarkContextMenu.ShowAt(menu, ImageCanvas, at.X, at.Y);
     }
 
     /// <summary>
@@ -184,14 +172,15 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
         UIElement sender, Microsoft.UI.Xaml.Input.ContextRequestedEventArgs args)
     {
         if (args.TryGetPosition(ImageCanvas, out _)) return;
-        if (Marks.SelectedId is not { } id || MarkById(id) is not { } mark) return;
+        if (Marks.SelectedId is not { } id || Marks.ById(id) is not { } mark) return;
+
 
         // No pointer to anchor to, so the menu goes on the mark itself.
         var at = Surface.Project(mark.Anchor) is { } point
             ? new Point(point.X, point.Y)
             : new Point(ImageCanvas.ActualWidth / 2, ImageCanvas.ActualHeight / 2);
 
-        ShowMarkMenuFor(id, at);
+        Controls.MarkContextMenu.ShowFor(this, id, ImageCanvas, at.X, at.Y);
         args.Handled = true;
     }
 }

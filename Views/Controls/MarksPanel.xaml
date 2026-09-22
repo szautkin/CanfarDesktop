@@ -88,7 +88,7 @@
                     <TextBlock Text="B" FontWeight="Bold" />
                 </ToggleButton>
 
-                <NumberBox Grid.Column="2" x:Name="FontSize" Minimum="6" Maximum="72" SmallChange="1"
+                <NumberBox Grid.Column="2" x:Name="FontSizeBox" Minimum="6" Maximum="72" SmallChange="1"
                            MinWidth="64" SpinButtonPlacementMode="Compact" ValueChanged="OnStyleChanged"
                            x:Uid="Marks_FontSize" ToolTipService.ToolTip="Label size in pixels"
                            AutomationProperties.Name="Label size in pixels" />

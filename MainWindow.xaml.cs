@@ -378,7 +378,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 return new CanfarDesktop.Mcp.Tools.Write.FitsTabSwitchOutcome(false, index, 0, null, "the FITS viewer is not open");
             bool ok = _fitsTabHost.SwitchToTab(index);
             var infos = _fitsTabHost.TabInfos();
-            var active = infos.FirstOrDefault(t => t.Active).Name;
+            var active = infos.FirstOrDefault(t => t.Active)?.Name;
             return new CanfarDesktop.Mcp.Tools.Write.FitsTabSwitchOutcome(
                 ok, index, infos.Count, string.IsNullOrEmpty(active) ? null : active,
                 ok ? null : $"no FITS tab at index {index} ({infos.Count} open)");
@@ -487,7 +487,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 return new CanfarDesktop.Mcp.Tools.Write.CubeTabSwitchOutcome(false, index, 0, null, "the cube viewer is not open");
             bool ok = _cubeTabHost.SwitchToTab(index);
             var infos = _cubeTabHost.TabInfos();
-            var active = infos.FirstOrDefault(t => t.Active).Name;
+            var active = infos.FirstOrDefault(t => t.Active)?.Name;
             return new CanfarDesktop.Mcp.Tools.Write.CubeTabSwitchOutcome(
                 ok, index, infos.Count, string.IsNullOrEmpty(active) ? null : active,
                 ok ? null : $"no cube tab at index {index} ({infos.Count} open)");

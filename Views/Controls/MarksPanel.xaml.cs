@@ -136,7 +136,7 @@ public sealed partial class MarksPanel : UserControl
             var (r, g, b) = (Byte(style.Red), Byte(style.Green), Byte(style.Blue));
             Colour.Color = Windows.UI.Color.FromArgb(255, r, g, b);
             ColourSwatch.Background = new SolidColorBrush(Colour.Color);
-            FontSize.Value = style.FontSize;
+            FontSizeBox.Value = style.FontSize;
             Bold.IsChecked = style.Bold;
             Stroke.Value = style.Stroke;
         }
@@ -147,11 +147,11 @@ public sealed partial class MarksPanel : UserControl
     }
 
     /// <summary>What the controls currently say.</summary>
-    public MarkStyle Style() => new MarkStyle(
+    public MarkStyle CurrentStyle() => new MarkStyle(
         Colour.Color.R / 255.0,
         Colour.Color.G / 255.0,
         Colour.Color.B / 255.0,
-        double.IsNaN(FontSize.Value) ? MarkStyle.DefaultFontSize : FontSize.Value,
+        double.IsNaN(FontSizeBox.Value) ? MarkStyle.DefaultFontSize : FontSizeBox.Value,
         Bold.IsChecked == true,
         double.IsNaN(Stroke.Value) ? MarkStyle.DefaultStroke : Stroke.Value).Sane();
 
@@ -299,7 +299,7 @@ public sealed partial class MarksPanel : UserControl
     private void AnnounceStyle()
     {
         if (_settling) return;
-        StyleChanged?.Invoke(Style());
+        StyleChanged?.Invoke(CurrentStyle());
     }
 
     private void OnFilterChanged(object sender, TextChangedEventArgs e) => Rebuild();

@@ -39,7 +39,7 @@ public sealed partial class CubeViewerPage : IMarkCommandHost
             return;
         }
 
-        if (MarkById(id) is not { } mark) return;
+        if (Marks.ById(id) is not { } mark) return;
 
         switch (command)
         {
@@ -65,8 +65,6 @@ public sealed partial class CubeViewerPage : IMarkCommandHost
             // SearchHere and ExportFigure never reach a cube's menu, so there is nothing to answer.
         }
     }
-
-    private Annotation? MarkById(string id) => Marks.Marks.FirstOrDefault(m => m.Id == id);
 
     /// <summary>The voxel, on the clipboard, through the format both viewers share.</summary>
     private void CopyMarkCoordinates(Annotation mark)
@@ -129,23 +127,15 @@ public sealed partial class CubeViewerPage : IMarkCommandHost
             id = Marks.SelectedId;
 
             // No pointer to anchor to, so the menu goes on the mark itself.
-            at = id is not null && MarkById(id) is { } chosen && surface.Project(chosen.Anchor) is { } point
+            at = Marks.ById(id) is { } chosen && surface.Project(chosen.Anchor) is { } point
                 ? new Point(point.X, point.Y)
                 : new Point(host.ActualWidth / 2, host.ActualHeight / 2);
         }
 
         if (id is null) return;
 
-        // Picked out first: a menu acting on something that is not visibly chosen is how people delete
-        // the wrong thing.
         Marks.Select(id);
-
-        var chosenId = id;
-        var menu = Controls.MarkContextMenu.Build(
-            MarkCommands.For(CommandContextFor(chosenId)),
-            command => InvokeMarkCommand(command, chosenId));
-
-        Controls.MarkContextMenu.ShowAt(menu, host, at.X, at.Y);
+        Controls.MarkContextMenu.ShowFor(this, id, host, at.X, at.Y);
         args.Handled = true;
     }
 }

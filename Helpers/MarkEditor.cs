@@ -149,7 +149,10 @@ public sealed class MarkEditor
     public IReadOnlyList<Annotation> Marks => _marks;
 
     /// <summary>The selected mark, or null.</summary>
-    public Annotation? Selected => _marks.FirstOrDefault(a => a.Id == SelectedId);
+    public Annotation? Selected => ById(SelectedId);
+
+    /// <summary>One mark by id, or null if it has since gone. Both viewers' menus ask this.</summary>
+    public Annotation? ById(string? id) => id is null ? null : _marks.FirstOrDefault(a => a.Id == id);
 
     // ── Drawing ─────────────────────────────────────────────────────────────────────────────────
 

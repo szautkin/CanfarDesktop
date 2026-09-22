@@ -64,6 +64,20 @@ public static class MarkContextMenu
     }
 
     /// <summary>
+    /// Pick a mark out and show its menu — the whole gesture, for any viewer.
+    ///
+    /// <para>Selecting first is part of it: a menu acting on something that is not visibly chosen is
+    /// how people delete the wrong thing. Every caller was doing exactly this, and one of them was
+    /// doing it by hand.</para>
+    /// </summary>
+    public static void ShowFor(
+        IMarkCommandHost host, string id, FrameworkElement target, double x, double y)
+    {
+        var menu = Build(MarkCommands.For(host.CommandContextFor(id)), c => host.InvokeMarkCommand(c, id));
+        ShowAt(menu, target, x, y);
+    }
+
+    /// <summary>
     /// Show the menu at a point in <paramref name="target"/>'s own coordinates — where the pointer was,
     /// so the menu appears under the hand that asked for it.
     /// </summary>

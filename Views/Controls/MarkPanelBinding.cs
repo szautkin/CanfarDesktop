@@ -37,7 +37,7 @@ public sealed class MarkPanelBinding
 
         // While the row is on screen it is the authority on what the next mark looks like; the stored
         // preference takes over when it is not.
-        editor.StyleSource = () => panel.Visibility == Visibility.Visible ? panel.Style() : null;
+        editor.StyleSource = () => panel.Visibility == Visibility.Visible ? panel.CurrentStyle() : null;
 
         editor.Changed += Show;
     }
