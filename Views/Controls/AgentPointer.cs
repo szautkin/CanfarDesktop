@@ -293,10 +293,11 @@ public static class AgentPointer
     /// </summary>
     public static void CloseAll()
     {
-        var had = Live.Count;
+        // No announcement of its own: closing the last of these goes through Forget, which already
+        // raises on the transition to empty. Doing both sent the event TWICE for every page change —
+        // visible in the log as pairs sharing a timestamp, against a lone event when a tip simply
+        // timed out. A tour reading that as its cue would have advanced two screens at once.
         foreach (var tip in Live.ToList()) Close(tip);
         Live.Clear();
-
-        if (had > 0) Announce();
     }
 }

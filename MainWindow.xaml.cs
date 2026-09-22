@@ -254,9 +254,19 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     }
 
     private Task<CanfarDesktop.Mcp.Tools.Write.NavigationOutcome> NavigateByKeyAsync(string mode)
-        => OnUi(() => NavigateByKey(mode), new CanfarDesktop.Mcp.Tools.Write.NavigationOutcome(false, mode, mode));
+        => OnUiAsync(() => NavigateByKey(mode), new CanfarDesktop.Mcp.Tools.Write.NavigationOutcome(false, mode, mode));
 
-    private CanfarDesktop.Mcp.Tools.Write.NavigationOutcome NavigateByKey(string mode)
+    /// <summary>
+    /// Switch modes, and do not claim to have arrived until we have.
+    ///
+    /// <para>Async because two of these are: Storage builds its page by listing VOSpace over the
+    /// network, and the notebook host has its own setup. Both used to be fired off as async void from
+    /// a synchronous switch that returned success regardless — so navigate_to reported "storage" while
+    /// the app sat on the screen it started from, and would have reported it even if the listing
+    /// threw, because nothing was left to observe the exception. An agent that believed the answer
+    /// then pointed at controls on a page that was not showing.</para>
+    /// </summary>
+    private async Task<CanfarDesktop.Mcp.Tools.Write.NavigationOutcome> NavigateByKey(string mode)
     {
         switch (mode)
         {
@@ -264,8 +274,12 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             case "portal": EnsureDashboard(); NavigateTo(AppMode.Portal); return new(true, "portal", "Portal");
             case "search": EnsureSearchPage(); NavigateTo(AppMode.Search); return new(true, "search", "Search");
             case "research": EnsureResearchPage(); NavigateTo(AppMode.Research); return new(true, "research", "Research");
-            case "storage": OpenStorageBrowser(); return new(true, "storage", "Storage");
-            case "notebook": OpenNotebook(); return new(true, "notebook", "Notebook");
+            case "storage": return await OpenStorageBrowserCoreAsync()
+                ? new(true, "storage", "Storage")
+                : new(false, "storage", "Storage");
+            case "notebook":
+                await OpenNotebookCoreAsync(null, createNew: false);
+                return new(true, "notebook", "Notebook");
             case "fitsViewer": EnsureFitsHost(); NavigateTo(AppMode.FitsViewer); return new(true, "fitsViewer", "FITS Viewer");
             case "cubeViewer": EnsureCubeHost(); NavigateTo(AppMode.CubeViewer); return new(true, "cubeViewer", "Cube Viewer");
             case "aiGuide": OpenAiGuidePage(); return new(true, "aiGuide", "AI Guide");
@@ -947,11 +961,19 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         }
     }
 
-    public async void OpenStorageBrowser()
+    public async void OpenStorageBrowser() => await OpenStorageBrowserCoreAsync();
+
+    /// <summary>
+    /// Open Storage, and say whether it opened.
+    ///
+    /// False when a signed-out user dismisses the login dialog — which is a refusal, not a failure,
+    /// and used to be reported to an agent as a successful navigation.
+    /// </summary>
+    private async Task<bool> OpenStorageBrowserCoreAsync()
     {
         if (!_viewModel.IsAuthenticated)
         {
-            if (!await ShowLoginDialogAsync()) return;
+            if (!await ShowLoginDialogAsync()) return false;
         }
 
         if (_storagePage is null)
@@ -964,6 +986,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         }
 
         NavigateTo(AppMode.Storage);
+        return true;
     }
 
     private Views.FitsViewer.FitsTabHost? _fitsTabHost;
