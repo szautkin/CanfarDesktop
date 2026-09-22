@@ -452,6 +452,21 @@ public sealed class AppViewStateService : IAnnotationHost
     public Task<IReadOnlyList<UiTarget>> ListUiTargetsAsync(string? contains)
         => _listUiTargets?.Invoke(contains) ?? Task.FromResult<IReadOnlyList<UiTarget>>([]);
 
+    /// <summary>
+    /// The person has closed the last hint an agent put up.
+    ///
+    /// The host turns this into a <c>hintsDismissed</c> entry in the event log, which is how a guided
+    /// tour waits for a reader instead of a clock.
+    /// </summary>
+    public event Action? HintsDismissed;
+
+    /// <summary>Raised by the window when the hint layer empties.</summary>
+    public void NotifyHintsDismissed()
+    {
+        try { HintsDismissed?.Invoke(); }
+        catch { /* a listener must not take the UI down */ }
+    }
+
     public void SetFitsFigureAction(Func<FitsFigureRequest, Task<FitsFigureOutcome>> export)
         => _exportFitsFigure = export;
 

@@ -188,6 +188,29 @@ public sealed class AgentEventLog
         }
     }
 
+    /// <summary>
+    /// Append an event that is not about a proposal.
+    ///
+    /// <para>The log was built for the proposal lifecycle and its wire shape is shared with macOS, so
+    /// this does not change that shape: the entry carries an empty proposal id and names its own
+    /// subject in <c>ProposalKind</c>. A reader that only cares about proposals can keep filtering on
+    /// a non-empty id.</para>
+    ///
+    /// <para>It exists because not everything an agent needs to hear about is a proposal. The first
+    /// one is a person closing the hints an agent put on screen, which is how a guided tour knows to
+    /// move on.</para>
+    /// </summary>
+    public ulong Append(string kind, string subject, DateTimeOffset now)
+    {
+        lock (_gate)
+        {
+            var entry = new AgentEvent(_nextToken++, now, kind, Guid.Empty, subject, null);
+            _entries.AddLast(entry);
+            while (_entries.Count > Cap) _entries.RemoveFirst();
+            return entry.Token;
+        }
+    }
+
     public ulong CurrentToken
     {
         get { lock (_gate) return _nextToken - 1; }

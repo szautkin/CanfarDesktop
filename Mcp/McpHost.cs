@@ -117,6 +117,15 @@ public sealed class McpHost : IAsyncDisposable
         var proposals = new InMemoryProposalStore(journal: new JsonProposalJournal());
         proposals.Changed += () => ProposalsChanged?.Invoke();
         proposals.EventOccurred += e => EventLog.Append(e.Kind, e.Proposal, DateTimeOffset.UtcNow);
+
+        // Not a proposal, but something an agent waits on: the person has closed the last hint it
+        // put up, which is a guided tour's cue to move to the next screen.
+        try
+        {
+            _services.GetRequiredService<AppViewStateService>().HintsDismissed +=
+                () => EventLog.Append("hintsDismissed", "uiHints", DateTimeOffset.UtcNow);
+        }
+        catch { /* no view state in a headless host; the log simply never sees these */ }
         _proposals = proposals;
         var budget = new ProposalBudget();
 

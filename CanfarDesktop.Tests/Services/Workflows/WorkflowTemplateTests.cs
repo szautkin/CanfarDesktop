@@ -17,10 +17,10 @@ public class WorkflowTemplateTests
     private static readonly WorkflowStore Store = new(Path.GetTempPath());
 
     [Fact]
-    public void AllSevenTemplates_AreEmbedded()
+    public void EveryTemplate_IsEmbedded()
     {
         var builtins = Store.ListBuiltIn();
-        Assert.Equal(7, builtins.Count);
+        Assert.Equal(8, builtins.Count);
         Assert.Contains(builtins, w => w.Id == "builtin:cfht-imaging-recon");
         Assert.Contains(builtins, w => w.Id == "builtin:variable-star-photometry");
         Assert.Contains(builtins, w => w.Id == "builtin:jcmt-cube-kinematics");
@@ -28,6 +28,7 @@ public class WorkflowTemplateTests
         Assert.Contains(builtins, w => w.Id == "builtin:vizier-cadc-crossmatch");
         Assert.Contains(builtins, w => w.Id == "builtin:proposal-due-diligence");
         Assert.Contains(builtins, w => w.Id == "builtin:canfar-batch-reprocessing");
+        Assert.Contains(builtins, w => w.Id == "builtin:verbinal-onboarding");
     }
 
     [Fact]

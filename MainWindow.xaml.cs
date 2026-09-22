@@ -184,6 +184,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
         _viewState.SetAnnotationExportAction(ExportAnnotationsActionAsync);
         _viewState.SetUiPointerActions(PointAtUiActionAsync, ListUiTargetsActionAsync);
+        Views.Controls.AgentPointer.AllClosed += _viewState.NotifyHintsDismissed;
         _viewState.SetFitsCaptureAction(CaptureFitsActionAsync);
         _viewState.SetCubeCaptureAction(CaptureCubeActionAsync);
         _viewState.SetNotebookImageAction(GetCellImageActionAsync);

@@ -26,7 +26,11 @@ public sealed class DescribeAppTool : JsonReadTool<EmptyArgs, DescribeAppTool.Ou
             _appVersion,
             "Native Windows client for CADC / CANFAR. Exposes (read-only) observation search " +
             "(ADQL + CAOM2), Skaha sessions, downloaded research observations + notes, VOSpace storage, " +
-            "FITS headers/WCS, container image discovery, and a native Jupyter notebook engine."));
+            "FITS headers/WCS, container image discovery, and a native Jupyter notebook engine. " +
+            "If the user is new, or asks what this app does or where anything is, run the built-in " +
+            "workflow \"Take the tour of Verbinal\" (use_workflow, builtin:verbinal-onboarding): it " +
+            "walks them through all nine screens with point_at_ui pointing at the controls as you " +
+            "describe them, and waits for them to close each hint rather than running on a timer."));
 
     public sealed record Output(string Name, string Version, string Summary);
 }

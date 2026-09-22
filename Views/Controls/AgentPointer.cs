@@ -193,6 +193,18 @@ public static class AgentPointer
     private static readonly List<TeachingTip> Live = [];
 
     /// <summary>
+    /// The last hint has gone, however it went — closed, timed out, or cleared by a page change.
+    ///
+    /// <para>This is what lets a guided tour move at the person's pace instead of on a timer. An
+    /// agent puts up three hints, says nothing more, and waits; when they have read all three and
+    /// closed them, the tour moves on. Any other design either hurries somebody who is still reading
+    /// or leaves them looking at a finished screen wondering what they missed.</para>
+    ///
+    /// <para>Raised only on the transition to empty, so closing the second of three is silent.</para>
+    /// </summary>
+    public static event Action? AllClosed;
+
+    /// <summary>
     /// Point at it: bring it into view, then put a tip on it. Returns how many are now up.
     ///
     /// <para>Brought into view first because a control inside a scrolled panel may be perfectly
@@ -257,8 +269,19 @@ public static class AgentPointer
     {
         if (tip is null) return;
 
+        var had = Live.Count;
         Live.Remove(tip);
         if (tip.Parent is Panel host) host.Children.Remove(tip);
+
+        // On the way to empty, and only then: closing the second of three says nothing.
+        if (had > 0 && Live.Count == 0) Announce();
+    }
+
+    /// <summary>A listener that throws must not take the hints down with it.</summary>
+    private static void Announce()
+    {
+        try { AllClosed?.Invoke(); }
+        catch { /* the tour is not worth a crash */ }
     }
 
     /// <summary>
@@ -270,7 +293,10 @@ public static class AgentPointer
     /// </summary>
     public static void CloseAll()
     {
+        var had = Live.Count;
         foreach (var tip in Live.ToList()) Close(tip);
         Live.Clear();
+
+        if (had > 0) Announce();
     }
 }
