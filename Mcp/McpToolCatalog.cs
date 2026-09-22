@@ -240,6 +240,10 @@ public static class McpToolCatalog
             new ExportFitsFigureTool(request => viewState.ExportFitsFigureAsync(request)),
             new ExportAnnotationsTool(request => viewState.ExportAnnotationsAsync(request)),
 
+            // Pointing a person at a control, and the vocabulary for doing it.
+            new PointAtUiTool(request => viewState.PointAtUiAsync(request)),
+            new ListUiTargetsTool(contains => viewState.ListUiTargetsAsync(contains)),
+
             // Looking at what the person is looking at, as opposed to writing a plate for a paper.
             new GetFitsImageTool(request => viewState.CaptureFitsAsync(request)),
             new GetCubeImageTool(request => viewState.CaptureCubeAsync(request)),

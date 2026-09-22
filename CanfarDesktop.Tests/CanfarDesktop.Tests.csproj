@@ -194,6 +194,7 @@
     <Compile Include="..\Mcp\Tools\JsonWriteTool.cs" Link="Linked\Mcp\JsonWriteTool.cs" />
     <Compile Include="..\Mcp\Tools\Write\ProposalLifecycleTools.cs" Link="Linked\Mcp\ProposalLifecycleTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ViewStateWriteTools.cs" Link="Linked\Mcp\ViewStateWriteTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\UiPointerTools.cs" Link="Linked\Mcp\UiPointerTools.cs" />
     <!-- Search page steering: contracts first — AppViewStateService forwards to ISearchUiBridge. -->
     <Compile Include="..\Mcp\Tools\Write\SearchUiContracts.cs" Link="Linked\Mcp\SearchUiContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\SearchUiTools.cs" Link="Linked\Mcp\SearchUiTools.cs" />
@@ -314,6 +315,7 @@
     <Compile Include="..\Helpers\MarkCommands.cs" Link="Linked\MarkCommands.cs" />
     <Compile Include="..\Helpers\MarkClipboard.cs" Link="Linked\MarkClipboard.cs" />
     <Compile Include="..\Helpers\CubeDownsample.cs" Link="Linked\CubeDownsample.cs" />
+    <Compile Include="..\Helpers\UiPointer.cs" Link="Linked\UiPointer.cs" />
     <Compile Include="..\Services\Fits\AnnotationStore.cs" Link="Linked\Fits\AnnotationStore.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationContracts.cs" Link="Linked\Mcp\AnnotationContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />

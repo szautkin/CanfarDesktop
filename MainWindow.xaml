@@ -193,5 +193,12 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <!-- An agent pointing at one of our own controls. One tip, reused: two at once would be two
+             things claiming to be the thing you were just told about. Last in the root grid so it
+             draws over every page, and its tail reaches controls on any of them. -->
+        <TeachingTip x:Name="AgentPointerTip" Grid.Row="0" Grid.RowSpan="3"
+                     PreferredPlacement="Auto" IsLightDismissEnabled="True"
+                     AutomationProperties.Name="Agent hint" />
     </Grid>
 </Window>

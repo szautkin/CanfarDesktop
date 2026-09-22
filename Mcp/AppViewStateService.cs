@@ -432,6 +432,26 @@ public sealed class AppViewStateService : IAnnotationHost
         => _exportAnnotations?.Invoke(request)
            ?? Task.FromResult(new AnnotationExportOutcome(false, request.Path, null, 0, "the viewer is unavailable"));
 
+    // ── Pointing the person at a control ────────────────────────────────────────────────────────
+
+    private volatile Func<UiPointRequest, Task<UiPointOutcome>>? _pointAtUi;
+    private volatile Func<string?, Task<IReadOnlyList<UiTarget>>>? _listUiTargets;
+
+    public void SetUiPointerActions(
+        Func<UiPointRequest, Task<UiPointOutcome>> point,
+        Func<string?, Task<IReadOnlyList<UiTarget>>> list)
+    {
+        _pointAtUi = point;
+        _listUiTargets = list;
+    }
+
+    public Task<UiPointOutcome> PointAtUiAsync(UiPointRequest request)
+        => _pointAtUi?.Invoke(request)
+           ?? Task.FromResult(new UiPointOutcome(false, request.Target, "the window is not available"));
+
+    public Task<IReadOnlyList<UiTarget>> ListUiTargetsAsync(string? contains)
+        => _listUiTargets?.Invoke(contains) ?? Task.FromResult<IReadOnlyList<UiTarget>>([]);
+
     public void SetFitsFigureAction(Func<FitsFigureRequest, Task<FitsFigureOutcome>> export)
         => _exportFitsFigure = export;
 

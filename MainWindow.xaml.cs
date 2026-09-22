@@ -183,6 +183,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetAnnotationHost(this);
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
         _viewState.SetAnnotationExportAction(ExportAnnotationsActionAsync);
+        _viewState.SetUiPointerActions(PointAtUiActionAsync, ListUiTargetsActionAsync);
         _viewState.SetFitsCaptureAction(CaptureFitsActionAsync);
         _viewState.SetCubeCaptureAction(CaptureCubeActionAsync);
         _viewState.SetNotebookImageAction(GetCellImageActionAsync);
@@ -595,6 +596,16 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
 
     private DispatcherTimer? _agentActivityTimer;
 
+    /// <summary>
+    /// Turns a stream of tool calls into the two moments worth hearing.
+    ///
+    /// The activity signal arrives once per call and an agent doing real work raises it many times a
+    /// second, so playing each one would be a stutter rather than a cue. The tracker collapses a burst
+    /// into one "started" and — when the same idle timer that hides the indicator runs out — one
+    /// "finished".
+    /// </summary>
+    private readonly Helpers.AgentCueTracker _agentCues = new();
+
     private void OnAgentActivity(CanfarDesktop.Mcp.AppViewStateService.AgentActivitySignal signal)
     {
         DispatcherQueue.TryEnqueue(() =>
@@ -603,6 +614,9 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 ? Loc.F("MainWindow_AgentWorkingModule", TitleForModule(module))
                 : Loc.T("MainWindow_AgentWorking");
             AgentActivityIndicator.Visibility = Visibility.Visible;
+
+            // On the EDGE of an agent starting, not on every call it makes.
+            if (_agentCues.Activity() is { } cue) Helpers.AgentSounds.Play(cue);
 
             _agentActivityTimer ??= CreateAgentActivityTimer();
             _agentActivityTimer.Stop();
@@ -617,6 +631,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         {
             timer.Stop();
             AgentActivityIndicator.Visibility = Visibility.Collapsed;
+            if (_agentCues.Idle() is { } cue) Helpers.AgentSounds.Play(cue);
         };
         return timer;
     }
@@ -1615,6 +1630,64 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 true, request.Path, extension.TrimStart('.'), document.Marks.Count, null);
         }, new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
             false, request.Path, null, 0, "could not dispatch to UI"));
+
+    // ── Pointing the person at a control ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Show somebody where a control is.
+    ///
+    /// <para>Resolved against the tree as it is at this moment, on the UI thread, because "what is on
+    /// screen" is the whole question — a name that matched a minute ago may be on a page that has
+    /// since been navigated away from.</para>
+    /// </summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.UiPointOutcome> PointAtUiActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.UiPointRequest request)
+        => OnUi(() =>
+        {
+            var targets = Views.Controls.AgentPointer.Targets(Content);
+
+            if (targets.Count == 0)
+                return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
+                    false, request.Target, "nothing is on screen to point at yet");
+
+            // Nothing, or two things equally: either way the caller gets the list rather than a guess.
+            if (Helpers.UiPointer.Best(targets, request.Target) is not { } id)
+                return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
+                    false, request.Target,
+                    $"no single control on screen matches \"{request.Target}\" — these are here now",
+                    Describe(Helpers.UiPointer.Suggest(targets, request.Target)));
+
+            if (Views.Controls.AgentPointer.Find(Content, id) is not { } element)
+                return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
+                    false, id, "that control went off screen before it could be pointed at");
+
+            Views.Controls.AgentPointer.Show(
+                AgentPointerTip, element, request.Title, request.Message,
+                Helpers.UiPointer.Seconds(request.Seconds));
+
+            return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(true, id, null);
+        }, new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(false, request.Target, "could not dispatch to UI"));
+
+    private Task<IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.UiTarget>> ListUiTargetsActionAsync(string? contains)
+        => OnUi(() =>
+        {
+            var targets = Views.Controls.AgentPointer.Targets(Content);
+
+            if (!string.IsNullOrWhiteSpace(contains))
+            {
+                var wanted = Helpers.UiPointer.Normalise(contains);
+                targets = targets
+                    .Where(t => Helpers.UiPointer.Normalise(t.Id).Contains(wanted)
+                             || Helpers.UiPointer.Normalise(t.Label).Contains(wanted))
+                    .ToList();
+            }
+
+            return Describe(targets);
+        }, []);
+
+    private static IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.UiTarget> Describe(
+        IReadOnlyList<Helpers.UiPointer.Target> targets)
+        => targets.Select(t => new CanfarDesktop.Mcp.Tools.Write.UiTarget(t.Id, t.Kind, t.Label)).ToList();
 
     /// <summary>Where a local file came from, when the app downloaded it. Null when it was opened off disk.</summary>
     private static Helpers.MarkExport.Provenance? ProvenanceFor(string localPath)
