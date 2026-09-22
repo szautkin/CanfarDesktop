@@ -68,15 +68,10 @@ public sealed partial class CubeViewerPage : IMarkCommandHost
 
     private Annotation? MarkById(string id) => Marks.Marks.FirstOrDefault(m => m.Id == id);
 
-    /// <summary>
-    /// The voxel, on the clipboard.
-    ///
-    /// x, y and the channel, because a cube position without its channel is two thirds of an answer
-    /// and the channel is the part somebody is most likely to have come looking for.
-    /// </summary>
+    /// <summary>The voxel, on the clipboard, through the format both viewers share.</summary>
     private void CopyMarkCoordinates(Annotation mark)
     {
-        var text = $"x={mark.Anchor.X:0.##}, y={mark.Anchor.Y:0.##}, channel={mark.Anchor.Z:0.##}";
+        var text = MarkClipboard.Voxel(mark.Anchor.X, mark.Anchor.Y, mark.Anchor.Z);
 
         try
         {

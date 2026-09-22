@@ -312,6 +312,7 @@
     <Compile Include="..\Helpers\MarkExport.cs" Link="Linked\MarkExport.cs" />
     <Compile Include="..\Helpers\Ds9Regions.cs" Link="Linked\Ds9Regions.cs" />
     <Compile Include="..\Helpers\MarkCommands.cs" Link="Linked\MarkCommands.cs" />
+    <Compile Include="..\Helpers\MarkClipboard.cs" Link="Linked\MarkClipboard.cs" />
     <Compile Include="..\Services\Fits\AnnotationStore.cs" Link="Linked\Fits\AnnotationStore.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationContracts.cs" Link="Linked\Mcp\AnnotationContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />

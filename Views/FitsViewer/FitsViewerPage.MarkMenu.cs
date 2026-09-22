@@ -105,16 +105,15 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
     }
 
     /// <summary>
-    /// The mark's position on the clipboard, in both the forms this app prints.
+    /// The mark's position on the clipboard, in the form our own Search box can read.
     ///
-    /// Sexagesimal AND degrees, because the first is what goes into a message to a colleague and the
-    /// second is what goes into a script, and which one is wanted is not knowable from here.
+    /// See <see cref="MarkClipboard"/> for why that is the deciding constraint and not legibility.
     /// </summary>
     private void CopyMarkCoordinates(Annotation mark)
     {
         var text = SkyOf(mark) is { } sky
-            ? $"{WcsInfo.FormatRa(sky.Ra)} {WcsInfo.FormatDec(sky.Dec)}  ({sky.Ra:0.######}, {sky.Dec:0.######})"
-            : $"{mark.Anchor.X:0.##}, {mark.Anchor.Y:0.##} px";
+            ? MarkClipboard.Sky(sky.Ra, sky.Dec)
+            : MarkClipboard.ImagePixel(mark.Anchor.X, mark.Anchor.Y);
 
         try
         {
