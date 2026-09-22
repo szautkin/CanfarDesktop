@@ -365,7 +365,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             hdu: args.Hdu, crosshairX: args.CrosshairX, crosshairY: args.CrosshairY,
             centerX: args.CenterX, centerY: args.CenterY,
             syncZoom: args.SyncZoom, linkedCrosshair: args.LinkedCrosshair,
-            showHeaderPanel: args.ShowHeaderPanel, showBookmarksPanel: args.ShowBookmarksPanel), null);
+            showHeaderPanel: args.ShowHeaderPanel, showBookmarksPanel: args.ShowBookmarksPanel,
+            showMarksPanel: args.ShowMarksPanel), null);
 
     private Task<CanfarDesktop.Mcp.Tools.Write.FitsBlinkOutcome?> BlinkFitsActionAsync(
         string action, int? withTabIndex, int? intervalMs)

@@ -32,6 +32,14 @@ public sealed partial class FitsViewerPage
     }
 
     /// <summary>
+    /// Close the Marks section again.
+    ///
+    /// The collapse handler puts the pencil down, so closing the panel cannot leave a press on the
+    /// image still drawing with no visible control saying so.
+    /// </summary>
+    public void HideMarksPanel() => MarksExpander.IsExpanded = false;
+
+    /// <summary>
     /// Arm or disarm the pencil.
     ///
     /// Public because the tab host's toolbar can arm it too, and because the host pushes the mode onto

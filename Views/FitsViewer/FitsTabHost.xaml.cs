@@ -1061,6 +1061,7 @@ public sealed partial class FitsTabHost : UserControl
         int? centerX = null, int? centerY = null,
         bool? syncZoom = null, bool? linkedCrosshair = null,
         bool? showHeaderPanel = null, bool? showBookmarksPanel = null,
+        bool? showMarksPanel = null,
         bool? selectArea = null)
     {
         if (selectArea is not null && _activePage is not null)
@@ -1115,6 +1116,11 @@ public sealed partial class FitsTabHost : UserControl
             _coordPanelVisible = showBookmarksPanel.Value;
             CoordPanelColumn.Width = _coordPanelVisible ? new GridLength(280) : new GridLength(0);
         }
+        // Through the page's own opener, which also brings the column it lives in into view — the
+        // marks list is inside the header column, so setting the expander alone would open a section
+        // nobody can see.
+        if (showMarksPanel == true) _activePage?.ShowMarksPanel();
+        else if (showMarksPanel == false) _activePage?.HideMarksPanel();
         SyncToolbarToActiveTab(); // keep the toolbar in sync with the programmatic change
         return GetFitsViewState();
     }
