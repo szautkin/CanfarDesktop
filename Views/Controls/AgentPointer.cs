@@ -130,6 +130,7 @@ public static class AgentPointer
     /// </summary>
     private static string? Label(FrameworkElement element, string? automation)
         => Words(automation)
+           ?? Words(Header(element))
            ?? Words(ToolTipService.GetToolTip(element) as string)
            ?? element switch
            {
@@ -141,6 +142,25 @@ public static class AgentPointer
 
     private static string? Text(params string?[] candidates)
         => candidates.Select(Words).FirstOrDefault(s => s is not null);
+
+    /// <summary>
+    /// The caption a form field is written under — what a person reads to know what the box is for.
+    ///
+    /// A label, never an id: it is localized, so identity has to come from x:Name instead. Header is
+    /// not on a common base class, so each kind is asked in turn.
+    /// </summary>
+    private static string? Header(FrameworkElement element) => element switch
+    {
+        TextBox box => box.Header as string,
+        NumberBox number => number.Header as string,
+        ComboBox combo => combo.Header as string,
+        AutoSuggestBox suggest => suggest.Header as string,
+        PasswordBox password => password.Header as string,
+        Slider slider => slider.Header as string,
+        ToggleSwitch toggle => toggle.Header as string,
+        CalendarDatePicker picker => picker.Header as string,
+        _ => null,
+    };
 
     /// <summary>
     /// Usable words, or nothing.
