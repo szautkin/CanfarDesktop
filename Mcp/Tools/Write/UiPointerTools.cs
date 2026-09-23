@@ -6,6 +6,15 @@ namespace CanfarDesktop.Mcp.Tools.Write;
 /// <param name="Label">What it says to the person, when it says anything.</param>
 public sealed record UiTarget(string Target, string Kind, string? Label);
 
+/// <summary>
+/// What is on screen to point at, and which closed sections were left out of it.
+/// </summary>
+/// <param name="CollapsedSections">
+/// Sections that are folded shut, whose controls are not in <paramref name="Targets"/> unless the
+/// listing was asked to include them. Named so a listing never silently omits half a page.
+/// </param>
+public sealed record UiTargetListing(IReadOnlyList<UiTarget> Targets, IReadOnlyList<UiTarget> CollapsedSections);
+
 /// <summary>What <c>point_at_ui</c> was asked for.</summary>
 public sealed record UiPointRequest(string Target, string? Title, string Message, double? Seconds);
 
@@ -48,7 +57,9 @@ public sealed class PointAtUiTool : JsonReadTool<PointAtUiTool.Args, UiPointOutc
         "of your own. Use it when someone asks where something is, or when you want them to do the " +
         "next step themselves — it points, it never presses, so pointing at a destructive control is " +
         "safe. 'target' is a control's name or the words on it, as listed by list_ui_targets; only " +
-        "what is on screen right now can be pointed at, so navigate first if you need to. If the name " +
+        "what is on this page can be pointed at, so navigate first if you need to. A control inside a " +
+        "collapsed section is still reachable — the section is opened for you before the hint goes up. " +
+        "If the name " +
         "matches nothing, or two things equally, nothing is shown and the reply lists what is there. " +
         "Call it several times to put several hints up at once — one per control, so pointing at the " +
         "same one twice replaces rather than stacks. Each has its own close button; the countdown " +
@@ -98,9 +109,9 @@ public sealed class PointAtUiTool : JsonReadTool<PointAtUiTool.Args, UiPointOutc
 /// </summary>
 public sealed class ListUiTargetsTool : JsonReadTool<ListUiTargetsTool.Args, ListUiTargetsTool.Result>
 {
-    private readonly Func<string?, Task<IReadOnlyList<UiTarget>>> _list;
+    private readonly Func<string?, bool, Task<UiTargetListing>> _list;
 
-    public ListUiTargetsTool(Func<string?, Task<IReadOnlyList<UiTarget>>> list) => _list = list;
+    public ListUiTargetsTool(Func<string?, bool, Task<UiTargetListing>> list) => _list = list;
 
     public override McpVerbClass VerbClass => McpVerbClass.Read;
 
@@ -109,23 +120,30 @@ public sealed class ListUiTargetsTool : JsonReadTool<ListUiTargetsTool.Args, Lis
         "The controls on screen right now that point_at_ui can point at, each with its name, what " +
         "sort of control it is, and the words it shows. Optionally filtered by 'contains'. This " +
         "changes as the app navigates — a control on a page that is not showing is not in the list, " +
-        "because it is not somewhere a person can be sent. Read-only.",
+        "because it is not somewhere a person can be sent. Sections that are folded shut are named " +
+        "in collapsedSections and their controls left out; pass includeCollapsed to list those too " +
+        "(the sections open for a moment to be read and close again). Read-only.",
         """
         {"type":"object","properties":{
-          "contains":{"type":"string","description":"Only targets whose name or words contain this."}
+          "contains":{"type":"string","description":"Only targets whose name or words contain this."},
+          "includeCollapsed":{"type":"boolean","description":"Also list controls inside closed sections. Default false."}
         },"additionalProperties":false}
         """);
 
     protected override async Task<Result> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
-        var targets = await _list(string.IsNullOrWhiteSpace(args.Contains) ? null : args.Contains!.Trim());
-        return new Result(targets.Count, targets);
+        var listing = await _list(
+            string.IsNullOrWhiteSpace(args.Contains) ? null : args.Contains!.Trim(),
+            args.IncludeCollapsed == true);
+        return new Result(listing.Targets.Count, listing.Targets, listing.CollapsedSections);
     }
 
     public sealed record Args
     {
         public string? Contains { get; init; }
+        public bool? IncludeCollapsed { get; init; }
     }
 
-    public sealed record Result(int Count, IReadOnlyList<UiTarget> Targets);
+    public sealed record Result(
+        int Count, IReadOnlyList<UiTarget> Targets, IReadOnlyList<UiTarget> CollapsedSections);
 }

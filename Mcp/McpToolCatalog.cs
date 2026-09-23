@@ -242,7 +242,7 @@ public static class McpToolCatalog
 
             // Pointing a person at a control, and the vocabulary for doing it.
             new PointAtUiTool(request => viewState.PointAtUiAsync(request)),
-            new ListUiTargetsTool(contains => viewState.ListUiTargetsAsync(contains)),
+            new ListUiTargetsTool((contains, collapsed) => viewState.ListUiTargetsAsync(contains, collapsed)),
 
             // Looking at what the person is looking at, as opposed to writing a plate for a paper.
             new GetFitsImageTool(request => viewState.CaptureFitsAsync(request)),

@@ -302,6 +302,99 @@ public static class AgentPointer
     }
 
     /// <summary>
+    /// Try something with the page's closed sections open, and put them back if it comes to nothing.
+    ///
+    /// <para>The listing and the lookup both skip anything invisible, which is right for a control on
+    /// another page and wrong for one behind a collapsed Expander: that is one click from view, and
+    /// refusing it makes the whole section unreachable. The Search page keeps its instrument,
+    /// collection and filter facets in exactly such a section.</para>
+    ///
+    /// <para>Opening is also what REALISES the contents — a collapsed Expander need not have built
+    /// them yet, so no amount of searching finds them first. Nested sections only exist once their
+    /// parent is open, so this opens in rounds. Anything opened for an attempt that returns nothing
+    /// is closed again: a mistyped name should not quietly unfold somebody's page.</para>
+    /// </summary>
+    public static T? WithCollapsedOpen<T>(DependencyObject? root, Func<T?> attempt) where T : class
+    {
+        var opened = OpenAll(root);
+        if (opened.Count == 0) return null;
+
+        var result = attempt();
+        if (result is null) CloseSections(opened);
+        return result;
+    }
+
+    /// <summary>
+    /// Open every closed section, list what is then on screen, and close them again.
+    ///
+    /// For <c>list_ui_targets</c> when asked to include hidden controls: the only way to know what is
+    /// inside a section that has never been opened is to open it.
+    /// </summary>
+    public static IReadOnlyList<UiPointer.Target> TargetsIncludingCollapsed(DependencyObject? root)
+    {
+        var opened = OpenAll(root);
+        try { return Targets(root); }
+        finally { CloseSections(opened); }
+    }
+
+    /// <summary>The closed sections on screen, as targets, so a listing can say what it left out.</summary>
+    public static IReadOnlyList<UiPointer.Target> CollapsedSections(DependencyObject? root)
+        => Collapsed(root, depth: 0)
+            .Select(e => Pointable(e) ?? new UiPointer.Target(e.Name, nameof(Expander), e.Header as string))
+            .Where(t => !string.IsNullOrWhiteSpace(t.Id))
+            .ToList();
+
+    /// <summary>Nested sections only appear once their parent opens, so a few rounds, bounded.</summary>
+    private const int OpenRounds = 4;
+
+    private static List<Expander> OpenAll(DependencyObject? root)
+    {
+        var opened = new List<Expander>();
+
+        for (var round = 0; round < OpenRounds; round++)
+        {
+            // Materialised before opening anything: opening changes the tree under the walk.
+            var closed = Collapsed(root, depth: 0).ToList();
+            if (closed.Count == 0) break;
+
+            foreach (var expander in closed)
+            {
+                expander.IsExpanded = true;
+                opened.Add(expander);
+            }
+
+            (root as FrameworkElement)?.UpdateLayout();
+        }
+
+        return opened;
+    }
+
+    /// <summary>Innermost first, the reverse of opening, so each closes inside a parent still open.</summary>
+    private static void CloseSections(List<Expander> opened)
+    {
+        for (var i = opened.Count - 1; i >= 0; i--) opened[i].IsExpanded = false;
+    }
+
+    /// <summary>Every closed Expander that is itself on screen.</summary>
+    private static IEnumerable<Expander> Collapsed(DependencyObject? node, int depth)
+    {
+        if (node is null || depth > MaxDepth) yield break;
+        if (node is FrameworkElement { Visibility: not Visibility.Visible }) yield break;
+
+        if (node is Expander { IsExpanded: false } expander)
+        {
+            // Its contents are folded away; the section itself is the finding, not what is in it.
+            yield return expander;
+            yield break;
+        }
+
+        var children = VisualTreeHelper.GetChildrenCount(node);
+        for (var i = 0; i < children; i++)
+            foreach (var found in Collapsed(VisualTreeHelper.GetChild(node, i), depth + 1))
+                yield return found;
+    }
+
+    /// <summary>
     /// Get the target actually on screen before pointing at it.
     ///
     /// <para>Two different problems wear the same face. A control can be off the bottom of a

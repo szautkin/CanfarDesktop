@@ -1705,16 +1705,25 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
                     false, request.Target, "nothing is on screen to point at yet");
 
+            var id = Helpers.UiPointer.Best(targets, request.Target);
+            var element = id is null ? null : Views.Controls.AgentPointer.Find(Content, id);
+
+            // Not among what is showing — but it may be on this page, folded inside a closed section.
+            // Those are opened to look, and closed again if the name still lands on nothing.
+            element ??= Views.Controls.AgentPointer.WithCollapsedOpen(Content, () =>
+            {
+                var widened = Views.Controls.AgentPointer.Targets(Content);
+                if (Helpers.UiPointer.Best(widened, request.Target) is not { } hidden) return null;
+                id = hidden;
+                return Views.Controls.AgentPointer.Find(Content, hidden);
+            });
+
             // Nothing, or two things equally: either way the caller gets the list rather than a guess.
-            if (Helpers.UiPointer.Best(targets, request.Target) is not { } id)
+            if (element is null || id is null)
                 return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
                     false, request.Target,
                     $"no single control on screen matches \"{request.Target}\" — these are here now",
                     Describe(Helpers.UiPointer.Suggest(targets, request.Target)));
-
-            if (Views.Controls.AgentPointer.Find(Content, id) is not { } element)
-                return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
-                    false, id, "that control went off screen before it could be pointed at");
 
             var showing = Views.Controls.AgentPointer.Show(
                 AgentPointerHost, element, request.Title, request.Message,
@@ -1724,10 +1733,16 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 true, id, showing > 1 ? $"{showing} hints are up" : null);
         }, new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(false, request.Target, "could not dispatch to UI"));
 
-    private Task<IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.UiTarget>> ListUiTargetsActionAsync(string? contains)
+    private Task<CanfarDesktop.Mcp.Tools.Write.UiTargetListing> ListUiTargetsActionAsync(
+        string? contains, bool includeCollapsed)
         => OnUi(() =>
         {
-            var targets = Views.Controls.AgentPointer.Targets(Content);
+            // Read before anything is opened, so the listing reports the page as the person sees it.
+            var collapsed = Views.Controls.AgentPointer.CollapsedSections(Content);
+
+            var targets = includeCollapsed
+                ? Views.Controls.AgentPointer.TargetsIncludingCollapsed(Content)
+                : Views.Controls.AgentPointer.Targets(Content);
 
             if (!string.IsNullOrWhiteSpace(contains))
             {
@@ -1738,8 +1753,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                     .ToList();
             }
 
-            return Describe(targets);
-        }, []);
+            return new CanfarDesktop.Mcp.Tools.Write.UiTargetListing(Describe(targets), Describe(collapsed));
+        }, new CanfarDesktop.Mcp.Tools.Write.UiTargetListing([], []));
 
     private static IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.UiTarget> Describe(
         IReadOnlyList<Helpers.UiPointer.Target> targets)

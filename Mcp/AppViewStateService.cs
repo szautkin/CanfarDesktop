@@ -435,11 +435,11 @@ public sealed class AppViewStateService : IAnnotationHost
     // ── Pointing the person at a control ────────────────────────────────────────────────────────
 
     private volatile Func<UiPointRequest, Task<UiPointOutcome>>? _pointAtUi;
-    private volatile Func<string?, Task<IReadOnlyList<UiTarget>>>? _listUiTargets;
+    private volatile Func<string?, bool, Task<UiTargetListing>>? _listUiTargets;
 
     public void SetUiPointerActions(
         Func<UiPointRequest, Task<UiPointOutcome>> point,
-        Func<string?, Task<IReadOnlyList<UiTarget>>> list)
+        Func<string?, bool, Task<UiTargetListing>> list)
     {
         _pointAtUi = point;
         _listUiTargets = list;
@@ -449,8 +449,9 @@ public sealed class AppViewStateService : IAnnotationHost
         => _pointAtUi?.Invoke(request)
            ?? Task.FromResult(new UiPointOutcome(false, request.Target, "the window is not available"));
 
-    public Task<IReadOnlyList<UiTarget>> ListUiTargetsAsync(string? contains)
-        => _listUiTargets?.Invoke(contains) ?? Task.FromResult<IReadOnlyList<UiTarget>>([]);
+    public Task<UiTargetListing> ListUiTargetsAsync(string? contains, bool includeCollapsed)
+        => _listUiTargets?.Invoke(contains, includeCollapsed)
+           ?? Task.FromResult(new UiTargetListing([], []));
 
     /// <summary>
     /// The person has closed the last hint an agent put up.
