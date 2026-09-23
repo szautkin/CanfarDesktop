@@ -7,11 +7,43 @@
 
     <Grid RowDefinitions="Auto,*">
 
-        <!-- Shared toolbar -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Padding="12,6"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                    BorderThickness="0,0,0,1">
+        <!-- Shared toolbar.
+
+             It carries more controls than a narrow window has room for, and none of them collapses —
+             so the last ones used to sit off the end of the strip with nothing to scroll and no sign
+             they existed. It scrolls sideways now: a mouse wheel over it, a touch drag, keyboard focus
+             moving onto a hidden control, or the step buttons at either end, which appear only while
+             there is something out of sight that way. The arithmetic is Helpers.ToolbarOverflow.
+
+             The strip's inner panel keeps its original indentation below, deliberately: re-indenting
+             two hundred lines to wrap them would bury the one line that changed. -->
+        <Grid Grid.Row="0" x:Name="ToolbarStrip"
+              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="0,0,0,1"
+              SizeChanged="OnToolbarSizeChanged">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button x:Name="ToolbarBackButton" x:Uid="Fits_ToolbarBack" Grid.Column="0"
+                    Visibility="Collapsed" Click="OnToolbarBack"
+                    Padding="6,4" Margin="4,0,0,0" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="0"
+                    ToolTipService.ToolTip="Earlier tools"
+                    AutomationProperties.Name="Scroll the toolbar back">
+                <FontIcon Glyph="&#xE76B;" FontSize="12" />
+            </Button>
+
+            <ScrollViewer x:Name="ToolbarScroller" Grid.Column="1"
+                          HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled"
+                          ViewChanged="OnToolbarViewChanged"
+                          PointerWheelChanged="OnToolbarWheel">
+        <StackPanel Orientation="Horizontal" Spacing="8" Padding="12,6"
+                    SizeChanged="OnToolbarSizeChanged">
 
             <Button x:Uid="Fits_OpenButton" Click="OnOpenFile" ToolTipService.ToolTip="Open FITS" Padding="8,4"
                     AutomationProperties.Name="Open FITS file">
@@ -203,6 +235,17 @@
             <ProgressRing x:Name="LoadingRing" IsActive="False" Width="20" Height="20"
                           VerticalAlignment="Center" />
         </StackPanel>
+            </ScrollViewer>
+
+            <Button x:Name="ToolbarForwardButton" x:Uid="Fits_ToolbarForward" Grid.Column="2"
+                    Visibility="Collapsed" Click="OnToolbarForward"
+                    Padding="6,4" Margin="0,0,4,0" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="0"
+                    ToolTipService.ToolTip="More tools"
+                    AutomationProperties.Name="Scroll the toolbar forward">
+                <FontIcon Glyph="&#xE76C;" FontSize="12" />
+            </Button>
+        </Grid>
 
         <!-- Tab view + coordinate panel -->
         <Grid Grid.Row="1">

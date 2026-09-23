@@ -316,6 +316,7 @@
     <Compile Include="..\Helpers\MarkClipboard.cs" Link="Linked\MarkClipboard.cs" />
     <Compile Include="..\Helpers\CubeDownsample.cs" Link="Linked\CubeDownsample.cs" />
     <Compile Include="..\Helpers\UiPointer.cs" Link="Linked\UiPointer.cs" />
+    <Compile Include="..\Helpers\ToolbarOverflow.cs" Link="Linked\ToolbarOverflow.cs" />
     <Compile Include="..\Services\Fits\AnnotationStore.cs" Link="Linked\Fits\AnnotationStore.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationContracts.cs" Link="Linked\Mcp\AnnotationContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />

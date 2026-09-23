@@ -4046,6 +4046,18 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Fits_WcsSyncWarningBar.Title" xml:space="preserve">
     <value>WCS approximatif</value>
   </data>
+  <data name="Fits_ToolbarBack.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Faire défiler la barre d'outils vers l'arrière</value>
+  </data>
+  <data name="Fits_ToolbarBack.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Outils précédents</value>
+  </data>
+  <data name="Fits_ToolbarForward.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Faire défiler la barre d'outils vers l'avant</value>
+  </data>
+  <data name="Fits_ToolbarForward.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Plus d'outils</value>
+  </data>
   <data name="Fits_WcsSyncWarningBar.Message" xml:space="preserve">
     <value>Une ou plusieurs images n'ont pas de solution WCS précise ; la synchronisation du réticule et du zoom est donc approximative.</value>
   </data>

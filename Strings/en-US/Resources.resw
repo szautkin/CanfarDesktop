@@ -4046,6 +4046,18 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Fits_WcsSyncWarningBar.Title" xml:space="preserve">
     <value>Approximate WCS</value>
   </data>
+  <data name="Fits_ToolbarBack.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Scroll the toolbar back</value>
+  </data>
+  <data name="Fits_ToolbarBack.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Earlier tools</value>
+  </data>
+  <data name="Fits_ToolbarForward.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Scroll the toolbar forward</value>
+  </data>
+  <data name="Fits_ToolbarForward.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>More tools</value>
+  </data>
   <data name="Fits_WcsSyncWarningBar.Message" xml:space="preserve">
     <value>One or more images have no precise WCS solution, so crosshair and zoom sync are approximate.</value>
   </data>
