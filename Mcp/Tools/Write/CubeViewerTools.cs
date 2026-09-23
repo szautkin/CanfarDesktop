@@ -52,7 +52,7 @@ public sealed class OpenCubeTool : JsonReadTool<OpenCubeTool.Args, CubeOpenOutco
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "open_cube",
         "Open a FITS spectral cube (NAXIS=3) in the 3D Cube Viewer and switch to it — by local file " +
-        "path, or by the id/publisher id of a DOWNLOADED observation (download_observation first). " +
+        "path, or by the id, publisher id or observation id of a DOWNLOADED observation (download_observation first). " +
         "Reports the cube dimensions; fails gracefully if the file is not a 3D cube. A large cube " +
         "still loading after about 20 seconds comes back loading:true rather than as a failure — it " +
         "carries on, so do not open it again; poll get_cube_view until loaded is true. Live-applied.",

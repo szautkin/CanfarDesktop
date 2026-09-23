@@ -19,6 +19,37 @@ public class ObservationStoreTests
         LocalPath = "" // no real file
     };
 
+    // ── Finding one by an id a caller holds ──
+
+    private static DownloadedObservation Obs(string id, string pubId, string obsId, string collection = "CFHT")
+        => new() { Id = id, PublisherID = pubId, ObservationID = obsId, Collection = collection, LocalPath = "" };
+
+    [Theory]
+    [InlineData("local-1")]
+    [InlineData("ivo://cadc.nrc.ca/CFHT?1832496/1832496o")]
+    [InlineData("1832496")]
+    public void Match_TakesTheLocalIdThePublisherIdOrTheArchiveId(string asked)
+    {
+        var all = new[] { Obs("local-1", "ivo://cadc.nrc.ca/CFHT?1832496/1832496o", "1832496") };
+        Assert.Same(all[0], ObservationStore.Match(all, asked));
+    }
+
+    /// <summary>One observation id in two collections is two observations; guessing opens the wrong file.</summary>
+    [Fact]
+    public void Match_RefusesAnArchiveIdTwoDownloadsShare()
+    {
+        var all = new[]
+        {
+            Obs("a", "ivo://cadc.nrc.ca/CFHT?42/42o", "42"),
+            Obs("b", "ivo://cadc.nrc.ca/JCMT?42/42", "42", "JCMT"),
+        };
+        Assert.Null(ObservationStore.Match(all, "42"));
+    }
+
+    [Fact]
+    public void Match_NothingForNothing()
+        => Assert.Null(ObservationStore.Match(new[] { Obs("a", "p", "o") }, " "));
+
     [Fact]
     public void Save_AddsObservation()
     {

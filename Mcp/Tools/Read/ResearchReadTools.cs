@@ -1,4 +1,5 @@
 using CanfarDesktop.Models;
+using CanfarDesktop.Services;
 
 namespace CanfarDesktop.Mcp.Tools.Read;
 
@@ -44,14 +45,15 @@ public sealed class GetDownloadedObservationTool : JsonReadTool<GetDownloadedObs
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_downloaded_observation",
-        "Get one downloaded observation by its local id (from list_downloaded_observations).",
-        """{"type":"object","properties":{"id":{"type":"string","description":"Local observation id"}},"required":["id"],"additionalProperties":false}""");
+        "Get one downloaded observation by its local id, its publisher id, or the archive's observation " +
+        "id (all three from list_downloaded_observations).",
+        """{"type":"object","properties":{"id":{"type":"string","description":"Local id, publisher id, or observation id"}},"required":["id"],"additionalProperties":false}""");
 
     protected override Task<ObservationSummary> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(args.Id))
             throw new McpToolException(new InvalidArgument("id is required"));
-        var match = _all().FirstOrDefault(o => o.Id == args.Id);
+        var match = ObservationStore.Match(_all(), args.Id);
         if (match is null)
             throw new McpToolException(new UnknownTarget(args.Id));
         return Task.FromResult(ObservationSummary.From(match));

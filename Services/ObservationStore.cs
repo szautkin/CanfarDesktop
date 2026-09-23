@@ -72,6 +72,30 @@ public class ObservationStore
         }
     }
 
+    /// <summary>A downloaded observation by any of the ids a caller is likely to hold.</summary>
+    public DownloadedObservation? Find(string? id) => Match(Observations, id);
+
+    /// <summary>
+    /// A downloaded observation by its local id, its publisher id, or the archive's observation id.
+    ///
+    /// <para>The archive's id is what Search shows and what a person reads out ("1832496"), so asking
+    /// for it and being told the observation is not downloaded — when it is — was wrong. It is taken
+    /// only when it picks out one download: the same observation id can exist in two collections, and
+    /// a guess between them opens the wrong file.</para>
+    /// </summary>
+    public static DownloadedObservation? Match(IReadOnlyList<DownloadedObservation> all, string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        id = id.Trim();
+
+        var exact = all.FirstOrDefault(o => o.Id == id || o.PublisherID == id);
+        if (exact is not null) return exact;
+
+        var byArchiveId = all.Where(o => string.Equals(o.ObservationID, id, StringComparison.OrdinalIgnoreCase))
+                             .Take(2).ToList();
+        return byArchiveId.Count == 1 ? byArchiveId[0] : null;
+    }
+
     public bool Contains(string publisherID)
     {
         lock (_lock) return _observations.Any(o => o.PublisherID == publisherID);

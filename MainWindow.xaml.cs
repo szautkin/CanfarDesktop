@@ -322,7 +322,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             else
             {
                 var store = App.Services.GetRequiredService<ObservationStore>();
-                var obs = store.Observations.FirstOrDefault(o => o.Id == id || o.PublisherID == id);
+                var obs = store.Find(id);
                 if (obs is null)
                     return new CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome(false, id, null,
                         "file not found and observation not in Research");
@@ -407,7 +407,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     {
         if (System.IO.File.Exists(target)) return target;
         var store = App.Services.GetRequiredService<ObservationStore>();
-        var obs = store.Observations.FirstOrDefault(o => o.Id == target || o.PublisherID == target);
+        var obs = store.Find(target);
         return obs is not null && obs.FileExists ? obs.LocalPath : null;
     }
 
@@ -606,7 +606,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         => OnUiAsync<NotebookState?>(async () =>
         {
             var store = App.Services.GetRequiredService<ObservationStore>();
-            var obs = store.Observations.FirstOrDefault(o => o.Id == observationId || o.PublisherID == observationId);
+            var obs = store.Find(observationId);
             if (obs is null) return null; // not in Research — the agent must download_observation first
 
             var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Verbinal");

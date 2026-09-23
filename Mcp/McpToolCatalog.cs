@@ -486,7 +486,7 @@ public static class McpToolCatalog
                 DownloadObservationAsync(downloads, observations, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
             new DeleteDownloadedObservationApplier(p =>
             {
-                var match = observations.Observations.FirstOrDefault(o => o.Id == p.Id || o.PublisherID == p.Id);
+                var match = observations.Find(p.Id);
                 if (match is not null) observations.Remove(match);
                 return Task.CompletedTask;
             }),

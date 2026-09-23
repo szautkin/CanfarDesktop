@@ -27,7 +27,7 @@ public sealed class OpenFitsFileTool : JsonReadTool<OpenFitsFileTool.Args, OpenF
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "open_fits_file",
         "Open a FITS file in the 2D viewer and switch the app to it — by local file path, or by the " +
-        "id/publisher id of a DOWNLOADED observation (from list_downloaded_observations; " +
+        "id, publisher id or observation id of a DOWNLOADED observation (from list_downloaded_observations; " +
         "download_observation first if needed). Waits for the file to load and reports the real " +
         "result; a large file still loading after about 20 seconds comes back loading:true rather " +
         "than as a failure — it carries on, so do not open it again; poll get_fits_view until " +
