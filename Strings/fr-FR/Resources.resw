@@ -3167,6 +3167,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Search_AdqlPivot.Header" xml:space="preserve">
     <value>Éditeur ADQL</value>
   </data>
+  <data name="Search_FromFitsViewer" xml:space="preserve">
+    <value>Depuis la visionneuse FITS</value>
+  </data>
   <data name="Search_ApplyFiltersBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Convertir les filtres actifs en requête ADQL</value>
   </data>

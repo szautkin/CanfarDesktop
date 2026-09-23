@@ -186,47 +186,6 @@ public class SexagesimalCarryTests
         Assert.Equal("+41:16:09.0", Sexagesimal.FormatDecDms(41.269166));
     }
 
-    // ── The resolver string ──────────────────────────────────────────────────
-
-    /// <summary>
-    /// The fourth copy, and the one with teeth: the seconds field is centiseconds written as FOUR
-    /// digits with no decimal point, so a carry produced <c>6000</c> — sixty seconds — in a coordinate
-    /// handed to CADC's resolver. It was found by the guard below rather than by reading.
-    /// </summary>
-    [Fact]
-    public void ResolverString_NeverCarriesIntoASixtiethSecond()
-    {
-        var offenders = new List<string>();
-
-        for (var i = 0; i < 20000; i++)
-        {
-            var ra = i * 0.018 - (i % 3 == 0 ? 1e-9 : 0);
-            if (ra is < 0 or >= 360) continue;
-            var dec = ra / 4.0 - 45.0;
-
-            var s = WcsInfo.FormatForResolver(ra, dec);
-            var fields = s.Split(',');
-            var raSeconds = int.Parse(fields[0].Split(':')[2]);
-            var decSeconds = int.Parse(fields[1].Split(':')[2]);
-
-            if (raSeconds >= 6000) offenders.Add($"RA {ra} → {s}");
-            if (decSeconds >= 600) offenders.Add($"Dec {dec} → {s}");
-        }
-
-        Assert.Empty(offenders);
-    }
-
-    /// <summary>
-    /// The shape CADC expects is unchanged — this was a fix underneath, not a reformat. RA seconds
-    /// are centiseconds in four digits; Dec seconds are deci-arcseconds in three.
-    /// </summary>
-    [Theory]
-    [InlineData(187.5, 41.269166, "12:30:0000,+41:16:090")]
-    [InlineData(0.0, 0.0, "00:00:0000,+00:00:000")]
-    [InlineData(0.0, -12.5, "00:00:0000,-12:30:000")]
-    public void ResolverString_KeepsItsFormat(double ra, double dec, string expected)
-        => Assert.Equal(expected, WcsInfo.FormatForResolver(ra, dec));
-
     // ── And the split stays the only copy ────────────────────────────────────
 
     /// <summary>

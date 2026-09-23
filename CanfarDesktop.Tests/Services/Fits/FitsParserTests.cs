@@ -265,47 +265,6 @@ public class FitsParserTests
     }
 
     [Fact]
-    public void WcsInfo_FormatForResolver_CadcExample()
-    {
-        // CADC test case: RA=19.8°, Dec=42.10111111°
-        // RA: 19.8/15 = 1.32h → 01h19m12.00s → rsInt=1200
-        // Dec: 42°06'04.0" → dsInt=40
-        var result = WcsInfo.FormatForResolver(19.8, 42.10111111);
-        Assert.Equal("01:19:1200,+42:06:040", result);
-    }
-
-    [Fact]
-    public void WcsInfo_FormatForResolver_ExactValues()
-    {
-        // 180° RA = 12h exactly, 45° Dec exactly
-        var result = WcsInfo.FormatForResolver(180.0, 45.0);
-        Assert.Equal("12:00:0000,+45:00:000", result);
-    }
-
-    [Fact]
-    public void WcsInfo_FormatForResolver_NegativeDec()
-    {
-        var result = WcsInfo.FormatForResolver(270.0, -33.5);
-        Assert.Equal("18:00:0000,-33:30:000", result);
-    }
-
-    [Fact]
-    public void WcsInfo_FormatForResolver_NoSpaces()
-    {
-        // CADC resolver requires no spaces in the coordinate string
-        var result = WcsInfo.FormatForResolver(19.8, 42.10111111);
-        Assert.DoesNotContain(" ", result);
-    }
-
-    [Fact]
-    public void WcsInfo_FormatForResolver_NoLetterF()
-    {
-        // Regression: C# format "05.2f" outputs literal 'f'. Ensure no 'f' in output.
-        var result = WcsInfo.FormatForResolver(83.633, 22.0145);
-        Assert.DoesNotContain("f", result);
-    }
-
-    [Fact]
     public void WcsInfo_FormatRa_NoLetterF()
     {
         // Regression: ensure format strings don't produce literal 'f'

@@ -1253,10 +1253,18 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             // Suppress resolver: set NONE so Target change doesn't trigger async resolve
             var prevService = vm.ResolverService;
             vm.ResolverService = "NONE";
-            vm.Target = $"{Models.Fits.WcsInfo.FormatForResolver(ra, dec)}";
+
+            // The box gets the form Search itself parses. It used to get the CADC resolver's packed
+            // form — "16:00:0000,+48:00:000", one token with the seconds digit-packed — which the
+            // search parser cannot read, so the search only worked because ResolvedRA/Dec happened to
+            // be set alongside it. Anything that cleared those (retyping, a saved query reloaded) left
+            // text that fell through to a target-NAME match and searched for an observation called
+            // that. Now the text in the box is sufficient on its own, and it is the same string Copy
+            // coordinates puts on the clipboard, so pasting and "Search here" cannot disagree.
+            vm.Target = Helpers.MarkClipboard.Sky(ra, dec);
             vm.ResolvedRA = ra;
             vm.ResolvedDec = dec;
-            vm.ResolverStatus = "From FITS crosshair";
+            vm.ResolverStatus = Loc.T("Search_FromFitsViewer");
             vm.ResolverService = prevService;
             // Surface the form with the filled coordinates — the page may have been left on the
             // Results or ADQL tab, which is where the user was otherwise landing.

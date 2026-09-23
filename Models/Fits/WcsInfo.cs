@@ -331,26 +331,6 @@ public record WcsInfo
         return $"{(p.Sign < 0 ? "-" : "+")}{p.Units:D2}°{p.Minutes:D2}'{p.Seconds:D2}.{p.Fraction}\"";
     }
 
-    /// <summary>
-    /// Format as CADC resolver-compatible coordinate string.
-    /// Format: "HH:MM:SS.ss,+DD:MM:SS.s" (no spaces, with decimal points).
-    /// </summary>
-    public static string FormatForResolver(double raDeg, double decDeg)
-    {
-        // The same carry-correct split the readouts use. Rounding the seconds separately — which this
-        // did — could produce 6000 in a field that is centiseconds written as four digits, i.e. sixty
-        // seconds, and send CADC a coordinate that is not one.
-        var ra = Sexagesimal.SplitRa(raDeg, 2);
-        var dec = Sexagesimal.SplitDec(decDeg, 1);
-
-        // CADC format: seconds × 100 (RA) or × 10 (Dec) as integers, no decimal point.
-        var rsInt = ra.Seconds * 100 + ra.Fraction;
-        var dsInt = dec.Seconds * 10 + dec.Fraction;
-
-        return $"{ra.Units:D2}:{ra.Minutes:D2}:{rsInt:D4}," +
-               $"{(dec.Sign < 0 ? "-" : "+")}{dec.Units:D2}:{dec.Minutes:D2}:{dsInt:D3}";
-    }
-
     #endregion
 
     /// <summary>Extract WCS from a parsed FITS header.</summary>

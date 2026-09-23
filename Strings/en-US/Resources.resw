@@ -3167,6 +3167,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Search_AdqlPivot.Header" xml:space="preserve">
     <value>ADQL Editor</value>
   </data>
+  <data name="Search_FromFitsViewer" xml:space="preserve">
+    <value>From the FITS viewer</value>
+  </data>
   <data name="Search_ApplyFiltersBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Convert active filters to ADQL query</value>
   </data>
