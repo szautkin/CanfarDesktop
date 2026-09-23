@@ -23,10 +23,28 @@ public static class ResultSorter
         {
             var va = a.Get(columnHeader);
             var vb = b.Get(columnHeader);
+
+            // A row with no value has nothing to be early or late about, so it goes after the rows
+            // that do in BOTH directions. Only the comparison between values flips: negating the
+            // whole result put every blank start date ahead of the newest data when sorting by date.
+            if (Blanks(va, vb) is { } blanks) return blanks;
+
             var cmp = SmartCompare(va, vb);
             return ascending ? cmp : -cmp;
         });
         return sorted;
+    }
+
+    /// <summary>Where blanks go, whichever way the sort runs; null when both carry a value.</summary>
+    private static int? Blanks(string a, string b)
+    {
+        var aEmpty = string.IsNullOrWhiteSpace(a);
+        var bEmpty = string.IsNullOrWhiteSpace(b);
+
+        if (aEmpty && bEmpty) return 0;
+        if (aEmpty) return 1;
+        if (bEmpty) return -1;
+        return null;
     }
 
     /// <summary>
@@ -35,12 +53,7 @@ public static class ResultSorter
     /// </summary>
     internal static int SmartCompare(string a, string b)
     {
-        var aEmpty = string.IsNullOrWhiteSpace(a);
-        var bEmpty = string.IsNullOrWhiteSpace(b);
-
-        if (aEmpty && bEmpty) return 0;
-        if (aEmpty) return 1;  // empty sorts last
-        if (bEmpty) return -1;
+        if (Blanks(a, b) is { } blanks) return blanks;
 
         if (double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var da) &&
             double.TryParse(b, NumberStyles.Float, CultureInfo.InvariantCulture, out var db))
