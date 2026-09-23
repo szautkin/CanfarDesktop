@@ -2131,6 +2131,21 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Launch_TypeTip.Subtitle" xml:space="preserve">
     <value>Choose a session type.</value>
   </data>
+  <data name="Launch_HelpAbout" xml:space="preserve">
+    <value>About {0}</value>
+  </data>
+  <data name="Batch_StateCount" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Cube_WindowLoSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Window low</value>
+  </data>
+  <data name="Cube_WindowHiSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Window high</value>
+  </data>
+  <data name="Cube_ChannelSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Channel</value>
+  </data>
   <data name="Launch_TypeTip.Title" xml:space="preserve">
     <value>Session Type</value>
   </data>

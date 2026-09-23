@@ -189,8 +189,19 @@ public sealed partial class BatchJobsControl : UserControl
             RunningCount.Text = groups.Running.ToString();
             CompletedCount.Text = groups.Completed.ToString();
             FailedCount.Text = groups.Failed.ToString();
+
+            // The count is the first thing on each button, so without a name of its own each read
+            // as a bare "0" — to a screen reader, and to an agent listing what it could point at.
+            NameCounter(PendingButton, PendingLabel, groups.Pending);
+            NameCounter(RunningButton, RunningLabel, groups.Running);
+            NameCounter(CompletedButton, CompletedLabel, groups.Completed);
+            NameCounter(FailedButton, FailedLabel, groups.Failed);
         });
     }
+
+    private static void NameCounter(Button button, TextBlock label, int count)
+        => Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            button, Loc.F("Batch_StateCount", label.Text, count));
 
     private void OnStateClick(object sender, RoutedEventArgs e)
     {

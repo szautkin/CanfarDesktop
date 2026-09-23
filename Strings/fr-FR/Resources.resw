@@ -2131,6 +2131,21 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Launch_TypeTip.Subtitle" xml:space="preserve">
     <value>Choisissez un type de session.</value>
   </data>
+  <data name="Launch_HelpAbout" xml:space="preserve">
+    <value>À propos de {0}</value>
+  </data>
+  <data name="Batch_StateCount" xml:space="preserve">
+    <value>{0} : {1}</value>
+  </data>
+  <data name="Cube_WindowLoSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Bas de la fenêtre</value>
+  </data>
+  <data name="Cube_WindowHiSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Haut de la fenêtre</value>
+  </data>
+  <data name="Cube_ChannelSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Canal</value>
+  </data>
   <data name="Launch_TypeTip.Title" xml:space="preserve">
     <value>Type de session</value>
   </data>

@@ -322,18 +322,18 @@
                             <Button Content="99%" Padding="6,1" FontSize="11" Click="OnWindowP99" />
                         </StackPanel>
                     </Grid>
-                    <Slider x:Name="WindowLoSlider" Minimum="0" Maximum="1"
+                    <Slider x:Name="WindowLoSlider" x:Uid="Cube_WindowLoSlider" Minimum="0" Maximum="1"
                             StepFrequency="0.005" Value="0"
                             ValueChanged="OnWindowLoChanged" />
-                    <Slider x:Name="WindowHiSlider" Minimum="0" Maximum="1"
+                    <Slider x:Name="WindowHiSlider" x:Uid="Cube_WindowHiSlider" Minimum="0" Maximum="1"
                             StepFrequency="0.005" Value="1"
                             ValueChanged="OnWindowHiChanged" />
                 </StackPanel>
 
                 <StackPanel Spacing="2">
-                    <TextBlock x:Uid="Cube_StretchLabel" Text="Stretch" Foreground="#FFE0E0E0"
+                    <TextBlock x:Name="StretchCaption" x:Uid="Cube_StretchLabel" Text="Stretch" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
-                    <ComboBox x:Name="StretchCombo" HorizontalAlignment="Stretch"
+                    <ComboBox x:Name="StretchCombo" AutomationProperties.LabeledBy="{x:Bind StretchCaption}" HorizontalAlignment="Stretch"
                               SelectionChanged="OnStretchChanged">
                         <ComboBoxItem x:Uid="Cube_StretchLinear" Content="Linear" Tag="Linear" IsSelected="True" />
                         <ComboBoxItem x:Uid="Cube_StretchLog" Content="Log" Tag="Log" />
@@ -344,9 +344,9 @@
                 </StackPanel>
 
                 <StackPanel Spacing="2">
-                    <TextBlock x:Uid="Cube_ColormapLabel" Text="Colormap" Foreground="#FFE0E0E0"
+                    <TextBlock x:Name="ColormapCaption" x:Uid="Cube_ColormapLabel" Text="Colormap" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
-                    <ComboBox x:Name="ColormapCombo" HorizontalAlignment="Stretch"
+                    <ComboBox x:Name="ColormapCombo" AutomationProperties.LabeledBy="{x:Bind ColormapCaption}" HorizontalAlignment="Stretch"
                               SelectionChanged="OnColormapChanged" />
                     <!-- Live colorbar: active colormap across the window range -->
                     <Rectangle x:Name="ColorbarRect"
@@ -363,9 +363,9 @@
                 </StackPanel>
 
                 <StackPanel Spacing="2">
-                    <TextBlock x:Uid="Cube_BackgroundLabel" Text="Background" Foreground="#FFE0E0E0"
+                    <TextBlock x:Name="BackgroundCaption" x:Uid="Cube_BackgroundLabel" Text="Background" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
-                    <ComboBox x:Name="BackgroundCombo" HorizontalAlignment="Stretch"
+                    <ComboBox x:Name="BackgroundCombo" AutomationProperties.LabeledBy="{x:Bind BackgroundCaption}" HorizontalAlignment="Stretch"
                               SelectionChanged="OnBackgroundChanged">
                         <ComboBoxItem x:Uid="Cube_BgDark" Content="Dark" IsSelected="True" />
                         <ComboBoxItem x:Uid="Cube_BgBlack" Content="Black" />
@@ -380,9 +380,9 @@
                                Style="{StaticResource CaptionTextBlockStyle}" />
 
                     <StackPanel Spacing="2">
-                        <TextBlock x:Uid="Cube_RenderModeLabel" Text="Render mode" Foreground="#FFE0E0E0"
+                        <TextBlock x:Name="RenderModeCaption" x:Uid="Cube_RenderModeLabel" Text="Render mode" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
-                        <ComboBox x:Name="RenderModeCombo" HorizontalAlignment="Stretch"
+                        <ComboBox x:Name="RenderModeCombo" AutomationProperties.LabeledBy="{x:Bind RenderModeCaption}" HorizontalAlignment="Stretch"
                                   SelectionChanged="OnRenderModeChanged">
                             <ComboBoxItem x:Uid="Cube_RenderEmission" Content="Emission" IsSelected="True" />
                             <ComboBoxItem x:Uid="Cube_RenderMip" Content="Max-Intensity" />
@@ -390,25 +390,25 @@
                     </StackPanel>
 
                     <StackPanel Spacing="2">
-                        <TextBlock x:Uid="Cube_DensityLabel" Text="Density" Foreground="#FFE0E0E0"
+                        <TextBlock x:Name="DensityCaption" x:Uid="Cube_DensityLabel" Text="Density" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
-                        <Slider x:Name="DensitySlider" Minimum="0.1" Maximum="3.0"
+                        <Slider x:Name="DensitySlider" AutomationProperties.LabeledBy="{x:Bind DensityCaption}" Minimum="0.1" Maximum="3.0"
                                 StepFrequency="0.05" Value="1.0"
                                 ValueChanged="OnDensityChanged" />
                     </StackPanel>
 
                     <StackPanel Spacing="2">
-                        <TextBlock x:Uid="Cube_SpectralLabel" Text="Spectral scale" Foreground="#FFE0E0E0"
+                        <TextBlock x:Name="SpectralCaption" x:Uid="Cube_SpectralLabel" Text="Spectral scale" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
-                        <Slider x:Name="SpectralSlider" Minimum="0.5" Maximum="4.0"
+                        <Slider x:Name="SpectralSlider" AutomationProperties.LabeledBy="{x:Bind SpectralCaption}" Minimum="0.5" Maximum="4.0"
                                 StepFrequency="0.05" Value="1.5"
                                 ValueChanged="OnSpectralChanged" />
                     </StackPanel>
 
                     <StackPanel Spacing="2">
-                        <TextBlock x:Uid="Cube_StepsLabel" Text="Quality (steps)" Foreground="#FFE0E0E0"
+                        <TextBlock x:Name="StepsCaption" x:Uid="Cube_StepsLabel" Text="Quality (steps)" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
-                        <Slider x:Name="StepsSlider" Minimum="96" Maximum="768"
+                        <Slider x:Name="StepsSlider" AutomationProperties.LabeledBy="{x:Bind StepsCaption}" Minimum="96" Maximum="768"
                                 StepFrequency="16" Value="384"
                                 ValueChanged="OnStepsChanged" />
                     </StackPanel>
@@ -540,7 +540,7 @@
                 <StackPanel VerticalAlignment="Center">
                     <!-- Cube-mean per-channel waveform backdrop (the macOS ChannelScrubber) -->
                     <Canvas x:Name="WaveformCanvas" Width="340" Height="20" IsHitTestVisible="False" />
-                    <Slider x:Name="ChannelSlider" Width="340" Minimum="0" Maximum="0"
+                    <Slider x:Name="ChannelSlider" x:Uid="Cube_ChannelSlider" Width="340" Minimum="0" Maximum="0"
                             StepFrequency="1" ValueChanged="OnChannelChanged" VerticalAlignment="Center" />
                 </StackPanel>
                 <TextBlock x:Name="ChannelLabel" VerticalAlignment="Center" MinWidth="180"
