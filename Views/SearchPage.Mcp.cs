@@ -479,7 +479,7 @@ public sealed partial class SearchPage : ISearchUiBridge
 
     private ResultColumnInfo? FindColumn(string key) =>
         ViewModel.ResultColumns.FirstOrDefault(c =>
-            string.Equals(c.Key, key, StringComparison.OrdinalIgnoreCase) && !VirtualColumnKeys.Contains(c.Key));
+            CellFormatter.NamesColumn(c.Key, key) && !VirtualColumnKeys.Contains(c.Key));
 
     private SearchResultsView CaptureResults(SearchResultsQuery query)
     {

@@ -382,7 +382,8 @@ public sealed class SetSearchResultsViewTool : JsonReadTool<SetSearchResultsView
         "set_search_results_view",
         "Change how the results are shown: page, page size, sort column and direction, per-column text " +
         "filters, which columns are visible, each column's display unit, and which row is highlighted. " +
-        "Column keys match case-insensitively (get_search_results.rowColumns lists them). rowsPerPage " +
+        "A column is named by its key or by the header the grid shows ('startdate' or 'Start Date'); " +
+        "get_search_results.rowColumns lists both. rowsPerPage " +
         "must be one of the sizes the grid offers, and a display unit a column does not take comes back " +
         "with the units it does.",
         """

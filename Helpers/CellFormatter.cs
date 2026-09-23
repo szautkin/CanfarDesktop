@@ -80,6 +80,15 @@ public static class CellFormatter
             ? v.ToString("+0.000000;-0.000000", CultureInfo.InvariantCulture)
             : raw;
 
+    /// <summary>
+    /// Whether <paramref name="asked"/> names the column whose key is <paramref name="key"/> — by the
+    /// key itself or by the header a person (or an agent reading the grid) sees. "Start Date" and
+    /// "startdate" are the same column; refusing the first sent an agent back to look up the second.
+    /// </summary>
+    public static bool NamesColumn(string key, string asked)
+        => string.Equals(key, asked, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(key, CleanKey(asked), StringComparison.Ordinal);
+
     /// <summary>Clean column header to a normalized key (lowercase, no quotes, spaces→underscores).</summary>
     public static string CleanKey(string header)
     {
