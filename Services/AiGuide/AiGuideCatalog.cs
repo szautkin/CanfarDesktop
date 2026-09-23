@@ -71,8 +71,11 @@ public static class AiGuideCatalog
     /// </summary>
     private static readonly IReadOnlyDictionary<string, string> CategoryByTool = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        // Foundational
+        // Foundational — including the map of the tool surface itself
         ["describe_app"] = "foundational",
+        ["list_apps"] = "foundational",
+        ["search_tools"] = "foundational",
+        ["man"] = "foundational",
         ["get_auth_state"] = "foundational",
         ["get_current_view"] = "foundational",
         ["get_service_health"] = "foundational",
@@ -98,6 +101,10 @@ public static class AiGuideCatalog
         ["set_search_results_view"] = "search",
         ["export_search_results"] = "search",
         ["load_recent_search"] = "search",
+        ["show_search_row_detail"] = "search",
+        ["show_observation_detail"] = "search",
+        ["validate_adql_query"] = "search",
+        ["describe_tap_schema"] = "search",
         ["remove_recent_search"] = "search",
         ["clear_recent_searches"] = "search",
         // Saved Queries
@@ -132,6 +139,16 @@ public static class AiGuideCatalog
         ["list_fits_bookmarks"] = "fits",
         ["save_fits_bookmark"] = "fits",
         ["delete_fits_bookmark"] = "fits",
+        ["get_fits_image"] = "fits",
+        ["export_fits_figure"] = "fits",
+        ["annotate_fits"] = "fits",
+        ["list_fits_annotations"] = "fits",
+        // Marks on either viewer. Filed with the FITS viewer, where marks began; each takes a viewer.
+        ["update_annotation"] = "fits",
+        ["select_annotation"] = "fits",
+        ["remove_annotation"] = "fits",
+        ["clear_annotations"] = "fits",
+        ["export_annotations"] = "fits",
         // Cube Viewer
         ["open_cube"] = "cube",
         ["set_cube_view"] = "cube",
@@ -143,11 +160,15 @@ public static class AiGuideCatalog
         ["switch_cube_tab"] = "cube",
         ["list_recent_cubes"] = "cube",
         ["export_cube_figure"] = "cube",
+        ["get_cube_image"] = "cube",
+        ["annotate_cube"] = "cube",
+        ["list_cube_annotations"] = "cube",
         // Notebook
         ["list_notebooks"] = "notebook",
         ["list_open_notebooks"] = "notebook",
         ["get_notebook"] = "notebook",
         ["get_cell_output"] = "notebook",
+        ["get_cell_image"] = "notebook",
         ["get_kernel_state"] = "notebook",
         ["open_notebook"] = "notebook",
         ["create_notebook"] = "notebook",
@@ -198,6 +219,12 @@ public static class AiGuideCatalog
         // Image Discovery
         ["find_images_with_packages"] = "discovery",
         ["discover_image_packages"] = "discovery",
+        ["search_packages"] = "discovery",
+        ["describe_image"] = "discovery",
+        ["list_my_images"] = "discovery",
+        ["search_image_registry"] = "discovery",
+        ["add_registry_image"] = "discovery",
+        ["remove_registry_image"] = "discovery",
         // AI Compute (Feature B — names reserved so they categorize once built)
         ["run_code"] = "compute",
         ["run_code_output"] = "compute",
@@ -218,11 +245,14 @@ public static class AiGuideCatalog
         ["list_ui_targets"] = "navigation",
         ["close_active_tab"] = "navigation",
         ["list_open_tabs"] = "navigation",
+        ["close_tab"] = "navigation",
         // Agent Control
         ["list_pending_proposals"] = "control",
         ["get_proposal_state"] = "control",
         ["withdraw_proposal"] = "control",
         ["list_events"] = "control",
+        ["start_background_apply"] = "control",
+        ["get_job_status"] = "control",
         // AI Guide management (agent re-tunes its own tool surface)
         ["list_guide_tools"] = "guide",
         ["set_tool_description"] = "guide",

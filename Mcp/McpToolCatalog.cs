@@ -221,6 +221,11 @@ public static class McpToolCatalog
             new ShowSearchRowDetailTool(row => viewState.ShowSearchRowDetailAsync(row)),
             new ShowObservationDetailTool(id => viewState.ShowObservationDetailAsync(id)),
             new LoadRecentSearchTool(match => viewState.LoadRecentSearchAsync(match)),
+
+            // The Search page's "Remove from history" and "Clear All". Written, tested and given
+            // appliers, then never put on the server — so the two buttons had no agent equivalent.
+            new RemoveRecentSearchTool(() => searchStore.LoadRecentSearches()),
+            new ClearRecentSearchesTool(() => searchStore.LoadRecentSearches()),
             new ResetSearchFormTool(() => viewState.ResetSearchFormAsync()),
 
             // Marks on an image or a cube. The store is what makes them persist with the FILE, so these
