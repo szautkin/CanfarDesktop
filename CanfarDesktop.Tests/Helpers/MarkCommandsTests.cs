@@ -46,7 +46,7 @@ public class MarkCommandsTests
     [Fact]
     public void SearchHereIsGreyedRatherThanHiddenWithoutAWcs()
     {
-        var item = Assert.Single(MarkCommands.For(Fits(sky: false)).Where(i => i.Command == MarkCommand.SearchHere));
+        var item = Assert.Single(MarkCommands.For(Fits(sky: false)), i => i.Command == MarkCommand.SearchHere);
 
         Assert.False(item.Enabled);
         Assert.NotNull(item.DisabledReasonUid);
@@ -55,7 +55,7 @@ public class MarkCommandsTests
     [Fact]
     public void SearchHereIsLiveWhenTheMarkHasASkyPosition()
     {
-        var item = Assert.Single(MarkCommands.For(Fits()).Where(i => i.Command == MarkCommand.SearchHere));
+        var item = Assert.Single(MarkCommands.For(Fits()), i => i.Command == MarkCommand.SearchHere);
 
         Assert.True(item.Enabled);
         Assert.Null(item.DisabledReasonUid);
@@ -78,7 +78,7 @@ public class MarkCommandsTests
 
             Assert.Equal(MarkCommand.Delete, items[^1].Command);
             Assert.True(items[^1].Destructive);
-            Assert.Single(items.Where(i => i.Destructive));
+            Assert.Single(items, i => i.Destructive);
         }
     }
 
