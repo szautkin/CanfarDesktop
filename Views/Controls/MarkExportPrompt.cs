@@ -28,8 +28,8 @@ public static class MarkExportPrompt
     public static async Task<string?> RunAsync(string viewer, string target, string suggestedName)
     {
         var picker = new FileSavePicker { SuggestedFileName = suggestedName + "-marks" };
-        picker.FileTypeChoices.Add("Marks with provenance (JSON)", [".json"]);
-        picker.FileTypeChoices.Add("DS9 region file", [".reg"]);
+        picker.FileTypeChoices.Add(Loc.T("Marks_FileTypeJson"), [".json"]);
+        picker.FileTypeChoices.Add(Loc.T("Marks_FileTypeDs9"), [".reg"]);
 
         // A picker needs an owning window; a control has none of its own.
         var hwnd = Views.WindowHelper.ActiveWindows.Count > 0
@@ -41,13 +41,13 @@ public static class MarkExportPrompt
         if (file is null) return null;
 
         var viewState = App.Services.GetService(typeof(Mcp.AppViewStateService)) as Mcp.AppViewStateService;
-        if (viewState is null) return Loc.F("Marks_ExportFailed", "the viewer is unavailable");
+        if (viewState is null) return Loc.F("Marks_ExportFailed", Loc.T("Marks_ViewerUnavailable"));
 
         var outcome = await viewState.ExportAnnotationsAsync(
             new Mcp.Tools.Write.AnnotationExportRequest(file.Path, viewer, target));
 
         return outcome.Exported
             ? Loc.F("Marks_ExportedCount", outcome.Marks, System.IO.Path.GetFileName(file.Path))
-            : Loc.F("Marks_ExportFailed", outcome.Message ?? "unknown error");
+            : Loc.F("Marks_ExportFailed", outcome.Message ?? Loc.T("Marks_UnknownError"));
     }
 }

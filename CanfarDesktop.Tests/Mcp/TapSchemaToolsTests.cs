@@ -3,6 +3,7 @@ using Xunit;
 using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Read;
 using CanfarDesktop.Mcp.Wire;
+using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 
 namespace CanfarDesktop.Tests.Mcp;

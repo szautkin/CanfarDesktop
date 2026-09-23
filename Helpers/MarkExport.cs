@@ -141,7 +141,7 @@ public static class MarkExport
         }
 
         return new Document(
-            Schema, exportedAtUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
+            Schema, IsoTime.OfUtc(exportedAtUtc),
             appVersion, source, observation, exported);
     }
 

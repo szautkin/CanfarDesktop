@@ -1,4 +1,3 @@
-using System.Globalization;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services.Fits;
 
@@ -52,7 +51,7 @@ public static class AnnotationArgs
     /// <summary>An id that is stable, short enough to type back, and unique within a target.</summary>
     public static string NewId() => "m" + Guid.NewGuid().ToString("N")[..8];
 
-    public static string Now() => DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+    public static string Now() => CanfarDesktop.Helpers.IsoTime.Now();
 
     /// <summary>The extent a radius or a width/height pair asks for, or null when neither was given.</summary>
     public static Extent? ExtentFrom(double? radius, double? halfWidth, double? halfHeight)

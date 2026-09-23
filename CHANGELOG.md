@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.4.0] - Unreleased
+
+Marks on images and cubes, figure export from the FITS viewer, an AI assistant that can see the viewers and point at the interface, and a round of accuracy fixes found by measuring against Verbinal for Linux 1.4.4.
+
+### Added
+- **Marks** — draw boxes, circles, callouts and text on FITS images and cubes, pinned to the sky, to image pixels, or to a cube channel. A Marks panel lists, filters and styles them (colour, weight, label size, outline); grips resize a selected mark; every shape carries its label on a leader. Right-click or the Menu key opens a menu per mark: edit label, copy coordinates (in a form the Search box reads), centre, search here, export a figure around it, delete. Marks are stored per file — per extension, in a multi-extension FITS file — and export as JSON with provenance or as a DS9 region file
+- **FITS figure export** — export the view or a selected region (the Select area button, or Ctrl-drag) as PNG or PDF at 1×, 2× or 4×, with header and footer, marks, dark or light theme and a transparent background. Cube figures carry their marks too
+- **Container images** — search the image registry for images the platform's catalogue does not list, add them to your own list, and see what is installed inside an image. The images card filters by project and shows only what a launch tab can use
+- **Notebooks** — `.py` (percent-format) and `.md` files open as cells and save back in their own format; outputs render SVG, Markdown, LaTeX and HTML
+- **ADQL checked before it runs** — the ADQL editor validates the query against the service's TAP_SCHEMA as you type, lists each problem (click one to jump to it), and disables Execute until the query can run
+- **Activity bar and job history** — a status bar shows what the app and an agent are working on; finished batch jobs, and why the failed ones failed, are remembered after CANFAR removes them
+- **FITS viewer** — images open fitted to the window, the empty screen offers recently opened files, large files show loading progress, and the toolbar scrolls sideways (wheel or step buttons) when the window is too narrow for it
+- **Accessibility** — every launch-form field, the image canvas and the new marks and export controls have names a screen reader announces
+- **Search results** — Shift-click selects a range of rows, and neither it nor Ctrl-click opens a detail window over the rows being compared
+- **Agent sound cues** — two short sounds when an AI agent starts and finishes work (Settings, on by default)
+- **About** — the app's own links and a copyable runtime-info block for bug reports
+- **AI assistant (MCP): 31 new tools** — see what the viewers show (`get_fits_image`, `get_cube_image`, `get_cell_image`); draw and manage marks (`annotate_fits`, `annotate_cube`, `list_fits_annotations`, `list_cube_annotations`, `update_annotation`, `select_annotation`, `remove_annotation`, `clear_annotations`, `export_annotations`); export figures (`export_fits_figure`); point at a control on screen, including one inside a folded-shut section (`list_ui_targets`, `point_at_ui`), which also powers a guided onboarding tour workflow; close tabs (`close_tab`); search-page detail (`show_search_row_detail`, `show_observation_detail`, `validate_adql_query`, `describe_tap_schema`); container images (`search_image_registry`, `add_registry_image`, `remove_registry_image`, `list_my_images`, `describe_image`, `search_packages`); a map of the tool surface (`list_apps`, `search_tools`, `man`); and work that outlives the call that started it (`start_background_apply`, `get_job_status`). Changes waiting for your approval now survive an app restart
+
+### Fixed
+- **WCS rotation on modern headers** — headers that describe rotation with a PC matrix (JWST among them) had it ignored, so positions drifted by up to 40–90″ toward the frame edge. Affects the crosshair, Go To, cross-tab sync, marks and the assistant's sky readouts
+- **Sexagesimal rounding** — coordinates just under a whole minute printed as `23h59m60.00s`; the carry now happens everywhere a position is formatted
+- **Downloads that produced nothing** — an empty archive response is no longer recorded as a successful download; a failed or cancelled download no longer truncates an existing file; JWST products fetch the science file rather than the first listed artifact; records fetched by publisher ID get their observation details
+- **Service health** — services are checked through their IVOA availability document, so planned downtime shows as down with its note and a 4xx answer no longer gets a tick
+- **VizieR** — two mirrors that no longer resolve are gone, so a cone search no longer starts with two certain failures; `vizier_cone_search` accepts `columns`
+- **"Search here" from the FITS viewer** — filled the Search box with a coordinate form the search could not parse, so the search only worked until anything cleared the resolved position
+- **Opening large files through the AI assistant** — `open_fits_file` and `open_cube` reported a failure when a big file simply took longer than the call could wait; they now answer "still loading", so an agent no longer retries and opens duplicates
+- **Compressed FITS** — every extension of a `.fits.fz` file reported the compressed table's shape instead of the image's; opening a file that is already open switches to it instead of adding a duplicate tab
+- **Small cubes** — a cube only a few pixels wide on the sky collapsed to a single voxel when downsampled
+- **Cube viewer idle CPU** — a cube that was just open re-rendered every frame, which could delay other work in the app
+- **Figure export** — the export dialog scrolls to its buttons on small windows, a 4× figure too large to render reports the scale it actually achieved, and a transparent-background PDF has a white page instead of a black one
+- **Notifications from polling** — sessions and jobs are polled more often while something is changing, so a job that starts and fails quickly is still announced
+- **Localization** — strings set from code showed their resource keys, and several new controls showed English in French
+
+### Changed
+- **Cube viewer** — one control column instead of two overlapping panels; side panels slide in and out
+
 ## [1.3.3] - 2026-07-20
 
 Patch: full MCP UI coverage for the Search page and the FITS and Cube viewers, plus QA fixes (masked-cube spectra, service-health honesty, UI-busy tool hangs, workflow CRLF preservation).

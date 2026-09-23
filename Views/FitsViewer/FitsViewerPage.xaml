@@ -95,7 +95,7 @@
             </Border>
 
             <!-- Image canvas: manual zoom/pan via CompositeTransform -->
-            <Grid Grid.Column="1" Background="Black" x:Name="ImageCanvas"
+            <Grid Grid.Column="1" Background="Black" x:Name="ImageCanvas" x:Uid="Fits_ImageCanvas"
                   IsTabStop="True" UseSystemFocusVisuals="True"
                   AutomationProperties.Name="Image canvas"
                   PointerPressed="OnCanvasPointerPressed"

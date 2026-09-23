@@ -106,6 +106,6 @@ public sealed partial class ImageDetailDialog : ContentDialog
         }
 
         if (matched == 0 && filter.Length > 0)
-            _rows.Add(new PackageRow($"Nothing in this image matches “{filter}”", string.Empty, IsHeading: true));
+            _rows.Add(new PackageRow(Helpers.Loc.F("Images_NoPackageMatches", filter), string.Empty, IsHeading: true));
     }
 }

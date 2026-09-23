@@ -101,8 +101,8 @@ public sealed partial class FitsExportDialog : ContentDialog
         try
         {
             var picker = new FileSavePicker { SuggestedFileName = _baseName + "-figure" };
-            picker.FileTypeChoices.Add("PNG image", [".png"]);
-            picker.FileTypeChoices.Add("PDF document", [".pdf"]);
+            picker.FileTypeChoices.Add(Helpers.Loc.T("Fits_ExpPngType"), [".png"]);
+            picker.FileTypeChoices.Add(Helpers.Loc.T("Fits_ExpPdfType"), [".pdf"]);
 
             // A picker needs an owning window, and a dialog has none of its own.
             var hwnd = ActiveWindows.Count > 0 ? WindowNative.GetWindowHandle(ActiveWindows[0]) : nint.Zero;
@@ -117,7 +117,7 @@ public sealed partial class FitsExportDialog : ContentDialog
             var error = await _page.ExportRegionToPathAsync(_region, file.Path, format, CurrentScale(), CurrentStyle());
 
             ResultBar.Severity = error is null ? InfoBarSeverity.Success : InfoBarSeverity.Error;
-            ResultBar.Message = error ?? $"Saved {System.IO.Path.GetFileName(file.Path)}";
+            ResultBar.Message = error ?? Helpers.Loc.F("Fits_ExpSaved", System.IO.Path.GetFileName(file.Path));
             ResultBar.IsOpen = true;
         }
         catch (Exception ex)

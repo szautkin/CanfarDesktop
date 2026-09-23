@@ -3,11 +3,9 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Graphics.Imaging;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Mcp.Tools.Write;
 using CanfarDesktop.Models.Fits;
-using CanfarDesktop.Services.CubeViewer;
 using CanfarDesktop.Services.Fits;
 
 namespace CanfarDesktop.Views.FitsViewer;
@@ -248,28 +246,13 @@ public sealed partial class FitsViewerPage
             plate.UpdateLayout();
 
             // The plate is already laid out at the export's scale, so a 4x figure of a large region
-            // can be past what a single rasterisation produces. Rendered in pieces when so.
+            // can be past what a single rasterisation produces; it then comes back capped, and says
+            // so (see PlateRasterizer.TilingWorks).
             var rendered = await Views.Controls.PlateRasterizer.RenderAsync(
                 plate, ExportHost, 1.0, expectOpaque: !style.Transparent);
             if (rendered is not { } figure) return "plate rasterization failed";
 
-            int rw = figure.Width, rh = figure.Height;
-            var pixels = figure.Pixels;
-
-            using var file = new System.IO.FileStream(full, System.IO.FileMode.Create);
-            if (pdf)
-            {
-                PdfImageWriter.Write(file, PdfImageWriter.BgraToRgb(pixels, rw, rh), rw, rh);
-            }
-            else
-            {
-                using var stream = file.AsRandomAccessStream();
-                var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
-                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied,
-                    (uint)rw, (uint)rh, 96, 96, pixels);
-                await encoder.FlushAsync();
-            }
-
+            await FigureFile.WriteAsync(full, figure.Pixels, figure.Width, figure.Height, pdf);
             return null;
         }
         catch (Exception ex)

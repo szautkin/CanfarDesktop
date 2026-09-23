@@ -448,7 +448,7 @@ public class ImageDiscoveryCoordinator
                 Origin = Models.JobOrigin.ImageProbe,
                 Outcome = Models.JobOutcome.Failed,
                 Status = error.Category.ToString(),
-                FinishedAt = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                FinishedAt = IsoTime.Now(),
                 FailureReason = error.Message,
                 TargetImage = imageID,
             });

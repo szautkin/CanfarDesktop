@@ -296,7 +296,7 @@ public sealed class MarkEditor
                     // What the style controls say. A style chosen and then not applied to the next mark
                     // is a control that appears to do nothing.
                     Style = PendingStyle(),
-                    CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
+                    CreatedAt = IsoTime.Now(),
                 };
 
                 _marks.Add(mark);

@@ -102,8 +102,8 @@ public sealed partial class SearchPage
             AdqlProblemsList.Children.Add(BuildProblemEntry(problem));
 
         AdqlProblemsBar.Title = _adqlProblems.Count == 1
-            ? "This query will be refused"
-            : $"This query will be refused ({_adqlProblems.Count} problems)";
+            ? Loc.T("Search_AdqlRefused")
+            : Loc.F("Search_AdqlRefusedCount", _adqlProblems.Count);
         AdqlProblemsBar.IsOpen = true;
 
         // Greyed, and told why: a disabled button with no explanation is a button that looks broken.

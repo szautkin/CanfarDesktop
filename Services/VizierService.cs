@@ -82,10 +82,6 @@ public class VizierService
         return list;
     }
 
-    /// <summary>The default list in the format <see cref="ParseEndpointList"/> reads, for the settings field.</summary>
-    public static string FormatEndpointList(IReadOnlyList<VizierEndpoint> endpoints)
-        => string.Join(Environment.NewLine, endpoints.Select(e => e.SyncUrl));
-
     /// <summary>
     /// The canonical VizieR cone-search ADQL. With no <paramref name="columns"/> it is byte-compatible
     /// with the macOS TAPClient (<c>SELECT TOP n *</c>); naming columns narrows the projection, which

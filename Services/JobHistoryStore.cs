@@ -100,7 +100,7 @@ public sealed class JobHistoryStore : IJobHistoryStore
             // Newest first: what just happened is what somebody opening this is looking for.
             jobs.Insert(0, job.FinishedAt.Length > 0
                 ? job
-                : job with { FinishedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") });
+                : job with { FinishedAt = IsoTime.Now() });
 
             if (jobs.Count > MaxJobs) jobs.RemoveRange(MaxJobs, jobs.Count - MaxJobs);
             Save(jobs);
@@ -118,14 +118,5 @@ public sealed class JobHistoryStore : IJobHistoryStore
     private List<JobRecord> Load()
         => DiskPersistence.Read(_filePath, SchemaVersion, () => new List<JobRecord>(), Json).Value;
 
-    private void Save(List<JobRecord> jobs)
-    {
-        if (_filePath is null) return;
-
-        // DiskPersistence writes the file but does not make the folder it lives in.
-        var directory = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
-
-        DiskPersistence.Write(_filePath, jobs, SchemaVersion, Json);
-    }
+    private void Save(List<JobRecord> jobs) => DiskPersistence.Write(_filePath, jobs, SchemaVersion, Json);
 }

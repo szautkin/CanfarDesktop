@@ -102,11 +102,6 @@ public sealed class AnnotationStore : IAnnotationStore
     {
         if (_filePath is null) return;
 
-        // DiskPersistence writes atomically but does not create the folder: the app's local folder
-        // always exists, so nothing had needed it to.
-        var directory = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
-
         // A failed write is raised rather than logged. Reading is the path that must never fail — a
         // viewer has to open whether or not this file is readable — but a SAVE that quietly did nothing
         // loses a drawing somebody made, and they find out the next time they open the file.

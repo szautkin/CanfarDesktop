@@ -1,4 +1,5 @@
 using CanfarDesktop.Helpers;
+using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 
 namespace CanfarDesktop.Mcp.Tools.Read;

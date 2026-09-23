@@ -112,7 +112,7 @@
                 <FontIcon Glyph="&#xEF20;" FontSize="14" />
             </ToggleButton>
 
-            <Button x:Name="ExportFigureButton" Click="OnExportFigure" Padding="8,4"
+            <Button x:Name="ExportFigureButton" x:Uid="Fits_ExportFigureButton" Click="OnExportFigure" Padding="8,4"
                     ToolTipService.ToolTip="Export a figure (Ctrl-drag the image for a region)"
                     AutomationProperties.Name="Export figure">
                 <FontIcon Glyph="&#xE7C5;" FontSize="14" />
@@ -273,7 +273,7 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Style="{StaticResource BodyTextBlockStyle}"
                            Text="Open a FITS image to inspect it — stretch and colormap, WCS readout, pixel probing, marks, and multi-tab comparison." />
-                <Button x:Name="OpenImageButton" Click="OnOpenFileEmpty" HorizontalAlignment="Center"
+                <Button x:Name="OpenImageButton" x:Uid="Fits_OpenImageButton" Click="OnOpenFileEmpty" HorizontalAlignment="Center"
                         AutomationProperties.Name="Open image"
                         Style="{StaticResource AccentButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">

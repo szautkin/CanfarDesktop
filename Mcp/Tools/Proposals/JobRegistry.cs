@@ -47,7 +47,7 @@ public sealed class JobRegistry
     private readonly object _gate = new();
     private readonly List<BackgroundJob> _jobs = new();
 
-    private static string Now() => DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+    private static string Now() => CanfarDesktop.Helpers.IsoTime.Now();
 
     /// <summary>Record a job as running. Returns it, so the caller can answer with its id at once.</summary>
     public BackgroundJob Start(string id, string kind, string summary)

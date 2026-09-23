@@ -53,7 +53,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <SelectorBar Grid.Column="0" x:Name="TypeSelector" SelectionChanged="OnTypeChanged" />
-                <ComboBox Grid.Column="1" x:Name="ProjectFilter" MinWidth="150" Visibility="Collapsed"
+                <ComboBox Grid.Column="1" x:Name="ProjectFilter" x:Uid="Images_ProjectFilter" MinWidth="150" Visibility="Collapsed"
                           SelectionChanged="OnProjectChanged"
                           AutomationProperties.Name="Filter images by project"
                           ToolTipService.ToolTip="Filter by project" />

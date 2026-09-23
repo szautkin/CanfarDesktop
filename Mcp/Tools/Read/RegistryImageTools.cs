@@ -241,7 +241,7 @@ public sealed class DescribeImageTool : JsonReadTool<DescribeImageTool.Args, Des
             detail.Capabilities,
             sections,
             detail.ProbeNotes,
-            manifest.CapturedAt.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            CanfarDesktop.Helpers.IsoTime.Of(manifest.CapturedAt),
             filter.Length > 0 && sections.Count == 0 ? $"nothing in this image matches '{filter}'" : null));
     }
 

@@ -69,10 +69,13 @@ public static class DiskPersistence
         try
         {
             var json = JsonSerializer.Serialize(new Envelope<T>(currentSchemaVersion, value), options);
-            var tmp = path + ".tmp";
-            File.WriteAllText(tmp, json);
-            if (File.Exists(path)) File.Replace(tmp, path, null);
-            else File.Move(tmp, path);
+
+            // The folder is made here rather than by every store: three of them had grown the same
+            // two lines, each with a comment explaining that this did not do it.
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+
+            AtomicFile.WriteAllText(path, json);
             return true;
         }
         catch (Exception ex)

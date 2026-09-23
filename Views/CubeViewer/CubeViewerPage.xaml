@@ -39,7 +39,7 @@
              slice. Grouped, the mode switch has one visibility to set and cannot get it half-right. -->
         <Grid x:Name="VolumeViewport">
             <!-- GPU volume render surface -->
-            <SwapChainPanel x:Name="RenderPanel"
+            <SwapChainPanel x:Name="RenderPanel" x:Uid="Cube_VolumeCanvas"
                             IsTabStop="True" UseSystemFocusVisuals="True"
                             AutomationProperties.Name="Volume canvas"
                             PointerPressed="OnPointerPressed"
@@ -74,7 +74,7 @@
              The right inset clears the control column — its content width, its padding and its margin.
              Short of that the slice runs UNDER the column, and a mark drawn near the right edge is
              hidden behind the very controls that drew it. -->
-        <Grid x:Name="SliceViewport" Visibility="Collapsed" Background="Transparent"
+        <Grid x:Name="SliceViewport" x:Uid="Cube_SliceCanvas" Visibility="Collapsed" Background="Transparent"
               IsTabStop="True" UseSystemFocusVisuals="True"
               AutomationProperties.Name="Slice canvas"
               Margin="60,72,320,96"
@@ -300,7 +300,7 @@
             <StackPanel Spacing="12" Width="264">
 
                 <!-- ── DISPLAY ── -->
-                <Button x:Name="DisplayHeader" Click="OnToggleDisplaySection"
+                <Button x:Name="DisplayHeader" x:Uid="Cube_DisplaySection" Click="OnToggleDisplaySection"
                               Style="{StaticResource OverlaySectionHeaderStyle}"
                               AutomationProperties.Name="Display controls">
                     <Grid>
@@ -456,7 +456,7 @@
                 </StackPanel>
 
                 <!-- ── MARKS ── Collapsed until asked for, by its own header or the toolbar button. -->
-                <Button x:Name="MarksHeader" Click="OnToggleMarksSection"
+                <Button x:Name="MarksHeader" x:Uid="Cube_MarksSection" Click="OnToggleMarksSection"
                               Style="{StaticResource OverlaySectionHeaderStyle}"
                               AutomationProperties.Name="Marks">
                     <Grid>

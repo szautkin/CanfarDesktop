@@ -82,7 +82,7 @@ public sealed class UserImageStore : IUserImageStore
             if (images.Any(i => string.Equals(i.Id, image.Id, StringComparison.OrdinalIgnoreCase))) return false;
 
             // Newest first: the last thing added is the thing being looked for.
-            images.Insert(0, image with { AddedAt = image.AddedAt ?? DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") });
+            images.Insert(0, image with { AddedAt = image.AddedAt ?? IsoTime.Now() });
             if (images.Count > MaxImages) images.RemoveRange(MaxImages, images.Count - MaxImages);
 
             Save(images);
@@ -111,13 +111,5 @@ public sealed class UserImageStore : IUserImageStore
     private List<RegistryImage> Load()
         => DiskPersistence.Read(_filePath, SchemaVersion, () => new List<RegistryImage>(), Json).Value;
 
-    private void Save(List<RegistryImage> images)
-    {
-        if (_filePath is null) return;
-
-        var directory = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
-
-        DiskPersistence.Write(_filePath, images, SchemaVersion, Json);
-    }
+    private void Save(List<RegistryImage> images) => DiskPersistence.Write(_filePath, images, SchemaVersion, Json);
 }

@@ -1834,7 +1834,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             obs.PublisherID, obs.Collection, obs.ObservationID, obs.TargetName, obs.Instrument, obs.Filter,
             obs.StartDate, obs.CalLevel, obs.DataRelease,
             obs.ProposalId, obs.ProposalPi, obs.ProposalTitle,
-            obs.DownloadedAt.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
+            IsoTime.OfUtc(obs.DownloadedAt),
             obs.PreviewURL, obs.ThumbnailURL);
     }
 

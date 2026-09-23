@@ -464,7 +464,7 @@
   <data name="Marks_ExportTooltip" xml:space="preserve">
     <value>Write these marks out as JSON with provenance, or as a DS9 region file</value>
   </data>
-  <data name="Marks_ExportButton" xml:space="preserve">
+  <data name="Marks_ExportButton.Content" xml:space="preserve">
     <value>Export marks…</value>
   </data>
   <data name="Marks_ClearTitle" xml:space="preserve">
@@ -524,10 +524,10 @@
   <data name="Cube_MarksPanelToggleLabel.Text" xml:space="preserve">
     <value>Marks</value>
   </data>
-  <data name="Cube_PanelsToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip" xml:space="preserve">
+  <data name="Cube_PanelsToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Show or hide the side panels</value>
   </data>
-  <data name="Cube_PanelsToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name" xml:space="preserve">
+  <data name="Cube_PanelsToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Panels</value>
   </data>
   <data name="Cube_PanelsToggleLabel.Text" xml:space="preserve">
@@ -1690,16 +1690,16 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Fits_OpenAnotherTab" xml:space="preserve">
     <value>Open another tab first</value>
   </data>
-  <data name="Fits_EmptyTitle" xml:space="preserve">
+  <data name="Fits_EmptyTitle.Text" xml:space="preserve">
     <value>No image open</value>
   </data>
-  <data name="Fits_EmptyBody" xml:space="preserve">
+  <data name="Fits_EmptyBody.Text" xml:space="preserve">
     <value>Open a FITS image to inspect it — stretch and colormap, WCS readout, pixel probing, marks, and multi-tab comparison.</value>
   </data>
-  <data name="Fits_OpenLabel" xml:space="preserve">
+  <data name="Fits_OpenLabel.Text" xml:space="preserve">
     <value>Open image…</value>
   </data>
-  <data name="Fits_RecentsHeader" xml:space="preserve">
+  <data name="Fits_RecentsHeader.Text" xml:space="preserve">
     <value>Recent images</value>
   </data>
   <data name="Fits_OpenButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
@@ -1729,10 +1729,10 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Fits_ResetButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Reset stretch and view</value>
   </data>
-  <data name="Fits_SelectAreaToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip" xml:space="preserve">
+  <data name="Fits_SelectAreaToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Select an area to export (or hold Ctrl and drag)</value>
   </data>
-  <data name="Fits_SelectAreaToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name" xml:space="preserve">
+  <data name="Fits_SelectAreaToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Select area</value>
   </data>
   <data name="Fits_ResetButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -4166,7 +4166,7 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Images_FindInRegistryBtn.Content" xml:space="preserve">
     <value>Registry…</value>
   </data>
-  <data name="Marks_KindCombo.AutomationProperties.Name" xml:space="preserve">
+  <data name="Marks_KindCombo.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Mark shape</value>
   </data>
   <data name="Settings_AboutTermsLink.Content" xml:space="preserve">
@@ -4201,5 +4201,167 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="Images_TypeSomething" xml:space="preserve">
     <value>Type to search the image registry</value>
+  </data>
+  <data name="Images_FindInRegistryBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Find an image the catalogue does not list</value>
+  </data>
+  <data name="Mark_LabelField.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Mark label</value>
+  </data>
+  <data name="Mark_LabelDone.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Mark_LabelDelete.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Delete this mark</value>
+  </data>
+  <data name="Marks_ColourButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Mark colour</value>
+  </data>
+  <data name="Marks_Bold.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Bold label</value>
+  </data>
+  <data name="Marks_FontSize.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Label size in pixels</value>
+  </data>
+  <data name="Marks_Stroke.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Outline thickness in pixels</value>
+  </data>
+  <data name="Marks_FilterBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Filter marks</value>
+  </data>
+  <data name="Cube_MarksPanelToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Fits_MarksButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Images_DetailDialog.CloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Images_DetailDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Use this image</value>
+  </data>
+  <data name="Images_RegistryDialog.CloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Fits_ExportDialog.CloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Images_ProjectFilter.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Filter images by project</value>
+  </data>
+  <data name="Images_ProjectFilter.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Filter by project</value>
+  </data>
+  <data name="Marks_DrawToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Draw marks</value>
+  </data>
+  <data name="Marks_List.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Cube_VolumeCanvas.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Volume canvas</value>
+  </data>
+  <data name="Cube_SliceCanvas.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Slice canvas</value>
+  </data>
+  <data name="Cube_DisplaySection.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Display controls</value>
+  </data>
+  <data name="Cube_MarksSection.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Images_PackageFilter.PlaceholderText" xml:space="preserve">
+    <value>Filter packages</value>
+  </data>
+  <data name="Images_PackageFilter.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Filter packages</value>
+  </data>
+  <data name="Images_RegistryIntro.Text" xml:space="preserve">
+    <value>The platform's catalogue lists the images it will launch. This searches the registry behind it — a colleague's build, or a tag the catalogue has not picked up. Nothing is searched until you ask.</value>
+  </data>
+  <data name="Images_RegistryQuery.PlaceholderText" xml:space="preserve">
+    <value>Repository name, or part of one</value>
+  </data>
+  <data name="Images_RegistryQuery.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Search the registry</value>
+  </data>
+  <data name="Images_RegistrySearch.Content" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Images_RegistryAdd.Content" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Images_RegistryAdd.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Add this image to my list</value>
+  </data>
+  <data name="Fits_ExpThemeDark.Content" xml:space="preserve">
+    <value>Cockpit dark</value>
+  </data>
+  <data name="Fits_ExpThemeLight.Content" xml:space="preserve">
+    <value>Journal light</value>
+  </data>
+  <data name="Fits_ExpFontSans.Content" xml:space="preserve">
+    <value>Sans</value>
+  </data>
+  <data name="Fits_ExpFontMono.Content" xml:space="preserve">
+    <value>Mono</value>
+  </data>
+  <data name="Fits_ExpFontSerif.Content" xml:space="preserve">
+    <value>Serif</value>
+  </data>
+  <data name="Fits_ExpScaleNote.Text" xml:space="preserve">
+    <value>The marks and the text scale with the figure, so 4× is a bigger picture rather than the same one enlarged.</value>
+  </data>
+  <data name="Fits_ExpAnnotateToggle.Header" xml:space="preserve">
+    <value>Header and footer</value>
+  </data>
+  <data name="Fits_ExpMarksToggle.Header" xml:space="preserve">
+    <value>Marks</value>
+  </data>
+  <data name="Fits_ExpTransparentToggle.Header" xml:space="preserve">
+    <value>Transparent background</value>
+  </data>
+  <data name="Fits_ExportFigureButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Export a figure (Ctrl-drag the image for a region)</value>
+  </data>
+  <data name="Fits_ExportFigureButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Export figure</value>
+  </data>
+  <data name="Fits_OpenImageButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Open image</value>
+  </data>
+  <data name="Fits_ExpPngType" xml:space="preserve">
+    <value>PNG image</value>
+  </data>
+  <data name="Fits_ExpPdfType" xml:space="preserve">
+    <value>PDF document</value>
+  </data>
+  <data name="Fits_ExpSaved" xml:space="preserve">
+    <value>Saved {0}</value>
+  </data>
+  <data name="Marks_FileTypeJson" xml:space="preserve">
+    <value>Marks with provenance (JSON)</value>
+  </data>
+  <data name="Marks_FileTypeDs9" xml:space="preserve">
+    <value>DS9 region file</value>
+  </data>
+  <data name="Marks_ViewerUnavailable" xml:space="preserve">
+    <value>the viewer is unavailable</value>
+  </data>
+  <data name="Marks_UnknownError" xml:space="preserve">
+    <value>unknown error</value>
+  </data>
+  <data name="Search_AdqlRefused" xml:space="preserve">
+    <value>This query will be refused</value>
+  </data>
+  <data name="Search_AdqlRefusedCount" xml:space="preserve">
+    <value>This query will be refused ({0} problems)</value>
+  </data>
+  <data name="Images_NoPackageMatches" xml:space="preserve">
+    <value>Nothing in this image matches “{0}”</value>
+  </data>
+  <data name="Fits_ImageCanvas.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Image canvas</value>
   </data>
 </root>

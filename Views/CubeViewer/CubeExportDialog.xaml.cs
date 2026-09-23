@@ -1,14 +1,10 @@
 using System.IO;
 using System.Threading.Tasks;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Graphics.Imaging;
-using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
-using CanfarDesktop.Services.CubeViewer;
 
 namespace CanfarDesktop.Views.CubeViewer;
 
@@ -117,8 +113,8 @@ public sealed partial class CubeExportDialog : ContentDialog
             Canvas.SetLeft(raster, -100000);
             raster.UpdateLayout();
 
-            // Rendered in pieces when the figure is past what one rasterisation can produce, which
-            // is how 4x becomes an actual 4x rather than the 2.8x the limit used to quietly impose.
+            // One rasterisation, capped at what the machine can produce: a 4x request on a large plate
+            // comes back nearer 2.8x, and figure.Scale says so (see PlateRasterizer.TilingWorks).
             var rendered = await Views.Controls.PlateRasterizer.RenderAsync(
                 raster, RasterHost, scale, expectOpaque: !TransparentToggle.IsOn);
             if (rendered is not { } figure)
@@ -143,28 +139,10 @@ public sealed partial class CubeExportDialog : ContentDialog
             var file = await picker.PickSaveFileAsync();
             if (file is null) { StatusLabel.Text = string.Empty; return; }
 
-            if (pdf)
-            {
-                // PDF has no alpha here, so flatten a transparent figure onto white paper.
-                var rgb = TransparentToggle.IsOn
-                    ? PdfImageWriter.BgraToRgbOverWhite(buf, rw, rh)
-                    : PdfImageWriter.BgraToRgb(buf, rw, rh);
-                using var fs = await file.OpenStreamForWriteAsync();
-                fs.SetLength(0);
-                PdfImageWriter.Write(fs, rgb, rw, rh);
-            }
-            else
-            {
-                using var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
-                var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
-                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied,
-                    (uint)rw, (uint)rh, 96, 96, buf);
-                await encoder.FlushAsync();
-            }
+            await Helpers.FigureFile.WriteAsync(file.Path, buf, rw, rh, pdf);
+
             // Say what was really produced when the limit got in the way, rather than letting the
             // 4x button quietly hand back something closer to 3x.
-            // Say what was really produced when the figure had to be reduced to something the
-            // machine could assemble, rather than letting the 4x button quietly hand back less.
             StatusLabel.Text = figure.Scale < scale - 1e-9
                 ? Helpers.Loc.F("Cube_SavedLimited", file.Name, $"{figure.Scale:0.#}", scale, rw, rh)
                 : Helpers.Loc.F("Cube_Saved", file.Name);

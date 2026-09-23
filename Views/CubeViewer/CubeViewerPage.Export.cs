@@ -4,7 +4,6 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Graphics.Imaging;
 using Windows.Storage;
 using CanfarDesktop.Services.CubeViewer;
 using CanfarDesktop.ViewModels.CubeViewer;
@@ -231,24 +230,7 @@ public sealed partial class CubeViewerPage
                 plate, ExportHost, sc, expectOpaque: !transparent);
             if (rendered is not { } figure) return "plate rasterization failed";
 
-            int rw = figure.Width, rh = figure.Height;
-            byte[] buf = figure.Pixels;
-
-            using (var fs = new FileStream(full, FileMode.Create))
-            {
-                if (pdf)
-                {
-                    PdfImageWriter.Write(fs, PdfImageWriter.BgraToRgb(buf, rw, rh), rw, rh);
-                }
-                else
-                {
-                    using var ras = fs.AsRandomAccessStream();
-                    var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, ras);
-                    encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied,
-                        (uint)rw, (uint)rh, 96, 96, buf);
-                    await encoder.FlushAsync();
-                }
-            }
+            await Helpers.FigureFile.WriteAsync(full, figure.Pixels, figure.Width, figure.Height, pdf);
             ShowStatus(Helpers.Loc.F("Cube_Saved", Path.GetFileName(full)));
             return null;
         }

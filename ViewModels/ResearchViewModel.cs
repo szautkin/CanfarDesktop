@@ -106,8 +106,9 @@ public partial class ResearchViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            // No temp file to tidy: DownloadToPathAsync writes through StreamToFile, which removes its
+            // own on failure.
             System.Diagnostics.Debug.WriteLine($"Download error: {ex.Message}");
-            try { if (File.Exists(savePath + ".tmp")) File.Delete(savePath + ".tmp"); } catch { }
             throw;
         }
     }

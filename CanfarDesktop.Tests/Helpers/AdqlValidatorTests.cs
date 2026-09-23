@@ -1,6 +1,6 @@
 using Xunit;
 using CanfarDesktop.Helpers;
-using CanfarDesktop.Services;
+using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Tests.Helpers;
 

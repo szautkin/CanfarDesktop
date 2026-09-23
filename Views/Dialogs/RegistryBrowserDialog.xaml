@@ -22,7 +22,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+        <TextBlock Grid.Row="0" x:Uid="Images_RegistryIntro" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                    Text="The platform's catalogue lists the images it will launch. This searches the registry behind it — a colleague's build, or a tag the catalogue has not picked up. Nothing is searched until you ask." />
 
@@ -31,9 +31,9 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBox Grid.Column="0" x:Name="QueryBox" PlaceholderText="Repository name, or part of one"
+            <TextBox Grid.Column="0" x:Name="QueryBox" x:Uid="Images_RegistryQuery" PlaceholderText="Repository name, or part of one"
                      KeyDown="OnQueryKeyDown" AutomationProperties.Name="Search the registry" />
-            <Button Grid.Column="1" x:Name="SearchButton" Content="Search" Click="OnSearchClick"
+            <Button Grid.Column="1" x:Name="SearchButton" x:Uid="Images_RegistrySearch" Content="Search" Click="OnSearchClick"
                     Style="{StaticResource AccentButtonStyle}" />
         </Grid>
 
@@ -58,7 +58,7 @@
                         <TextBlock Grid.Column="1" Text="{x:Bind StateText}" VerticalAlignment="Center"
                                    Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <Button Grid.Column="2" Content="Add" Click="OnAddClick" IsEnabled="{x:Bind CanAdd}"
+                        <Button Grid.Column="2" x:Uid="Images_RegistryAdd" Content="Add" Click="OnAddClick" IsEnabled="{x:Bind CanAdd}"
                                 AutomationProperties.Name="Add this image to my list" />
                     </Grid>
                 </DataTemplate>

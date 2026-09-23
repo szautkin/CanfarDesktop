@@ -34,7 +34,7 @@
                        Style="{StaticResource BodyStrongTextBlockStyle}" />
 
             <StackPanel Orientation="Horizontal" Spacing="6">
-                <ToggleButton x:Name="DrawToggle" Click="OnToggleDraw" Padding="8,4"
+                <ToggleButton x:Name="DrawToggle" x:Uid="Marks_DrawToggle" Click="OnToggleDraw" Padding="8,4"
                               AutomationProperties.Name="Draw marks">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE70F;" FontSize="14" />
@@ -111,7 +111,7 @@
         <!-- Sized to its contents up to a ceiling, then scrolling inside itself. This panel hangs in a
              column that scrolls, and a list that grew without limit would push everything below it out
              of reach while the column's own scrollbar never appeared. -->
-        <ListView Grid.Row="3" x:Name="MarkList" SelectionMode="Single" MaxHeight="240"
+        <ListView Grid.Row="3" x:Name="MarkList" x:Uid="Marks_List" SelectionMode="Single" MaxHeight="240"
                   SelectionChanged="OnSelectionChanged"
                   IsItemClickEnabled="True" ItemClick="OnItemClick"
                   ContextRequested="OnListContextRequested"

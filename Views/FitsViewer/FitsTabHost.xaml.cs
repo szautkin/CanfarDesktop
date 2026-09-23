@@ -257,37 +257,6 @@ public sealed partial class FitsTabHost : UserControl
         return true;
     }
 
-    /// <summary>
-    /// Start (or stop) a WCS-aligned blink between two tabs — the FITS viewer's headline comparison
-    /// feature, which until now had no tool at all.
-    ///
-    /// Blink is anchored on the ACTIVE tab, which is why switching to <paramref name="indexA"/> comes
-    /// first: the overlay is computed against whatever A is currently showing.
-    /// </summary>
-    public string? StartBlinkBetween(int indexA, int indexB)
-    {
-        if (indexA == indexB) return "blink compares two DIFFERENT tabs";
-        if (indexA < 0 || indexA >= ViewModel.Tabs.Count) return $"there is no tab {indexA}";
-        if (indexB < 0 || indexB >= ViewModel.Tabs.Count) return $"there is no tab {indexB}";
-
-        var a = ViewModel.Tabs[indexA];
-        var b = ViewModel.Tabs[indexB];
-
-        if (a.ViewModel.ImageData?.Wcs is not { IsValid: true }
-            || b.ViewModel.ImageData?.Wcs is not { IsValid: true })
-            return "both images need a valid WCS: a blink aligns them on the sky, not on their pixels";
-
-        if (!SwitchToTab(indexA)) return $"there is no tab {indexA}";
-        StartBlink(a, b);
-        return _blinkSession is null ? "the blink could not be started" : null;
-    }
-
-    /// <summary>Stop a running blink. Harmless when none is running.</summary>
-    public void StopBlinking() => StopBlink();
-
-    /// <summary>Whether a blink is running right now.</summary>
-    public bool IsBlinking => _blinkSession is not null;
-
     private void CloseTabItem(TabViewItem tab)
     {
         if (tab.Tag is not FitsViewerTabItem tabItem) return;

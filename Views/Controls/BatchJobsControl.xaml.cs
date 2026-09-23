@@ -162,7 +162,7 @@ public sealed partial class BatchJobsControl : UserControl
                 Outcome = outcome,
                 Status = job.Status,
                 StartedAt = job.StartedTime,
-                FinishedAt = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                FinishedAt = IsoTime.Now(),
 
                 // Skaha's status is all there is at this point. The reason, when there is one to get, is
                 // fetched by whoever opens the job — while it still exists.

@@ -12,7 +12,8 @@ in-app **Terms of Use** (`Helpers/LegalTerms.cs`).
 
 - **No data collected.** Verbinal contains **no analytics, telemetry, advertising,
   or third-party SDKs**. It makes no network calls to any service other than
-  CANFAR/CADC.
+  CANFAR/CADC and, for catalogue cone searches only, the VizieR service (CDS),
+  which receives a sky position and radius and nothing identifying.
 - **No tracking.** The app does not track users across apps or websites and does
   not build user profiles.
 
@@ -26,7 +27,11 @@ in-app **Terms of Use** (`Helpers/LegalTerms.cs`).
 
 ## Network
 
-All app-initiated traffic is HTTPS and goes directly to trusted CANFAR/CADC hosts.
+App-initiated traffic goes directly to trusted CANFAR/CADC hosts over HTTPS, with
+one exception: VizieR cone searches go to CDS (`tapvizier.cds.unistra.fr`, alias
+`tapvizier.u-strasbg.fr`), falling back to `vizier.china-vo.org` over plain HTTP
+when both are unreachable. Those requests carry only the query — position,
+radius, catalogue — and never a token.
 The session bearer token is attached **only** to requests for hosts on an explicit
 allowlist (`Helpers/TrustedHosts.cs`): `*.canfar.net` and
 `*.cadc-ccda.hia-iha.nrc-cnrc.gc.ca`. DataLink results that are not HTTPS are

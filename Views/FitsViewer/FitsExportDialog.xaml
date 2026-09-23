@@ -46,17 +46,17 @@
                 <StackPanel Spacing="2">
                     <TextBlock x:Uid="Fits_ExpThemeLabel" Text="Theme" Style="{StaticResource CaptionTextBlockStyle}" />
                     <ComboBox x:Name="ThemeCombo" HorizontalAlignment="Stretch" SelectionChanged="OnStyleChanged">
-                        <ComboBoxItem Content="Cockpit dark" />
-                        <ComboBoxItem Content="Journal light" />
+                        <ComboBoxItem x:Uid="Fits_ExpThemeDark" Content="Cockpit dark" />
+                        <ComboBoxItem x:Uid="Fits_ExpThemeLight" Content="Journal light" />
                     </ComboBox>
                 </StackPanel>
 
                 <StackPanel Spacing="2">
                     <TextBlock x:Uid="Fits_ExpFontLabel" Text="Font" Style="{StaticResource CaptionTextBlockStyle}" />
                     <ComboBox x:Name="FontCombo" HorizontalAlignment="Stretch" SelectionChanged="OnStyleChanged">
-                        <ComboBoxItem Content="Sans" />
-                        <ComboBoxItem Content="Mono" />
-                        <ComboBoxItem Content="Serif" />
+                        <ComboBoxItem x:Uid="Fits_ExpFontSans" Content="Sans" />
+                        <ComboBoxItem x:Uid="Fits_ExpFontMono" Content="Mono" />
+                        <ComboBoxItem x:Uid="Fits_ExpFontSerif" Content="Serif" />
                     </ComboBox>
                 </StackPanel>
 
@@ -67,14 +67,14 @@
                         <ComboBoxItem Content="2×" Tag="2" />
                         <ComboBoxItem Content="4×" Tag="4" />
                     </ComboBox>
-                    <TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                    <TextBlock x:Uid="Fits_ExpScaleNote" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                Text="The marks and the text scale with the figure, so 4× is a bigger picture rather than the same one enlarged." />
                 </StackPanel>
 
-                <ToggleSwitch x:Name="AnnotateToggle" Header="Header and footer" IsOn="True" Toggled="OnStyleChanged" />
-                <ToggleSwitch x:Name="MarksToggle" Header="Marks" IsOn="True" Toggled="OnStyleChanged" />
-                <ToggleSwitch x:Name="TransparentToggle" Header="Transparent background" Toggled="OnStyleChanged" />
+                <ToggleSwitch x:Name="AnnotateToggle" x:Uid="Fits_ExpAnnotateToggle" Header="Header and footer" IsOn="True" Toggled="OnStyleChanged" />
+                <ToggleSwitch x:Name="MarksToggle" x:Uid="Fits_ExpMarksToggle" Header="Marks" IsOn="True" Toggled="OnStyleChanged" />
+                <ToggleSwitch x:Name="TransparentToggle" x:Uid="Fits_ExpTransparentToggle" Header="Transparent background" Toggled="OnStyleChanged" />
 
             </StackPanel>
         </ScrollViewer>

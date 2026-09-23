@@ -236,9 +236,6 @@ public partial class SearchViewModel : ObservableObject
         }
     }
 
-    /// <summary>Row count after the active filters (equals TotalRows when none are set).</summary>
-    public int FilteredRowCount => GetProcessedRows().Count;
-
     private static List<DataTrainRow> LoadDataTrainFromCache()
     {
         if (DataTrainCachePath is null || !File.Exists(DataTrainCachePath)) return [];

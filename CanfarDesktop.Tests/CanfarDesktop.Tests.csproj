@@ -21,8 +21,11 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="NSubstitute" Version="5.3.0" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <!-- The same versions the app ships: these compile the app's own linked sources, and a test that
+         runs against an older library tests something nobody installs. DependencyAlignmentTests
+         fails the run when the two drift apart. -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
   </ItemGroup>
 
   <!-- Embed the probe scripts so EmbeddedProbeScripts.FromAssembly resolves them in tests too. -->
@@ -51,6 +54,8 @@
     <Compile Include="..\Helpers\PollCadence.cs" Link="Linked\PollCadence.cs" />
     <Compile Include="..\Helpers\AgentCapture.cs" Link="Linked\AgentCapture.cs" />
     <Compile Include="..\Helpers\AtomicFile.cs" Link="Linked\AtomicFile.cs" />
+    <Compile Include="..\Helpers\IsoTime.cs" Link="Linked\IsoTime.cs" />
+    <Compile Include="..\Helpers\PdfImageWriter.cs" Link="Linked\PdfImageWriter.cs" />
     <Compile Include="..\Helpers\RowSelection.cs" Link="Linked\RowSelection.cs" />
     <Compile Include="..\Helpers\SaveFileName.cs" Link="Linked\SaveFileName.cs" />
     <Compile Include="..\Helpers\StreamToFile.cs" Link="Linked\StreamToFile.cs" />
@@ -130,6 +135,7 @@
     <Compile Include="..\Models\VoSpaceNode.cs" Link="Linked\VoSpaceNode.cs" />
     <Compile Include="..\Services\TAPService.cs" Link="Linked\TAPService.cs" />
     <!-- The service's own schema, and the ADQL pre-flight that reads it. -->
+    <Compile Include="..\Models\TapSchema.cs" Link="Linked\TapSchema.cs" />
     <Compile Include="..\Services\TapSchemaService.cs" Link="Linked\TapSchemaService.cs" />
     <Compile Include="..\Helpers\AdqlValidator.cs" Link="Linked\AdqlValidator.cs" />
     <Compile Include="..\Mcp\Tools\Read\TapSchemaTools.cs" Link="Linked\Mcp\TapSchemaTools.cs" />

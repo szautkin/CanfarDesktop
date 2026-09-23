@@ -1,6 +1,7 @@
 # Privacy Policy — Verbinal
 
 **Effective date:** 1 March 2025
+**Last updated:** 22 September 2026 (Verbinal 1.4.0)
 **App name:** Verbinal — A CANFAR Science Portal Companion
 **Publisher:** CodeBG (Serhii Zautkin)
 
@@ -10,7 +11,8 @@
 
 Verbinal does not collect, transmit, or sell any personal data to the developer,
 to CodeBG, or to any third party. All data stays on your device or is sent
-directly to the CANFAR services you choose to authenticate with.
+directly to the astronomy services you use from the app — CANFAR/CADC, and the
+VizieR catalogue service when you run a catalogue search.
 
 ---
 
@@ -32,15 +34,25 @@ this data.
 | CANFAR username | Windows Credential Manager (PasswordVault) | Identifies the account associated with the saved token |
 | Recent session launches | `recent_launches.json` in app local data | Shows your recent session history for quick re-launch |
 | User preferences | Windows ApplicationData LocalSettings | Remembers your preferred session type, resource defaults, and theme |
+| Image-registry secret (optional) | Windows Credential Manager (PasswordVault) | Lets image search and inspection reach the container registry, if you enter one |
+| Search history and saved queries | App local data | Recent searches and queries you chose to save |
+| Research library | App local data | Metadata of observations you downloaded, and your notes on them |
+| Marks (annotations) | `annotations.json` in app local data | Marks you or an AI assistant drew on FITS images and cubes, keyed by file path |
+| Recently opened files | App local data | Paths of FITS images, cubes and notebooks you opened, for the viewers' "recent" lists |
+| Finished batch jobs | `job_history.json` in app local data | The outcome of recent jobs, kept after CANFAR removes them |
+| Images you added | `user_images.json` in app local data | Container images you added from the registry |
+| Pending AI-assistant requests | `mcp_proposals.json` in app local data | Changes an AI assistant proposed that are waiting for your approval, so they survive a restart |
+| Crash log | `crash.log` in app local data | Local troubleshooting only; authentication tokens are removed before writing. Never transmitted |
 
 All locally stored data is deleted when you uninstall the app or when you log
 out (which clears credentials from Windows Credential Manager).
 
 ## 3. Data sent over the network
 
-Verbinal communicates exclusively with CANFAR services operated by the Canadian
-Astronomy Data Centre (CADC) and the Digital Research Alliance of Canada. All
-connections use HTTPS.
+Verbinal communicates with CANFAR services operated by the Canadian Astronomy
+Data Centre (CADC) and the Digital Research Alliance of Canada, and — only when
+you run a catalogue search — with the VizieR service. CANFAR/CADC connections use
+HTTPS, and your authentication token is only ever sent to CANFAR/CADC hosts.
 
 | Endpoint | Data sent | Purpose |
 |---|---|---|
@@ -48,9 +60,22 @@ connections use HTTPS.
 | `ws-uv.canfar.net/skaha` | Authentication token (Bearer header) | Session management, image listing, platform stats |
 | `ws-uv.canfar.net/ac` | Authentication token | User profile retrieval |
 | `ws-uv.canfar.net/arc` | Authentication token | Storage quota retrieval |
+| `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca` | Search queries; authentication token when signed in | Archive search, data links, downloads, target name resolution |
+| `images.canfar.net` | Image search terms; registry secret if you entered one | Container image search and inspection |
+| `tapvizier.cds.unistra.fr`, `tapvizier.u-strasbg.fr` (CDS, France); `vizier.china-vo.org` (last-resort mirror, HTTP) | The sky position, radius and catalogue of a cone search — no credentials, no account information | VizieR catalogue searches |
 
+The CANFAR/CADC service addresses can be changed in Settings; the table shows the defaults.
 Verbinal does **not** contact any other servers. There are no analytics
 endpoints, no ad networks, and no third-party SDKs that make network requests.
+
+### AI assistant (optional)
+
+If you connect an AI assistant (for example Claude Desktop) in the AI Assistant
+area, Verbinal answers that assistant's requests over a local connection on your
+computer. Whatever the assistant reads through Verbinal — search results, file
+names, image data, notebook contents — is then handled by that assistant and its
+provider under their own privacy terms. Verbinal sends nothing to the assistant's
+provider itself, and nothing is shared until you connect an assistant.
 
 Your credentials are sent only to the CANFAR authentication endpoint
 (`ws-cadc.canfar.net/ac/login`) and are never stored in plain text on disk.
@@ -59,9 +84,9 @@ is discarded immediately after.
 
 ## 4. Third-party services
 
-Verbinal does not integrate with any third-party services. The only external
-communication is with the CANFAR platform as described above. CANFAR's own
-privacy practices are governed by the
+Verbinal contains no third-party SDKs. Its external communication is with the
+CANFAR platform and, for catalogue searches, the VizieR service, as described
+above. CANFAR's own privacy practices are governed by the
 [CADC Terms of Use](https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/about.html).
 
 ## 5. Children's privacy
@@ -78,9 +103,11 @@ students by the Canadian Astronomy Data Centre.
   tokens from Windows Credential Manager.
 - **Clear recent launches:** Use the clear button in the Recent Launches panel,
   or uninstall the app to delete all local data.
+- **Clear other local data:** Marks can be cleared from the Marks panel, finished
+  jobs from the batch jobs history, and search history from the Search page.
 - **Uninstall:** Removing the app deletes all sandboxed local data
-  (settings, recent launches). Credential Manager entries are also removed
-  when the app package is uninstalled.
+  (settings, history, marks and the other files listed above). Credential
+  Manager entries are also removed when the app package is uninstalled.
 
 ## 7. Changes to this policy
 

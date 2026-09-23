@@ -469,7 +469,9 @@ public sealed partial class NotebookTabHost : UserControl
 
             var picker = new Windows.Storage.Pickers.FileOpenPicker();
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
-            picker.FileTypeFilter.Add(".ipynb");
+            // Every format the loader takes, from the one list, so the dialog cannot offer less.
+            foreach (var extension in NotebookFormats.OpenableExtensions)
+                picker.FileTypeFilter.Add(extension);
             picker.FileTypeFilter.Add("*");
 
             var file = await picker.PickSingleFileAsync();

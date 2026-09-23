@@ -6,8 +6,9 @@ namespace CanfarDesktop.Helpers;
 /// Write a file so a reader never sees it half-written: build a sibling <c>.tmp</c>, then put it over
 /// the target in one operation.
 ///
-/// <para>This existed five times — the notebook's Save and Save As, the autosave, the MCP sidecar, the
-/// Claude config repair and the manifest store — as the same three lines each. They agreed on the
+/// <para>This existed six times — the notebook's Save and Save As, the autosave, the MCP sidecar, the
+/// Claude config repair, the manifest store and <c>DiskPersistence</c> — as the same three lines
+/// each. They agreed on the
 /// important part and differed in one: only the download path deleted its temp file when the write
 /// failed, so a failed notebook save left <c>analysis.ipynb.tmp</c> sitting beside the notebook
 /// forever. Collapsing them is how the one copy that knew that teaches the other four.</para>

@@ -1,4 +1,4 @@
-using CanfarDesktop.Services;
+using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Helpers;
 

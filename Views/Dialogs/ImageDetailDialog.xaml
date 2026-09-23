@@ -36,7 +36,7 @@
 
         <!-- The median image here holds 624 packages. Without a filter this list is something to
              scroll past rather than something to read. -->
-        <AutoSuggestBox Grid.Row="2" x:Name="FilterBox" QueryIcon="Find"
+        <AutoSuggestBox Grid.Row="2" x:Name="FilterBox" x:Uid="Images_PackageFilter" QueryIcon="Find"
                         PlaceholderText="Filter packages"
                         TextChanged="OnFilterChanged"
                         AutomationProperties.Name="Filter packages" />
