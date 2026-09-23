@@ -1787,7 +1787,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
 
             var showing = Views.Controls.AgentPointer.Show(
                 AgentPointerHost, element, request.Title, request.Message,
-                Helpers.UiPointer.Seconds(request.Seconds));
+                request.UntilClosed ? null : Helpers.UiPointer.Seconds(request.Seconds));
 
             return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
                 true, id, showing > 1 ? $"{showing} hints are up" : null);

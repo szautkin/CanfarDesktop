@@ -11,10 +11,12 @@ Time: ~15 min
       small cube, so the viewer screens have something real in them.
       Note: A conversation, not a slideshow. If they ask something at any screen, answer it and carry
       on from there.
-- [ ] **How the pointing works** — Each hint has a close button, hovering one stops it fading, and
-      closing the last one is the tour's cue to move on. Take a token from list_events first so you
-      know what is new, then poll it for a `hintsDismissed` event between screens.
-      Tool: list_events
+- [ ] **How the pointing works** — Hints fade on their own after a few seconds (hovering one
+      pauses it) and all go when the screen changes; each has a close button too. When the last one
+      goes, however it went, list_events carries a `hintsDismissed` event — that is the cue to move
+      on. Take a token from list_events first, then poll it between screens. If they ask for a
+      slower guide, pass `untilClosed` to point_at_ui: hints then wait for their close button.
+      Tool: list_events, point_at_ui
 - [ ] **Landing — where everything starts** — The home screen, a tile per area. Point at a tile or
       two and say the app is ten areas around one archive, and that anything they can do an agent
       can do for them. Point at the AI Assistant tile too: it is not an eleventh screen but the

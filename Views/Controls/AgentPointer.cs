@@ -273,9 +273,12 @@ public static class AgentPointer
     /// <para>One tip per control: pointing at the same thing twice replaces rather than stacks, since
     /// two tails on one button is two things claiming to be it. Pointing at a DIFFERENT control adds
     /// another, because walking somebody through three controls is three tips.</para>
+    ///
+    /// <para><paramref name="seconds"/> null means no countdown at all: the slow guide, where the tip
+    /// waits for its close button or a page change.</para>
     /// </summary>
     public static int Show(
-        Panel host, FrameworkElement target, string? title, string message, double seconds)
+        Panel host, FrameworkElement target, string? title, string message, double? seconds)
     {
         Close(Live.FirstOrDefault(t => ReferenceEquals(t.Target, target)));
 
@@ -295,16 +298,26 @@ public static class AgentPointer
 
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(tip, title ?? message);
 
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds) };
-        timer.Tick += (_, _) => Close(tip);
+        // A DispatcherTimer repeats until stopped, and its handler holds the tip — and through it the
+        // control it points at. So it is stopped on EVERY way out, not just the mouse-over: a tip
+        // closed by its button or by a page change otherwise kept ticking, and kept its page alive,
+        // for the rest of the session.
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds ?? 0) };
+        timer.Tick += (_, _) => { timer.Stop(); Close(tip); };
 
-        // Reading it should not race it. Once somebody has moved onto the tip they have said they
-        // are paying attention, so the countdown stops for good and the close button is how it goes
-        // — a tip that vanished mid-sentence because the mouse was there is the worst of both.
-        tip.PointerEntered += (_, _) => timer.Stop();
+        // Reading it should not race it, so the countdown pauses while the pointer is on the tip —
+        // and starts again, from the top, when it leaves. It used to stop for good, which left a tip
+        // nobody had closed on screen indefinitely, and a tour waiting for the last one to go
+        // waiting with it. Staying until closed is the slow guide's choice, asked for, not a side
+        // effect of where the mouse happened to rest.
+        if (seconds is not null)
+        {
+            tip.PointerEntered += (_, _) => timer.Stop();
+            tip.PointerExited += (_, _) => { if (Live.Contains(tip)) timer.Start(); };
+        }
 
-        tip.CloseButtonClick += (sender, _) => Close(sender as TeachingTip);
-        tip.Closed += (sender, _) => Forget(sender as TeachingTip);
+        tip.CloseButtonClick += (sender, _) => { timer.Stop(); Close(sender as TeachingTip); };
+        tip.Closed += (sender, _) => { timer.Stop(); Forget(sender as TeachingTip); };
 
         host.Children.Add(tip);
         Live.Add(tip);
@@ -317,7 +330,7 @@ public static class AgentPointer
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
             () => { if (Live.Contains(tip)) tip.IsOpen = true; });
 
-        timer.Start();
+        if (seconds is not null) timer.Start();
 
         return Live.Count;
     }

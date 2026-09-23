@@ -16,7 +16,12 @@ public sealed record UiTarget(string Target, string Kind, string? Label);
 public sealed record UiTargetListing(IReadOnlyList<UiTarget> Targets, IReadOnlyList<UiTarget> CollapsedSections);
 
 /// <summary>What <c>point_at_ui</c> was asked for.</summary>
-public sealed record UiPointRequest(string Target, string? Title, string Message, double? Seconds);
+/// <param name="UntilClosed">
+/// No countdown: the hint stays until the person closes it or the page changes. For the slow guide
+/// somebody asks for, where the tour waits on them rather than on a clock.
+/// </param>
+public sealed record UiPointRequest(
+    string Target, string? Title, string Message, double? Seconds, bool UntilClosed = false);
 
 /// <summary>
 /// What came of it.
@@ -62,15 +67,19 @@ public sealed class PointAtUiTool : JsonReadTool<PointAtUiTool.Args, UiPointOutc
         "If the name " +
         "matches nothing, or two things equally, nothing is shown and the reply lists what is there. " +
         "Call it several times to put several hints up at once — one per control, so pointing at the " +
-        "same one twice replaces rather than stacks. Each has its own close button; the countdown " +
-        "stops if the person hovers it, and they all go the moment the app changes page, so hints " +
-        "never outlive the screen they describe. Live-applied.",
+        "same one twice replaces rather than stacks. Each has its own close button and fades on its " +
+        "own after 'seconds' — hovering pauses it, moving off starts it again — and they all go the " +
+        "moment the app changes page, so hints never outlive the screen they describe. When the last " +
+        "one goes, however it went, list_events carries a hintsDismissed event: poll for it to pace a " +
+        "tour. Pass untilClosed only when the person has asked for a slow guide — the hint then waits " +
+        "for its close button instead of fading. Live-applied.",
         """
         {"type":"object","properties":{
           "target":{"type":"string","description":"The control's name, or the words on it. See list_ui_targets."},
           "message":{"type":"string","description":"One sentence telling them what this control does or why they want it."},
           "title":{"type":"string","description":"Optional short heading above the message."},
-          "seconds":{"type":"number","description":"How long it stays up. Default 8, clamped to 2-60."}
+          "seconds":{"type":"number","description":"How long it stays up. Default 8, clamped to 2-60."},
+          "untilClosed":{"type":"boolean","description":"No countdown: it stays until the person closes it or the page changes. For a slow guide they asked for. Default false."}
         },"required":["target","message"],"additionalProperties":false}
         """);
 
@@ -85,7 +94,8 @@ public sealed class PointAtUiTool : JsonReadTool<PointAtUiTool.Args, UiPointOutc
             throw new McpToolException(new InvalidArgument(
                 "message is required — a tip pointing at a control without saying why is a shape on the screen"));
 
-        return await _point(new UiPointRequest(target, Args.Clean(args.Title), message, args.Seconds));
+        return await _point(new UiPointRequest(
+            target, Args.Clean(args.Title), message, args.Seconds, args.UntilClosed == true));
     }
 
     public sealed record Args
@@ -94,6 +104,7 @@ public sealed class PointAtUiTool : JsonReadTool<PointAtUiTool.Args, UiPointOutc
         public string? Title { get; init; }
         public string? Message { get; init; }
         public double? Seconds { get; init; }
+        public bool? UntilClosed { get; init; }
 
         internal static string? Clean(string? text)
             => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
