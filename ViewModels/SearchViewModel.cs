@@ -16,6 +16,9 @@ public partial class SearchViewModel : ObservableObject
     public IReadOnlyList<DataTrainRow> AllDataTrainRows => _allDataTrainRows;
     private CancellationTokenSource? _resolverCts;
 
+    /// <summary>The latest target resolution, finished or not. A search waits on it; see SearchAsync.</summary>
+    private Task _resolving = Task.CompletedTask;
+
     #region Observation
 
     [ObservableProperty] private string _observationId = string.Empty;
@@ -370,7 +373,7 @@ public partial class SearchViewModel : ObservableObject
             ResolverStatus = string.Empty;
             return;
         }
-        _ = ResolveTargetDebouncedAsync(value);
+        _resolving = ResolveTargetDebouncedAsync(value);
     }
 
     private async Task ResolveTargetDebouncedAsync(string target)
@@ -450,6 +453,12 @@ public partial class SearchViewModel : ObservableObject
     [RelayCommand]
     public async Task SearchAsync()
     {
+        // A target typed a moment ago is still being resolved — half a second of debounce, then the
+        // network. Searching without waiting built the query with no coordinates, fell back to a
+        // target-name match, and an M31 search returned a quasar at Dec −31° because "J0305M3150"
+        // contains "m31". Whatever the resolver concludes, the query should be built from it.
+        await _resolving;
+
         var state = BuildFormState();
         var adql = ADQLBuilder.Build(state);
         AdqlText = adql;
