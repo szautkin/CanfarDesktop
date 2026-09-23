@@ -68,6 +68,7 @@
         <!-- One launchpad tile: icon + title + 2-line summary + override dot + tool count. -->
         <DataTemplate x:Key="TileTemplate" x:DataType="vm:AiGuideCategoryGroup">
             <Button Click="OnCategoryTileClick" Tag="{x:Bind}" Padding="0" Height="116"
+                    AutomationProperties.Name="{x:Bind Title}"
                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                     HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                     CornerRadius="8" BorderThickness="1"
@@ -205,7 +206,7 @@
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top">
                                 <TextBox x:Name="SearchBox" x:Uid="Guide_SearchBox" Width="240" PlaceholderText="Filter tools…"
                                          Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                <Button x:Uid="Guide_ClearSearchButton" Click="OnClearSearchClick" ToolTipService.ToolTip="Clear filter"
+                                <Button x:Name="ClearSearchButton" x:Uid="Guide_ClearSearchButton" Click="OnClearSearchClick" ToolTipService.ToolTip="Clear filter"
                                         Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BoolToVis}}">
                                     <FontIcon Glyph="&#xE711;" FontSize="13" />
                                 </Button>
@@ -234,7 +235,7 @@
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                            Text="Custom read-only instruction tools you author. The agent sees each as a callable tool and receives your text when it calls it — no code runs." />
                             </StackPanel>
-                            <Button Grid.Column="1" VerticalAlignment="Center" Click="OnAddGuideClick">
+                            <Button x:Name="AddGuideButton" Grid.Column="1" VerticalAlignment="Center" Click="OnAddGuideClick">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <FontIcon Glyph="&#xE710;" FontSize="14" />
                                     <TextBlock x:Uid="Guide_NewGuideLabel" Text="New guide" />
@@ -265,9 +266,9 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
                         <TextBlock x:Uid="Guide_ViewLabel" Text="View:" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <RadioButton x:Uid="Guide_TilesRadio" GroupName="aiGuideView" Content="Tiles" Checked="OnTilesChecked"
+                        <RadioButton x:Name="TilesRadio" x:Uid="Guide_TilesRadio" GroupName="aiGuideView" Content="Tiles" Checked="OnTilesChecked"
                                      IsChecked="{x:Bind ViewModel.ShowTiles, Mode=OneWay}" />
-                        <RadioButton x:Uid="Guide_EverythingRadio" GroupName="aiGuideView" Content="See everything" Checked="OnEverythingChecked"
+                        <RadioButton x:Name="EverythingRadio" x:Uid="Guide_EverythingRadio" GroupName="aiGuideView" Content="See everything" Checked="OnEverythingChecked"
                                      IsChecked="{x:Bind ViewModel.ShowEverything, Mode=OneWay}" />
                     </StackPanel>
 
@@ -318,7 +319,7 @@
                         <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.FocusedCategory.ToolCountText, Mode=OneWay}"
                                    VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <Button x:Uid="Guide_CloseFocusButton" Grid.Column="3" Click="OnCloseFocusClick" ToolTipService.ToolTip="Close"
+                        <Button x:Name="CloseFocusButton" x:Uid="Guide_CloseFocusButton" Grid.Column="3" Click="OnCloseFocusClick" ToolTipService.ToolTip="Close"
                                 Background="Transparent" BorderThickness="0" Padding="6">
                             <FontIcon Glyph="&#xE711;" FontSize="14" />
                         </Button>

@@ -33,7 +33,7 @@
                      Title="Session Limit" IsClosable="False" Visibility="Collapsed" />
 
             <!-- Tabs: Standard + Advanced -->
-            <Pivot Grid.Row="3">
+            <Pivot Grid.Row="3" x:Name="LaunchModes">
                 <PivotItem x:Uid="Launch_StandardTab" Header="Standard">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
                         <StackPanel Spacing="12">

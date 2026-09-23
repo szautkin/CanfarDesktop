@@ -32,7 +32,7 @@
                         <TextBlock x:Name="CountText" Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                     </StackPanel>
-                    <Button x:Uid="Research_ExportButton" Grid.Column="1" Content="Export…" Click="OnExportClick"
+                    <Button x:Name="ExportButton" x:Uid="Research_ExportButton" Grid.Column="1" Content="Export…" Click="OnExportClick"
                             Padding="8,4" Background="Transparent" BorderThickness="0"
                             ToolTipService.ToolTip="Export your research + searches as a Claude-friendly bundle" />
                 </Grid>

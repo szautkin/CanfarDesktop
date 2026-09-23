@@ -31,7 +31,11 @@ public sealed class DescribeAppTool : JsonReadTool<EmptyArgs, DescribeAppTool.Ou
             "workflow \"Take the tour of Verbinal\" (use_workflow, builtin:verbinal-onboarding): it " +
             "walks them through all ten screens with point_at_ui pointing at the controls as you " +
             "describe them, finds and downloads a small image and cube so the viewers are not " +
-            "empty, and waits for them to close each hint rather than running on a timer."));
+            "empty, and moves on when each screen's hints have gone (they fade on a timer; pass " +
+            "untilClosed to point_at_ui only if the user asks for a slower guide). For one screen in " +
+            "depth there is a detailed tour per screen: builtin:tour-search, tour-research, " +
+            "tour-fits-viewer, tour-cube-viewer, tour-storage, tour-portal, tour-notebook, " +
+            "tour-workflows and tour-ai-guide."));
 
     public sealed record Output(string Name, string Version, string Summary);
 }

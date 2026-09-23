@@ -93,5 +93,7 @@ Time: ~15 min
 - [ ] **Finish on what they came for** — Ask what they actually want to do first. Offer to run it
       with them, or point them at the workflow that fits — there are built-ins for archival imaging,
       cube kinematics, spectroscopy, photometry, cross-matching and batch reprocessing. Mention they
-      can delete the two demo downloads if they were only ever scaffolding.
+      can delete the two demo downloads if they were only ever scaffolding. Each screen also has a
+      detailed tour of its own among the built-ins — "Tour: Search", "Tour: FITS viewer" and so on —
+      for when one part is what they will use most.
       Tool: list_workflows, use_workflow, delete_downloaded_observation

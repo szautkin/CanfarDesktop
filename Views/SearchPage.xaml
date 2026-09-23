@@ -294,8 +294,8 @@
                             <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
                                        Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                             <Button x:Name="ColumnsButton" x:Uid="Search_ColumnsButton" Click="OnColumnsClick" Content="Columns" Padding="8,4" />
-                            <Button Click="OnExportCsvClick" Content="CSV" Padding="8,4" />
-                            <Button Click="OnExportTsvClick" Content="TSV" Padding="8,4" />
+                            <Button x:Name="ExportCsvButton" Click="OnExportCsvClick" Content="CSV" Padding="8,4" />
+                            <Button x:Name="ExportTsvButton" Click="OnExportTsvClick" Content="TSV" Padding="8,4" />
                             <Button x:Name="ApplyFiltersBtn" x:Uid="Search_ApplyFiltersBtn" Click="OnApplyFiltersToAdql" Padding="8,4"
                                     Visibility="Collapsed" ToolTipService.ToolTip="Convert active filters to ADQL query">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
