@@ -29,6 +29,66 @@ public class AnnotationStoreTests : IDisposable
         CreatedAt = "2026-09-05T12:00:00Z",
     };
 
+    // ── Marks from before extensions were tracked ───────────────────────────────────────────────
+
+    /// <summary>
+    /// A mark keyed by bare path moves to the extension it belongs to, and is no longer under the path
+    /// — otherwise it would be counted twice and exported twice.
+    /// </summary>
+    [Fact]
+    public void OldMarksMoveOntoAnExtension()
+    {
+        var store = Store();
+        store.Add("C:/data/mef.fits", Mark("a"));
+        store.Add("C:/data/mef.fits", Mark("b"));
+
+        Assert.Equal(2, store.Adopt("C:/data/mef.fits", "C:/data/mef.fits#1"));
+        Assert.Equal(["a", "b"], store.LoadFor("C:/data/mef.fits#1").Select(m => m.Id));
+        Assert.Empty(store.LoadFor("C:/data/mef.fits"));
+    }
+
+    /// <summary>
+    /// Never folded into an extension that already has marks: those were drawn there on purpose, and
+    /// merging a whole file's old marks in would recreate the mixing the move exists to undo.
+    /// </summary>
+    [Fact]
+    public void OldMarksDoNotMergeIntoAnExtensionThatHasItsOwn()
+    {
+        var store = Store();
+        store.Add("C:/data/mef.fits", Mark("old"));
+        store.Add("C:/data/mef.fits#1", Mark("new"));
+
+        Assert.Equal(0, store.Adopt("C:/data/mef.fits", "C:/data/mef.fits#1"));
+        Assert.Equal(["new"], store.LoadFor("C:/data/mef.fits#1").Select(m => m.Id));
+        Assert.Equal(["old"], store.LoadFor("C:/data/mef.fits").Select(m => m.Id));
+    }
+
+    [Fact]
+    public void AdoptingNothingMovesNothing()
+        => Assert.Equal(0, Store().Adopt("C:/data/none.fits", "C:/data/none.fits#1"));
+
+    [Fact]
+    public void AdoptingOntoItselfMovesNothing()
+    {
+        var store = Store();
+        store.Add("C:/data/a.fits", Mark("a"));
+
+        Assert.Equal(0, store.Adopt("C:/data/a.fits", "C:/data/a.fits"));
+        Assert.Single(store.LoadFor("C:/data/a.fits"));
+    }
+
+    /// <summary>The move survives a fresh store reading the same file — it was written, not just cached.</summary>
+    [Fact]
+    public void TheMoveIsOnDisk()
+    {
+        Store().Add("C:/data/mef.fits", Mark("a"));
+        Store().Adopt("C:/data/mef.fits", "C:/data/mef.fits#1");
+
+        var reread = Store();
+        Assert.Single(reread.LoadFor("C:/data/mef.fits#1"));
+        Assert.Empty(reread.LoadFor("C:/data/mef.fits"));
+    }
+
     [Fact]
     public void MarksComeBackOnTheFileTheyWereDrawnOn()
     {

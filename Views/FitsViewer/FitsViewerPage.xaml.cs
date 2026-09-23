@@ -177,6 +177,7 @@ public sealed partial class FitsViewerPage : UserControl
         UpdateHeaderList();
         UpdateImageInfo();
         ComputeSliderRange();
+        AdoptLegacyMarks();
     }
 
     /// <summary>
@@ -600,16 +601,30 @@ public sealed partial class FitsViewerPage : UserControl
     {
         var hdus = ViewModel.Hdus;
         if (hdus is null || index < 0 || index >= hdus.Count || !hdus[index].HasImage) return false;
-        ViewModel.SelectHdu(index);
         if (HduList.ItemsSource is not null)
         {
             _suppressHduSelect = true;
             HduList.SelectedIndex = index;
             _suppressHduSelect = false;
         }
+        ShowHdu(index);
+        return true;
+    }
+
+    /// <summary>
+    /// Show another extension. The list and <c>set_fits_view</c> both come through here, so the two
+    /// cannot disagree about what changing extension involves.
+    ///
+    /// Marks belong to an extension now, so they are redrawn for the new one here rather than whenever
+    /// the image next happens to re-render — the panel listing them would otherwise go on showing the
+    /// previous chip's marks until the next pan.
+    /// </summary>
+    private void ShowHdu(int index)
+    {
+        ViewModel.SelectHdu(index);
         UpdateImageInfo();
         UpdateHeaderList();
-        return true;
+        RenderAnnotations();
     }
 
     /// <summary>Populate the HDU selector (shown only for multi-extension files). The ViewModel
@@ -644,9 +659,7 @@ public sealed partial class FitsViewerPage : UserControl
             _suppressHduSelect = false;
             return;
         }
-        ViewModel.SelectHdu(row.Index);
-        UpdateImageInfo();
-        UpdateHeaderList();
+        ShowHdu(row.Index);
     }
 
     /// <summary>

@@ -4061,6 +4061,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Fits_WcsSyncWarningBar.Message" xml:space="preserve">
     <value>Une ou plusieurs images n'ont pas de solution WCS précise ; la synchronisation du réticule et du zoom est donc approximative.</value>
   </data>
+  <data name="Mark_CountOtherExtensions" xml:space="preserve">
+    <value>{0} sur d’autres extensions</value>
+  </data>
   <data name="Fits_ImageInfoHeader.Text" xml:space="preserve">
     <value>Infos image</value>
   </data>

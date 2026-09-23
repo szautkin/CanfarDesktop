@@ -4061,6 +4061,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Fits_WcsSyncWarningBar.Message" xml:space="preserve">
     <value>One or more images have no precise WCS solution, so crosshair and zoom sync are approximate.</value>
   </data>
+  <data name="Mark_CountOtherExtensions" xml:space="preserve">
+    <value>{0} on other extensions</value>
+  </data>
   <data name="Fits_ImageInfoHeader.Text" xml:space="preserve">
     <value>Image info</value>
   </data>

@@ -160,6 +160,26 @@ public class MarkSummaryTests
     public void MarksAreCounted()
         => Assert.Equal("3 marks", MarkSummary.Count(3));
 
+    /// <summary>With no other extension holding marks, the line is exactly what it was.</summary>
+    [Fact]
+    public void NothingElsewhereChangesNothing()
+    {
+        Assert.Equal("3 marks", MarkSummary.Count(3, elsewhere: 0));
+        Assert.Null(MarkSummary.Count(0, elsewhere: 0));
+    }
+
+    [Fact]
+    public void MarksOnOtherExtensionsAreMentioned()
+        => Assert.Equal("3 marks · 12 on other extensions", MarkSummary.Count(3, elsewhere: 12));
+
+    /// <summary>
+    /// None here and some elsewhere is the case most worth saying: an empty list would otherwise read
+    /// as "nothing has been marked on this file".
+    /// </summary>
+    [Fact]
+    public void AnEmptyChipStillSaysTheFileHasMarks()
+        => Assert.Equal("12 on other extensions", MarkSummary.Count(0, elsewhere: 12));
+
     // ── Translation ─────────────────────────────────────────────────────────────────────────────
 
     /// <summary>

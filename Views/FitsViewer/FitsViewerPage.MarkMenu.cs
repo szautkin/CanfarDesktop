@@ -131,8 +131,16 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
     {
         if (Target is not { } target) return;
 
-        var said = await Controls.MarkExportPrompt.RunAsync(
-            "fits", target, System.IO.Path.GetFileNameWithoutExtension(target));
+        // Marks belong to one extension, so the suggested name says which: a folder of exports from
+        // a forty-chip mosaic is unreadable when every file is called the same thing.
+        var file = System.IO.Path.GetFileNameWithoutExtension(Helpers.MarkTarget.PathOf(target));
+        var chip = ViewModel.Hdus?.FirstOrDefault(h => h.Index == ViewModel.SelectedHduIndex)
+            ?.Header.GetString("EXTNAME")?.Trim();
+        var suggested = string.IsNullOrEmpty(chip) || ViewModel.Hdus?.Count(h => h.HasImage) <= 1
+            ? file
+            : $"{file}-{chip}";
+
+        var said = await Controls.MarkExportPrompt.RunAsync("fits", target, suggested);
 
         if (said is not null) ViewModel.StatusMessage = said;
     }

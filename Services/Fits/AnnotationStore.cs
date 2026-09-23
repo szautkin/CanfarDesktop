@@ -18,6 +18,15 @@ public interface IAnnotationStore : CanfarDesktop.Helpers.IMarkStore
 
     /// <summary>Every target that has marks.</summary>
     IReadOnlyList<string> Targets();
+
+    /// <summary>
+    /// Move the marks stored under <paramref name="from"/> to <paramref name="to"/>, when
+    /// <paramref name="to"/> has none of its own. Returns how many moved.
+    ///
+    /// How marks written before extensions were tracked — keyed by bare path — reach the extension
+    /// they belong to: the first image extension, the first time the file is opened.
+    /// </summary>
+    int Adopt(string from, string to);
 }
 
 /// <summary>
@@ -38,7 +47,13 @@ public interface IAnnotationStore : CanfarDesktop.Helpers.IMarkStore
 public sealed class AnnotationStore : IAnnotationStore
 {
     private const string FileName = "annotations.json";
-    private const int SchemaVersion = 1;
+    /// <summary>
+    /// 2 since marks are keyed per extension (<c>path#hdu</c>). The stored shape is the same, but an
+    /// older build reading these keys would find no marks for a multi-extension file and start writing
+    /// bare-path ones beside them. DiskPersistence refuses to load or overwrite a file from a newer
+    /// schema, so the bump is what keeps an older build's hands off. Version 1 files still load.
+    /// </summary>
+    private const int SchemaVersion = 2;
 
     /// <summary>
     /// Marks kept for one target. A file nobody has drawn on is not stored at all, so this cap is about
@@ -167,5 +182,27 @@ public sealed class AnnotationStore : IAnnotationStore
     {
         lock (_gate)
             return LoadAll().Targets.Keys.ToList();
+    }
+
+    public int Adopt(string from, string to)
+    {
+        lock (_gate)
+        {
+            if (string.Equals(from, to, StringComparison.Ordinal)) return 0;
+
+            var all = LoadAll();
+            if (!all.Targets.TryGetValue(from, out var legacy) || legacy.Count == 0) return 0;
+
+            // Never merged into marks that are already there: those were drawn on this extension
+            // deliberately, and folding a whole file's old marks in with them would put back exactly
+            // the mixing this move exists to undo.
+            if (all.Targets.TryGetValue(to, out var existing) && existing.Count > 0) return 0;
+
+            // One write, so a crash cannot leave the marks under both keys or under neither.
+            all.Targets[to] = legacy;
+            all.Targets.Remove(from);
+            WriteAll(all);
+            return legacy.Count;
+        }
     }
 }

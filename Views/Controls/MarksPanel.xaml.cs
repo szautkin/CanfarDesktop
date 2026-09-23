@@ -146,6 +146,33 @@ public sealed partial class MarksPanel : UserControl
         }
     }
 
+    /// <summary>
+    /// How many marks the same file holds on its OTHER extensions. Set by a viewer whose files have
+    /// more than one image; left at zero it changes nothing.
+    ///
+    /// Refreshes only the count line, so it cannot race the list: whichever of the two arrives second
+    /// after a change, the line ends up describing both.
+    /// </summary>
+    public int MarksElsewhere
+    {
+        get => _marksElsewhere;
+        set
+        {
+            if (_marksElsewhere == value) return;
+            _marksElsewhere = value;
+            ShowCount();
+        }
+    }
+
+    private int _marksElsewhere;
+
+    private void ShowCount()
+    {
+        var count = MarkSummary.Count(_marks.Count, _marksElsewhere);
+        CountText.Text = count ?? string.Empty;
+        CountText.Visibility = count is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     /// <summary>What the controls currently say.</summary>
     public MarkStyle CurrentStyle() => new MarkStyle(
         Colour.Color.R / 255.0,
@@ -177,9 +204,7 @@ public sealed partial class MarksPanel : UserControl
             _settling = false;
         }
 
-        var count = MarkSummary.Count(_marks.Count);
-        CountText.Text = count ?? string.Empty;
-        CountText.Visibility = count is null ? Visibility.Collapsed : Visibility.Visible;
+        ShowCount();
 
         // Two different nothings. No marks at all is an invitation to draw one; marks that the filter
         // hides is a filter to clear — telling somebody "nothing marked yet" while their marks sit

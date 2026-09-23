@@ -175,6 +175,11 @@ public sealed class MarkEditor
         _loadedTarget = target;
         EditingId = SelectedId = null;
         _marks = target is null || _store is null ? [] : _store.LoadFor(target).ToList();
+
+        // A different set of marks is showing, so the list beside them has to be told. With marks
+        // per extension this happens on every change of chip, and a panel left listing the previous
+        // chip's marks under the new one's image is a list that is wrong about what is on screen.
+        Announce();
     }
 
     /// <summary>

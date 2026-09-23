@@ -96,8 +96,33 @@ public static class AnnotationArgs
     /// caller can annotate a file that is not on screen — which is how a batch of marks gets prepared
     /// before anyone looks at it.
     /// </summary>
-    public static async Task<string?> ResolveTargetAsync(IAnnotationHost host, AnnotationViewer viewer, string? given)
-        => string.IsNullOrWhiteSpace(given) ? await host.ActiveTargetAsync(viewer) : given.Trim();
+    public static async Task<string?> ResolveTargetAsync(
+        IAnnotationHost host, AnnotationViewer viewer, string? given, int? hdu = null)
+        => CanfarDesktop.Helpers.MarkTarget.Resolve(
+            given, hdu, await host.ActiveTargetAsync(viewer), perExtension: viewer == AnnotationViewer.Fits);
+
+    /// <summary>
+    /// The key, among one file's extensions, that holds a mark with this id — or the key given, when
+    /// none does.
+    ///
+    /// Ids are unique within a file, not merely within an extension, so an agent that made a mark and
+    /// then watched the person change chip can still move, delete or pick out that mark by its id
+    /// without having to know which extension it landed on.
+    /// </summary>
+    public static string KeyHolding(IAnnotationStore store, string key, string id)
+    {
+        if (store.LoadFor(key).Any(a => a.Id == id)) return key;
+
+        foreach (var other in store.Targets())
+            if (CanfarDesktop.Helpers.MarkTarget.SameFile(other, key) && store.LoadFor(other).Any(a => a.Id == id))
+                return other;
+
+        return key;
+    }
+
+    /// <summary>Every key the store holds for this file — one per extension that has marks.</summary>
+    public static IReadOnlyList<string> KeysOfFile(IAnnotationStore store, string key)
+        => store.Targets().Where(k => CanfarDesktop.Helpers.MarkTarget.SameFile(k, key)).ToList();
 }
 
 /// <summary><c>annotate_fits</c> — draw a mark on the FITS viewer's image.</summary>
@@ -136,13 +161,14 @@ public sealed class AnnotateFitsTool : JsonReadTool<AnnotateFitsTool.Args, Annot
           "labelOffsetX":{"type":"number","description":"Where a callout's label sits, in screen pixels from the anchor."},
           "labelOffsetY":{"type":"number"},
           "target":{"type":"string","description":"File to annotate. Defaults to the image on screen."},
+          "hdu":{"type":"integer","minimum":0,"description":"Which extension of a multi-extension file. Defaults to the one on screen."},
           {{AnnotationArgs.StyleSchema}}
         },"additionalProperties":false}
         """);
 
     protected override async Task<AnnotationChange> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
-        var target = await AnnotationArgs.ResolveTargetAsync(_host, AnnotationViewer.Fits, args.Target);
+        var target = await AnnotationArgs.ResolveTargetAsync(_host, AnnotationViewer.Fits, args.Target, args.Hdu);
         if (target is null)
             return AnnotationChange.NothingOpen("fits", "no FITS file is open — open one, or name a `target` file");
 
@@ -207,6 +233,7 @@ public sealed class AnnotateFitsTool : JsonReadTool<AnnotateFitsTool.Args, Annot
         public double? LabelOffsetX { get; init; }
         public double? LabelOffsetY { get; init; }
         public string? Target { get; init; }
+        public int? Hdu { get; init; }
         public string? Colour { get; init; }
         public double? FontSize { get; init; }
         public bool? Bold { get; init; }
@@ -322,19 +349,40 @@ public abstract class ListAnnotationsToolBase : JsonReadTool<ListAnnotationsTool
     protected override async Task<AnnotationListView> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
         var name = AnnotationArgs.Name(Viewer);
-        var target = await AnnotationArgs.ResolveTargetAsync(_host, Viewer, args.Target);
+        var target = await AnnotationArgs.ResolveTargetAsync(_host, Viewer, args.Target, args.Hdu);
         if (target is null)
             return AnnotationListView.NothingOpen(name, $"nothing is open in the {name} viewer — open a file, or name a `target`");
 
+        var active = await _host.ActiveTargetAsync(Viewer);
+
+        // Every extension of the file, each mark saying which one it is on. The default stays one
+        // extension, because that is what is on screen and what "the marks" means to the person.
+        if (args.AllHdus == true && Viewer == AnnotationViewer.Fits)
+        {
+            var all = AnnotationArgs.KeysOfFile(_store, target)
+                .SelectMany(key => _store.LoadFor(key).Select(m =>
+                    AnnotationView.From(m) with { Hdu = CanfarDesktop.Helpers.MarkTarget.Parse(key).Hdu }))
+                .ToList();
+
+            var path = CanfarDesktop.Helpers.MarkTarget.PathOf(target);
+            return new AnnotationListView(name, path, CanfarDesktop.Helpers.MarkTarget.SameFile(active, path),
+                all.Count, all, all.Count == 0 ? "nothing has been drawn on any extension of this file" : null);
+        }
+
         var marks = _store.LoadFor(target);
-        var shown = string.Equals(await _host.ActiveTargetAsync(Viewer), target, StringComparison.OrdinalIgnoreCase);
+        var shown = string.Equals(active, target, StringComparison.OrdinalIgnoreCase);
 
         return new AnnotationListView(name, target, shown, marks.Count,
             marks.Select(AnnotationView.From).ToList(),
-            marks.Count == 0 ? "nothing has been drawn on this file" : null);
+            marks.Count == 0 ? "nothing has been drawn on this image" : null);
     }
 
-    public sealed record Args { public string? Target { get; init; } }
+    public sealed record Args
+    {
+        public string? Target { get; init; }
+        public int? Hdu { get; init; }
+        public bool? AllHdus { get; init; }
+    }
 }
 
 /// <summary><c>list_fits_annotations</c> — the marks on a FITS file.</summary>
@@ -346,10 +394,13 @@ public sealed class ListFitsAnnotationsTool : ListAnnotationsToolBase
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_fits_annotations",
-        "The marks drawn on a FITS file — their ids, kinds, positions, sizes, labels, colours, and " +
-        "whether a person or an agent drew each one. Defaults to the image on screen. Use the ids with " +
-        "update_annotation, remove_annotation and select_annotation.",
-        """{"type":"object","properties":{"target":{"type":"string"}},"additionalProperties":false}""");
+        "The marks drawn on a FITS image — their ids, kinds, positions, sizes, labels, colours, and " +
+        "whether a person or an agent drew each one. Marks belong to one extension of a " +
+        "multi-extension file; this defaults to the extension on screen. Pass hdu for another, or " +
+        "allHdus for every extension of the file, each mark then saying which it is on. Use the ids " +
+        "with update_annotation, remove_annotation and select_annotation — ids are unique across a " +
+        "file's extensions, so those find a mark whichever chip it is on.",
+        """{"type":"object","properties":{"target":{"type":"string"},"hdu":{"type":"integer","minimum":0},"allHdus":{"type":"boolean"}},"additionalProperties":false}""");
 }
 
 /// <summary><c>list_cube_annotations</c> — the marks in a cube.</summary>
@@ -417,6 +468,7 @@ public sealed class UpdateAnnotationTool : JsonReadTool<UpdateAnnotationTool.Arg
         if (target is null)
             return AnnotationChange.NothingOpen(name, $"nothing is open in the {name} viewer — open a file, or name a `target`");
 
+        target = AnnotationArgs.KeyHolding(_store, target, id);
         var existing = _store.LoadFor(target).FirstOrDefault(a => a.Id == id);
         if (existing is null)
             throw new McpToolException(new UnknownTarget(
@@ -545,6 +597,8 @@ public sealed class RemoveAnnotationTool : JsonReadTool<RemoveAnnotationTool.Arg
         if (target is null)
             return AnnotationChange.NothingOpen(name, $"nothing is open in the {name} viewer — open a file, or name a `target`");
 
+        target = AnnotationArgs.KeyHolding(_store, target, id);
+
         bool removed;
         try
         {
@@ -622,10 +676,19 @@ public sealed class SelectAnnotationTool : JsonReadTool<SelectAnnotationTool.Arg
                 cleared ? null : "the viewer did not take the change");
         }
 
-        var mark = _store.LoadFor(target).FirstOrDefault(a => a.Id == id);
+        var holding = AnnotationArgs.KeyHolding(_store, target, id);
+        var mark = _store.LoadFor(holding).FirstOrDefault(a => a.Id == id);
         if (mark is null)
             throw new McpToolException(new UnknownTarget(
                 $"no mark '{id}' on the {name} viewer's current file. Use list_{name}_annotations to see what is there."));
+
+        // On this file, but another extension. Picking it out would highlight nothing on screen, so
+        // say where it is and how to get there rather than claiming it is shown.
+        if (!string.Equals(holding, target, StringComparison.OrdinalIgnoreCase)
+            && CanfarDesktop.Helpers.MarkTarget.Parse(holding).Hdu is { } elsewhere)
+            return new AnnotationChange(false, name, holding, false, AnnotationView.From(mark),
+                _store.LoadFor(holding).Count,
+                $"that mark is on extension {elsewhere}, not the one on screen — set_fits_view with hdu {elsewhere} first, then select it");
 
         var shown = await _host.RefreshAsync(viewer, target, id);
         return new AnnotationChange(shown, name, target, shown, AnnotationView.From(mark),
@@ -664,13 +727,16 @@ public sealed class ClearAnnotationsTool : JsonReadTool<ClearAnnotationsTool.Arg
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "clear_annotations",
-        "Remove EVERY mark from one file. There is no undo — use remove_annotation when you mean one of " +
+        "Remove EVERY mark from one image. There is no undo — use remove_annotation when you mean one of " +
         "them. Defaults to the file on screen in the named viewer; pass `target` to clear a file that is " +
-        "not open. Answers with how many were removed.",
+        "not open. On a multi-extension FITS file this clears the extension on screen, or `hdu`; pass " +
+        "allHdus to clear every extension of the file. Answers with how many were removed.",
         """
         {"type":"object","properties":{
           "viewer":{"type":"string","enum":["fits","cube"],"description":"Default fits."},
-          "target":{"type":"string","description":"Defaults to the file on screen in that viewer."}
+          "target":{"type":"string","description":"Defaults to the file on screen in that viewer."},
+          "hdu":{"type":"integer","minimum":0,"description":"FITS only: which extension. Defaults to the one on screen."},
+          "allHdus":{"type":"boolean","description":"FITS only: clear every extension of the file."}
         },"additionalProperties":false}
         """);
 
@@ -679,22 +745,34 @@ public sealed class ClearAnnotationsTool : JsonReadTool<ClearAnnotationsTool.Arg
         var viewer = UpdateAnnotationTool.ParseViewer(args.Viewer);
         var name = AnnotationArgs.Name(viewer);
 
-        var target = await AnnotationArgs.ResolveTargetAsync(_host, viewer, args.Target);
+        var target = await AnnotationArgs.ResolveTargetAsync(_host, viewer, args.Target, args.Hdu);
         if (target is null)
             return AnnotationChange.NothingOpen(name, $"nothing is open in the {name} viewer — open a file, or name a `target`");
 
-        int removed;
+        // The whole file only when asked for by name. The default is the one image on screen: this is
+        // the tool with no undo, and a narrower default is the side to be wrong on.
+        var keys = args.AllHdus == true && viewer == AnnotationViewer.Fits
+            ? AnnotationArgs.KeysOfFile(_store, target)
+            : [target];
+
+        var removed = 0;
         try
         {
-            removed = _store.LoadFor(target).Count;
-            _store.SaveFor(target, []);
+            foreach (var key in keys)
+            {
+                removed += _store.LoadFor(key).Count;
+                _store.SaveFor(key, []);
+            }
         }
         catch (Exception ex)
         {
             throw new McpToolException(new BackendError(ex.Message));
         }
 
-        var shown = await _host.RefreshAsync(viewer, target, null);
+        // The viewer is told about the image it is showing, whichever of these that was.
+        var active = await _host.ActiveTargetAsync(viewer);
+        var redraw = active is not null && keys.Contains(active, StringComparer.OrdinalIgnoreCase) ? active : target;
+        var shown = await _host.RefreshAsync(viewer, redraw, null);
         return new AnnotationChange(true, name, target, shown, null, 0, Removed: removed);
     }
 
@@ -702,5 +780,7 @@ public sealed class ClearAnnotationsTool : JsonReadTool<ClearAnnotationsTool.Arg
     {
         public string? Viewer { get; init; }
         public string? Target { get; init; }
+        public int? Hdu { get; init; }
+        public bool? AllHdus { get; init; }
     }
 }

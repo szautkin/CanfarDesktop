@@ -12,8 +12,28 @@ public sealed partial class FitsViewerPage
 {
     private void OnMarksExpanding(Expander sender, ExpanderExpandingEventArgs args)
     {
-        _panelBinding ??= Views.Controls.MarkPanelBinding.Attach(MarksPanelControl, Marks, this);
+        if (_panelBinding is null)
+        {
+            _panelBinding = Views.Controls.MarkPanelBinding.Attach(MarksPanelControl, Marks, this);
+
+            // Once, with the binding: the editor raises Changed on every edit AND on every change of
+            // extension, which is exactly when the count of marks on the other chips can move.
+            Marks.Changed += () => MarksPanelControl.MarksElsewhere = MarksOnOtherExtensions();
+        }
+
         _panelBinding.Show();
+        MarksPanelControl.MarksElsewhere = MarksOnOtherExtensions();
+    }
+
+    /// <summary>How many marks this file holds on extensions other than the one on screen.</summary>
+    private int MarksOnOtherExtensions()
+    {
+        if (_annotationStore is null || Target is not { } here) return 0;
+
+        return _annotationStore.Targets()
+            .Where(key => Helpers.MarkTarget.SameFile(key, here)
+                          && !string.Equals(key, here, StringComparison.OrdinalIgnoreCase))
+            .Sum(key => _annotationStore.LoadFor(key).Count);
     }
 
     private void OnMarksCollapsed(Expander sender, ExpanderCollapsedEventArgs args)

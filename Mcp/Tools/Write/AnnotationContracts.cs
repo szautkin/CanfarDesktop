@@ -49,7 +49,8 @@ public sealed record AnnotationView(
     double FontSize,
     bool Bold,
     double Stroke,
-    string? CreatedAt)
+    string? CreatedAt,
+    int? Hdu = null)   // the extension, in a listing across a file's extensions
 {
     public static AnnotationView From(Annotation a)
     {

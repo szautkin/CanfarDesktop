@@ -51,12 +51,37 @@ public sealed partial class FitsViewerPage : IMarkCanvas
     // ── IMarkCanvas: the two things a flat image does differently ───────────────────────────────
 
     /// <summary>
-    /// The file whose marks belong on this canvas — the answer <c>annotate_fits</c> needs.
+    /// The image whose marks belong on this canvas — the file AND the extension on screen, as a
+    /// <see cref="Helpers.MarkTarget"/> key. The answer <c>annotate_fits</c> needs.
+    ///
+    /// <para>Per extension because a multi-extension file is several images: keyed by path alone, a
+    /// pixel mark drawn on one chip of a mosaic reappeared at the same pixel on every other chip.
+    /// Switching extension changes this key, and the editor reloads for it on its next draw.</para>
     ///
     /// Taken from the view model rather than pushed in when a tab opens: the path is already there, and
     /// a second copy of it is a second thing that can be stale. A tab with nothing loaded has none.
     /// </summary>
-    public string? Target => string.IsNullOrWhiteSpace(ViewModel.FilePath) ? null : ViewModel.FilePath;
+    public string? Target => string.IsNullOrWhiteSpace(ViewModel.FilePath)
+        ? null
+        : Helpers.MarkTarget.Key(ViewModel.FilePath, ViewModel.SelectedHduIndex);
+
+    /// <summary>
+    /// Move marks written before extensions were tracked onto this file's first image extension.
+    ///
+    /// <para>They were stored under the bare path, with no way to say which chip they were drawn on.
+    /// The first image extension is the only defensible home: it is where the file opened, so it is
+    /// where they were drawn unless somebody changed chip first. Done once, on open, and only when that
+    /// extension has no marks of its own — see <see cref="Services.Fits.IAnnotationStore.Adopt"/>.</para>
+    /// </summary>
+    internal void AdoptLegacyMarks()
+    {
+        if (_annotationStore is null || string.IsNullOrWhiteSpace(ViewModel.FilePath)) return;
+        if (ViewModel.Hdus?.FirstOrDefault(h => h.HasImage) is not { } first) return;
+
+        var path = ViewModel.FilePath;
+        if (_annotationStore.Adopt(path, Helpers.MarkTarget.Key(path, first.Index)) > 0 && Target is { } key)
+            Marks.Refresh(key, null);
+    }
 
     /// <summary>The canvas as the renderer sees it. Rebuilt per use: the transform moves under it.</summary>
     public IAnnotationSurface Surface => new FitsAnnotationSurface(
@@ -88,9 +113,10 @@ public sealed partial class FitsViewerPage : IMarkCanvas
         var image = ViewModel.ImageData;
         var hdu = ViewModel.Hdus?.FirstOrDefault(h => h.Index == ViewModel.SelectedHduIndex);
 
+        var path = Helpers.MarkTarget.PathOf(mine);
         return new Helpers.MarkExport.Source(
-            LocalPath: mine,
-            FileName: System.IO.Path.GetFileName(mine),
+            LocalPath: path,
+            FileName: System.IO.Path.GetFileName(path),
             HduIndex: ViewModel.SelectedHduIndex,
             HduName: hdu?.Header.GetString("EXTNAME"),
             Width: image?.Width ?? 0,

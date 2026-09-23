@@ -503,4 +503,170 @@ public class AnnotationToolsTests : IDisposable
     [Fact]
     public void ClearIsDestructive()
         => Assert.Equal(McpVerbClass.Destructive, new ClearAnnotationsTool(Store(), _host).VerbClass);
+
+    // ── Marks per extension ─────────────────────────────────────────────────────────────────────
+    //
+    // A multi-extension file is several images. The viewer's key names the extension on screen, and
+    // a mark drawn on one chip must not turn up on another.
+
+    private const string Mef = "C:/data/mef.fits";
+    private static readonly string OnChip2 = CanfarDesktop.Helpers.MarkTarget.Key(Mef, 2);
+    private static readonly string OnChip5 = CanfarDesktop.Helpers.MarkTarget.Key(Mef, 5);
+
+    private static Annotation Pixel(string id) => new()
+    {
+        Id = id, Kind = AnnotationKind.Circle, Anchor = AnnotationAnchor.ImagePixel(10, 20),
+        Extent = Extent.Square(5), CreatedAt = "2026-09-23T00:00:00Z",
+    };
+
+    [Fact]
+    public async Task AMarkLandsOnTheExtensionOnScreen()
+    {
+        _host.FitsTarget = OnChip2;
+        var store = Store();
+
+        await new AnnotateFitsTool(store, _host).InvokeAsync(Args("""{"x":1,"y":2}"""), Ctx(), default);
+
+        Assert.Single(store.LoadFor(OnChip2));
+        Assert.Empty(store.LoadFor(OnChip5));
+    }
+
+    /// <summary>"This file" means the chip the person is looking at, not the file's first one.</summary>
+    [Fact]
+    public async Task NamingTheFileOnScreenMeansItsExtensionOnScreen()
+    {
+        _host.FitsTarget = OnChip2;
+        var store = Store();
+
+        await new AnnotateFitsTool(store, _host).InvokeAsync(
+            Args($$"""{"x":1,"y":2,"target":"{{Mef}}"}"""), Ctx(), default);
+
+        Assert.Single(store.LoadFor(OnChip2));
+    }
+
+    [Fact]
+    public async Task AnExplicitExtensionIsHonoured()
+    {
+        _host.FitsTarget = OnChip2;
+        var store = Store();
+
+        await new AnnotateFitsTool(store, _host).InvokeAsync(Args("""{"x":1,"y":2,"hdu":5}"""), Ctx(), default);
+
+        Assert.Single(store.LoadFor(OnChip5));
+        Assert.Empty(store.LoadFor(OnChip2));
+    }
+
+    [Fact]
+    public async Task TheListShowsTheExtensionOnScreenByDefault()
+    {
+        _host.FitsTarget = OnChip2;
+        var store = Store();
+        store.Add(OnChip2, Pixel("a"));
+        store.Add(OnChip5, Pixel("b"));
+
+        var list = Payload<AnnotationListView>(await new ListFitsAnnotationsTool(store, _host)
+            .InvokeAsync(Args("{}"), Ctx(), default));
+
+        Assert.Equal(["a"], list.Annotations.Select(m => m.Id));
+    }
+
+    /// <summary>Across extensions, every mark says which chip it is on.</summary>
+    [Fact]
+    public async Task EveryExtensionCanBeListedAndEachMarkSaysWhichItIsOn()
+    {
+        _host.FitsTarget = OnChip2;
+        var store = Store();
+        store.Add(OnChip2, Pixel("a"));
+        store.Add(OnChip5, Pixel("b"));
+        store.Add("C:/data/other.fits#2", Pixel("elsewhere"));
+
+        var list = Payload<AnnotationListView>(await new ListFitsAnnotationsTool(store, _host)
+            .InvokeAsync(Args("""{"allHdus":true}"""), Ctx(), default));
+
+        Assert.Equal(2, list.Count);
+        Assert.Equal(2, list.Annotations.Single(m => m.Id == "a").Hdu);
+        Assert.Equal(5, list.Annotations.Single(m => m.Id == "b").Hdu);
+    }
+
+    /// <summary>
+    /// Ids are unique across a file, so an agent can change a mark by id after the person has moved
+    /// to another chip, without knowing which extension it went on.
+    /// </summary>
+    [Fact]
+    public async Task AMarkOnAnotherExtensionCanStillBeChangedByItsId()
+    {
+        _host.FitsTarget = OnChip2;
+        var store = Store();
+        store.Add(OnChip5, Pixel("b"));
+
+        var change = Payload<AnnotationChange>(await new UpdateAnnotationTool(store, _host)
+            .InvokeAsync(Args("""{"id":"b","text":"found it"}"""), Ctx(), default));
+
+        Assert.True(change.Applied);
+        Assert.Equal("found it", store.LoadFor(OnChip5).Single().Text);
+    }
+
+    [Fact]
+    public async Task AMarkOnAnotherExtensionCanStillBeRemovedByItsId()
+    {
+        _host.FitsTarget = OnChip2;
+        var store = Store();
+        store.Add(OnChip5, Pixel("b"));
+
+        await new RemoveAnnotationTool(store, _host).InvokeAsync(Args("""{"id":"b"}"""), Ctx(), default);
+
+        Assert.Empty(store.LoadFor(OnChip5));
+    }
+
+    /// <summary>
+    /// Picking out a mark on a chip that is not showing would highlight nothing, so it says where the
+    /// mark is and how to get there instead of claiming it is shown.
+    /// </summary>
+    [Fact]
+    public async Task SelectingAMarkOnAnotherExtensionSaysWhereItIs()
+    {
+        _host.FitsTarget = OnChip2;
+        var store = Store();
+        store.Add(OnChip5, Pixel("b"));
+
+        var change = Payload<AnnotationChange>(await new SelectAnnotationTool(store, _host)
+            .InvokeAsync(Args("""{"id":"b"}"""), Ctx(), default));
+
+        Assert.False(change.Shown);
+        Assert.Contains("extension 5", change.Message);
+    }
+
+    /// <summary>Clearing is the tool with no undo, so by default it takes only the image on screen.</summary>
+    [Fact]
+    public async Task ClearingTakesOnlyTheExtensionOnScreenByDefault()
+    {
+        _host.FitsTarget = OnChip2;
+        var store = Store();
+        store.Add(OnChip2, Pixel("a"));
+        store.Add(OnChip5, Pixel("b"));
+
+        var change = Payload<AnnotationChange>(await new ClearAnnotationsTool(store, _host)
+            .InvokeAsync(Args("{}"), Ctx(), default));
+
+        Assert.Equal(1, change.Removed);
+        Assert.Empty(store.LoadFor(OnChip2));
+        Assert.Single(store.LoadFor(OnChip5));
+    }
+
+    [Fact]
+    public async Task ClearingEveryExtensionHasToBeAskedFor()
+    {
+        _host.FitsTarget = OnChip2;
+        var store = Store();
+        store.Add(OnChip2, Pixel("a"));
+        store.Add(OnChip5, Pixel("b"));
+        store.Add("C:/data/other.fits#2", Pixel("kept"));
+
+        var change = Payload<AnnotationChange>(await new ClearAnnotationsTool(store, _host)
+            .InvokeAsync(Args("""{"allHdus":true}"""), Ctx(), default));
+
+        Assert.Equal(2, change.Removed);
+        Assert.Empty(store.LoadFor(OnChip5));
+        Assert.Single(store.LoadFor("C:/data/other.fits#2"));
+    }
 }

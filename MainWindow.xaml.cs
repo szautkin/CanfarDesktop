@@ -1698,8 +1698,13 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         {
             var cube = string.Equals(request.Viewer, "cube", StringComparison.OrdinalIgnoreCase);
 
-            var target = request.Target
-                ?? (cube ? _cubeTabHost?.ActivePage?.Target : _fitsTabHost?.ActiveAnnotationTarget);
+            // Resolved the way the annotation tools resolve it, so "this file" means the extension on
+            // screen here too — an export of the chip the person is not looking at would describe
+            // marks they cannot see.
+            var target = Helpers.MarkTarget.Resolve(
+                request.Target, null,
+                cube ? _cubeTabHost?.ActivePage?.Target : _fitsTabHost?.ActiveAnnotationTarget,
+                perExtension: !cube);
 
             if (string.IsNullOrWhiteSpace(target))
                 return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
@@ -1719,7 +1724,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                     false, request.Path, null, 0, "that file is not the one on screen, so its image is not loaded");
 
             var document = Helpers.MarkExport.Build(
-                marks, source, ProvenanceFor(target), App.AppVersion(), DateTime.UtcNow);
+                marks, source, ProvenanceFor(Helpers.MarkTarget.PathOf(target)), App.AppVersion(), DateTime.UtcNow);
 
             var extension = System.IO.Path.GetExtension(request.Path).ToLowerInvariant();
             var text = extension == ".reg"

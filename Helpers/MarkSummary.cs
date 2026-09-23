@@ -98,4 +98,23 @@ public static class MarkSummary
     /// <summary>How many there are, or null when there are none — a "0 marks" caption is furniture.</summary>
     public static string? Count(int total)
         => total == 0 ? null : string.Format(CultureInfo.CurrentCulture, T("Mark_Count", "{0} marks"), total);
+
+    /// <summary>
+    /// The count line when the file has other extensions with marks of their own.
+    ///
+    /// <para>Marks belong to one extension, and the list shows the one on screen — so on a forty-chip
+    /// mosaic, marks drawn on another chip are invisible from here. This says they exist without
+    /// mixing forty chips into one list; the extension list beside it is how to get to them.</para>
+    ///
+    /// <para>Null only when there is nothing to say at all. Marks elsewhere and none here is exactly
+    /// the case worth saying out loud: an empty list would otherwise read as "no marks on this file".</para>
+    /// </summary>
+    public static string? Count(int here, int elsewhere)
+    {
+        if (elsewhere <= 0) return Count(here);
+
+        var others = string.Format(CultureInfo.CurrentCulture,
+            T("Mark_CountOtherExtensions", "{0} on other extensions"), elsewhere);
+        return here == 0 ? others : $"{Count(here)} · {others}";
+    }
 }
