@@ -109,7 +109,7 @@
                             <!-- Session Name -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock x:Uid="Launch_NameLabel" Text="Session Name" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="StdNameLabel" x:Uid="Launch_NameLabel" Text="Session Name" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="StdNameHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
@@ -123,7 +123,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0"
+                                    <TextBox x:Name="StdNameBox" AutomationProperties.LabeledBy="{x:Bind StdNameLabel}" Grid.Column="0"
                                              Text="{x:Bind ViewModel.SessionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <Button Grid.Column="1" x:Uid="Launch_GenerateNameBtn" VerticalAlignment="Bottom" Click="OnGenerateNameClick"
                                             ToolTipService.ToolTip="Generate Name">
@@ -135,7 +135,7 @@
                             <!-- Resource Type -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock x:Uid="Launch_ResTypeLabel" Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="StdResTypeLabel" x:Uid="Launch_ResTypeLabel" Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="StdResTypeHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
@@ -144,7 +144,7 @@
                                                  Title="Resource Type"
                                                  Subtitle="Flexible: variable access to shared resources (up to 8 cores, 32 GB RAM). Fixed: guaranteed dedicated resources that may be harder to allocate." />
                                 </StackPanel>
-                                <RadioButtons SelectedIndex="0" SelectionChanged="OnResourceTypeChanged">
+                                <RadioButtons x:Name="StdResTypeButtons" AutomationProperties.LabeledBy="{x:Bind StdResTypeLabel}" SelectedIndex="0" SelectionChanged="OnResourceTypeChanged">
                                     <RadioButton x:Uid="Launch_FlexibleRadio" Content="Flexible (platform-managed)" Tag="flexible" />
                                     <RadioButton x:Uid="Launch_FixedRadio" Content="Fixed" Tag="fixed" />
                                 </RadioButtons>
@@ -176,7 +176,7 @@
                             <!-- Session Type -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock x:Uid="Launch_TypeLabel" Text="Session Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="AdvTypeLabel" x:Uid="Launch_TypeLabel" Text="Session Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="AdvTypeHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
@@ -185,7 +185,7 @@
                                                  Title="Session Type"
                                                  Subtitle="Choose a session type." />
                                 </StackPanel>
-                                <ComboBox x:Name="AdvTypeCombo" HorizontalAlignment="Stretch"
+                                <ComboBox AutomationProperties.LabeledBy="{x:Bind AdvTypeLabel}" x:Name="AdvTypeCombo" HorizontalAlignment="Stretch"
                                           ItemsSource="{x:Bind ViewModel.SessionTypes}"
                                           SelectedItem="{x:Bind ViewModel.SelectedType, Mode=TwoWay}" />
                             </StackPanel>
@@ -193,7 +193,7 @@
                             <!-- Container Image: Host + Image in one row -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock x:Uid="Launch_ImageLabel" Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="AdvImageLabel" x:Uid="Launch_ImageLabel" Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="AdvImageHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
@@ -207,7 +207,7 @@
                                         <ColumnDefinition Width="Auto" MinWidth="180" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0" x:Name="RegistryHostCombo"
+                                    <ComboBox AutomationProperties.LabeledBy="{x:Bind AdvImageLabel}" Grid.Column="0" x:Name="RegistryHostCombo"
                                               HorizontalAlignment="Stretch"
                                               ItemsSource="{x:Bind ViewModel.Repositories}"
                                               SelectedItem="{x:Bind ViewModel.RepositoryHost, Mode=TwoWay}" />
@@ -220,7 +220,7 @@
                             <!-- Registry Auth: Username + Secret in one row -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock x:Uid="Launch_AuthLabel" Text="Registry Auth" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="AdvAuthLabel" x:Uid="Launch_AuthLabel" Text="Registry Auth" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="AdvAuthHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
@@ -234,7 +234,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0" x:Name="RepoUsernameBox" x:Uid="Launch_RepoUsernameBox"
+                                    <TextBox AutomationProperties.LabeledBy="{x:Bind AdvAuthLabel}" Grid.Column="0" x:Name="RepoUsernameBox" x:Uid="Launch_RepoUsernameBox"
                                              PlaceholderText="username"
                                              Text="{x:Bind ViewModel.RepositoryUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <PasswordBox Grid.Column="1" x:Name="RepoSecretBox" x:Uid="Launch_RepoSecretBox"
@@ -245,7 +245,7 @@
                             <!-- Session Name -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock x:Uid="Launch_NameLabel" Text="Session Name" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="AdvNameLabel" x:Uid="Launch_NameLabel" Text="Session Name" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="AdvNameHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
@@ -259,7 +259,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0"
+                                    <TextBox x:Name="AdvNameBox" AutomationProperties.LabeledBy="{x:Bind AdvNameLabel}" Grid.Column="0"
                                              Text="{x:Bind ViewModel.SessionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <Button Grid.Column="1" x:Uid="Launch_GenerateNameBtn" VerticalAlignment="Bottom" Click="OnGenerateNameClick"
                                             ToolTipService.ToolTip="Generate Name">
@@ -271,7 +271,7 @@
                             <!-- Resource Type -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock x:Uid="Launch_ResTypeLabel" Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="AdvResTypeLabel" x:Uid="Launch_ResTypeLabel" Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="AdvResTypeHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
@@ -280,7 +280,7 @@
                                                  Title="Resource Type"
                                                  Subtitle="Flexible: variable access to shared resources (up to 8 cores, 32 GB RAM). Fixed: guaranteed dedicated resources that may be harder to allocate." />
                                 </StackPanel>
-                                <RadioButtons SelectedIndex="0" SelectionChanged="OnAdvancedResourceTypeChanged">
+                                <RadioButtons x:Name="AdvResTypeButtons" AutomationProperties.LabeledBy="{x:Bind AdvResTypeLabel}" SelectedIndex="0" SelectionChanged="OnAdvancedResourceTypeChanged">
                                     <RadioButton x:Uid="Launch_FlexibleRadio" Content="Flexible (platform-managed)" Tag="flexible" />
                                     <RadioButton x:Uid="Launch_FixedRadio" Content="Fixed" Tag="fixed" />
                                 </RadioButtons>
@@ -313,13 +313,13 @@
                         <StackPanel Spacing="12">
                             <!-- Job Name -->
                             <StackPanel Spacing="2">
-                                <TextBlock x:Uid="Launch_JobNameLabel" Text="Job Name" Style="{StaticResource BodyTextBlockStyle}" />
+                                <TextBlock x:Name="JobNameLabel" x:Uid="Launch_JobNameLabel" Text="Job Name" Style="{StaticResource BodyTextBlockStyle}" />
                                 <Grid ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0" x:Uid="Launch_JobNameBox" PlaceholderText="e.g. nightly-reduction"
+                                    <TextBox x:Name="JobNameBox" AutomationProperties.LabeledBy="{x:Bind JobNameLabel}" Grid.Column="0" x:Uid="Launch_JobNameBox" PlaceholderText="e.g. nightly-reduction"
                                              Text="{x:Bind ViewModel.HeadlessSessionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <Button Grid.Column="1" x:Uid="Launch_GenerateNameBtn" VerticalAlignment="Bottom" Click="OnGenerateHeadlessNameClick"
                                             ToolTipService.ToolTip="Generate Name">
@@ -335,16 +335,16 @@
 
                             <!-- Project -->
                             <StackPanel Spacing="2" x:Name="HeadlessProjectSection">
-                                <TextBlock x:Uid="Launch_ProjectLabel" Text="Project" Style="{StaticResource BodyTextBlockStyle}" />
-                                <ComboBox HorizontalAlignment="Stretch"
+                                <TextBlock x:Name="JobProjectLabel" x:Uid="Launch_ProjectLabel" Text="Project" Style="{StaticResource BodyTextBlockStyle}" />
+                                <ComboBox x:Name="JobProjectCombo" AutomationProperties.LabeledBy="{x:Bind JobProjectLabel}" HorizontalAlignment="Stretch"
                                           ItemsSource="{x:Bind ViewModel.HeadlessProjects}"
                                           SelectedItem="{x:Bind ViewModel.HeadlessSelectedProject, Mode=TwoWay}" />
                             </StackPanel>
 
                             <!-- Image -->
                             <StackPanel Spacing="2" x:Name="HeadlessImageSection">
-                                <TextBlock x:Uid="Launch_ImageLabel" Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" />
-                                <ComboBox HorizontalAlignment="Stretch"
+                                <TextBlock x:Name="JobImageLabel" x:Uid="Launch_ImageLabel" Text="Container Image" Style="{StaticResource BodyTextBlockStyle}" />
+                                <ComboBox x:Name="JobImageCombo" AutomationProperties.LabeledBy="{x:Bind JobImageLabel}" HorizontalAlignment="Stretch"
                                           ItemsSource="{x:Bind ViewModel.HeadlessImages}"
                                           SelectedItem="{x:Bind ViewModel.HeadlessSelectedImage, Mode=TwoWay}"
                                           DisplayMemberPath="Label" />
@@ -353,7 +353,7 @@
                             <!-- Command (required) -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock x:Uid="Launch_CommandLabel" Text="Command" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="JobCommandLabel" x:Uid="Launch_CommandLabel" Text="Command" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="HlCmdHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
@@ -362,14 +362,14 @@
                                                  Title="Command"
                                                  Subtitle="The command the container runs. Required." />
                                 </StackPanel>
-                                <TextBox x:Uid="Launch_CommandBox" PlaceholderText="e.g. python /arc/home/me/reduce.py"
+                                <TextBox x:Name="JobCommandBox" AutomationProperties.LabeledBy="{x:Bind JobCommandLabel}" x:Uid="Launch_CommandBox" PlaceholderText="e.g. python /arc/home/me/reduce.py"
                                          Text="{x:Bind ViewModel.HeadlessCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
 
                             <!-- Arguments -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock x:Uid="Launch_ArgsLabel" Text="Arguments" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="JobArgsLabel" x:Uid="Launch_ArgsLabel" Text="Arguments" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="HlArgsHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
@@ -378,14 +378,14 @@
                                                  Title="Arguments"
                                                  Subtitle="Single string of additional arguments. Skaha treats this as one parameter and splits it server-side." />
                                 </StackPanel>
-                                <TextBox x:Uid="Launch_ArgsBox" PlaceholderText="optional, space-separated"
+                                <TextBox x:Name="JobArgsBox" AutomationProperties.LabeledBy="{x:Bind JobArgsLabel}" x:Uid="Launch_ArgsBox" PlaceholderText="optional, space-separated"
                                          Text="{x:Bind ViewModel.HeadlessArgs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
 
                             <!-- Replicas -->
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock x:Uid="Launch_ReplicasLabel" Text="Replicas" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="JobReplicasLabel" x:Uid="Launch_ReplicasLabel" Text="Replicas" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" />
                                     <Button x:Name="HlReplicasHelpBtn" Padding="2" MinWidth="0" MinHeight="0"
                                             Background="Transparent" BorderThickness="0" Click="OnHelpClick">
                                         <FontIcon Glyph="&#xE897;" FontSize="12" Opacity="0.5" />
@@ -394,15 +394,15 @@
                                                  Title="Replicas"
                                                  Subtitle="Number of parallel container replicas. REPLICA_ID and REPLICA_COUNT are auto-injected as env vars." />
                                 </StackPanel>
-                                <NumberBox Minimum="1" Maximum="20" SpinButtonPlacementMode="Compact"
+                                <NumberBox x:Name="JobReplicasBox" AutomationProperties.LabeledBy="{x:Bind JobReplicasLabel}" Minimum="1" Maximum="20" SpinButtonPlacementMode="Compact"
                                            HorizontalAlignment="Left" MinWidth="140"
                                            Value="{x:Bind ViewModel.HeadlessReplicas, Mode=TwoWay}" />
                             </StackPanel>
 
                             <!-- Resource Type -->
                             <StackPanel Spacing="2">
-                                <TextBlock x:Uid="Launch_ResTypeLabel" Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" />
-                                <RadioButtons SelectedIndex="0" SelectionChanged="OnHeadlessResourceTypeChanged">
+                                <TextBlock x:Name="JobResTypeLabel" x:Uid="Launch_ResTypeLabel" Text="Resource Type" Style="{StaticResource BodyTextBlockStyle}" />
+                                <RadioButtons x:Name="JobResTypeButtons" AutomationProperties.LabeledBy="{x:Bind JobResTypeLabel}" SelectedIndex="0" SelectionChanged="OnHeadlessResourceTypeChanged">
                                     <RadioButton x:Uid="Launch_FlexibleRadio" Content="Flexible (platform-managed)" Tag="flexible" />
                                     <RadioButton x:Uid="Launch_FixedRadio" Content="Fixed" Tag="fixed" />
                                 </RadioButtons>

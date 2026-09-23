@@ -117,9 +117,30 @@ public static class AgentPointer
         // A control with no size is laid out but not on screen — a collapsed column, a zero-height row.
         if (element.ActualWidth <= 0 || element.ActualHeight <= 0) return null;
 
+        var label = Label(element, automation);
+        if (label is null && Wordless(element)) return null;
+
         var id = named ? element.Name : automation;
-        return new UiPointer.Target(id, element.GetType().Name, Label(element, automation));
+        return new UiPointer.Target(id, element.GetType().Name, label);
     }
+
+    /// <summary>
+    /// Kinds of element that are only worth sending somebody to when they carry words.
+    ///
+    /// <para>A spinner or a bar with no caption is feedback, not a destination — MetricBar's inner
+    /// "Bar" and the pages' loading rings were all listed as targets. A UserControl's own name is an
+    /// implementation handle, not something a person could recognise; its children remain targets
+    /// either way, so only the wrapper drops out. And a handful of WinUI's own template parts carry
+    /// generic names and no words at all.</para>
+    ///
+    /// <para>Every rule here applies only to an element WITHOUT a label, so none of them can remove
+    /// a control a person can read. The app's own icon-only buttons are unaffected: they are not on
+    /// the template list, and a bare name is still enough for them.</para>
+    /// </summary>
+    private static bool Wordless(FrameworkElement element)
+        => element is ProgressBar or ProgressRing
+           || element is UserControl
+           || element.Name is "PreviousButton" or "NextButton" or "TabListView";
 
     /// <summary>
     /// What the control says to a person, which is what an agent will usually have been told.
