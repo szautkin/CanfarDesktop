@@ -23,15 +23,12 @@ public class MarksCoverageTests
     [Fact]
     public void BothViewersUseTheOneMarksPanel()
     {
-        var root = RepoRoot();
-
         var without = new[]
             {
                 "Views/CubeViewer/CubeViewerPage.xaml",
                 "Views/FitsViewer/FitsViewerPage.xaml",
             }
-            .Where(rel => !File.ReadAllText(Path.Combine(root, rel.Replace('/', Path.DirectorySeparatorChar)))
-                .Contains("MarksPanel"))
+            .Where(rel => !File.ReadAllText(RepoFiles.PathTo(rel)).Contains("MarksPanel"))
             .ToList();
 
         Assert.True(without.Count == 0,
@@ -49,15 +46,12 @@ public class MarksCoverageTests
     [Fact]
     public void NeitherViewerNamesAMarkInAFlyout()
     {
-        var root = RepoRoot();
-
         var flyouts = new[]
             {
                 "Views/CubeViewer/CubeViewerPage.Annotations.cs",
                 "Views/FitsViewer/FitsViewerPage.Annotations.cs",
             }
-            .Where(rel => File.ReadAllText(Path.Combine(root, rel.Replace('/', Path.DirectorySeparatorChar)))
-                .Contains("new Flyout"))
+            .Where(rel => File.ReadAllText(RepoFiles.PathTo(rel)).Contains("new Flyout"))
             .ToList();
 
         Assert.True(flyouts.Count == 0,
@@ -76,21 +70,9 @@ public class MarksCoverageTests
     [Fact]
     public void TheKindsTheShapePickerDroppedAreStillReachableByAnAgent()
     {
-        var tools = File.ReadAllText(Path.Combine(RepoRoot(),
-            "Mcp", "Tools", "Write", "AnnotationTools.cs"));
+        var tools = File.ReadAllText(RepoFiles.PathTo("Mcp/Tools/Write/AnnotationTools.cs"));
 
         Assert.Contains("\"callout\"", tools);
         Assert.Contains("\"text\"", tools);
-    }
-
-    /// <summary>Up from the test binary until the app's project file turns up.</summary>
-    private static string RepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CanfarDesktop.csproj")))
-            dir = dir.Parent;
-
-        Assert.True(dir is not null, "could not find the repository root from " + AppContext.BaseDirectory);
-        return dir!.FullName;
     }
 }

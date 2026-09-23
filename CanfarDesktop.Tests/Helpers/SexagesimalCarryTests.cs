@@ -196,17 +196,13 @@ public class SexagesimalCarryTests
     [Fact]
     public void NoFileGrowsItsOwnSexagesimalSplitAgain()
     {
-        var root = RepoRoot();
         // The tell-tale of a hand-rolled split: dividing degrees into hours by 15 and then truncating
         // to a whole number nearby. The window spans a few lines because the cast is never on the same
         // one — checked against the four copies this replaced, all of which it catches.
         var handRolled = new Regex(@"/\s*15\.0[\s\S]{0,200}?\(int\)");
 
-        var offenders = Directory
-            .EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
-            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-                     && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-                     && !f.EndsWith("Sexagesimal.cs", StringComparison.Ordinal)
+        var offenders = RepoFiles.Sources("*.cs")
+            .Where(f => !f.EndsWith("Sexagesimal.cs", StringComparison.Ordinal)
                      && !f.EndsWith("SexagesimalCarryTests.cs", StringComparison.Ordinal))
             .Where(f => handRolled.IsMatch(File.ReadAllText(f)))
             .Select(f => Path.GetFileName(f))
@@ -215,14 +211,5 @@ public class SexagesimalCarryTests
         Assert.True(offenders.Count == 0,
             "these files look like they split sexagesimal by hand; call Sexagesimal.SplitRa/SplitDec instead: "
             + string.Join(", ", offenders));
-    }
-
-    /// <summary>Walk up to the directory holding the .slnx, so the sweep runs from the repo root.</summary>
-    private static string RepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !dir.EnumerateFiles("*.slnx").Any()) dir = dir.Parent;
-        Assert.NotNull(dir);
-        return dir!.FullName;
     }
 }

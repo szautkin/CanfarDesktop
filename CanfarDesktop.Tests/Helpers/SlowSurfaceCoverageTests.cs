@@ -39,11 +39,8 @@ public class SlowSurfaceCoverageTests
     [Fact]
     public void EverySlowSurfaceRegistersItsWork()
     {
-        var root = RepoRoot();
-
         var missing = Registered
-            .Where(rel => !File.ReadAllText(Path.Combine(root, rel.Replace('/', Path.DirectorySeparatorChar)))
-                .Contains("TaskRegistry.Begin"))
+            .Where(rel => !File.ReadAllText(RepoFiles.PathTo(rel)).Contains("TaskRegistry.Begin"))
             .ToList();
 
         Assert.True(missing.Count == 0,
@@ -67,11 +64,8 @@ public class SlowSurfaceCoverageTests
     [Fact]
     public void EverySurfaceThatPollsAndNotifiesUsesTheAdaptiveCadence()
     {
-        var root = RepoRoot();
-
         var fixedInterval = Pollers
-            .Where(rel => !File.ReadAllText(Path.Combine(root, rel.Replace('/', Path.DirectorySeparatorChar)))
-                .Contains("PollCadence"))
+            .Where(rel => !File.ReadAllText(RepoFiles.PathTo(rel)).Contains("PollCadence"))
             .ToList();
 
         Assert.True(fixedInterval.Count == 0,
@@ -83,23 +77,10 @@ public class SlowSurfaceCoverageTests
     [Fact]
     public void EveryListedSourceIsStillThere()
     {
-        var root = RepoRoot();
-
         var gone = Registered.Concat(Pollers)
-            .Where(rel => !File.Exists(Path.Combine(root, rel.Replace('/', Path.DirectorySeparatorChar))))
+            .Where(rel => !File.Exists(RepoFiles.PathTo(rel)))
             .ToList();
 
         Assert.True(gone.Count == 0, $"listed but no longer in the tree: {string.Join(", ", gone)}");
-    }
-
-    /// <summary>Up from the test binary until the app's project file turns up.</summary>
-    private static string RepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CanfarDesktop.csproj")))
-            dir = dir.Parent;
-
-        Assert.True(dir is not null, "could not find the repository root from " + AppContext.BaseDirectory);
-        return dir!.FullName;
     }
 }
