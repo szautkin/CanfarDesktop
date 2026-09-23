@@ -73,7 +73,8 @@ public sealed partial class CubeViewerPage
             SpectrumPanelOpen: SpectrumPanel.Visibility == Visibility.Visible,
             SpectrumX: _probeX >= 0 ? _probeX : null,
             SpectrumY: _probeY >= 0 ? _probeY : null,
-            TransferPoints: _transfer.Points.Select(p => new CubeTransferPoint(p.X, p.Y)).ToList());
+            TransferPoints: _transfer.Points.Select(p => new CubeTransferPoint(p.X, p.Y)).ToList(),
+            Loading: LoadingPanel.Visibility == Visibility.Visible);
     }
 
     private string BackgroundName() => BackgroundCombo.SelectedIndex switch { 1 => "black", 2 => "light", _ => "dark" };

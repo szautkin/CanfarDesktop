@@ -332,11 +332,52 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 resolvedId = obs.Id;
             }
             // Await the actual parse and report opened:true only on a confirmed load — so a file that won't
-            // parse (e.g. a non-FITS download) returns the real error, not optimism.
-            var page = await OpenFitsViewerAsync(localPath);
+            // parse (e.g. a non-FITS download) returns the real error, not optimism. But only for as long
+            // as the call can wait: see WithinLoadBudget.
+            var (finished, page) = await WithinLoadBudget(OpenFitsViewerAsync(localPath));
+            if (!finished)
+                return new(false, resolvedId, localPath,
+                    "still loading — a large file takes a while; poll get_fits_view until loaded is true",
+                    Loading: true);
+
             var error = page?.ViewModel.LoadError;
             return error is null ? new(true, resolvedId, localPath, null) : new(false, resolvedId, localPath, error);
         }, new CanfarDesktop.Mcp.Tools.Write.OpenFitsOutcome(false, id, null, "could not dispatch to UI"));
+
+    /// <summary>
+    /// How long an open waits for the file before answering "still loading" instead.
+    ///
+    /// Comfortably inside <see cref="UiDispatchTimeout"/>, so the call always gets to say which it is.
+    /// </summary>
+    private static readonly TimeSpan LoadBudget = TimeSpan.FromSeconds(20);
+
+    /// <summary>
+    /// Wait for a load, but not past the budget. <c>Finished</c> false means it is still going.
+    ///
+    /// <para>The dispatch timeout races the WHOLE call, which was meant to catch a UI thread too busy
+    /// to pick the call up. An open awaits a parse off that thread, so a 235 MB compressed FITS ran the
+    /// clock out with the UI perfectly idle — and the error blamed "heavy rendering, playback, or an
+    /// open dialog", none of which was happening, for a file that then opened fine a few seconds later.
+    /// An agent told it failed tries again.</para>
+    ///
+    /// <para>Past the budget the load simply carries on and the call says so. Any failure still lands
+    /// in the viewer's own status, where get_fits_view and get_cube_view report it.</para>
+    /// </summary>
+    private static async Task<(bool Finished, T? Result)> WithinLoadBudget<T>(Task<T> load)
+    {
+        using var cts = new CancellationTokenSource();
+        if (await Task.WhenAny(load, Task.Delay(LoadBudget, cts.Token)) == load)
+        {
+            cts.Cancel(); // release the timer
+            return (true, await load);
+        }
+
+        // Not awaited any more, so observed here instead of surfacing as an unobserved task exception.
+        _ = load.ContinueWith(
+            done => System.Diagnostics.Debug.WriteLine($"Load finished after its call returned: {done.Exception?.GetBaseException().Message}"),
+            TaskContinuationOptions.OnlyOnFaulted);
+        return (false, default);
+    }
 
     // ── Cube Viewer MCP actions (each marshals to the UI thread) ─────────────────────────────────
 
@@ -349,8 +390,14 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                     "file not found, or observation not downloaded (use download_observation first)");
             var host = EnsureCubeHost();
             NavigateTo(AppMode.CubeViewer);
-            var page = await host.AddTabForFileAsync(path);
-            var st = page.GetCubeState();
+
+            var (finished, page) = await WithinLoadBudget(host.AddTabForFileAsync(path));
+            if (!finished)
+                return new CanfarDesktop.Mcp.Tools.Write.CubeOpenOutcome(false, path, 0, 0, 0,
+                    "still loading — a large cube takes a while; poll get_cube_view until loaded is true",
+                    Loading: true);
+
+            var st = page!.GetCubeState();
             return st.Loaded
                 ? new(true, path, st.Nx, st.Ny, st.Nz, null)
                 : new(false, path, st.Nx, st.Ny, st.Nz, "not a 3D cube (NAXIS=3) or could not be read");

@@ -4,7 +4,12 @@ namespace CanfarDesktop.Mcp.Tools.Write;
 public sealed record NavigationOutcome(bool Navigated, string Mode, string ModeTitle);
 
 /// <summary>Result of an <c>open_fits_file</c>: whether the viewer opened, the resolved id + local path.</summary>
-public sealed record OpenFitsOutcome(bool Opened, string ObservationId, string? LocalPath, string? Message);
+/// <param name="Loading">
+/// True when the file is still being read after the call's budget ran out. Not a failure: it goes
+/// on loading, and get_fits_view reports <c>loaded</c> once it is in.
+/// </param>
+public sealed record OpenFitsOutcome(
+    bool Opened, string ObservationId, string? LocalPath, string? Message, bool Loading = false);
 
 /// <summary>
 /// <c>open_fits_file</c> — open a DOWNLOADED observation's FITS in the viewer and switch to it. The
@@ -23,7 +28,10 @@ public sealed class OpenFitsFileTool : JsonReadTool<OpenFitsFileTool.Args, OpenF
         "open_fits_file",
         "Open a FITS file in the 2D viewer and switch the app to it — by local file path, or by the " +
         "id/publisher id of a DOWNLOADED observation (from list_downloaded_observations; " +
-        "download_observation first if needed). Live-applied (no proposal).",
+        "download_observation first if needed). Waits for the file to load and reports the real " +
+        "result; a large file still loading after about 20 seconds comes back loading:true rather " +
+        "than as a failure — it carries on, so do not open it again; poll get_fits_view until " +
+        "loaded is true. Live-applied (no proposal).",
         """{"type":"object","properties":{"observationId":{"type":"string"},"path":{"type":"string"}},"additionalProperties":false}""");
 
     protected override async Task<OpenFitsOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)

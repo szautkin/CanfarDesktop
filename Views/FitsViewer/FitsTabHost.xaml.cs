@@ -1050,7 +1050,8 @@ public sealed partial class FitsTabHost : UserControl
             BookmarksPanelOpen: _coordPanelVisible,
             CrosshairX: crossPx?.X,
             CrosshairY: crossPx?.Y,
-            Status: vm?.StatusMessage ?? "");
+            Status: vm?.StatusMessage ?? "",
+            Loading: vm?.IsLoading ?? false);
     }
 
     /// <summary>Apply display settings from MCP to the active tab; each null is left unchanged.</summary>

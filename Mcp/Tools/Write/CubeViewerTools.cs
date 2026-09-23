@@ -3,7 +3,12 @@ using CanfarDesktop.Services.CubeViewer;
 namespace CanfarDesktop.Mcp.Tools.Write;
 
 /// <summary>Result of <c>open_cube</c>: whether the 3D Cube Viewer opened the cube + its dimensions.</summary>
-public sealed record CubeOpenOutcome(bool Opened, string? Path, int Nx, int Ny, int Nz, string? Message);
+/// <param name="Loading">
+/// True when the cube is still being read after the call's budget ran out. Not a failure: it goes
+/// on loading, and get_cube_view reports <c>loaded</c> once it is in.
+/// </param>
+public sealed record CubeOpenOutcome(
+    bool Opened, string? Path, int Nx, int Ny, int Nz, string? Message, bool Loading = false);
 
 /// <summary>Result of <c>export_cube_figure</c>: whether the figure was written + its path.</summary>
 public sealed record CubeExportOutcome(bool Exported, string? Path, string? Message);
@@ -48,7 +53,9 @@ public sealed class OpenCubeTool : JsonReadTool<OpenCubeTool.Args, CubeOpenOutco
         "open_cube",
         "Open a FITS spectral cube (NAXIS=3) in the 3D Cube Viewer and switch to it — by local file " +
         "path, or by the id/publisher id of a DOWNLOADED observation (download_observation first). " +
-        "Reports the cube dimensions; fails gracefully if the file is not a 3D cube. Live-applied.",
+        "Reports the cube dimensions; fails gracefully if the file is not a 3D cube. A large cube " +
+        "still loading after about 20 seconds comes back loading:true rather than as a failure — it " +
+        "carries on, so do not open it again; poll get_cube_view until loaded is true. Live-applied.",
         """{"type":"object","properties":{"path":{"type":"string"},"observationId":{"type":"string"}},"additionalProperties":false}""");
 
     protected override async Task<CubeOpenOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -209,7 +216,8 @@ public sealed class GetCubeViewTool : JsonReadTool<GetCubeViewTool.Args, CubeVie
         "NaN fraction. Camera/volume: azimuth/elevation/distance, density, spectral scale, ray-march steps, " +
         "background, the slice-plane / captions / auto-orbit toggles, playback state. Slice view: sliceZoom " +
         "+ the native pixel at its center. Spectrum panel: open flag + probed spaxel. Opacity curve: " +
-        "transferPoints (set with set_cube_transfer).",
+        "transferPoints (set with set_cube_transfer). loading is true while a cube is still " +
+        "being read in — poll it after open_cube answers loading:true.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<CubeViewState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct) => _get();

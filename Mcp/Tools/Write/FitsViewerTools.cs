@@ -98,7 +98,9 @@ public sealed class GetFitsViewTool : JsonReadTool<GetFitsViewTool.Args, FitsVie
         "and displayed extension, stretch/colormap/cut levels, zoom percent, North-Up, WCS presence + pixel " +
         "scale/north angle/parity/approximate flag, pixel unit + data range, the crosshair (sky position AND " +
         "display pixel), the sync-zoom / linked-crosshair toggles, blink status, panel visibility, and the " +
-        "status-bar message. Returns null if the FITS viewer is not open.",
+        "status-bar message, and loading — true while a file is still being read into the tab, " +
+        "which is what to poll after open_fits_file answers loading:true. Returns null if the FITS " +
+        "viewer is not open.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<FitsViewState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct) => _get();
