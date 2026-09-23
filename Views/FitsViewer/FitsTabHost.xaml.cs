@@ -1017,7 +1017,9 @@ public sealed partial class FitsTabHost : UserControl
         var crossPx = _activePage?.CrosshairDisplayPixel;
         double zoomPct = _activePage is not null ? _activePage.GetZoomMagnitude() * 100.0 : 100.0;
         return new FitsViewState(
-            Loaded: vm is not null && img is not null,
+            // Ready, not merely parsed: the pixels exist a moment before the first render finishes,
+            // and "loaded" and "loading" both true at once left a poller not knowing which to believe.
+            Loaded: vm is not null && img is not null && !vm.IsLoading,
             FileName: vm?.FilePath is { } fp ? System.IO.Path.GetFileName(fp) : (vm?.Title ?? ""),
             Width: img?.Width ?? 0,
             Height: img?.Height ?? 0,
