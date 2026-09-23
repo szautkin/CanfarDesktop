@@ -17,7 +17,9 @@ Time: ~15 min
       Tool: list_events
 - [ ] **Landing — where everything starts** — The home screen, a tile per area. Point at a tile or
       two and say the app is ten areas around one archive, and that anything they can do an agent
-      can do for them.
+      can do for them. Point at the AI Assistant tile too: it is not an eleventh screen but the
+      wizard that connected you to the app, and it is how they would connect a different assistant
+      or set this one up again on another machine.
       Tool: navigate_to, list_ui_targets, point_at_ui
       View: landing
 - [ ] **Search — find real data** — Do it for real rather than describing it: resolve M31, then cone
