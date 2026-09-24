@@ -69,7 +69,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
 
         // Landing view — always exists
         _landingView = new LandingView();
-        _landingView.PortalRequested += OnPortalRequested;
+        _landingView.PortalRequested += async (_, _) => await NavigateByKey("portal");
         _landingView.SearchRequested += OnSearchRequested;
         _landingView.ResearchRequested += OnResearchRequested;
         _landingView.StorageRequested += (_, _) => OpenStorageBrowser();
@@ -78,7 +78,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _landingView.CubeViewerRequested += (_, _) => OpenCubeViewer();
         _landingView.AiGuideRequested += (_, _) => OpenAiGuidePage();
         _landingView.WorkflowsRequested += (_, _) => OpenWorkflowsPage();
-        _landingView.RemoteComputeRequested += (_, _) => OpenRemoteComputePage();
+        _landingView.RemoteComputeRequested += async (_, _) => await NavigateByKey("remoteCompute");
         _landingView.AiAssistantRequested += OnAiAssistantRequested;
         LandingContainer.Child = _landingView;
 
@@ -272,6 +272,11 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     /// </summary>
     private async Task<CanfarDesktop.Mcp.Tools.Write.NavigationOutcome> NavigateByKey(string mode)
     {
+        // The account's own screens open for a signed-in person only — from a tile, navigate_to, a
+        // workflow step or the connect wizard alike.
+        if (AccountScreens.Contains(mode) && !await SignedInAsync())
+            return new(false, mode, mode, NotSignedIn);
+
         switch (mode)
         {
             case "landing": GoHome(); return new(true, "landing", "Home");
@@ -909,16 +914,6 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         ApplyMode(AppMode.Landing);
     }
 
-    private async void OnPortalRequested(object? sender, EventArgs e)
-    {
-        if (!_viewModel.IsAuthenticated)
-        {
-            if (!await ShowLoginDialogAsync()) return;
-        }
-        EnsureDashboard();
-        NavigateTo(AppMode.Portal);
-    }
-
     private void OnSearchRequested(object? sender, EventArgs e)
     {
         EnsureSearchPage();
@@ -976,21 +971,29 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
 
     /// <summary>
     /// Bring the Remote Compute screen up and wait for it to know where compute stands — until it has,
-    /// it shows neither its setup steps nor its runs, and pointing at either would find nothing.
+    /// it shows neither its setup steps nor its runs, and pointing at either would find nothing. Null
+    /// when the person was asked to sign in and did not.
     /// </summary>
-    private async Task<Views.RemoteComputePage> RemoteComputeOnScreenAsync()
+    private async Task<Views.RemoteComputePage?> RemoteComputeOnScreenAsync()
     {
+        if (!await SignedInAsync()) return null;
         var page = ShowRemoteComputePage();
         await page.RefreshAsync();
         return page;
     }
 
     private Task<CanfarDesktop.Mcp.Tools.Write.ComputeScreenView> ShowComputeRunActionAsync(string? executionId)
-        => OnUiAsync(async () => await (await RemoteComputeOnScreenAsync()).ShowRunAsync(executionId), NoComputeWindow);
+        => OnUiAsync(async () => await RemoteComputeOnScreenAsync() is { } page
+                ? await page.ShowRunAsync(executionId)
+                : CanfarDesktop.Mcp.Tools.Write.ComputeScreenView.Unavailable(NotSignedIn),
+            NoComputeWindow);
 
     private Task<CanfarDesktop.Mcp.Tools.Write.ComputeScreenView> SetComputeSnippetActionAsync(
         CanfarDesktop.Mcp.Tools.Write.ComputeSnippetRequest request)
-        => OnUiAsync(async () => (await RemoteComputeOnScreenAsync()).SetSnippet(request), NoComputeWindow);
+        => OnUiAsync(async () => await RemoteComputeOnScreenAsync() is { } page
+                ? page.SetSnippet(request)
+                : CanfarDesktop.Mcp.Tools.Write.ComputeScreenView.Unavailable(NotSignedIn),
+            NoComputeWindow);
 
     private Task<CanfarDesktop.Mcp.Tools.Write.ComputeScreenView> GetComputeViewActionAsync()
         => OnUi(() => _remoteComputePage?.Capture(_currentMode == AppMode.RemoteCompute)
@@ -1087,10 +1090,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     /// </summary>
     private async Task<bool> OpenStorageBrowserCoreAsync(string? folder = null)
     {
-        if (!_viewModel.IsAuthenticated)
-        {
-            if (!await ShowLoginDialogAsync()) return false;
-        }
+        if (!await SignedInAsync()) return false;
 
         if (_storagePage is null)
         {
@@ -1360,6 +1360,16 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     // Guards the single-ContentDialog constraint: double-clicking a login-gated
     // tile (or the Login button) would otherwise open two dialogs and throw.
     private bool _loginDialogOpen;
+
+    /// <summary>
+    /// Whether somebody is signed in — asking them to when nobody is. Every way into an account screen
+    /// (see <see cref="AccountScreens"/>) passes through here.
+    /// </summary>
+    private async Task<bool> SignedInAsync() => _viewModel.IsAuthenticated || await ShowLoginDialogAsync();
+
+    /// <summary>What an agent is told when the person was asked to sign in and did not.</summary>
+    private const string NotSignedIn =
+        "the person did not sign in; Portal, Remote Compute and Storage open only for a signed-in account";
 
     /// <summary>Show login dialog. Returns true if login succeeded.</summary>
     private async Task<bool> ShowLoginDialogAsync()

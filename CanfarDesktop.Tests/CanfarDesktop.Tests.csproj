@@ -200,6 +200,7 @@
     <Compile Include="..\Models\AICompute\ComputeRun.cs" Link="Linked\AICompute\ComputeRun.cs" />
     <Compile Include="..\Helpers\ComputeStatus.cs" Link="Linked\ComputeStatus.cs" />
     <Compile Include="..\Helpers\StorageFolder.cs" Link="Linked\StorageFolder.cs" />
+    <Compile Include="..\Helpers\AccountScreens.cs" Link="Linked\AccountScreens.cs" />
     <Compile Include="..\Mcp\AgentScreens.cs" Link="Linked\Mcp\AgentScreens.cs" />
     <Compile Include="..\Mcp\Tools\Write\RemoteComputeViewTools.cs" Link="Linked\Mcp\RemoteComputeViewTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\AIComputeTools.cs" Link="Linked\Mcp\AIComputeTools.cs" />
@@ -279,6 +280,7 @@
     <Compile Include="..\Mcp\Tools\Read\ListEventsTool.cs" Link="Linked\Mcp\ListEventsTool.cs" />
     <Compile Include="..\Mcp\Tools\Read\VizierConeSearchTool.cs" Link="Linked\Mcp\VizierConeSearchTool.cs" />
     <Compile Include="..\Mcp\Tools\AliasedTool.cs" Link="Linked\Mcp\AliasedTool.cs" />
+    <Compile Include="..\Mcp\Tools\SignedInTool.cs" Link="Linked\Mcp\SignedInTool.cs" />
     <Compile Include="..\Services\VizierService.cs" Link="Linked\VizierService.cs" />
     <Compile Include="..\Models\RecentLaunch.cs" Link="Linked\RecentLaunch.cs" />
     <Compile Include="..\Models\StorageQuota.cs" Link="Linked\StorageQuota.cs" />

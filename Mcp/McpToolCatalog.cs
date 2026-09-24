@@ -72,6 +72,13 @@ public static class McpToolCatalog
         var downloadVoSpaceFile = new DownloadVoSpaceFileTool((path, ct) => storage.DownloadFileAsync(path, ct));
         var createVoSpaceFolder = new CreateVoSpaceFolderTool();
 
+        // Remote compute is the person's CANFAR account at work, and its tools are locked as its screen
+        // is until they sign in — the history and state are answered from this machine, where nothing on
+        // the platform would turn a signed-out caller away (see SignedInTool).
+        IMcpTool Compute(IMcpTool tool) => new SignedInTool(tool, () => auth.IsAuthenticated,
+            "Remote compute runs on the person's CANFAR account, so they need to sign in first. The Remote " +
+            "Compute screen stays locked until they do, like Portal and Storage.");
+
         var tools = new List<IMcpTool>
         {
             // Foundational
@@ -152,12 +159,12 @@ public static class McpToolCatalog
             // billed usage), so they auto-apply under the user's auto-apply setting; stop_compute stays
             // Destructive (tears down a session mid-work). Disabled until an AI compute image is set in
             // Settings ▸ AI compute.
-            new RunCodeTool(() => aiComputeSettings.Settings),
-            new RunCodeOutputTool((id, ct) => aiCompute.FetchOutAsync(id, ct)),
-            new StartComputeTool(() => aiComputeSettings.Settings),
-            new StopComputeTool(),
-            new GetComputeStateTool(async ct => DescribeCompute(await aiCompute.SnapshotAsync(ct))),
-            new ListComputeRunsTool(() => aiCompute.Runs.All()),
+            Compute(new RunCodeTool(() => aiComputeSettings.Settings)),
+            Compute(new RunCodeOutputTool((id, ct) => aiCompute.FetchOutAsync(id, ct))),
+            Compute(new StartComputeTool(() => aiComputeSettings.Settings)),
+            Compute(new StopComputeTool()),
+            Compute(new GetComputeStateTool(async ct => DescribeCompute(await aiCompute.SnapshotAsync(ct)))),
+            Compute(new ListComputeRunsTool(() => aiCompute.Runs.All())),
 
             // CAOM2 metadata + DataLink (download/preview URLs)
             new GetObservationCaom2Tool((id, ct) => caom2.GetByPublisherIdAsync(id, ct)),
@@ -224,10 +231,12 @@ public static class McpToolCatalog
             new ShowObservationDetailTool(id => viewState.ShowObservationDetailAsync(id)),
 
             // The Remote Compute screen and Storage-at-a-folder: what a person can do there, an agent
-            // can show them — a run, code ready to run, the exec folder.
+            // can show them — a run, code ready to run, the exec folder. Showing asks a signed-out person
+            // to sign in, as navigate_to does; reading what the screen shows does not, since it cannot
+            // be showing anything.
             new ShowComputeRunTool(id => viewState.ShowComputeRunAsync(id)),
             new SetComputeSnippetTool(r => viewState.SetComputeSnippetAsync(r)),
-            new GetComputeViewTool(() => viewState.GetComputeViewAsync()),
+            Compute(new GetComputeViewTool(() => viewState.GetComputeViewAsync())),
             new ShowStorageFolderTool(folder => viewState.ShowStorageFolderAsync(folder)),
             new LoadRecentSearchTool(match => viewState.LoadRecentSearchAsync(match)),
 

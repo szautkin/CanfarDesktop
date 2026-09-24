@@ -1,7 +1,9 @@
 namespace CanfarDesktop.Mcp.Tools.Write;
 
 /// <summary>Result of a <c>navigate_to</c>: whether the app switched, and the resolved mode + title.</summary>
-public sealed record NavigationOutcome(bool Navigated, string Mode, string ModeTitle);
+/// <summary>Result of a <c>navigate_to</c>.</summary>
+/// <param name="Note">Why it did not go, when it did not — the person declined to sign in, say.</param>
+public sealed record NavigationOutcome(bool Navigated, string Mode, string ModeTitle, string? Note = null);
 
 /// <summary>Result of an <c>open_fits_file</c>: whether the viewer opened, the resolved id + local path.</summary>
 /// <param name="Loading">
@@ -59,7 +61,9 @@ public sealed class NavigateToTool : JsonReadTool<NavigateToTool.Args, Navigatio
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "navigate_to",
-        "Switch the app to a top-level mode so the user sees the relevant view. Live-applied (no proposal).",
+        "Switch the app to a top-level mode so the user sees the relevant view. Live-applied (no proposal). " +
+        "portal, remoteCompute and storage are the person's CANFAR account: signed out, the app asks them to " +
+        "sign in first, and navigated is false (with a note) if they decline.",
         """{"type":"object","properties":{"mode":{"type":"string","enum":["landing","portal","search","research","storage","notebook","fitsViewer","cubeViewer","aiGuide","workflows","remoteCompute"]}},"required":["mode"],"additionalProperties":false}""");
 
     protected override async Task<NavigationOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)

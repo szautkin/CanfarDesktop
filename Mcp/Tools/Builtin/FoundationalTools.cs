@@ -35,7 +35,10 @@ public sealed class DescribeAppTool : JsonReadTool<EmptyArgs, DescribeAppTool.Ou
             "untilClosed to point_at_ui only if the user asks for a slower guide). For one screen in " +
             "depth there is a detailed tour per screen: builtin:tour-search, tour-research, " +
             "tour-fits-viewer, tour-cube-viewer, tour-storage, tour-portal, tour-notebook, " +
-            "tour-workflows, tour-ai-guide and tour-remote-compute."));
+            "tour-workflows, tour-ai-guide and tour-remote-compute. Portal, Remote Compute and Storage " +
+            "are the user's CADC/CANFAR account and stay locked until they sign in (get_auth_state): " +
+            "their tools answer auth-required, and navigate_to asks the user to sign in. Signing in is " +
+            "theirs to do; never ask for their password."));
 
     public sealed record Output(string Name, string Version, string Summary);
 }

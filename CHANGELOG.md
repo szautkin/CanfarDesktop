@@ -33,10 +33,12 @@ Marks on images and cubes, figure export from the FITS viewer, an AI assistant t
 - **Figure export** — the export dialog scrolls to its buttons on small windows, a 4× figure too large to render reports the scale it actually achieved, and a transparent-background PDF has a white page instead of a black one
 - **Notifications from polling** — sessions and jobs are polled more often while something is changing, so a job that starts and fails quickly is still announced
 - **Localization** — strings set from code showed their resource keys, and several new controls showed English in French
+- **Portal from an assistant while signed out** — `navigate_to` opened an empty Portal without asking you to sign in
 - **The MCP bridge in Store packages** — each package now builds its own, for its own architecture. The x86 packages of 1.3.2 and 1.3.3 carried a 64-bit bridge, so an assistant could not connect on 32-bit Windows
 
 ### Changed
 - **Cube viewer** — one control column instead of two overlapping panels; side panels slide in and out
+- **Home screen** — the tiles run Portal, Remote Compute, Storage, then Search, Research, FITS Viewer, Cube Viewer, Notebook, Workflows, AI Guide and AI Assistant. Remote Compute is locked until you sign in, as Portal and Storage are, however it is opened — its tile, an assistant's `navigate_to`, a workflow step or the wizard — and its tools answer an assistant "sign in required" until then. Following an assistant never asks you to sign in: it just does not follow it onto a locked screen
 
 ## [1.3.3] - 2026-07-20
 

@@ -276,6 +276,11 @@ public sealed class McpHost : IAsyncDisposable
     private void NavigateBestEffort(string? mode)
     {
         if (mode is null) return;
+
+        // Following is the app keeping up with an agent, never a request of the person: signed out, an
+        // agent's work on a screen that needs sign-in is not followed there, rather than putting a
+        // sign-in dialog in front of somebody who asked for nothing. navigate_to still asks.
+        if (AccountScreens.Contains(mode) && !_services.GetRequiredService<Services.IAuthService>().IsAuthenticated) return;
         try
         {
             var nav = _services.GetRequiredService<AppViewStateService>().NavigateAsync(mode);

@@ -69,8 +69,20 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
         }
     }
 
-    public static Task ShowAsync(XamlRoot root)
-        => new AiConnectWizardDialog { XamlRoot = root }.ShowAsync().AsTask();
+    public static async Task ShowAsync(XamlRoot root)
+    {
+        var wizard = new AiConnectWizardDialog { XamlRoot = root };
+        await wizard.ShowAsync().AsTask();
+
+        // Once the wizard is gone, not from inside it: signed out, Remote Compute asks the person to sign
+        // in first, and only one dialog can be open at a time. The same navigation navigate_to uses, since
+        // three different places open that screen.
+        if (wizard._openRemoteCompute)
+            await App.Services.GetRequiredService<Mcp.AppViewStateService>().NavigateAsync("remoteCompute");
+    }
+
+    /// <summary>The person chose to open Remote Compute from the wizard.</summary>
+    private bool _openRemoteCompute;
 
     private static Visibility Vis(bool show) => show ? Visibility.Visible : Visibility.Collapsed;
 
@@ -243,14 +255,11 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
         ComputeHint.Visibility = Visibility.Visible;
     }
 
-    /// <summary>
-    /// Close the wizard and open Remote Compute — through the same navigation navigate_to uses, since a
-    /// dialog cannot change the page under it and three different places open this one.
-    /// </summary>
+    /// <summary>Close the wizard, and open Remote Compute once it has closed (see <see cref="ShowAsync(XamlRoot)"/>).</summary>
     private void OnComputeLinkClick(object sender, RoutedEventArgs e)
     {
+        _openRemoteCompute = true;
         Hide();
-        _ = App.Services.GetRequiredService<Mcp.AppViewStateService>().NavigateAsync("remoteCompute");
     }
 
     private void ShowResult(InfoBarSeverity severity, string message)
