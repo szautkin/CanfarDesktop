@@ -56,17 +56,51 @@
   </ItemGroup>
 
   <!--
-    MCP bridge payload: Claude Desktop launches this exe directly, so a Store install must ship it.
-    The exe is staged by an explicit release step (matching the target RID):
-      dotnet publish CanfarDesktop.McpBridge -c Release -r win-x64 /p:SelfContained=true /p:PublishSingleFile=true /p:Platform=x64 -o mcp-bridge
-    Self-contained single-file: the user's machine needs no .NET runtime. A plain relative Content
-    item lands it at mcp-bridge\ in the output/package, where McpBridgeLocator already probes.
-    Conditioned on existence so day-to-day dev builds (which use the sibling project's bin output
-    via the locator's dev probe) don't require the publish step.
+    MCP bridge payload. Claude Desktop launches this exe directly, so every Store package must ship
+    one: built from the source being packaged, for that package's own architecture.
+
+    It used to be a manual release step — publish into a gitignored mcp-bridge\ folder, which the
+    package included if it existed. Skipped, the package quietly shipped no bridge; left over, it
+    shipped an old one; and with one folder for every architecture, whatever was published last went
+    into all of them. The x86 packages of 1.3.2 and 1.3.3 both carried an x64 bridge, which cannot
+    start on 32-bit Windows or on Windows 10 on ARM.
+
+    Now every Release build publishes the bridge itself, for its own RuntimeIdentifier, into obj\,
+    packs it at mcp-bridge\ (where McpBridgeLocator probes), and fails if it is not there.
+    Self-contained single file: the machine needs no .NET of its own. Debug builds skip this — the
+    locator finds the sibling project's build output instead.
   -->
-  <ItemGroup Condition="Exists('mcp-bridge\CanfarDesktop.McpBridge.exe')">
-    <Content Include="mcp-bridge\CanfarDesktop.McpBridge.exe" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
+  <Target Name="PublishMcpBridge" BeforeTargets="AssignTargetPaths"
+          Condition="'$(Configuration)' == 'Release' and '$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <!-- Resolved here, not at evaluation: the SDK infers RuntimeIdentifier from Platform later. -->
+      <McpBridgeRid>$(RuntimeIdentifier)</McpBridgeRid>
+      <McpBridgeRid Condition="'$(McpBridgeRid)' == '' and '$(Platform)' == 'x86'">win-x86</McpBridgeRid>
+      <McpBridgeRid Condition="'$(McpBridgeRid)' == '' and '$(Platform)' == 'ARM64'">win-arm64</McpBridgeRid>
+      <McpBridgeRid Condition="'$(McpBridgeRid)' == ''">win-x64</McpBridgeRid>
+      <McpBridgePlatform>x64</McpBridgePlatform>
+      <McpBridgePlatform Condition="'$(McpBridgeRid)' == 'win-x86'">x86</McpBridgePlatform>
+      <McpBridgePlatform Condition="'$(McpBridgeRid)' == 'win-arm64'">ARM64</McpBridgePlatform>
+      <McpBridgeDir>$(MSBuildProjectDirectory)\$(BaseIntermediateOutputPath)mcp-bridge\$(McpBridgeRid)</McpBridgeDir>
+      <McpBridgeProject>$(MSBuildProjectDirectory)\CanfarDesktop.McpBridge\CanfarDesktop.McpBridge.csproj</McpBridgeProject>
+      <McpBridgeDotnet>$(DOTNET_HOST_PATH)</McpBridgeDotnet>
+      <McpBridgeDotnet Condition="'$(McpBridgeDotnet)' == ''">dotnet</McpBridgeDotnet>
+    </PropertyGroup>
+
+    <!--
+      A separate process, not the MSBuild task: the bridge is its own app with its own restore for this
+      RuntimeIdentifier, and none of the properties of the build packaging it should reach it.
+    -->
+    <Exec Command="&quot;$(McpBridgeDotnet)&quot; publish &quot;$(McpBridgeProject)&quot; -c Release -r $(McpBridgeRid) -p:Platform=$(McpBridgePlatform) -p:SelfContained=true -p:PublishSingleFile=true -o &quot;$(McpBridgeDir)&quot; -nologo -v:q" />
+
+    <Error Condition="!Exists('$(McpBridgeDir)\CanfarDesktop.McpBridge.exe')"
+           Text="The MCP bridge was not published to $(McpBridgeDir). A package without it cannot connect an AI assistant." />
+
+    <ItemGroup>
+      <Content Include="$(McpBridgeDir)\CanfarDesktop.McpBridge.exe" Link="mcp-bridge\CanfarDesktop.McpBridge.exe"
+               CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\Notebook\kernel_harness.py" />

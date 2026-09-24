@@ -23,6 +23,7 @@ in-app **Terms of Use** (`Helpers/LegalTerms.cs`).
 |-----------|------------|-----------------|--------------------|-------|
 | Account credentials (CANFAR username/password, session token) | **Not collected by the developer** | n/a | No | Stored **only on the device** in Windows Credential Manager (PasswordVault). Used solely to authenticate to CANFAR/CADC. Never transmitted anywhere except trusted CANFAR/CADC hosts over HTTPS. |
 | Files & FITS data the user opens/downloads | **Not collected by the developer** | n/a | No | Read/written on the local device or the user's own VOSpace at the user's request. |
+| Code run through remote compute (optional) | **Not collected by the developer** | n/a | No | Off until the user sets a compute image. Code the user, or an AI assistant they connected, runs is written to the user's own CANFAR storage and run in a session on their own CANFAR account. A local log of those runs (`compute_runs.json`) stays on the device. |
 | Diagnostics / crash logs | **Not collected by the developer** | n/a | No | A local, token-scrubbed `crash.log` is written under the app's local folder for the user's own troubleshooting (`Helpers/CrashLogger.cs`). Not transmitted. Aggregate crash analytics, if any, come from the Store/Partner Center platform, not from app code. |
 
 ## Network

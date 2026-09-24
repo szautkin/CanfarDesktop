@@ -33,6 +33,7 @@ Marks on images and cubes, figure export from the FITS viewer, an AI assistant t
 - **Figure export** — the export dialog scrolls to its buttons on small windows, a 4× figure too large to render reports the scale it actually achieved, and a transparent-background PDF has a white page instead of a black one
 - **Notifications from polling** — sessions and jobs are polled more often while something is changing, so a job that starts and fails quickly is still announced
 - **Localization** — strings set from code showed their resource keys, and several new controls showed English in French
+- **The MCP bridge in Store packages** — each package now builds its own, for its own architecture. The x86 packages of 1.3.2 and 1.3.3 carried a 64-bit bridge, so an assistant could not connect on 32-bit Windows
 
 ### Changed
 - **Cube viewer** — one control column instead of two overlapping panels; side panels slide in and out

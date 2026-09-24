@@ -367,6 +367,7 @@ dev_info/
 # Claude agent memory
 .claude/
 
-# Published MCP bridge staged for MSIX packaging (release step artifact)
+# The old manually staged MCP bridge. Release builds now publish it into obj\mcp-bridge\ themselves;
+# a leftover mcp-bridge\ folder is no longer read and can be deleted. Still ignored so it is never committed.
 mcp-bridge/
 qwa_test/
