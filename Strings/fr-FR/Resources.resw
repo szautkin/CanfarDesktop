@@ -2356,6 +2356,18 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Compute_LanguageNote.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Python ou Bash. Depuis Bash, vous pouvez lancer tout ce qui est installé dans l’image de calcul, comme Rscript ou julia si elle les contient.</value>
   </data>
+  <data name="Wizard_ComputeHintSetUp" xml:space="preserve">
+    <value>Facultatif : votre assistant peut aussi exécuter du Python ou du Bash sur CANFAR, dans une session de votre compte. Rien ne s’exécute tant que vous ne l’avez pas configuré.</value>
+  </data>
+  <data name="Wizard_ComputeHintReady" xml:space="preserve">
+    <value>Votre assistant peut exécuter du Python ou du Bash sur CANFAR. Chaque exécution, avec son code et sa sortie, figure sur l’écran Calcul distant.</value>
+  </data>
+  <data name="Wizard_ComputeLinkSetUp" xml:space="preserve">
+    <value>Configurer le calcul distant</value>
+  </data>
+  <data name="Wizard_ComputeLinkReady" xml:space="preserve">
+    <value>Ouvrir le calcul distant</value>
+  </data>
   <data name="Launch_TypeTip.Title" xml:space="preserve">
     <value>Type de session</value>
   </data>

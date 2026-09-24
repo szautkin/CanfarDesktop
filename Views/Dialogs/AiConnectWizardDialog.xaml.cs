@@ -216,6 +216,7 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
                     ? Helpers.Loc.F(n == 1 ? "Wizard_ToolsOne" : "Wizard_ToolsMany", n)
                     : "";
                 ShowResult(InfoBarSeverity.Success, Helpers.Loc.F("Wizard_Connected", tools));
+                OfferRemoteCompute();
             }
             else
             {
@@ -228,6 +229,28 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
             SelfTestProgress.Visibility = Visibility.Collapsed;
             SelfTestButton.IsEnabled = true;
         }
+    }
+
+    /// <summary>
+    /// Once the assistant is connected, say that it can also run code on CANFAR — worded for whether that
+    /// is already set up. A line, not a step: most people connecting an assistant do not need it.
+    /// </summary>
+    private void OfferRemoteCompute()
+    {
+        var ready = App.Services.GetRequiredService<Services.AICompute.AIComputeService>().IsConfigured;
+        ComputeHintText.Text = Helpers.Loc.T(ready ? "Wizard_ComputeHintReady" : "Wizard_ComputeHintSetUp");
+        ComputeLink.Content = Helpers.Loc.T(ready ? "Wizard_ComputeLinkReady" : "Wizard_ComputeLinkSetUp");
+        ComputeHint.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>
+    /// Close the wizard and open Remote Compute — through the same navigation navigate_to uses, since a
+    /// dialog cannot change the page under it and three different places open this one.
+    /// </summary>
+    private void OnComputeLinkClick(object sender, RoutedEventArgs e)
+    {
+        Hide();
+        _ = App.Services.GetRequiredService<Mcp.AppViewStateService>().NavigateAsync("remoteCompute");
     }
 
     private void ShowResult(InfoBarSeverity severity, string message)
