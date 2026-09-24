@@ -10,14 +10,20 @@ namespace CanfarDesktop.Services.AICompute;
 public static class RunCodeContract
 {
     public const string SessionName = "verbinal-compute";
+
+    /// <summary>Where the watcher image comes from — the Remote Compute screen links here to set it up.</summary>
+    public const string WatcherRepository = "https://github.com/szautkin/verbinal-execution";
     public const string SessionType = "contributed";
-    public const string InboxDir = ".verbinal/exec/inbox";
-    public const string OutDir = ".verbinal/exec/out";
+    /// <summary>The exec folder in the person's home: requests go in its inbox, results come out of out.</summary>
+    public const string ExecDir = ".verbinal/exec";
+    public const string InboxDir = ExecDir + "/inbox";
+    public const string OutDir = ExecDir + "/out";
 
     /// <summary>Bounded read of the result file (the watcher caps output at this size).</summary>
     public const int MaxResultBytes = 1024 * 1024;
 
     public static readonly string[] Languages = { "python", "bash" };
+    public const string DefaultLanguage = "python";
 
     public const int DefaultTimeoutSeconds = 60;
     public const int MaxTimeoutSeconds = 900;
@@ -36,8 +42,18 @@ public static class RunCodeContract
     public static string NormalizeLanguage(string? language)
     {
         var l = (language ?? string.Empty).Trim().ToLowerInvariant();
-        return Array.IndexOf(Languages, l) >= 0 ? l : "python";
+        return Array.IndexOf(Languages, l) >= 0 ? l : DefaultLanguage;
     }
+
+    /// <summary>
+    /// Code with Unix line endings, as the watcher's Linux interpreters expect.
+    ///
+    /// <para>A WinUI TextBox keeps its lines apart with a bare <c>\r</c>, so code typed into the Remote
+    /// Compute screen went out as one long line of carriage returns — which bash reads as commands
+    /// ending in a stray <c>\r</c>. An agent on Windows may send <c>\r\n</c>. Both become <c>\n</c>.</para>
+    /// </summary>
+    public static string NormalizeNewlines(string code)
+        => code.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
 
     /// <summary>Replace filesystem-unsafe characters in an execution id so it is a valid file name.</summary>
     public static string SanitizeId(string id)

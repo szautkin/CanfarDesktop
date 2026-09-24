@@ -17,6 +17,7 @@ public sealed partial class LandingView : UserControl
     public event EventHandler? CubeViewerRequested;
     public event EventHandler? AiGuideRequested;
     public event EventHandler? WorkflowsRequested;
+    public event EventHandler? RemoteComputeRequested;
     public event EventHandler? AiAssistantRequested;
 
     public string StatusMessage
@@ -69,6 +70,8 @@ public sealed partial class LandingView : UserControl
         new() { Title = Helpers.Loc.T("Tile_Fits_Title"), Glyph = "\uE7B8", Subtitle = Helpers.Loc.T("Tile_Fits_Subtitle"), Key = "fits" },
         new() { Title = Helpers.Loc.T("Tile_Cube_Title"), Glyph = "\uE809", Subtitle = Helpers.Loc.T("Tile_Cube_Subtitle"), Key = "cube" },
         new() { Title = Helpers.Loc.T("Tile_Workflows_Title"), Glyph = "\uE9D5", Subtitle = Helpers.Loc.T("Tile_Workflows_Subtitle"), Key = "workflows" },
+        // Always shown, set up or not: until it is, the screen says what it takes — which is the point.
+        new() { Title = Helpers.Loc.T("Tile_RemoteCompute_Title"), Glyph = "\uE756", Subtitle = Helpers.Loc.T("Tile_RemoteCompute_Subtitle"), Key = "remoteCompute" },
     ];
 
     public LandingView()
@@ -145,6 +148,7 @@ public sealed partial class LandingView : UserControl
                 case "cube": CubeViewerRequested?.Invoke(this, EventArgs.Empty); break;
                 case "aiGuide": AiGuideRequested?.Invoke(this, EventArgs.Empty); break;
                 case "workflows": WorkflowsRequested?.Invoke(this, EventArgs.Empty); break;
+                case "remoteCompute": RemoteComputeRequested?.Invoke(this, EventArgs.Empty); break;
                 case "aiAssistant": AiAssistantRequested?.Invoke(this, EventArgs.Empty); break;
             }
         }

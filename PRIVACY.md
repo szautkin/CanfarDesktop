@@ -42,6 +42,7 @@ this data.
 | Finished batch jobs | `job_history.json` in app local data | The outcome of recent jobs, kept after CANFAR removes them |
 | Images you added | `user_images.json` in app local data | Container images you added from the registry |
 | Pending AI-assistant requests | `mcp_proposals.json` in app local data | Changes an AI assistant proposed that are waiting for your approval, so they survive a restart |
+| Remote compute runs (optional) | `compute_runs.json` in app local data | The code sent to your remote compute session — by you or an AI assistant — with who sent it and its outcome, for the Remote Compute screen. The output stays in your CANFAR storage |
 | Crash log | `crash.log` in app local data | Local troubleshooting only; authentication tokens are removed before writing. Never transmitted |
 
 All locally stored data is deleted when you uninstall the app or when you log
@@ -63,6 +64,12 @@ HTTPS, and your authentication token is only ever sent to CANFAR/CADC hosts.
 | `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca` | Search queries; authentication token when signed in | Archive search, data links, downloads, target name resolution |
 | `images.canfar.net` | Image search terms; registry secret if you entered one | Container image search and inspection |
 | `tapvizier.cds.unistra.fr`, `tapvizier.u-strasbg.fr` (CDS, France); `vizier.china-vo.org` (last-resort mirror, HTTP) | The sky position, radius and catalogue of a cone search — no credentials, no account information | VizieR catalogue searches |
+
+**Remote compute (optional, off until you set it up).** When you set a compute image in
+Settings ▸ AI compute, code you or an AI assistant runs is written to your own CANFAR storage
+(`.verbinal/exec` in your home folder) and run in a session on your own CANFAR account named
+`verbinal-compute`, which uses your resource allocation. Nothing goes anywhere else. The Remote
+Compute screen shows every run, and stopping the session there deletes it.
 
 The CANFAR/CADC service addresses can be changed in Settings; the table shows the defaults.
 Verbinal does **not** contact any other servers. There are no analytics

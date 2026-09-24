@@ -2146,6 +2146,216 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Cube_ChannelSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Channel</value>
   </data>
+  <data name="Module_RemoteCompute" xml:space="preserve">
+    <value>Remote Compute</value>
+  </data>
+  <data name="Tile_RemoteCompute_Title" xml:space="preserve">
+    <value>Remote Compute</value>
+  </data>
+  <data name="Tile_RemoteCompute_Subtitle" xml:space="preserve">
+    <value>Let your assistant run code on CANFAR</value>
+  </data>
+  <data name="Compute_PageTitle.Text" xml:space="preserve">
+    <value>Remote Compute</value>
+  </data>
+  <data name="Compute_PageIntro.Text" xml:space="preserve">
+    <value>Code your AI assistant runs with run_code, and code you run here, goes to one session on your CANFAR account named verbinal-compute. It uses your cores, has no shell and no inbound network, and writes its results back to your storage.</value>
+  </data>
+  <data name="Compute_StartButton.Content" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="Compute_StopButton.Content" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="Compute_RefreshButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Compute_RefreshButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Compute_SettingsButton.Content" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Compute_OpenFolderButton.Content" xml:space="preserve">
+    <value>Open folder in Storage</value>
+  </data>
+  <data name="Compute_RepoLink.Content" xml:space="preserve">
+    <value>verbinal-execution on GitHub</value>
+  </data>
+  <data name="Compute_SetupTitle.Text" xml:space="preserve">
+    <value>Set up remote compute</value>
+  </data>
+  <data name="Compute_SetupStep1.Text" xml:space="preserve">
+    <value>1. Get the watcher image. Build verbinal-execution from its repository and push it to your project on images.canfar.net.</value>
+  </data>
+  <data name="Compute_SetupStep2.Text" xml:space="preserve">
+    <value>2. Open Settings ▸ AI compute and set the image, the cores and RAM it runs with, and a registry login if the image is private.</value>
+  </data>
+  <data name="Compute_SetupStep3.Text" xml:space="preserve">
+    <value>3. Come back here and press Start. The session takes a minute or two to come up.</value>
+  </data>
+  <data name="Compute_SetupNote.Text" xml:space="preserve">
+    <value>With auto-apply on, your assistant’s code runs without asking first. Turn auto-apply off in Settings to approve each run.</value>
+  </data>
+  <data name="Compute_SetupSettingsButton.Content" xml:space="preserve">
+    <value>Open Settings</value>
+  </data>
+  <data name="Compute_SetupRepoLink.Content" xml:space="preserve">
+    <value>Open the repository</value>
+  </data>
+  <data name="Compute_HistoryTitle.Text" xml:space="preserve">
+    <value>RUNS</value>
+  </data>
+  <data name="Compute_EmptyHistory.Text" xml:space="preserve">
+    <value>Nothing has run yet.</value>
+  </data>
+  <data name="Compute_DetailTab.Header" xml:space="preserve">
+    <value>Selected run</value>
+  </data>
+  <data name="Compute_RunTab.Header" xml:space="preserve">
+    <value>Run code</value>
+  </data>
+  <data name="Compute_CopyCodeButton.Content" xml:space="preserve">
+    <value>Copy code</value>
+  </data>
+  <data name="Compute_RunAgainButton.Content" xml:space="preserve">
+    <value>Run again</value>
+  </data>
+  <data name="Compute_CodeView.Header" xml:space="preserve">
+    <value>Code</value>
+  </data>
+  <data name="Compute_OutputLabel.Text" xml:space="preserve">
+    <value>Output</value>
+  </data>
+  <data name="Compute_ErrorLabel.Text" xml:space="preserve">
+    <value>Errors</value>
+  </data>
+  <data name="Compute_LanguageCombo.Header" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Compute_TimeoutBox.Header" xml:space="preserve">
+    <value>Timeout (seconds)</value>
+  </data>
+  <data name="Compute_SnippetBox.Header" xml:space="preserve">
+    <value>Code</value>
+  </data>
+  <data name="Compute_SnippetBox.PlaceholderText" xml:space="preserve">
+    <value>print('hello from CANFAR')</value>
+  </data>
+  <data name="Compute_RunButton.Content" xml:space="preserve">
+    <value>Run</value>
+  </data>
+  <data name="Compute_State_NotSetUp" xml:space="preserve">
+    <value>Not set up</value>
+  </data>
+  <data name="Compute_State_Stopped" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="Compute_State_Starting" xml:space="preserve">
+    <value>Starting…</value>
+  </data>
+  <data name="Compute_State_Running" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="Compute_State_Stopping" xml:space="preserve">
+    <value>Stopping…</value>
+  </data>
+  <data name="Compute_State_Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Compute_StatusRunning" xml:space="preserve">
+    <value>{0} · {1} · {2} GB · up {3}</value>
+  </data>
+  <data name="Compute_StatusRunningNoUptime" xml:space="preserve">
+    <value>{0} · {1} · {2} GB</value>
+  </data>
+  <data name="Compute_UptimeMinutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="Compute_UptimeHours" xml:space="preserve">
+    <value>{0} h {1} min</value>
+  </data>
+  <data name="Compute_ByAssistant" xml:space="preserve">
+    <value>Assistant</value>
+  </data>
+  <data name="Compute_ByYou" xml:space="preserve">
+    <value>You</value>
+  </data>
+  <data name="Compute_RunState_running" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="Compute_RunState_ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Compute_RunState_error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Compute_RunState_timeout" xml:space="preserve">
+    <value>Timed out</value>
+  </data>
+  <data name="Compute_RunState_noResult" xml:space="preserve">
+    <value>No result</value>
+  </data>
+  <data name="Compute_RunState_notSent" xml:space="preserve">
+    <value>Not sent</value>
+  </data>
+  <data name="Compute_Waiting" xml:space="preserve">
+    <value>Waiting for the result… A session that is still starting takes a minute or two.</value>
+  </data>
+  <data name="Compute_LoadingOutput" xml:space="preserve">
+    <value>Reading the output…</value>
+  </data>
+  <data name="Compute_NoResultHelp" xml:space="preserve">
+    <value>Nothing came back. The session may not have started, or its image may not be a verbinal-execution watcher.</value>
+  </data>
+  <data name="Compute_NotSentHelp" xml:space="preserve">
+    <value>The code never reached the session. Check that you are signed in and that the session could start.</value>
+  </data>
+  <data name="Compute_ExitCode" xml:space="preserve">
+    <value>exit code {0}</value>
+  </data>
+  <data name="Compute_Duration" xml:space="preserve">
+    <value>{0} s</value>
+  </data>
+  <data name="Compute_Truncated" xml:space="preserve">
+    <value>output cut at 1 MB</value>
+  </data>
+  <data name="Compute_SignInFirst" xml:space="preserve">
+    <value>Sign in to CANFAR to use remote compute.</value>
+  </data>
+  <data name="Compute_Starting" xml:space="preserve">
+    <value>Starting verbinal-compute. It takes a minute or two to come up.</value>
+  </data>
+  <data name="Compute_StopConfirmTitle" xml:space="preserve">
+    <value>Stop remote compute?</value>
+  </data>
+  <data name="Compute_StopConfirmBody" xml:space="preserve">
+    <value>The verbinal-compute session is deleted and its cores freed. Code still running is lost.</value>
+  </data>
+  <data name="Compute_StopConfirmYes" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="Compute_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Sessions_ComputeType" xml:space="preserve">
+    <value>{0} · your assistant's remote compute</value>
+  </data>
+  <data name="Sessions_ComputeTooltip" xml:space="preserve">
+    <value>Started for your AI assistant’s run_code. The Remote Compute screen shows what it has run.</value>
+  </data>
+  <data name="Compute_CoreCountOne" xml:space="preserve">
+    <value>{0} core</value>
+  </data>
+  <data name="Compute_CoreCountMany" xml:space="preserve">
+    <value>{0} cores</value>
+  </data>
+  <data name="Compute_LanguageNote.Text" xml:space="preserve">
+    <value>Python or Bash. From Bash you can run anything installed in the compute image, such as Rscript or julia if it has them.</value>
+  </data>
+  <data name="Compute_LanguageNote.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Python or Bash. From Bash you can run anything installed in the compute image, such as Rscript or julia if it has them.</value>
+  </data>
   <data name="Launch_TypeTip.Title" xml:space="preserve">
     <value>Session Type</value>
   </data>

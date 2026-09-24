@@ -5,7 +5,7 @@ Time: ~15 min
 
 ## Steps
 
-- [ ] **Say what the tour will do** — Ten screens, the app pointing at controls as you describe
+- [ ] **Say what the tour will do** — Eleven screens, the app pointing at controls as you describe
       them, and they close each hint when they have read it — the tour waits for them, not the other
       way round. Say up front that partway through you will offer to download one small image and one
       small cube, so the viewer screens have something real in them.
@@ -18,7 +18,7 @@ Time: ~15 min
       slower guide, pass `untilClosed` to point_at_ui: hints then wait for their close button.
       Tool: list_events, point_at_ui
 - [ ] **Landing — where everything starts** — The home screen, a tile per area. Point at a tile or
-      two and say the app is ten areas around one archive, and that anything they can do an agent
+      two and say the app is eleven areas around one archive, and that anything they can do an agent
       can do for them. Point at the AI Assistant tile too: it is not an eleventh screen but the
       wizard that connected you to the app, and it is how they would connect a different assistant
       or set this one up again on another machine.
@@ -74,6 +74,12 @@ Time: ~15 min
       counters track pending, running, completed and failed.
       Tool: navigate_to, list_ui_targets, point_at_ui
       View: portal
+- [ ] **Remote Compute — where an assistant's code runs** — An assistant's run_code, and code they
+      run themselves, goes to one session on their account, named verbinal-compute. Point at the
+      status and at the run list, and say every run is listed here with its code and output. If it
+      is not set up, point at the setup steps instead; setting it up is their call.
+      Tool: navigate_to, get_compute_state, list_ui_targets, point_at_ui
+      View: remoteCompute
 - [ ] **Notebook — a real editor, not a web view** — Code and markdown cells against a live kernel
       you can interrupt or restart, plots inline. Point at Run all cells and the kernel controls, and
       offer them a starter notebook against the file they just downloaded.

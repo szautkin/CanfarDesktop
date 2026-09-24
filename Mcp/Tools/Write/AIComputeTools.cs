@@ -1,3 +1,4 @@
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Mcp.Tools.Proposals;
 using CanfarDesktop.Models.AICompute;
 using CanfarDesktop.Services.AICompute;
@@ -44,7 +45,9 @@ public sealed class RunCodeTool : JsonWriteTool<RunCodeTool.Args>
         var s = _settings();
         if (!s.IsEnabled)
             throw new McpToolException(new InvalidArgument(
-                "run_code is disabled: set an AI compute image in Settings ▸ AI compute first, or use launch_headless_job instead."));
+                "run_code is not set up: it needs a compute image in Settings ▸ AI compute. The Remote Compute " +
+                "screen (navigate_to remoteCompute) walks the person through it — point them there, or use " +
+                "launch_headless_job instead."));
 
         var language = RunCodeContract.NormalizeLanguage(args.Language);
         var timeout = RunCodeContract.ClampTimeout(args.TimeoutSeconds ?? RunCodeContract.DefaultTimeoutSeconds);
@@ -122,7 +125,8 @@ public sealed class StartComputeTool : JsonWriteTool<StartComputeTool.Args>
         var s = _settings();
         if (!s.IsEnabled)
             throw new McpToolException(new InvalidArgument(
-                "start_compute is disabled: set an AI compute image in Settings ▸ AI compute first."));
+                "start_compute is not set up: it needs a compute image in Settings ▸ AI compute. The Remote " +
+                "Compute screen (navigate_to remoteCompute) walks the person through it."));
 
         var (cores, ram) = (RunCodeContract.ClampCores(s.Cores), RunCodeContract.ClampRam(s.Ram));
         var summary = $"Pre-warm {RunCodeContract.SessionName} (image {s.Image}, {cores}c/{ram}g).";
@@ -149,6 +153,84 @@ public sealed class StopComputeTool : JsonWriteTool<StopComputeTool.Args>
         => Task.FromResult(ProposalPlan.Encoding("stop_compute", $"Stop {RunCodeContract.SessionName} (frees platform compute).", new StopComputePayload()));
 
     public sealed record Args { }
+}
+
+/// <summary>What <c>get_compute_state</c> answers: the compute as the Remote Compute screen shows it.</summary>
+public sealed record ComputeStateView(
+    string State, bool Configured, string? Image, int Cores, int Ram,
+    string? SessionId, string? SessionStatus, string? StartedAt, int? UptimeMinutes, string? Note);
+
+/// <summary>
+/// <c>get_compute_state</c> — whether remote compute is set up, and whether its session is running.
+///
+/// <para>The read an agent needs before run_code, and the one the Remote Compute screen's status chip
+/// shows a person: not set up, stopped, starting, running, stopping or failed.</para>
+/// </summary>
+public sealed class GetComputeStateTool : JsonReadTool<GetComputeStateTool.Args, ComputeStateView>
+{
+    private readonly Func<CancellationToken, Task<ComputeStateView>> _state;
+    public GetComputeStateTool(Func<CancellationToken, Task<ComputeStateView>> state) => _state = state;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "get_compute_state",
+        "Whether remote compute (run_code) is set up, and the state of its session on the user's CANFAR " +
+        "account: notSetUp, stopped, starting, running, stopping or failed — with the image, the size it " +
+        "launches at, and how long it has been up. The same status the Remote Compute screen shows.",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override Task<ComputeStateView> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+        => _state(ct);
+
+    public sealed record Args { }
+}
+
+/// <summary>One remembered run, as <c>list_compute_runs</c> reports it.</summary>
+public sealed record ComputeRunView(
+    string ExecutionId, string Author, string Language, string SubmittedAt, string Status,
+    int? ExitCode, long? DurationMs, string? FinishedAt, string CodePreview, int CodeLength);
+
+/// <summary>
+/// <c>list_compute_runs</c> — the code sent to remote compute from this app, newest first.
+///
+/// <para>Every run, whoever sent it: an agent's run_code or the person's own from the Remote Compute
+/// screen. The output itself is one run_code_output call away.</para>
+/// </summary>
+public sealed class ListComputeRunsTool : JsonReadTool<ListComputeRunsTool.Args, ListComputeRunsTool.Output>
+{
+    /// <summary>How much of each run's code is quoted; the rest is counted.</summary>
+    public const int PreviewLength = 400;
+
+    private readonly Func<IReadOnlyList<ComputeRun>> _runs;
+    public ListComputeRunsTool(Func<IReadOnlyList<ComputeRun>> runs) => _runs = runs;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "list_compute_runs",
+        "The code sent to remote compute from this app, newest first — by an agent through run_code or " +
+        "by the person from the Remote Compute screen: who sent it, the language, when, and its status " +
+        "(running while it is out; then ok, error, timeout, noResult or notSent), with the start of the " +
+        "code. Fetch a run's output with run_code_output(executionId).",
+        """{"type":"object","properties":{"limit":{"type":"integer","minimum":1,"maximum":50,"description":"How many (default 10)"}},"additionalProperties":false}""");
+
+    protected override Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var all = _runs();
+        var shown = all.Take(Math.Clamp(args.Limit ?? 10, 1, 50)).Select(View).ToList();
+        return Task.FromResult(new Output(all.Count, shown));
+    }
+
+    public static ComputeRunView View(ComputeRun r) => new(
+        r.Id,
+        r.Author.Name(),
+        r.Language,
+        r.SubmittedAt,
+        r.State,
+        r.ExitCode, r.DurationMs, r.FinishedAt,
+        r.Code.Length <= PreviewLength ? r.Code : r.Code[..PreviewLength],
+        r.Code.Length);
+
+    public sealed record Args { public int? Limit { get; init; } }
+
+    public sealed record Output(int Total, IReadOnlyList<ComputeRunView> Runs);
 }
 
 // ── Appliers ──

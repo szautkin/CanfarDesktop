@@ -29,13 +29,13 @@ public sealed class DescribeAppTool : JsonReadTool<EmptyArgs, DescribeAppTool.Ou
             "FITS headers/WCS, container image discovery, and a native Jupyter notebook engine. " +
             "If the user is new, or asks what this app does or where anything is, run the built-in " +
             "workflow \"Take the tour of Verbinal\" (use_workflow, builtin:verbinal-onboarding): it " +
-            "walks them through all ten screens with point_at_ui pointing at the controls as you " +
+            "walks them through all eleven screens with point_at_ui pointing at the controls as you " +
             "describe them, finds and downloads a small image and cube so the viewers are not " +
             "empty, and moves on when each screen's hints have gone (they fade on a timer; pass " +
             "untilClosed to point_at_ui only if the user asks for a slower guide). For one screen in " +
             "depth there is a detailed tour per screen: builtin:tour-search, tour-research, " +
             "tour-fits-viewer, tour-cube-viewer, tour-storage, tour-portal, tour-notebook, " +
-            "tour-workflows and tour-ai-guide."));
+            "tour-workflows, tour-ai-guide and tour-remote-compute."));
 
     public sealed record Output(string Name, string Version, string Summary);
 }

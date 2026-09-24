@@ -156,6 +156,8 @@ public static class McpToolCatalog
             new RunCodeOutputTool((id, ct) => aiCompute.FetchOutAsync(id, ct)),
             new StartComputeTool(() => aiComputeSettings.Settings),
             new StopComputeTool(),
+            new GetComputeStateTool(async ct => DescribeCompute(await aiCompute.SnapshotAsync(ct))),
+            new ListComputeRunsTool(() => aiCompute.Runs.All()),
 
             // CAOM2 metadata + DataLink (download/preview URLs)
             new GetObservationCaom2Tool((id, ct) => caom2.GetByPublisherIdAsync(id, ct)),
@@ -220,6 +222,13 @@ public static class McpToolCatalog
             new ExportSearchResultsTool((format, path) => viewState.ExportSearchResultsAsync(format, path)),
             new ShowSearchRowDetailTool(row => viewState.ShowSearchRowDetailAsync(row)),
             new ShowObservationDetailTool(id => viewState.ShowObservationDetailAsync(id)),
+
+            // The Remote Compute screen and Storage-at-a-folder: what a person can do there, an agent
+            // can show them — a run, code ready to run, the exec folder.
+            new ShowComputeRunTool(id => viewState.ShowComputeRunAsync(id)),
+            new SetComputeSnippetTool(r => viewState.SetComputeSnippetAsync(r)),
+            new GetComputeViewTool(() => viewState.GetComputeViewAsync()),
+            new ShowStorageFolderTool(folder => viewState.ShowStorageFolderAsync(folder)),
             new LoadRecentSearchTool(match => viewState.LoadRecentSearchAsync(match)),
 
             // The Search page's "Remove from history" and "Clear All". Written, tested and given
@@ -512,7 +521,7 @@ public static class McpToolCatalog
                 (path, ct) => storage.DeleteNodeAsync(path, ct)),
 
             // AI Compute: submit code / pre-warm / stop the contributed compute session.
-            new RunCodeApplier(req => aiCompute.SubmitAsync(req)),
+            new RunCodeApplier(req => aiCompute.SubmitAsync(req, CanfarDesktop.Models.AICompute.ComputeRunAuthor.Agent)),
             new StartComputeApplier(() => aiCompute.EnsureSessionAsync()),
             new StopComputeApplier(() => aiCompute.StopAsync()),
 
@@ -579,6 +588,22 @@ public static class McpToolCatalog
         catch { /* keep the downloaded file even if metadata is unavailable */ }
 
         store.Save(observation);
+    }
+
+    /// <summary>The compute snapshot as get_compute_state reports it: state names in camelCase, as on the wire.</summary>
+    private static ComputeStateView DescribeCompute(CanfarDesktop.Services.AICompute.ComputeSnapshot s)
+    {
+        var up = ComputeStatus.Uptime(s.Session?.StartedTime, DateTimeOffset.UtcNow);
+        return new ComputeStateView(
+            ComputeStatus.Name(s.State),
+            s.State != ComputeState.NotSetUp,
+            s.State == ComputeState.NotSetUp ? null : s.Image,
+            s.Cores, s.Ram,
+            s.Session?.Id, s.Session?.Status, s.Session?.StartedTime,
+            up is { } u ? (int)u.TotalMinutes : null,
+            s.State == ComputeState.NotSetUp
+                ? "Not set up: the Remote Compute screen (navigate_to remoteCompute) explains how."
+                : null);
     }
 
     /// <summary>

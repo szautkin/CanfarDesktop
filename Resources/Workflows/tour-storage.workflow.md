@@ -11,8 +11,9 @@ Time: ~8 min
       pass `untilClosed` to point_at_ui so each waits for its close button.
       Tool: list_events, point_at_ui
 - [ ] **Where you are** — Open Storage and point at `PathBreadcrumb` (click any level to jump
-      back), `Navigate up` and `Refresh folder`.
-      Tool: navigate_to, list_vospace_path, list_ui_targets, point_at_ui
+      back), `Navigate up` and `Refresh folder`. show_storage_folder opens it at any folder in their
+      home, so the tour can go where their files are.
+      Tool: navigate_to, show_storage_folder, list_vospace_path, list_ui_targets, point_at_ui
       View: storage
 - [ ] **What is here** — Point at `FileList` and the sort buttons: `Sort by name`, `Sort by size`,
       `Sort by date`. Size is how to find what is using the quota.

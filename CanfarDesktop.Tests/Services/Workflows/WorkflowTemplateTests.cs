@@ -20,7 +20,7 @@ public class WorkflowTemplateTests
     public void EveryTemplate_IsEmbedded()
     {
         var builtins = Store.ListBuiltIn();
-        Assert.Equal(17, builtins.Count);
+        Assert.Equal(18, builtins.Count);
         Assert.Contains(builtins, w => w.Id == "builtin:cfht-imaging-recon");
         Assert.Contains(builtins, w => w.Id == "builtin:variable-star-photometry");
         Assert.Contains(builtins, w => w.Id == "builtin:jcmt-cube-kinematics");
@@ -47,6 +47,7 @@ public class WorkflowTemplateTests
     [InlineData("notebook")]
     [InlineData("workflows")]
     [InlineData("ai-guide")]
+    [InlineData("remote-compute")]
     public void EveryScreenHasADetailedTour(string screen)
     {
         var tour = Assert.Single(Store.ListBuiltIn(), w => w.Id == $"builtin:tour-{screen}");

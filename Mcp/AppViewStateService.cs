@@ -432,6 +432,40 @@ public sealed class AppViewStateService : IAnnotationHost
         => _exportAnnotations?.Invoke(request)
            ?? Task.FromResult(new AnnotationExportOutcome(false, request.Path, null, 0, "the viewer is unavailable"));
 
+    // ── The Remote Compute screen, and Storage at a folder ──────────────────────────────────────
+
+    private volatile Func<string?, Task<ComputeScreenView>>? _showComputeRun;
+    private volatile Func<ComputeSnippetRequest, Task<ComputeScreenView>>? _setComputeSnippet;
+    private volatile Func<Task<ComputeScreenView>>? _getComputeView;
+    private volatile Func<string, Task<StorageFolderShown>>? _showStorageFolder;
+
+    public void SetRemoteComputeActions(
+        Func<string?, Task<ComputeScreenView>> showRun,
+        Func<ComputeSnippetRequest, Task<ComputeScreenView>> setSnippet,
+        Func<Task<ComputeScreenView>> getView)
+    {
+        _showComputeRun = showRun;
+        _setComputeSnippet = setSnippet;
+        _getComputeView = getView;
+    }
+
+    public void SetStorageFolderAction(Func<string, Task<StorageFolderShown>> show) => _showStorageFolder = show;
+
+    private static ComputeScreenView NoComputeScreen => ComputeScreenView.Unavailable("the window is not available");
+
+    public Task<ComputeScreenView> ShowComputeRunAsync(string? executionId)
+        => _showComputeRun?.Invoke(executionId) ?? Task.FromResult(NoComputeScreen);
+
+    public Task<ComputeScreenView> SetComputeSnippetAsync(ComputeSnippetRequest request)
+        => _setComputeSnippet?.Invoke(request) ?? Task.FromResult(NoComputeScreen);
+
+    public Task<ComputeScreenView> GetComputeViewAsync()
+        => _getComputeView?.Invoke() ?? Task.FromResult(NoComputeScreen);
+
+    public Task<StorageFolderShown> ShowStorageFolderAsync(string folder)
+        => _showStorageFolder?.Invoke(folder)
+           ?? Task.FromResult(new StorageFolderShown(false, folder, "the window is not available"));
+
     // ── Pointing the person at a control ────────────────────────────────────────────────────────
 
     private volatile Func<UiPointRequest, Task<UiPointOutcome>>? _pointAtUi;

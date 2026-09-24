@@ -19,7 +19,7 @@ namespace CanfarDesktop;
 
 public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.IAnnotationHost
 {
-    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer, ObservationDetail, CubeViewer, AiGuide, Workflows }
+    private enum AppMode { Landing, Portal, Search, Research, Storage, Notebook, FitsViewer, ObservationDetail, CubeViewer, AiGuide, Workflows, RemoteCompute }
 
     private readonly MainViewModel _viewModel;
     private readonly ILegalAgreementService _legal;
@@ -31,6 +31,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     private ObservationDetailPage? _obsDetailPage;
     private AiGuidePage? _aiGuidePage;
     private Views.WorkflowsPage? _workflowsPage;
+    private Views.RemoteComputePage? _remoteComputePage;
     private LocalFileBrowserPanel? _filePanel;
     private bool _filePanelVisible;
     private AppMode _currentMode = AppMode.Landing;
@@ -77,6 +78,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _landingView.CubeViewerRequested += (_, _) => OpenCubeViewer();
         _landingView.AiGuideRequested += (_, _) => OpenAiGuidePage();
         _landingView.WorkflowsRequested += (_, _) => OpenWorkflowsPage();
+        _landingView.RemoteComputeRequested += (_, _) => OpenRemoteComputePage();
         _landingView.AiAssistantRequested += OnAiAssistantRequested;
         LandingContainer.Child = _landingView;
 
@@ -184,6 +186,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
         _viewState.SetAnnotationExportAction(ExportAnnotationsActionAsync);
         _viewState.SetUiPointerActions(PointAtUiActionAsync, ListUiTargetsActionAsync);
+        _viewState.SetRemoteComputeActions(ShowComputeRunActionAsync, SetComputeSnippetActionAsync, GetComputeViewActionAsync);
+        _viewState.SetStorageFolderAction(ShowStorageFolderActionAsync);
         Views.Controls.AgentPointer.AllClosed += _viewState.NotifyHintsDismissed;
         _viewState.SetFitsCaptureAction(CaptureFitsActionAsync);
         _viewState.SetCubeCaptureAction(CaptureCubeActionAsync);
@@ -284,6 +288,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             case "cubeViewer": EnsureCubeHost(); NavigateTo(AppMode.CubeViewer); return new(true, "cubeViewer", "Cube Viewer");
             case "aiGuide": OpenAiGuidePage(); return new(true, "aiGuide", "AI Guide");
             case "workflows": OpenWorkflowsPage(); return new(true, "workflows", "Workflows");
+            case "remoteCompute": OpenRemoteComputePage(); return new(true, "remoteCompute", "Remote Compute");
             default: return new(false, mode, mode);
         }
     }
@@ -636,6 +641,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             AppMode.ObservationDetail => ("observationDetail", "Observation"),
             AppMode.AiGuide => ("aiGuide", "AI Guide"),
             AppMode.Workflows => ("workflows", "Workflows"),
+            AppMode.RemoteCompute => ("remoteCompute", "Remote Compute"),
             _ => ("landing", "Home"),
         };
         _viewState?.SetMode(mode, title);
@@ -710,6 +716,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         "cubeViewer" => Loc.T("Module_CubeViewer"),
         "notebook" => Loc.T("Module_Notebook"),
         "workflows" => Loc.T("Module_Workflows"),
+        "remoteCompute" => Loc.T("Module_RemoteCompute"),
         "aiGuide" => Loc.T("Module_AiGuide"),
         "observationDetail" => Loc.T("Module_ObservationDetail"),
         _ => Loc.T("Module_App"),
@@ -830,6 +837,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         AppMode.CubeViewer => CubeViewerContainer,
         AppMode.AiGuide => AiGuideContainer,
         AppMode.Workflows => WorkflowsContainer,
+        AppMode.RemoteCompute => RemoteComputeContainer,
         _ => LandingContainer,
     };
 
@@ -856,6 +864,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         CubeViewerContainer.Visibility = mode == AppMode.CubeViewer ? Visibility.Visible : Visibility.Collapsed;
         AiGuideContainer.Visibility = mode == AppMode.AiGuide ? Visibility.Visible : Visibility.Collapsed;
         WorkflowsContainer.Visibility = mode == AppMode.Workflows ? Visibility.Visible : Visibility.Collapsed;
+        RemoteComputeContainer.Visibility = mode == AppMode.RemoteCompute ? Visibility.Visible : Visibility.Collapsed;
 
         BackButton.Visibility = _navigationStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         PublishViewMode();
@@ -952,6 +961,65 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         WorkflowsContainer.Child = _workflowsPage;
     }
 
+    private Views.RemoteComputePage ShowRemoteComputePage()
+    {
+        EnsureRemoteComputePage();
+        NavigateTo(AppMode.RemoteCompute);
+        return _remoteComputePage!;
+    }
+
+    // Read afresh on every visit: the session may have been started or stopped from the Portal, or by
+    // an assistant, since the page was last on screen.
+    private void OpenRemoteComputePage() => _ = ShowRemoteComputePage().RefreshAsync();
+
+    // ── Remote Compute and Storage, for an agent ──
+
+    /// <summary>
+    /// Bring the Remote Compute screen up and wait for it to know where compute stands — until it has,
+    /// it shows neither its setup steps nor its runs, and pointing at either would find nothing.
+    /// </summary>
+    private async Task<Views.RemoteComputePage> RemoteComputeOnScreenAsync()
+    {
+        var page = ShowRemoteComputePage();
+        await page.RefreshAsync();
+        return page;
+    }
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.ComputeScreenView> ShowComputeRunActionAsync(string? executionId)
+        => OnUiAsync(async () => await (await RemoteComputeOnScreenAsync()).ShowRunAsync(executionId), NoComputeWindow);
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.ComputeScreenView> SetComputeSnippetActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.ComputeSnippetRequest request)
+        => OnUiAsync(async () => (await RemoteComputeOnScreenAsync()).SetSnippet(request), NoComputeWindow);
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.ComputeScreenView> GetComputeViewActionAsync()
+        => OnUi(() => _remoteComputePage?.Capture(_currentMode == AppMode.RemoteCompute)
+                      ?? NoComputeWindow with { Message = "the Remote Compute screen has not been opened" },
+                NoComputeWindow);
+
+    private static CanfarDesktop.Mcp.Tools.Write.ComputeScreenView NoComputeWindow
+        => CanfarDesktop.Mcp.Tools.Write.ComputeScreenView.Unavailable("could not dispatch to UI");
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.StorageFolderShown> ShowStorageFolderActionAsync(string folder)
+        => OnUiAsync(async () =>
+        {
+            if (Helpers.StorageFolder.RelativeToHome(folder, _viewModel.Username) is not { } relative)
+                return new CanfarDesktop.Mcp.Tools.Write.StorageFolderShown(false, folder,
+                    "the Storage screen shows your own home; read other areas with list_vospace_path");
+
+            return await OpenStorageBrowserCoreAsync(relative)
+                ? new CanfarDesktop.Mcp.Tools.Write.StorageFolderShown(true, relative)
+                : new CanfarDesktop.Mcp.Tools.Write.StorageFolderShown(false, relative, "sign-in was declined");
+        }, new CanfarDesktop.Mcp.Tools.Write.StorageFolderShown(false, folder, "could not dispatch to UI"));
+
+    private void EnsureRemoteComputePage()
+    {
+        if (_remoteComputePage is not null) return;
+        _remoteComputePage = App.Services.GetRequiredService<Views.RemoteComputePage>();
+        _remoteComputePage.OpenFolderRequested += folder => _ = OpenStorageBrowserCoreAsync(folder);
+        RemoteComputeContainer.Child = _remoteComputePage;
+    }
+
     private void EnsureDashboard()
     {
         if (_dashboardPage is not null) return;
@@ -1017,7 +1085,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     /// False when a signed-out user dismisses the login dialog — which is a refusal, not a failure,
     /// and used to be reported to an agent as a successful navigation.
     /// </summary>
-    private async Task<bool> OpenStorageBrowserCoreAsync()
+    private async Task<bool> OpenStorageBrowserCoreAsync(string? folder = null)
     {
         if (!_viewModel.IsAuthenticated)
         {
@@ -1037,11 +1105,12 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             // thirty-second timeout for a page that was going to arrive perfectly well. The page has
             // its own spinner for precisely this; the empty folder list is what it is for.
             NavigateTo(AppMode.Storage);
-            _ = _storagePage.LoadAsync(_viewModel.Username);
+            _ = _storagePage.LoadAsync(_viewModel.Username, folder ?? string.Empty);
             return true;
         }
 
         NavigateTo(AppMode.Storage);
+        if (folder is not null) _ = _storagePage.ViewModel.NavigateToAsync(folder);
         return true;
     }
 

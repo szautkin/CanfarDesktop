@@ -121,6 +121,7 @@
                 <Border x:Name="CubeViewerContainer" Visibility="Collapsed" />
                 <Border x:Name="AiGuideContainer" Visibility="Collapsed" />
                 <Border x:Name="WorkflowsContainer" Visibility="Collapsed" />
+                <Border x:Name="RemoteComputeContainer" Visibility="Collapsed" />
 
                 <!-- Session-expired sign-in bar: overlays whatever view the user is in (no forced
                      navigation) and stays until they sign back in or dismiss it. -->

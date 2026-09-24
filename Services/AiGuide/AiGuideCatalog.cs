@@ -199,6 +199,7 @@ public static class AiGuideCatalog
         ["set_vospace_acl"] = "storage",
         ["delete_vospace_node"] = "storage",
         ["get_storage_quota"] = "storage",
+        ["show_storage_folder"] = "storage",
         ["clear_user_site"] = "storage",
         // Sessions
         ["list_sessions"] = "sessions",
@@ -225,11 +226,16 @@ public static class AiGuideCatalog
         ["search_image_registry"] = "discovery",
         ["add_registry_image"] = "discovery",
         ["remove_registry_image"] = "discovery",
-        // AI Compute (Feature B — names reserved so they categorize once built)
+        // AI Compute — the Remote Compute screen is the person's view of these
         ["run_code"] = "compute",
         ["run_code_output"] = "compute",
         ["start_compute"] = "compute",
         ["stop_compute"] = "compute",
+        ["get_compute_state"] = "compute",
+        ["list_compute_runs"] = "compute",
+        ["show_compute_run"] = "compute",
+        ["set_compute_snippet"] = "compute",
+        ["get_compute_view"] = "compute",
         // Workflows
         ["list_workflows"] = "workflows",
         ["get_workflow"] = "workflows",

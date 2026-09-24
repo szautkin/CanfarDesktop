@@ -196,6 +196,11 @@
     <Compile Include="..\Models\AICompute\AIComputeSettings.cs" Link="Linked\AICompute\AIComputeSettings.cs" />
     <Compile Include="..\Services\AICompute\RunCodeContract.cs" Link="Linked\AICompute\RunCodeContract.cs" />
     <Compile Include="..\Services\AICompute\RunCodeModels.cs" Link="Linked\AICompute\RunCodeModels.cs" />
+    <Compile Include="..\Services\AICompute\ComputeRunStore.cs" Link="Linked\AICompute\ComputeRunStore.cs" />
+    <Compile Include="..\Models\AICompute\ComputeRun.cs" Link="Linked\AICompute\ComputeRun.cs" />
+    <Compile Include="..\Helpers\ComputeStatus.cs" Link="Linked\ComputeStatus.cs" />
+    <Compile Include="..\Helpers\StorageFolder.cs" Link="Linked\StorageFolder.cs" />
+    <Compile Include="..\Mcp\Tools\Write\RemoteComputeViewTools.cs" Link="Linked\Mcp\RemoteComputeViewTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\AIComputeTools.cs" Link="Linked\Mcp\AIComputeTools.cs" />
     <Compile Include="..\Mcp\Tools\JsonWriteTool.cs" Link="Linked\Mcp\JsonWriteTool.cs" />
     <Compile Include="..\Mcp\Tools\Write\ProposalLifecycleTools.cs" Link="Linked\Mcp\ProposalLifecycleTools.cs" />

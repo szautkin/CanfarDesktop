@@ -322,7 +322,9 @@ public partial class App : Application
             sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeSettingsService>(),
             sp.GetRequiredService<CanfarDesktop.Services.ISessionService>(),
             sp.GetRequiredService<CanfarDesktop.Services.IStorageService>(),
-            sp.GetRequiredService<CanfarDesktop.Services.IAuthService>()));
+            sp.GetRequiredService<CanfarDesktop.Services.IAuthService>(),
+            sp.GetRequiredService<CanfarDesktop.Services.AICompute.IComputeRunStore>()));
+        services.AddSingleton<CanfarDesktop.Services.AICompute.IComputeRunStore, CanfarDesktop.Services.AICompute.ComputeRunStore>();
         services.AddSingleton<CanfarDesktop.Mcp.AppViewStateService>();
         // Auth'd, redirect-following client for server-side preview fetches (get_preview_image).
         services.AddHttpClient("McpPreviewFetch").AddHttpMessageHandler<AuthTokenHandler>();
@@ -380,6 +382,7 @@ public partial class App : Application
         services.AddTransient<AiGuidePage>();
         services.AddSingleton<CanfarDesktop.Services.Workflows.WorkflowStore>();
         services.AddTransient<Views.WorkflowsPage>();
+        services.AddTransient<Views.RemoteComputePage>();
         // NotebookPage is created manually by NotebookTabHost (not DI-resolved)
 
         return services.BuildServiceProvider();

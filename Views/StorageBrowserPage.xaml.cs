@@ -81,10 +81,14 @@ public sealed partial class StorageBrowserPage : UserControl
             ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public async Task LoadAsync(string username)
+    /// <summary>
+    /// First load. The starting folder is passed in rather than navigated to afterwards: two loads in
+    /// flight at once end wherever the slower one lands, which was the root as often as not.
+    /// </summary>
+    public async Task LoadAsync(string username, string folder = "")
     {
         ViewModel.SetUsername(username);
-        await ViewModel.NavigateToAsync(string.Empty);
+        await ViewModel.NavigateToAsync(folder);
     }
 
     #region Sort
