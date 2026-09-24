@@ -49,6 +49,8 @@
     <Content Include="Assets\session-carta.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\session-contributed.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\session-firefly.png" CopyToOutputDirectory="PreserveNewest" />
+    <!-- How any AI agent connects, at the root of the install as well as of the repository. -->
+    <Content Include="AGENTS.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

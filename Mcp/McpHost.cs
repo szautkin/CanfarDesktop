@@ -176,6 +176,16 @@ public sealed class McpHost : IAsyncDisposable
         _listener.Start(Guid.NewGuid());
         CrashLogger.Info($"MCP host started; pipe={_listener.PipeName}");
         RunningChanged?.Invoke();
+
+        // Put the bridge where AGENTS.md tells every assistant to find it, whenever the server runs —
+        // not only once the connect wizard or the settings panel has been opened, which is the Claude
+        // path; an agent following the instructions on its own would find nothing there. Off the UI
+        // thread: after an update it copies the new bridge out of the package.
+        _ = Task.Run(() =>
+        {
+            try { CrashLogger.Info($"MCP bridge at {Config.McpBridgeLocator.ResolveStable() ?? "(not found)"}"); }
+            catch (Exception ex) { CrashLogger.Info($"MCP bridge copy failed: {ex.Message}"); }
+        });
     }
 
     /// <summary>

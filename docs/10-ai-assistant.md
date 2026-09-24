@@ -6,6 +6,7 @@ Connect an AI agent — Claude Desktop or Claude Code — to drive Verbinal over
 
 ## Guided connection
 - **Connect wizard** — a step-by-step wizard pairs an AI agent with the app over MCP
+- **Any other assistant** — [AGENTS.md](../AGENTS.md), in this repository and in the app's install folder, tells any MCP client how to connect; point your assistant at it
 - **115+ tools** — the agent can search, download, open the viewers, run notebooks, manage storage and sessions, and follow or author [Workflows](09-workflows.md)
 
 ## You stay in control
