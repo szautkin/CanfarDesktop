@@ -252,7 +252,7 @@ public sealed class McpHost : IAsyncDisposable
     /// <summary>After an applied write, send the user to the relevant view (when follow-activity is on).</summary>
     private void FollowActivity(string kind)
     {
-        if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(ModeForTool(kind));
+        if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(AgentScreens.For(kind));
     }
 
     /// <summary>
@@ -261,7 +261,7 @@ public sealed class McpHost : IAsyncDisposable
     /// </summary>
     private Task FollowToolActivity(string toolName)
     {
-        if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(ModeForTool(toolName));
+        if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(AgentScreens.For(toolName));
         return Task.CompletedTask;
     }
 
@@ -269,7 +269,7 @@ public sealed class McpHost : IAsyncDisposable
     /// follow-activity navigation toggle — the indicator always reflects that the agent is active).</summary>
     private void NotifyAgentWorking(string toolName)
     {
-        try { _services.GetRequiredService<AppViewStateService>().NotifyAgentActivity(toolName, ModeForTool(toolName)); }
+        try { _services.GetRequiredService<AppViewStateService>().NotifyAgentActivity(toolName, AgentScreens.For(toolName)); }
         catch { /* indicator is best-effort */ }
     }
 
@@ -283,37 +283,6 @@ public sealed class McpHost : IAsyncDisposable
         }
         catch { /* navigation is best-effort */ }
     }
-
-    /// <summary>
-    /// Map a tool name (read) or applied write kind to the app module to navigate to. Returns null for
-    /// tools that should not move the view: foundational/meta tools (describe_app, get_current_view,
-    /// get_auth_state, …), the view-state writes that navigate themselves (navigate_to, open_fits_file),
-    /// and the local FITS readers / preview fetch.
-    /// </summary>
-    private static string? ModeForTool(string name) => name switch
-    {
-        "search_observations" or "resolve_target" or "list_saved_queries" or "get_saved_query"
-            or "list_recent_searches" or "save_query" or "delete_saved_query"
-            or "get_search_form" or "set_search_form" or "get_search_constraints" or "set_search_constraints"
-            or "reset_search_form" or "run_search" or "set_adql_query" or "execute_adql_query"
-            or "get_search_results" or "set_search_results_view" or "export_search_results"
-            or "load_recent_search" or "run_saved_query"
-            or "remove_recent_search" or "clear_recent_searches" => "search",
-        "list_downloaded_observations" or "get_downloaded_observation" or "get_observation_notes"
-            or "get_observation_caom2" or "get_data_links" or "update_observation_note"
-            or "bulk_update_observation_notes" or "download_observation" or "delete_downloaded_observation" => "research",
-        "list_sessions" or "get_session" or "list_session_types" or "list_headless_jobs"
-            or "get_headless_job_logs" or "get_headless_job_events" or "list_session_images"
-            or "list_recent_launches" or "find_images_with_packages" or "get_platform_load"
-            or "launch_session" or "launch_headless_job" or "delete_session" or "renew_session" => "portal",
-        "get_storage_quota" or "list_vospace_path" or "read_vospace_file"
-            or "upload_text_to_vospace" or "create_vospace_folder" or "delete_vospace_node" => "storage",
-        // Workflow tools double as proposal kinds — one mapping covers the "Agent is working in
-        // Workflows" indicator AND follow-agent-activity navigation for reads and applied writes.
-        "list_workflows" or "get_workflow" or "save_workflow" or "update_workflow"
-            or "set_workflow_step" or "use_workflow" or "delete_workflow" => "workflows",
-        _ => null,
-    };
 
     /// <summary>Stop the server and remove the sidecar (idempotent).</summary>
     public async Task StopAsync()
