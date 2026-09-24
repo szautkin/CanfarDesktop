@@ -193,6 +193,11 @@ public static class AgentPointer
         Slider slider => slider.Header as string,
         ToggleSwitch toggle => toggle.Header as string,
         CalendarDatePicker picker => picker.Header as string,
+        // A tab is called what its header says. Without these, one fell through to the first words
+        // inside it — the Selected run tab introduced itself as "OK · exit code 0 · 1.7 s".
+        PivotItem pivot => pivot.Header as string,
+        TabViewItem tab => tab.Header as string,
+        Expander expander => expander.Header as string,
         _ => null,
     };
 
