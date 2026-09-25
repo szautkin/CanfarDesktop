@@ -8,6 +8,7 @@ Fixes found by testing the published 1.4.0 from the Microsoft Store.
 - **Positions on distorted images** — on images whose header gives only the forward SIP distortion (HST's calibrated frames among them), going from the sky to a pixel skipped the distortion: up to 6.6 pixels (0.26″) out across a WFC3 frame. Go To, marks pinned to the sky, sky-region figures and aligning tabs by sky position were affected; a position now lands on its own pixel
 - **Go To off the image** — the assistant's `fits_goto_coordinate` reported a move for a position off the image while the viewer, rightly, stayed where it was; both now give the same answer, and say where the position falls
 - **Viridis in the FITS viewer** — was a teal-to-orange approximation rather than viridis, and figures went out labelled VIRIDIS; the FITS viewer now uses the cube viewer's colour tables, so every colormap looks the same in both
+- **Notebook cells** — a cell showed the value of its last line only when the whole cell was one expression; like Jupyter, a cell ending in an expression now shows it (`df.head()` after a few statements), and a trailing `;` hides it
 
 ## [1.4.0] - 2026-09-25
 

@@ -20,7 +20,9 @@ Sentinel: \\x04__CANFAR_EXEC_BOUNDARY__\\x04
 
 import sys
 import io
+import ast
 import json
+import tokenize
 import traceback
 import base64
 
@@ -93,6 +95,18 @@ def _capture_display_data(obj):
     except ImportError:
         pass
     return None
+
+
+def _ends_with_semicolon(code):
+    """True when the cell's last token is ';' — Jupyter's way of keeping a value to itself.
+    Read with the tokenizer, so a ';' inside a string or a comment does not count."""
+    try:
+        tokens = [t for t in tokenize.generate_tokens(io.StringIO(code).readline)
+                  if t.type not in (tokenize.COMMENT, tokenize.NL, tokenize.NEWLINE,
+                                    tokenize.INDENT, tokenize.DEDENT, tokenize.ENDMARKER)]
+    except (tokenize.TokenError, SyntaxError):
+        return False
+    return bool(tokens) and tokens[-1].type == tokenize.OP and tokens[-1].string == ";"
 
 
 def _handle_magic(code, exec_count):
@@ -313,24 +327,20 @@ def execute_code(code, exec_count):
         sys.stderr = captured_err
         sys.stdin = _StdinGuard()
 
-        # Try to get a displayable result from the last expression. Probe with an
-        # eval-compile; if the cell is statements (not an expression) that raises
-        # SyntaxError. Do the statement exec OUTSIDE the except block: running it
-        # inside would make Python chain the harness's own probe SyntaxError onto
-        # any real runtime error ("During handling of the above exception..."),
-        # polluting every multi-statement cell's traceback with a bogus SyntaxError.
+        # Show the value of the cell's last line when that line is an expression, as Jupyter
+        # does: run everything before it, then evaluate it. Only a cell that was one expression
+        # used to show anything, so the commonest habit — a few statements, then the thing to
+        # look at (df.head()) — showed nothing for it. Parsing first means no probe error to
+        # chain onto a real one, and a genuine SyntaxError reaches the handler below as the only
+        # error. Line numbers in tracebacks stay the cell's own.
         result = None
-        eval_compiled = None
-        try:
-            eval_compiled = compile(code, "<cell>", "eval")
-        except SyntaxError:
-            eval_compiled = None
-        if eval_compiled is not None:
-            result = eval(eval_compiled, _user_ns)
+        tree = ast.parse(code, "<cell>", "exec")
+        last = tree.body[-1] if tree.body else None
+        if isinstance(last, ast.Expr) and not _ends_with_semicolon(code):
+            exec(compile(ast.Module(body=tree.body[:-1], type_ignores=[]), "<cell>", "exec"), _user_ns)
+            result = eval(compile(ast.Expression(last.value), "<cell>", "eval"), _user_ns)
         else:
-            # Statements — a genuine SyntaxError here (invalid code) propagates
-            # cleanly to the handler below as the real, only error.
-            exec(compile(code, "<cell>", "exec"), _user_ns)
+            exec(compile(tree, "<cell>", "exec"), _user_ns)
 
     except Exception as e:
         success = False

@@ -33,6 +33,8 @@
     <EmbeddedResource Include="..\Resources\ImageDiscovery\probe.sh" Link="ImageDiscovery\probe.sh" />
     <EmbeddedResource Include="..\Resources\ImageDiscovery\inspector.sh" Link="ImageDiscovery\inspector.sh" />
     <!-- Workflow templates: the linked WorkflowStore loads from its own (test) assembly. -->
+    <!-- The kernel loads its harness by this name; without it, a kernel started here would quietly run the fallback. -->
+    <EmbeddedResource Include="..\Resources\Notebook\kernel_harness.py" LogicalName="CanfarDesktop.Resources.Notebook.kernel_harness.py" />
     <EmbeddedResource Include="..\Resources\Workflows\*.workflow.md" Link="Resources\Workflows\%(Filename)%(Extension)" />
   </ItemGroup>
 
