@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.4.0] - Unreleased
+## [1.4.0] - 2026-09-25
 
 Marks on images and cubes, figure export from the FITS viewer, an AI assistant that can see the viewers and point at the interface, and a round of accuracy fixes found by measuring against Verbinal for Linux 1.4.4.
 
