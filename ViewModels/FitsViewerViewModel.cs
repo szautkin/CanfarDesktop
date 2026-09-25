@@ -224,16 +224,6 @@ public partial class FitsViewerViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Convert world RA/Dec to display pixel coordinates (0-based, Y-flipped).
-    /// Returns null if no image/WCS or singular matrix.
-    /// </summary>
-    public (double X, double Y)? GoToCoordinate(double ra, double dec)
-    {
-        if (_imageData?.Wcs is not { IsValid: true } wcs) return null;
-        return PixelConvention.DisplayOfSky(wcs, _imageData.Height, ra, dec);
-    }
-
-    /// <summary>
     /// Release heavy resources (bitmaps, pixel arrays) for tab close.
     /// </summary>
     public void Cleanup()

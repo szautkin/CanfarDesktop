@@ -201,6 +201,7 @@
     <Compile Include="..\Helpers\ComputeStatus.cs" Link="Linked\ComputeStatus.cs" />
     <Compile Include="..\Helpers\StorageFolder.cs" Link="Linked\StorageFolder.cs" />
     <Compile Include="..\Helpers\AccountScreens.cs" Link="Linked\AccountScreens.cs" />
+    <Compile Include="..\Services\Fits\FitsGoto.cs" Link="Linked\Fits\FitsGoto.cs" />
     <Compile Include="..\Mcp\AgentScreens.cs" Link="Linked\Mcp\AgentScreens.cs" />
     <Compile Include="..\Mcp\Tools\Write\RemoteComputeViewTools.cs" Link="Linked\Mcp\RemoteComputeViewTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\AIComputeTools.cs" Link="Linked\Mcp\AIComputeTools.cs" />

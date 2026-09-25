@@ -1195,10 +1195,8 @@ public sealed partial class FitsTabHost : UserControl
         if (vm?.ImageData is null) return new FitsGotoOutcome(false, ra, dec, "no FITS image is loaded");
         if (vm.ImageData.Wcs is not { IsValid: true }) return new FitsGotoOutcome(false, ra, dec, "the loaded FITS has no valid WCS");
         if (_activePage is null) return new FitsGotoOutcome(false, ra, dec, "no active FITS tab");
-        if (vm.GoToCoordinate(ra, dec) is null)
-            return new FitsGotoOutcome(false, ra, dec, "coordinate is outside the image / WCS domain");
 
-        _activePage.GoToWorldCoordinate(ra, dec); // centers viewport + places the crosshair
-        return new FitsGotoOutcome(true, ra, dec, null);
+        var target = _activePage.GoToWorldCoordinate(ra, dec); // centres the viewport + places the crosshair
+        return new FitsGotoOutcome(target.OnImage, ra, dec, target.Why);
     }
 }

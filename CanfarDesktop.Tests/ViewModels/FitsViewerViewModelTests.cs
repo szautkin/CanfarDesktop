@@ -1,13 +1,14 @@
 using Xunit;
 using CanfarDesktop.Models.Fits;
+using CanfarDesktop.Services.Fits;
 
 namespace CanfarDesktop.Tests.ViewModels;
 
 /// <summary>
-/// Tests for FitsViewerViewModel logic extracted as pure math.
-/// The ViewModel itself depends on WriteableBitmap (WinUI) so cannot be linked
-/// into the test project. These tests verify the coordinate pipeline:
-/// GoToCoordinate = WorldToPixel + Y-flip + bounds check.
+/// The FITS viewer's coordinate pipeline. The view model depends on WriteableBitmap (WinUI) and cannot
+/// be linked here, so these call the pure pieces it is built from — Go To's decision
+/// (<see cref="FitsGoto"/>) and the pixel conventions — rather than copies of them. A copy kept
+/// passing while fits_goto_coordinate reported moves the viewer had refused.
 /// </summary>
 public class FitsViewerViewModelTests
 {
@@ -22,18 +23,11 @@ public class FitsViewerViewModelTests
         Cd2_1 = 0, Cd2_2 = 0.001,
     };
 
-    /// <summary>
-    /// Replicates FitsViewerViewModel.GoToCoordinate logic:
-    /// WorldToPixel → 1-based to 0-based → Y-flip
-    /// </summary>
+    /// <summary>Where Go To puts a sky position, on or off the image; null when it cannot place it at all.</summary>
     private static (double X, double Y)? GoToCoordinate(WcsInfo wcs, int height, double ra, double dec)
     {
-        if (!wcs.IsValid) return null;
-        var pixel = wcs.WorldToPixel(ra, dec);
-        if (pixel is null) return null;
-        var displayX = pixel.Value.Px - 1;
-        var displayY = height - 1 - (pixel.Value.Py - 1);
-        return (displayX, displayY);
+        var target = FitsGoto.Resolve(wcs, Width, height, ra, dec);
+        return double.IsNaN(target.X) ? null : (target.X, target.Y);
     }
 
     // ── GoToCoordinate ──────────────────────────────────────────────────────
@@ -101,18 +95,14 @@ public class FitsViewerViewModelTests
     [InlineData(-5, -5)]
     [InlineData(200, 200)]
     public void PixelBoundsCheck_OutOfRange_Invalid(int x, int y)
-    {
-        Assert.True(x < 0 || x >= Width || y < 0 || y >= Height);
-    }
+        => Assert.False(PixelConvention.IsOnImage(x, y, Width, Height));
 
     [Theory]
     [InlineData(0, 0)]
     [InlineData(99, 99)]
     [InlineData(50, 50)]
     public void PixelBoundsCheck_InRange_Valid(int x, int y)
-    {
-        Assert.True(x >= 0 && x < Width && y >= 0 && y < Height);
-    }
+        => Assert.True(PixelConvention.IsOnImage(x, y, Width, Height));
 
     // ── Y-flip correctness ──────────────────────────────────────────────────
 
@@ -121,10 +111,7 @@ public class FitsViewerViewModelTests
     [InlineData(99, 0)]   // display bottom → FITS top
     [InlineData(50, 49)]  // middle
     public void YFlip_DisplayToFits(int displayY, int expectedFitsY)
-    {
-        var fitsY = Height - 1 - displayY;
-        Assert.Equal(expectedFitsY, fitsY);
-    }
+        => Assert.Equal(expectedFitsY, PixelConvention.DisplayToArray(0, displayY, Height).Y);
 
     // ── PixelToWorld → WorldToPixel roundtrip with various WCS ──────────────
 

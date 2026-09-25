@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.1] - Unreleased
+
+Fixes found by testing the published 1.4.0 from the Microsoft Store.
+
+### Fixed
+- **Positions on distorted images** — on images whose header gives only the forward SIP distortion (HST's calibrated frames among them), going from the sky to a pixel skipped the distortion: up to 6.6 pixels (0.26″) out across a WFC3 frame. Go To, marks pinned to the sky, sky-region figures and aligning tabs by sky position were affected; a position now lands on its own pixel
+- **Go To off the image** — the assistant's `fits_goto_coordinate` reported a move for a position off the image while the viewer, rightly, stayed where it was; both now give the same answer, and say where the position falls
+- **Viridis in the FITS viewer** — was a teal-to-orange approximation rather than viridis, and figures went out labelled VIRIDIS; the FITS viewer now uses the cube viewer's colour tables, so every colormap looks the same in both
+
 ## [1.4.0] - 2026-09-25
 
 Marks on images and cubes, figure export from the FITS viewer, an AI assistant that can see the viewers and point at the interface, and a round of accuracy fixes found by measuring against Verbinal for Linux 1.4.4.

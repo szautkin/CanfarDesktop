@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models.Fits;
+using CanfarDesktop.Services.Fits;
 using CanfarDesktop.ViewModels;
 
 namespace CanfarDesktop.Views.FitsViewer;
@@ -422,28 +423,23 @@ public sealed partial class FitsViewerPage : UserControl
     /// Navigate crosshair to a world coordinate (RA, Dec in degrees).
     /// Converts to display pixel and places crosshair at the screen position.
     /// </summary>
-    public void GoToWorldCoordinate(double ra, double dec)
+    /// <summary>
+    /// Centre on a sky position and place the crosshair there, if it is on this image — the same
+    /// decision fits_goto_coordinate reports (<see cref="FitsGoto"/>), so the two cannot disagree.
+    /// </summary>
+    public FitsGotoTarget GoToWorldCoordinate(double ra, double dec)
     {
-        var displayPixel = ViewModel.GoToCoordinate(ra, dec);
-        if (displayPixel is null)
-        {
-            ViewModel.StatusMessage = Loc.T("Fits_NoWcsNav");
-            return;
-        }
+        var image = ViewModel.ImageData;
+        var target = FitsGoto.Resolve(image?.Wcs, image?.Width ?? 0, image?.Height ?? 0, ra, dec);
 
-        var x = displayPixel.Value.X;
-        var y = displayPixel.Value.Y;
-        var w = ViewModel.ImageData!.Width;
-        var h = ViewModel.ImageData!.Height;
+        if (target.OnImage)
+            CenterOnImagePixel(target.X, target.Y);
+        else
+            ViewModel.StatusMessage = double.IsNaN(target.X)
+                ? Loc.T("Fits_NoWcsNav")
+                : Loc.F("Fits_CoordOutsideBounds", target.X, target.Y, image!.Width, image.Height);
 
-        if (x < 0 || x >= w || y < 0 || y >= h)
-        {
-            ViewModel.StatusMessage = Loc.F("Fits_CoordOutsideBounds", x, y, w, h);
-            return;
-        }
-
-        // Center the view on this coordinate
-        CenterOnImagePixel(x, y);
+        return target;
     }
 
     private void CenterOnImagePixel(double imgPixelX, double imgPixelY)

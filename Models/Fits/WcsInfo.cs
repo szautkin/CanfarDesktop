@@ -24,7 +24,8 @@ public record WcsInfo
     /// <summary>
     /// SIP distortion coefficients (Shupe et al. 2005), indexed [p, q] = coefficient of uᵖvᵍ.
     /// Forward (A/B): pixel offset → distortion, applied before the CD matrix in PixelToWorld.
-    /// Inverse (AP/BP): applied after the inverse CD matrix in WorldToPixel. Null = no SIP.
+    /// Inverse (AP/BP): optional, a fitted approximation of the way back — WorldToPixel uses it as the
+    /// first guess and refines against A/B (see InvertSip). Null = no SIP.
     /// Matters enormously for wide-field mosaics — a TESS FFI's corner is ~22′ off without it.
     /// </summary>
     public double[,]? SipA { get; init; }
@@ -176,16 +177,53 @@ public record WcsInfo
 
         var dx = (Cd2_2 * xi - Cd1_2 * eta) / det;
         var dy = (-Cd2_1 * xi + Cd1_1 * eta) / det;
-        // SIP inverse distortion (after the inverse CD matrix): AP/BP map the corrected offset
-        // back to the true pixel offset.
-        if (SipAp is not null && SipBp is not null)
+        // With SIP, (dx, dy) is the DISTORTED offset: the pixel offset is the one the forward
+        // polynomial carries onto it.
+        if (SipA is not null && SipB is not null)
         {
-            var u = dx + SipPoly(SipAp, dx, dy);
-            var v = dy + SipPoly(SipBp, dx, dy);
-            dx = u;
-            dy = v;
+            if (InvertSip(dx, dy) is not { } pixel) return null;
+            (dx, dy) = pixel;
         }
         return (CrPix1 + dx, CrPix2 + dy);
+    }
+
+    /// <summary>How close the way back must come to the way there, in pixels.</summary>
+    private const double SipTolerance = 1e-7;
+
+    /// <summary>Enough for any distortion a real detector has; a position that needs more is not on it.</summary>
+    private const int SipMaxIterations = 100;
+
+    /// <summary>
+    /// The pixel offset (u, v) whose distorted offset is (dx, dy): u + A(u, v) = dx, v + B(u, v) = dy.
+    ///
+    /// <para>AP/BP, when a header has them, are only a fitted approximation of this — a first guess, a
+    /// fraction of a pixel out. Many headers carry A/B alone (HST's calibrated frames among them), and
+    /// the way back used to skip the distortion altogether: up to 6.6 pixels out across a WFC3 frame.
+    /// Either way the guess is refined against A/B itself until it moves by less than a ten-millionth
+    /// of a pixel, as astropy's all_world2pix does. Null when it will not settle — a position so far
+    /// from the detector that the polynomial no longer describes it, where no pixel is the honest
+    /// answer.</para>
+    /// </summary>
+    private (double U, double V)? InvertSip(double dx, double dy)
+    {
+        double u = dx, v = dy;
+        if (SipAp is not null && SipBp is not null)
+        {
+            u = dx + SipPoly(SipAp, dx, dy);
+            v = dy + SipPoly(SipBp, dx, dy);
+        }
+
+        for (var i = 0; i < SipMaxIterations; i++)
+        {
+            var nu = dx - SipPoly(SipA!, u, v);
+            var nv = dy - SipPoly(SipB!, u, v);
+            if (!double.IsFinite(nu) || !double.IsFinite(nv)) return null;
+
+            var moved = Math.Abs(nu - u) + Math.Abs(nv - v);
+            (u, v) = (nu, nv);
+            if (moved < SipTolerance) return (u, v);
+        }
+        return null;
     }
 
     #region Spherical projection math (Calabretta & Greisen 2002, A&A 395, 1077)

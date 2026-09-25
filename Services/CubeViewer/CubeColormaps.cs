@@ -31,7 +31,8 @@ internal static class CubeColormaps
     /// <summary>
     /// Build the 256×1 RGBA8 LUT for a colormap (tightly packed, RGBA order). The
     /// perceptual maps (viridis/inferno/magma/plasma) use matplotlib anchor stops;
-    /// grayscale/inverted/heat/cool are procedural (matching the 2D FITS viewer).
+    /// grayscale/inverted/heat/cool are procedural. The 2D FITS viewer builds its maps from these
+    /// too (ColormapProvider), so a name means the same colours in both viewers.
     /// </summary>
     public static byte[] Build(CubeColormap name) => name switch
     {
