@@ -36,6 +36,7 @@ Marks on images and cubes, figure export from the FITS viewer, an AI assistant t
 - **Localization** — strings set from code showed their resource keys, and several new controls showed English in French
 - **Portal from an assistant while signed out** — `navigate_to` opened an empty Portal without asking you to sign in
 - **The MCP bridge in Store packages** — each package now builds its own, for its own architecture. The x86 packages of 1.3.2 and 1.3.3 carried a 64-bit bridge, so an assistant could not connect on 32-bit Windows
+- **Connecting after an update** — an assistant already connected kept running the old bridge, because Verbinal could not replace its copy while it was in use; and opening the connect wizard then could point the assistant at the version-numbered install folder, which broke at the next update. The copy is now replaced even while it runs (the assistant picks the new one up when it next starts it), and an assistant is only ever pointed at that one fixed copy
 
 ### Changed
 - **Cube viewer** — one control column instead of two overlapping panels; side panels slide in and out
