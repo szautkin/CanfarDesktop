@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
@@ -322,17 +323,92 @@ public sealed partial class CodeCellControl : UserControl
             AddOutputElement(_viewModel.Outputs[_renderedCount++]);
     }
 
+    /// <summary>
+    /// Draw one output in the richest form it carries.
+    ///
+    /// The order is the one libraries themselves assume when they emit several representations of the
+    /// same value: a raster figure, then a vector one, then a rendered document, then text. It is
+    /// deliberately NOT "html first" — nbconvert emits both text/html and image/png for a matplotlib
+    /// figure, and preferring the html there draws the repr instead of the plot.
+    /// </summary>
     private void AddOutputElement(CellOutputViewModel output)
     {
         if (output.IsError)
             OutputStack.Children.Add(BuildErrorOutput(output));
         else if (output.HasImage)
             OutputStack.Children.Add(BuildImageOutput(output));
+        else if (output.HasSvg)
+            OutputStack.Children.Add(BuildSvgOutput(output));
         else if (output.HasHtml)
             BuildHtmlOutput(output);
+        else if (output.HasMarkdown)
+            BuildMarkdownOutput(output);
+        else if (output.HasLatex)
+            OutputStack.Children.Add(BuildLatexOutput(output));
         else if (!string.IsNullOrEmpty(output.TextContent))
             OutputStack.Children.Add(BuildTextOutput(output));
     }
+
+    /// <summary>
+    /// An SVG figure, at its natural size.
+    ///
+    /// WinUI's SvgImageSource does the rendering, which is why this is worth wiring rather than falling
+    /// back to the text repr: a cell that emitted a vector plot used to render as
+    /// "&lt;Figure size 640x480&gt;", which is a sentence about a plot rather than the plot.
+    /// </summary>
+    private static UIElement BuildSvgOutput(CellOutputViewModel output)
+    {
+        var image = new Image
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Stretch = Microsoft.UI.Xaml.Media.Stretch.None,
+            Margin = new Thickness(0, 4, 0, 4),
+        };
+
+        _ = LoadSvgAsync(image, output.SvgContent);
+        return image;
+    }
+
+    private static async Task LoadSvgAsync(Image target, string svg)
+    {
+        try
+        {
+            var source = new Microsoft.UI.Xaml.Media.Imaging.SvgImageSource();
+            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svg));
+            await source.SetSourceAsync(stream.AsRandomAccessStream());
+            target.Source = source;
+        }
+        catch (Exception ex)
+        {
+            // A malformed SVG costs the picture, not the cell.
+            System.Diagnostics.Debug.WriteLine($"SVG output render failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Markdown output, through the same renderer a markdown CELL uses.</summary>
+    private void BuildMarkdownOutput(CellOutputViewModel output)
+    {
+        foreach (var element in Helpers.Notebook.MarkdownRenderer.Render(output.MarkdownContent))
+            OutputStack.Children.Add(element);
+    }
+
+    /// <summary>
+    /// LaTeX, as the source it is.
+    ///
+    /// Nothing here typesets it, and pretending otherwise would be worse than showing the source: sympy
+    /// and astropy emit LaTeX alongside a plain-text form, and a reader who can see
+    /// <c>rac{d}{dx}</c> knows what they are looking at. Shown in a monospace block so it reads as
+    /// markup rather than as prose that went wrong.
+    /// </summary>
+    private static UIElement BuildLatexOutput(CellOutputViewModel output) => new TextBlock
+    {
+        Text = output.LatexContent,
+        FontFamily = new FontFamily("Consolas"),
+        FontSize = 13,
+        TextWrapping = TextWrapping.Wrap,
+        IsTextSelectionEnabled = true,
+        Margin = new Thickness(0, 4, 0, 4),
+    };
 
     private static UIElement BuildTextOutput(CellOutputViewModel output)
     {

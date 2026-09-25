@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="CanfarDesktop.Views.Controls.WorkingDots"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="24" Height="14" IsHitTestVisible="False"
+    AutomationProperties.AccessibilityView="Raw">
+
+    <!--
+        Three dots that travel, for the moments the app is waiting on something else.
+
+        A static "…" says the same thing, and says it whether or not anything is still happening. These
+        move only while they are told to, so a stopped animation is itself information: nothing is going
+        on.
+
+        The wave itself is built in the code-behind, where the stagger can be arithmetic on one period
+        rather than three hand-copied timestamps that quietly drift apart.
+    -->
+
+    <Grid>
+        <Ellipse x:Name="Dot0" Width="4" Height="4" HorizontalAlignment="Left" VerticalAlignment="Center"
+                 Margin="1,0,0,0" Fill="{ThemeResource TextFillColorSecondaryBrush}">
+            <Ellipse.RenderTransform>
+                <TranslateTransform x:Name="Dot0Move" />
+            </Ellipse.RenderTransform>
+        </Ellipse>
+        <Ellipse x:Name="Dot1" Width="4" Height="4" HorizontalAlignment="Left" VerticalAlignment="Center"
+                 Margin="8,0,0,0" Fill="{ThemeResource TextFillColorSecondaryBrush}">
+            <Ellipse.RenderTransform>
+                <TranslateTransform x:Name="Dot1Move" />
+            </Ellipse.RenderTransform>
+        </Ellipse>
+        <Ellipse x:Name="Dot2" Width="4" Height="4" HorizontalAlignment="Left" VerticalAlignment="Center"
+                 Margin="15,0,0,0" Fill="{ThemeResource TextFillColorSecondaryBrush}">
+            <Ellipse.RenderTransform>
+                <TranslateTransform x:Name="Dot2Move" />
+            </Ellipse.RenderTransform>
+        </Ellipse>
+    </Grid>
+</UserControl>

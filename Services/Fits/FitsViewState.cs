@@ -12,6 +12,7 @@ public sealed record FitsViewState(
     double MaxCut,         // white-level cut (physical pixel value)
     double ZoomPercent,    // current zoom (100 = 1:1)
     bool NorthUp,
+    bool SelectingArea,   // the toolbar's Select area toggle is armed
     bool HasWcs,
     bool CrosshairPlaced,
     double CrosshairRa,    // degrees (0 when no crosshair is placed)
@@ -35,7 +36,8 @@ public sealed record FitsViewState(
     bool BookmarksPanelOpen = false,
     int? CrosshairX = null,                    // crosshair display pixel (null when not placed)
     int? CrosshairY = null,
-    string Status = "");                       // the status-bar message
+    string Status = "",                        // the status-bar message
+    bool Loading = false);                     // a file is being read into this tab right now
 
 /// <summary>One HDU/extension of the loaded FITS (the viewer's extension selector rows).</summary>
 public sealed record FitsHduInfo(int Index, string Name, string Shape, bool IsImage);

@@ -16,6 +16,7 @@ public sealed partial class LaunchFormControl : UserControl
         ViewModel = viewModel;
         InitializeComponent();
         HeadlessLaunchLabel.Text = Helpers.Loc.T("Launch_LaunchJob");
+        NameHelpButtons();
         ViewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(ViewModel.IsLaunching) or nameof(ViewModel.IsAtSessionLimit))
@@ -141,31 +142,42 @@ public sealed partial class LaunchFormControl : UserControl
         LaunchRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>Each field's help button and the tip it opens.</summary>
+    private Dictionary<Button, TeachingTip>? _helpTips;
+
+    private Dictionary<Button, TeachingTip> HelpTips => _helpTips ??= new()
+    {
+        [StdTypeHelpBtn] = StdTypeTip,
+        [StdRegistryHelpBtn] = StdRegistryTip,
+        [StdProjectHelpBtn] = StdProjectTip,
+        [StdImageHelpBtn] = StdImageTip,
+        [StdNameHelpBtn] = StdNameTip,
+        [StdResTypeHelpBtn] = StdResTypeTip,
+        [AdvTypeHelpBtn] = AdvTypeTip,
+        [AdvImageHelpBtn] = AdvImageTip,
+        [AdvAuthHelpBtn] = AdvAuthTip,
+        [AdvNameHelpBtn] = AdvNameTip,
+        [AdvResTypeHelpBtn] = AdvResTypeTip,
+        [HlCmdHelpBtn] = HlCmdTip,
+        [HlArgsHelpBtn] = HlArgsTip,
+        [HlReplicasHelpBtn] = HlReplicasTip,
+    };
+
+    /// <summary>
+    /// A help button is a faint question mark with no words, so a screen reader announced fourteen
+    /// unnamed buttons and an agent listing the form could point at one but not say what it was for.
+    /// Each is named after the tip it opens, which is already translated.
+    /// </summary>
+    private void NameHelpButtons()
+    {
+        foreach (var (button, tip) in HelpTips)
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+                button, Helpers.Loc.F("Launch_HelpAbout", tip.Title));
+    }
+
     private void OnHelpClick(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button btn) return;
-
-        // Toggle the TeachingTip associated with this help button
-        TeachingTip? tip = btn.Name switch
-        {
-            nameof(StdTypeHelpBtn) => StdTypeTip,
-            nameof(StdRegistryHelpBtn) => StdRegistryTip,
-            nameof(StdProjectHelpBtn) => StdProjectTip,
-            nameof(StdImageHelpBtn) => StdImageTip,
-            nameof(StdNameHelpBtn) => StdNameTip,
-            nameof(StdResTypeHelpBtn) => StdResTypeTip,
-            nameof(AdvTypeHelpBtn) => AdvTypeTip,
-            nameof(AdvImageHelpBtn) => AdvImageTip,
-            nameof(AdvAuthHelpBtn) => AdvAuthTip,
-            nameof(AdvNameHelpBtn) => AdvNameTip,
-            nameof(AdvResTypeHelpBtn) => AdvResTypeTip,
-            nameof(HlCmdHelpBtn) => HlCmdTip,
-            nameof(HlArgsHelpBtn) => HlArgsTip,
-            nameof(HlReplicasHelpBtn) => HlReplicasTip,
-            _ => null
-        };
-
-        if (tip is not null)
+        if (sender is Button btn && HelpTips.TryGetValue(btn, out var tip))
             tip.IsOpen = !tip.IsOpen;
     }
 

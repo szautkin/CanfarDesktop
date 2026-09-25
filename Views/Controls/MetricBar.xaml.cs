@@ -41,5 +41,11 @@ public sealed partial class MetricBar : UserControl
         LabelText.Text = Label;
         ValueText.Text = $"{Value:F1} / {MaxValue:F1} {Unit} ({Percent:F0}%)";
         Bar.Value = Percent;
+
+        // The bar knows what it measures; say so out loud. Without this a screen reader announces a
+        // bare progress bar, and anything reading the tree — including the agent's pointer — sees a
+        // control with a name and no words, which is a thing nobody can be told to look for.
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            this, string.IsNullOrWhiteSpace(Label) ? string.Empty : $"{Label} usage");
     }
 }

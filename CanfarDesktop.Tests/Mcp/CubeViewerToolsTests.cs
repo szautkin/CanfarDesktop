@@ -106,6 +106,36 @@ public class CubeViewerToolsTests
         Assert.True(seen.ResetCamera);
     }
 
+    /// <summary>
+    /// Hiding the panels is a control a PERSON has in the toolbar, so an agent has to have it too:
+    /// the panels float over the render and cover most of a cube on a small window, and an agent
+    /// asked to show someone their data should be able to get the picture out from under them.
+    /// </summary>
+    [Fact]
+    public async Task SetCubeView_MapsShowPanels()
+    {
+        CubeViewArgs? seen = null;
+        var tool = new SetCubeViewTool(a => { seen = a; return Task.FromResult<CubeViewState?>(SampleState()); });
+
+        await tool.InvokeAsync(Args("""{"showPanels":false}"""), Ctx, default);
+        Assert.False(seen!.ShowPanels);
+
+        await tool.InvokeAsync(Args("""{"showPanels":true}"""), Ctx, default);
+        Assert.True(seen!.ShowPanels);
+    }
+
+    /// <summary>Left alone unless asked — every other field on this tool behaves that way.</summary>
+    [Fact]
+    public async Task SetCubeView_LeavesThePanelsAloneWhenNotAsked()
+    {
+        CubeViewArgs? seen = null;
+        var tool = new SetCubeViewTool(a => { seen = a; return Task.FromResult<CubeViewState?>(SampleState()); });
+
+        await tool.InvokeAsync(Args("""{"channel":3}"""), Ctx, default);
+
+        Assert.Null(seen!.ShowPanels);
+    }
+
     // ── get_cube_view ─────────────────────────────────────────────────────────
 
     [Fact]

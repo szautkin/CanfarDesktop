@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="CanfarDesktop.Views.Controls.ActivityBar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CanfarDesktop.Views.Controls">
+
+    <!--
+        What the app is doing, along the bottom of the window.
+
+        Collapsed it is one line — moving dots and a summary — so an idle app costs a strip of chrome and
+        nothing else. Expanded it lists every task the registry knows about with the stage it reached,
+        how long it has been there, and, for the ones that went wrong, why.
+
+        It exists because the app had no answer to "is anything happening?": each operation reported
+        itself locally or not at all, so work three minutes into waiting and work that failed to start
+        looked identical from outside the control that began it — and if that control was a dialog you
+        had closed, they looked like nothing at all.
+    -->
+
+    <Grid Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+        <!-- The one line -->
+        <Grid Grid.Row="1" Padding="16,4" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <controls:WorkingDots x:Name="Dots" Grid.Column="0" VerticalAlignment="Center" />
+
+            <TextBlock x:Name="SummaryText" Grid.Column="1" VerticalAlignment="Center"
+                       Text="Idle" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       AutomationProperties.LiveSetting="Polite" />
+
+            <!-- Kept out of the way when there is nothing to say. A permanent "0 failed" is noise. -->
+            <TextBlock x:Name="FailuresText" Grid.Column="2" VerticalAlignment="Center" Visibility="Collapsed"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+
+            <Button x:Name="ExpandButton" Grid.Column="3" Padding="6,2" Background="Transparent"
+                    BorderThickness="0" Click="OnToggleExpanded"
+                    x:Uid="Activity_ExpandButton"
+                    ToolTipService.ToolTip="Show what the app is doing"
+                    AutomationProperties.Name="Show what the app is doing">
+                <FontIcon x:Name="ExpandIcon" Glyph="&#xE70E;" FontSize="12" />
+            </Button>
+        </Grid>
+
+        <!-- The list, when it is asked for -->
+        <ScrollViewer Grid.Row="2" x:Name="DetailScroller" Visibility="Collapsed"
+                      MaxHeight="220" VerticalScrollBarVisibility="Auto"
+                      Padding="16,0,16,8">
+            <StackPanel Spacing="6">
+                <TextBlock x:Name="EmptyText" x:Uid="Activity_Empty" Visibility="Collapsed"
+                           Text="Nothing has run yet."
+                           Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <ItemsControl x:Name="TaskList" />
+                <HyperlinkButton x:Name="ClearButton" x:Uid="Activity_ClearButton" Click="OnClearFinished"
+                                 Content="Clear finished" Padding="0" Visibility="Collapsed" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

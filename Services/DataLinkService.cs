@@ -42,7 +42,17 @@ public class DataLinkService
             var xml = await response.Content.ReadAsStringAsync(cts.Token);
             var result = ParseVOTable(xml);
             result.DownloadUrl = _endpoints.DownloadUrl(publisherID);
+
+            // A response with no rows and at least one fault is the service refusing, not resolving.
+            // Not cached: the id may be corrected and retried.
+            if (result.IsEntirelyFaults)
+                throw new DataLinkFaultException(publisherID, result.Faults);
+
             return CacheAndReturn(publisherID, result);
+        }
+        catch (DataLinkFaultException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -127,9 +137,15 @@ public class DataLinkService
             var cells = ParseTDCells(rowMatch.Groups[1].Value);
             if (cells.Count <= Math.Max(accessUrlIdx, semanticsIdx)) continue;
 
-            // Skip error rows
+            // A faulted row carries no artifact, but it is the service saying WHY. Dropping it without
+            // a word turned a response that was entirely faults — "UsageFault: invalid ID" — into an
+            // empty file list, indistinguishable from a successful resolve of an observation with
+            // nothing attached.
             if (errorIdx >= 0 && errorIdx < cells.Count && !string.IsNullOrWhiteSpace(cells[errorIdx]))
+            {
+                result.Faults.Add(cells[errorIdx].Trim());
                 continue;
+            }
 
             var url = cells[accessUrlIdx];
             var semantics = cells[semanticsIdx];

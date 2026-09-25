@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
+using CanfarDesktop.Services;
 using CanfarDesktop.Services.CubeViewer;
 using static CanfarDesktop.Views.WindowHelper;
 
@@ -36,6 +37,16 @@ public sealed partial class CubeTabHost : UserControl
     public async Task<CubeViewerPage> AddTabForFileAsync(string filePath)
     {
         var page = new CubeViewerPage();
+
+        // The marks are keyed by the file, so every tab reads the same store — exactly as the FITS tab
+        // host does. Without this the page's MarkEditor is built with a NULL store, and the failure is
+        // silent in both directions: nothing written by an agent ever loads, and nothing drawn by hand
+        // is ever saved. Refresh even answers "shown" on a matching file while its list stays empty,
+        // because it checks the target and not the store.
+        page.AttachAnnotationStore(
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetRequiredService<CanfarDesktop.Services.Fits.IAnnotationStore>(App.Services));
+
         var tab = new TabViewItem
         {
             Content = page,
@@ -88,16 +99,30 @@ public sealed partial class CubeTabHost : UserControl
     /// <summary>Number of open cube tabs.</summary>
     public int OpenTabCount => TabViewControl.TabItems.Count;
 
-    /// <summary>Every open cube tab's index/name/active flag (the MCP list_open_tabs detail).</summary>
-    public IReadOnlyList<(int Index, string Name, bool Active)> TabInfos()
+    /// <summary>Every open cube tab's index, name, real path and active flag (the MCP list_open_tabs detail).</summary>
+    public IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo> TabInfos()
     {
-        var infos = new List<(int, string, bool)>(TabViewControl.TabItems.Count);
+        var infos = new List<CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo>(TabViewControl.TabItems.Count);
         for (int i = 0; i < TabViewControl.TabItems.Count; i++)
         {
             var tab = TabViewControl.TabItems[i] as TabViewItem;
-            infos.Add((i, tab?.Header as string ?? "", ReferenceEquals(tab, TabViewControl.SelectedItem)));
+            var page = tab?.Content as CubeViewerPage;
+            infos.Add(new CanfarDesktop.Mcp.Tools.Write.ViewerTabInfo(
+                i,
+                page?.CubeName is { Length: > 0 } n ? n : tab?.Header as string ?? "",
+                page?.CubePath,
+                ReferenceEquals(tab, TabViewControl.SelectedItem)));
         }
         return infos;
+    }
+
+    /// <summary>Close the tab at <paramref name="index"/> (the MCP close_tab tool). False when there is none.</summary>
+    public bool CloseTabAt(int index)
+    {
+        if (index < 0 || index >= TabViewControl.TabItems.Count) return false;
+        if (TabViewControl.TabItems[index] is not TabViewItem tab) return false;
+        CloseTabItem(tab);
+        return true;
     }
 
     /// <summary>Make the tab at a 0-based index active (the MCP switch_cube_tab tool).</summary>
@@ -109,7 +134,7 @@ public sealed partial class CubeTabHost : UserControl
     }
 
     /// <summary>The persisted recently-opened cubes (the MCP list_recent_cubes tool).</summary>
-    public IReadOnlyList<RecentCubeEntry> RecentCubes => _recents.Entries;
+    public IReadOnlyList<RecentFileEntry> RecentCubes => _recents.Entries;
 
     private void CloseTabItem(TabViewItem tab)
     {

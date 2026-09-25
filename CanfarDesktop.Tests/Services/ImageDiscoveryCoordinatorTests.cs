@@ -2,6 +2,7 @@ using System.Text.Json;
 using Xunit;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.ImageDiscovery;
+using CanfarDesktop.Services;
 using CanfarDesktop.Services.ImageDiscovery;
 
 namespace CanfarDesktop.Tests.Services;
@@ -196,6 +197,61 @@ public class ImageDiscoveryCoordinatorTests
         Assert.Equal(0, hl.LaunchCount);   // never launched a job
         Assert.Equal(0, vs.Uploads);       // never uploaded a script
         Assert.Equal(FailureCategory.JobSubmitFailed, store.Outcome("img:noauth")!.Category);
+    }
+
+    /// <summary>
+    /// A probe job is deleted the moment it finishes, so by the time anyone asks why one failed, the
+    /// job, its logs and its events are gone. The diagnosis the coordinator assembles is the only
+    /// surviving copy of the answer, and the history is where it survives.
+    /// </summary>
+    [Fact]
+    public async Task AFailedProbeIsWrittenToTheJobHistory()
+    {
+        var history = new RecordingHistory();
+        var c = new ImageDiscoveryCoordinator(new FakeStore(), new FakeHeadless(), new FakeVoSpace(),
+            new FakeScripts(), usernameProvider: () => "  ",
+            imageTypesLookup: _ => Task.FromResult<IReadOnlyList<string>?>(null),
+            raceDelay: _ => Task.CompletedTask, pollDelay: () => Task.CompletedTask, maxPolls: 5)
+        {
+            JobHistory = history,
+        };
+
+        await Assert.ThrowsAsync<ImageDiscoveryException>(() => c.DiscoverAsync("img:noauth"));
+
+        var only = Assert.Single(history.Records);
+        Assert.Equal(JobOrigin.ImageProbe, only.Origin);
+        Assert.Equal(JobOutcome.Failed, only.Outcome);
+        Assert.Equal("img:noauth", only.TargetImage);
+        Assert.Contains("signed in", only.FailureReason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Every existing caller builds one without a history, and must keep working.</summary>
+    [Fact]
+    public async Task ACoordinatorWithNoHistoryStillRunsAndStillThrows()
+    {
+        var c = new ImageDiscoveryCoordinator(new FakeStore(), new FakeHeadless(), new FakeVoSpace(),
+            new FakeScripts(), usernameProvider: () => "  ",
+            imageTypesLookup: _ => Task.FromResult<IReadOnlyList<string>?>(null),
+            raceDelay: _ => Task.CompletedTask, pollDelay: () => Task.CompletedTask, maxPolls: 5);
+
+        await Assert.ThrowsAsync<ImageDiscoveryException>(() => c.DiscoverAsync("img:noauth"));
+    }
+
+    private sealed class RecordingHistory : IJobHistoryStore
+    {
+        public List<JobRecord> Records { get; } = [];
+
+        public event Action? Changed;
+
+        public IReadOnlyList<JobRecord> All() => Records;
+
+        public void Record(JobRecord job)
+        {
+            Records.Add(job);
+            Changed?.Invoke();
+        }
+
+        public void Clear() => Records.Clear();
     }
 
     [Fact]

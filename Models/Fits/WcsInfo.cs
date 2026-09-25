@@ -4,7 +4,7 @@ namespace CanfarDesktop.Models.Fits;
 
 /// <summary>
 /// World Coordinate System parameters extracted from a FITS header.
-/// Supports CD matrix and CDELT+CROTA2 conventions, the four common zenithal
+/// Supports the CD matrix, PC+CDELT and CDELT+CROTA2 conventions, the four common zenithal
 /// projections (TAN/SIN/STG/ZEA) with a linear fallback, and an approximate
 /// reconstruction from legacy RA/DEC keywords.
 /// </summary>
@@ -311,52 +311,24 @@ public record WcsInfo
 
     #region Formatting
 
-    /// <summary>Format RA in degrees to sexagesimal (HHhMMmSS.ss s).</summary>
+    /// <summary>
+    /// Format RA in degrees to sexagesimal (HHhMMmSS.sss).
+    ///
+    /// The glyphs are this readout's own; the arithmetic is not. Splitting in floating point and
+    /// truncating — which this did — reads 359.999999° as <c>23h59m60.00s</c>, sixty seconds, which is
+    /// not a time. <see cref="Sexagesimal.SplitRa"/> carries in integers so it cannot.
+    /// </summary>
     public static string FormatRa(double raDeg)
     {
-        var ra = raDeg / 15.0; // degrees to hours
-        if (ra < 0) ra += 24;
-        var h = (int)ra;
-        var m = (int)((ra - h) * 60);
-        var s = (ra - h - m / 60.0) * 3600;
-        return $"{h:D2}h{m:D2}m{s:00.00}s";
+        var p = Sexagesimal.SplitRa(raDeg, 2);
+        return $"{p.Units:D2}h{p.Minutes:D2}m{p.Seconds:D2}.{p.Fraction:D2}s";
     }
 
-    /// <summary>Format Dec in degrees to sexagesimal (+DD°MM'SS.s").</summary>
+    /// <summary>Format Dec in degrees to sexagesimal (+DD°MM'SS.s"), carried the same way.</summary>
     public static string FormatDec(double decDeg)
     {
-        var sign = decDeg >= 0 ? "+" : "-";
-        var dec = Math.Abs(decDeg);
-        var d = (int)dec;
-        var m = (int)((dec - d) * 60);
-        var s = (dec - d - m / 60.0) * 3600;
-        return $"{sign}{d:D2}°{m:D2}'{s:00.0}\"";
-    }
-
-    /// <summary>
-    /// Format as CADC resolver-compatible coordinate string.
-    /// Format: "HH:MM:SS.ss,+DD:MM:SS.s" (no spaces, with decimal points).
-    /// </summary>
-    public static string FormatForResolver(double raDeg, double decDeg)
-    {
-        // RA: degrees → hours → HH:MM:SS.ss
-        var ra = raDeg / 15.0;
-        if (ra < 0) ra += 24;
-        var rh = (int)ra;
-        var rm = (int)((ra - rh) * 60);
-        var rs = (ra - rh - rm / 60.0) * 3600;
-
-        // Dec: degrees → DD:MM:SS.s
-        var sign = decDeg >= 0 ? "+" : "-";
-        var dec = Math.Abs(decDeg);
-        var dd = (int)dec;
-        var dm = (int)((dec - dd) * 60);
-        var ds = (dec - dd - dm / 60.0) * 3600;
-
-        // CADC format: seconds × 100 (RA) or × 10 (Dec) as integers, no decimal point
-        var rsInt = (int)Math.Round(rs * 100);
-        var dsInt = (int)Math.Round(ds * 10);
-        return $"{rh:D2}:{rm:D2}:{rsInt:D4},{sign}{dd:D2}:{dm:D2}:{dsInt:D3}";
+        var p = Sexagesimal.SplitDec(decDeg, 1);
+        return $"{(p.Sign < 0 ? "-" : "+")}{p.Units:D2}°{p.Minutes:D2}'{p.Seconds:D2}.{p.Fraction}\"";
     }
 
     #endregion
@@ -383,6 +355,23 @@ public record WcsInfo
                 Cd1_2 = header.GetDouble("CD1_2"),
                 Cd2_1 = header.GetDouble("CD2_1"),
                 Cd2_2 = header.GetDouble("CD2_2"),
+            };
+        }
+        else if (HasPcMatrix(header))
+        {
+            // PC + CDELT (FITS Paper II §6.1): CDi_j = CDELTi * PCi_j. What modern pipelines
+            // write — a JWST i2d header carries this and neither of the other two forms, so
+            // reading only CD and CROTA2 left its rotation at zero: no error at CRPIX, growing
+            // with distance from it, 40-90" at the edge of the frame.
+            // PC defaults to the identity matrix, which is why the fallbacks are 1 and 0.
+            var cdelt1 = header.GetDouble("CDELT1");
+            var cdelt2 = header.GetDouble("CDELT2");
+            wcs = baseWcs with
+            {
+                Cd1_1 = cdelt1 * header.GetDouble("PC1_1", 1.0),
+                Cd1_2 = cdelt1 * header.GetDouble("PC1_2", 0.0),
+                Cd2_1 = cdelt2 * header.GetDouble("PC2_1", 0.0),
+                Cd2_2 = cdelt2 * header.GetDouble("PC2_2", 1.0),
             };
         }
         else
@@ -422,6 +411,15 @@ public record WcsInfo
         }
         return wcs;
     }
+
+    /// <summary>
+    /// True when the header states any element of the PC matrix. One is enough: the rest of the
+    /// matrix defaults to the identity, so a header carrying only PC1_2 is still a rotated frame
+    /// and must not fall through to the CROTA2 branch, which would read that rotation as zero.
+    /// </summary>
+    private static bool HasPcMatrix(FitsHeader header) =>
+        header.Contains("PC1_1") || header.Contains("PC1_2") ||
+        header.Contains("PC2_1") || header.Contains("PC2_2");
 
     /// <summary>Read a SIP coefficient set (&lt;prefix&gt;_ORDER + &lt;prefix&gt;_p_q) into a
     /// [p, q] array, or null when absent.</summary>

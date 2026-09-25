@@ -61,9 +61,10 @@ public sealed partial class CubeViewerPage
         var showVol = slice ? Visibility.Collapsed : Visibility.Visible;
         var showSlice = slice ? Visibility.Visible : Visibility.Collapsed;
 
-        // Collapsing RenderPanel pauses the GPU loop (its ActualWidth → 0).
-        RenderPanel.Visibility = showVol;
-        OverlayCanvas.Visibility = showVol;
+        // One visibility per view, so the two can never disagree. Collapsing VolumeViewport collapses
+        // RenderPanel with it, which pauses the GPU loop (its ActualWidth → 0), and takes the wireframe
+        // and the volume's marks down too — the marks used to be left behind, painting over the slice.
+        VolumeViewport.Visibility = showVol;
         VolumeSection.Visibility = showVol;
         SliceViewport.Visibility = showSlice;
         SliceCoordBar.Visibility = slice && _volume is not null ? Visibility.Visible : Visibility.Collapsed;
@@ -144,6 +145,9 @@ public sealed partial class CubeViewerPage
 
     private void RenderSlice()
     {
+        // A new channel is a different set of marks: each one belongs to its own.
+        RenderAnnotations();
+
         if (_volume is null || _sliceBitmap is null || _sliceBuf is null) return;
         if (_sliceLut is null || _sliceLutKey != _currentColormap)
         {
@@ -442,6 +446,9 @@ public sealed partial class CubeViewerPage
 
     private void OnPlayPauseAccel(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
+        // A space belongs to whoever is typing. Naming a mark and then pressing space started the
+        // channel animation instead of putting a space in the word.
+        if (Controls.TypingFocus.IsTyping(XamlRoot)) return;
         if (ViewModel.ViewMode != CubeViewMode.Slice) return;
         args.Handled = true;
         OnPlayPause(this, new RoutedEventArgs());
@@ -449,6 +456,8 @@ public sealed partial class CubeViewerPage
 
     private void OnChannelStepAccel(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
+        // Same for the arrows: in a text field they move the caret, not the cube.
+        if (Controls.TypingFocus.IsTyping(XamlRoot)) return;
         if (ViewModel.ViewMode != CubeViewMode.Slice || _volume is null) return;
         args.Handled = true;
         int step = (sender.Modifiers & VirtualKeyModifiers.Shift) != 0 ? 10 : 1;

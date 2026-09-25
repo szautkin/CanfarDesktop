@@ -10,16 +10,26 @@ namespace CanfarDesktop.Views.Controls;
 public sealed partial class BatchJobsControl : UserControl
 {
     private readonly ISessionService _sessionService;
+    private readonly IJobHistoryStore _history;
     private List<Session> _headlessSessions = [];
     private Dictionary<string, string> _previousStates = new();
     private bool _isFirstPoll = true;
     private DispatcherTimer? _pollTimer;
     private int _countdown;
-    private const int PollSeconds = 45;
 
-    public BatchJobsControl(ISessionService sessionService)
+    /// <summary>
+    /// How long before asking again — adaptive, because the interval IS the notification delay.
+    ///
+    /// The card used to run at a flat 45 seconds, so a job that started and finished inside one window
+    /// was never seen in a non-terminal state and no completion was ever announced. See
+    /// <see cref="PollCadence"/>.
+    /// </summary>
+    private PollCadence _cadence = new(PollCadence.JobsWatchSeconds);
+
+    public BatchJobsControl(ISessionService sessionService, IJobHistoryStore? history = null)
     {
         _sessionService = sessionService;
+        _history = history ?? new JobHistoryStore();
         InitializeComponent();
         Unloaded += (_, _) => StopPolling();
     }
@@ -41,7 +51,7 @@ public sealed partial class BatchJobsControl : UserControl
     private void StartPolling()
     {
         if (_pollTimer is not null) return;
-        _countdown = PollSeconds;
+        _countdown = _cadence.Seconds;
         UpdateCountdownText();
         _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _pollTimer.Tick += OnTimerTick;
@@ -58,7 +68,7 @@ public sealed partial class BatchJobsControl : UserControl
             if (_countdown <= 0)
             {
                 await RefreshAsync();
-                _countdown = PollSeconds;
+                _countdown = _cadence.Seconds;
                 UpdateCountdownText();
             }
         }
@@ -76,7 +86,7 @@ public sealed partial class BatchJobsControl : UserControl
     private async void OnRefreshClick(object sender, RoutedEventArgs e)
     {
         await RefreshAsync();
-        _countdown = PollSeconds;
+        _countdown = _cadence.Seconds;
         UpdateCountdownText();
     }
 
@@ -94,8 +104,16 @@ public sealed partial class BatchJobsControl : UserControl
             if (!_isFirstPoll)
                 DetectTransitions(_previousStates, _headlessSessions);
 
+            // What the next interval is decided from. In flight: any job that can still change state,
+            // so a card of finished jobs costs nothing to watch. Changed: any job that moved, appeared
+            // or went away since last time.
+            var inFlight = _headlessSessions.Any(s => !IsTerminal(s.Status));
+            var changed = newStates.Count != _previousStates.Count
+                || newStates.Any(kv => !_previousStates.TryGetValue(kv.Key, out var was) || was != kv.Value);
+
             _previousStates = newStates;
             _isFirstPoll = false;
+            _cadence.Observe(inFlight, changed);
             UpdateCounts();
         }
         catch (Exception ex)
@@ -104,7 +122,14 @@ public sealed partial class BatchJobsControl : UserControl
         }
     }
 
-    private static void DetectTransitions(Dictionary<string, string> oldStates, List<Session> jobs)
+    /// <summary>
+    /// Announce the jobs that just finished, and write them down.
+    ///
+    /// The notification is a moment; the record is what survives. Skaha reaps headless jobs, so a job
+    /// can fail here and be gone from the listing a minute later — leaving a dismissed toast and a count
+    /// that ticked from Running to Failed as the only trace that anything happened.
+    /// </summary>
+    private void DetectTransitions(Dictionary<string, string> oldStates, List<Session> jobs)
     {
         foreach (var job in jobs)
         {
@@ -112,9 +137,42 @@ public sealed partial class BatchJobsControl : UserControl
             if (IsTerminal(oldStatus)) continue;
 
             if (IsCompleted(job.Status))
+            {
                 Helpers.NotificationService.SendJobCompleted(job.SessionName, job.ContainerImage);
+                Remember(job, JobOutcome.Succeeded);
+            }
             else if (IsFailed(job.Status))
+            {
                 Helpers.NotificationService.SendJobFailed(job.SessionName, job.ContainerImage);
+                Remember(job, JobOutcome.Failed);
+            }
+        }
+    }
+
+    private void Remember(Session job, JobOutcome outcome)
+    {
+        try
+        {
+            _history.Record(new JobRecord
+            {
+                Id = job.Id,
+                Name = job.SessionName,
+                Image = job.ContainerImage,
+                Origin = JobOrigin.User,
+                Outcome = outcome,
+                Status = job.Status,
+                StartedAt = job.StartedTime,
+                FinishedAt = IsoTime.Now(),
+
+                // Skaha's status is all there is at this point. The reason, when there is one to get, is
+                // fetched by whoever opens the job — while it still exists.
+                FailureReason = outcome == JobOutcome.Failed ? job.Status : null,
+            });
+        }
+        catch (Exception ex)
+        {
+            // Remembering is a convenience. Failing to remember must not break the card.
+            System.Diagnostics.Debug.WriteLine($"Job history write failed: {ex.Message}");
         }
     }
 
@@ -131,8 +189,19 @@ public sealed partial class BatchJobsControl : UserControl
             RunningCount.Text = groups.Running.ToString();
             CompletedCount.Text = groups.Completed.ToString();
             FailedCount.Text = groups.Failed.ToString();
+
+            // The count is the first thing on each button, so without a name of its own each read
+            // as a bare "0" — to a screen reader, and to an agent listing what it could point at.
+            NameCounter(PendingButton, PendingLabel, groups.Pending);
+            NameCounter(RunningButton, RunningLabel, groups.Running);
+            NameCounter(CompletedButton, CompletedLabel, groups.Completed);
+            NameCounter(FailedButton, FailedLabel, groups.Failed);
         });
     }
+
+    private static void NameCounter(Button button, TextBlock label, int count)
+        => Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            button, Loc.F("Batch_StateCount", label.Text, count));
 
     private void OnStateClick(object sender, RoutedEventArgs e)
     {
@@ -142,7 +211,7 @@ public sealed partial class BatchJobsControl : UserControl
 
     private async void ShowDialog(string initialTab)
     {
-        var dialog = new BatchJobsDialog(_headlessSessions, initialTab, XamlRoot.Size, _sessionService)
+        var dialog = new BatchJobsDialog(_headlessSessions, initialTab, XamlRoot.Size, _sessionService, _history)
         {
             XamlRoot = XamlRoot
         };

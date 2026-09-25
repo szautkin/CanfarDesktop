@@ -69,8 +69,20 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
         }
     }
 
-    public static Task ShowAsync(XamlRoot root)
-        => new AiConnectWizardDialog { XamlRoot = root }.ShowAsync().AsTask();
+    public static async Task ShowAsync(XamlRoot root)
+    {
+        var wizard = new AiConnectWizardDialog { XamlRoot = root };
+        await wizard.ShowAsync().AsTask();
+
+        // Once the wizard is gone, not from inside it: signed out, Remote Compute asks the person to sign
+        // in first, and only one dialog can be open at a time. The same navigation navigate_to uses, since
+        // three different places open that screen.
+        if (wizard._openRemoteCompute)
+            await App.Services.GetRequiredService<Mcp.AppViewStateService>().NavigateAsync("remoteCompute");
+    }
+
+    /// <summary>The person chose to open Remote Compute from the wizard.</summary>
+    private bool _openRemoteCompute;
 
     private static Visibility Vis(bool show) => show ? Visibility.Visible : Visibility.Collapsed;
 
@@ -216,6 +228,7 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
                     ? Helpers.Loc.F(n == 1 ? "Wizard_ToolsOne" : "Wizard_ToolsMany", n)
                     : "";
                 ShowResult(InfoBarSeverity.Success, Helpers.Loc.F("Wizard_Connected", tools));
+                OfferRemoteCompute();
             }
             else
             {
@@ -228,6 +241,25 @@ public sealed partial class AiConnectWizardDialog : ContentDialog
             SelfTestProgress.Visibility = Visibility.Collapsed;
             SelfTestButton.IsEnabled = true;
         }
+    }
+
+    /// <summary>
+    /// Once the assistant is connected, say that it can also run code on CANFAR — worded for whether that
+    /// is already set up. A line, not a step: most people connecting an assistant do not need it.
+    /// </summary>
+    private void OfferRemoteCompute()
+    {
+        var ready = App.Services.GetRequiredService<Services.AICompute.AIComputeService>().IsConfigured;
+        ComputeHintText.Text = Helpers.Loc.T(ready ? "Wizard_ComputeHintReady" : "Wizard_ComputeHintSetUp");
+        ComputeLink.Content = Helpers.Loc.T(ready ? "Wizard_ComputeLinkReady" : "Wizard_ComputeLinkSetUp");
+        ComputeHint.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Close the wizard, and open Remote Compute once it has closed (see <see cref="ShowAsync(XamlRoot)"/>).</summary>
+    private void OnComputeLinkClick(object sender, RoutedEventArgs e)
+    {
+        _openRemoteCompute = true;
+        Hide();
     }
 
     private void ShowResult(InfoBarSeverity severity, string message)

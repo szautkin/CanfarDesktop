@@ -56,8 +56,8 @@ public class TabToolsTests
     {
         // The cube/FITS tab lists feed switch_cube_tab / switch_fits_tab.
         var tool = new ListOpenTabsTool(() => Task.FromResult(new OpenTabsState(0, 2, 1,
-            CubeTabs: new[] { new ViewerTabInfo(0, "M31 cube", true) },
-            FitsTabs: new[] { new ViewerTabInfo(0, "m51.fits", false), new ViewerTabInfo(1, "hst.fits", true) })));
+            CubeTabs: new[] { new ViewerTabInfo(0, "M31 cube", null, true) },
+            FitsTabs: new[] { new ViewerTabInfo(0, "m51.fits", null, false), new ViewerTabInfo(1, "hst.fits", null, true) })));
         var result = await tool.InvokeAsync(JsonValue.Null, Ctx(), default);
         var json = JsonDocument.Parse(Assert.IsType<DataResult>(result).Json).RootElement;
 

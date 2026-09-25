@@ -12,7 +12,7 @@ namespace CanfarDesktop.Mcp;
 /// (<c>navigate_to</c>, <c>set_search_focus</c>) the UI registers action delegates that marshal to the
 /// UI thread; the tools invoke them. Push (not pull) keeps cross-thread access safe.
 /// </summary>
-public sealed class AppViewStateService
+public sealed class AppViewStateService : IAnnotationHost
 {
     /// <summary>Per-mode view context returned to <c>get_current_view</c>.</summary>
     public sealed record ModeView(
@@ -88,96 +88,6 @@ public sealed class AppViewStateService
 
     public Task<OpenFitsOutcome> OpenFitsAsync(string id)
         => _openFits?.Invoke(id) ?? Task.FromResult(new OpenFitsOutcome(false, id, null, "FITS viewer unavailable"));
-
-    // ── Search page actions (registered by the UI; invoked by the search MCP tools) ──────────────
-
-    private volatile Func<Task<SearchFormSnapshot?>>? _getSearchForm;
-    private volatile Func<SearchFormPatch, Task<SearchFormSnapshot?>>? _setSearchForm;
-    private volatile Func<Task<SearchFacetsSnapshot?>>? _getSearchConstraints;
-    private volatile Func<SearchFacetSelections, Task<SearchConstraintsOutcome?>>? _setSearchConstraints;
-    private volatile Func<Task<SearchFormSnapshot?>>? _resetSearchForm;
-    private volatile Func<Task<SearchRunOutcome>>? _runSearch;
-    private volatile Func<string, Task<AdqlStageOutcome?>>? _setAdqlQuery;
-    private volatile Func<string?, Task<SearchRunOutcome>>? _executeAdqlQuery;
-    private volatile Func<bool, int, Task<SearchResultsSnapshot?>>? _getSearchResults;
-    private volatile Func<SearchResultsCommand, Task<SearchResultsSnapshot?>>? _setSearchResultsView;
-    private volatile Func<string, string?, Task<SearchExportOutcome>>? _exportSearchResults;
-    private volatile Func<int, Task<LoadRecentSearchOutcome?>>? _loadRecentSearch;
-    private volatile Func<string, Task<SearchRunOutcome>>? _runSavedQuery;
-
-    /// <summary>The UI registers the Search page actions (each marshals to the UI thread).</summary>
-    public void SetSearchActions(
-        Func<Task<SearchFormSnapshot?>> getForm,
-        Func<SearchFormPatch, Task<SearchFormSnapshot?>> setForm,
-        Func<Task<SearchFacetsSnapshot?>> getConstraints,
-        Func<SearchFacetSelections, Task<SearchConstraintsOutcome?>> setConstraints,
-        Func<Task<SearchFormSnapshot?>> resetForm,
-        Func<Task<SearchRunOutcome>> runSearch,
-        Func<string, Task<AdqlStageOutcome?>> setAdql,
-        Func<string?, Task<SearchRunOutcome>> executeAdql,
-        Func<bool, int, Task<SearchResultsSnapshot?>> getResults,
-        Func<SearchResultsCommand, Task<SearchResultsSnapshot?>> setResultsView,
-        Func<string, string?, Task<SearchExportOutcome>> exportResults,
-        Func<int, Task<LoadRecentSearchOutcome?>> loadRecent,
-        Func<string, Task<SearchRunOutcome>> runSavedQuery)
-    {
-        _getSearchForm = getForm;
-        _setSearchForm = setForm;
-        _getSearchConstraints = getConstraints;
-        _setSearchConstraints = setConstraints;
-        _resetSearchForm = resetForm;
-        _runSearch = runSearch;
-        _setAdqlQuery = setAdql;
-        _executeAdqlQuery = executeAdql;
-        _getSearchResults = getResults;
-        _setSearchResultsView = setResultsView;
-        _exportSearchResults = exportResults;
-        _loadRecentSearch = loadRecent;
-        _runSavedQuery = runSavedQuery;
-    }
-
-    private static readonly SearchRunOutcome SearchUnavailableRun =
-        new(false, null, 0, null, "Search page unavailable");
-
-    public Task<SearchFormSnapshot?> GetSearchFormAsync()
-        => _getSearchForm?.Invoke() ?? Task.FromResult<SearchFormSnapshot?>(null);
-
-    public Task<SearchFormSnapshot?> SetSearchFormAsync(SearchFormPatch patch)
-        => _setSearchForm?.Invoke(patch) ?? Task.FromResult<SearchFormSnapshot?>(null);
-
-    public Task<SearchFacetsSnapshot?> GetSearchConstraintsAsync()
-        => _getSearchConstraints?.Invoke() ?? Task.FromResult<SearchFacetsSnapshot?>(null);
-
-    public Task<SearchConstraintsOutcome?> SetSearchConstraintsAsync(SearchFacetSelections selections)
-        => _setSearchConstraints?.Invoke(selections) ?? Task.FromResult<SearchConstraintsOutcome?>(null);
-
-    public Task<SearchFormSnapshot?> ResetSearchFormAsync()
-        => _resetSearchForm?.Invoke() ?? Task.FromResult<SearchFormSnapshot?>(null);
-
-    public Task<SearchRunOutcome> RunSearchAsync()
-        => _runSearch?.Invoke() ?? Task.FromResult(SearchUnavailableRun);
-
-    public Task<AdqlStageOutcome?> SetAdqlQueryAsync(string adql)
-        => _setAdqlQuery?.Invoke(adql) ?? Task.FromResult<AdqlStageOutcome?>(null);
-
-    public Task<SearchRunOutcome> ExecuteAdqlQueryAsync(string? adql)
-        => _executeAdqlQuery?.Invoke(adql) ?? Task.FromResult(SearchUnavailableRun);
-
-    public Task<SearchResultsSnapshot?> GetSearchResultsAsync(bool includeRows, int maxRows)
-        => _getSearchResults?.Invoke(includeRows, maxRows) ?? Task.FromResult<SearchResultsSnapshot?>(null);
-
-    public Task<SearchResultsSnapshot?> SetSearchResultsViewAsync(SearchResultsCommand command)
-        => _setSearchResultsView?.Invoke(command) ?? Task.FromResult<SearchResultsSnapshot?>(null);
-
-    public Task<SearchExportOutcome> ExportSearchResultsAsync(string format, string? path)
-        => _exportSearchResults?.Invoke(format, path)
-           ?? Task.FromResult(new SearchExportOutcome(false, null, 0, "Search page unavailable"));
-
-    public Task<LoadRecentSearchOutcome?> LoadRecentSearchAsync(int index)
-        => _loadRecentSearch?.Invoke(index) ?? Task.FromResult<LoadRecentSearchOutcome?>(null);
-
-    public Task<SearchRunOutcome> RunSavedQueryAsync(string name)
-        => _runSavedQuery?.Invoke(name) ?? Task.FromResult(SearchUnavailableRun);
 
     // ── Cube Viewer actions (registered by the UI; invoked by the cube MCP tools) ────────────────
 
@@ -255,6 +165,7 @@ public sealed class AppViewStateService
 
     public Task<IReadOnlyList<RecentCubeInfo>> ListRecentCubesAsync()
         => _listRecentCubes?.Invoke() ?? Task.FromResult<IReadOnlyList<RecentCubeInfo>>(Array.Empty<RecentCubeInfo>());
+
 
     // ── 2D FITS Viewer actions (registered by the UI; invoked by the FITS MCP tools) ─────────────
 
@@ -360,6 +271,14 @@ public sealed class AppViewStateService
     public Task<NotebookCellOutputs?> GetCellOutputAsync(int index, string? notebook = null)
         => _notebookCellOutput?.Invoke(index, notebook) ?? Task.FromResult<NotebookCellOutputs?>(null);
 
+    private volatile Func<int, string?, Task<NotebookCellImage>>? _notebookCellImage;
+
+    public void SetNotebookImageAction(Func<int, string?, Task<NotebookCellImage>> get) => _notebookCellImage = get;
+
+    public Task<NotebookCellImage> GetCellImageAsync(int index, string? notebook = null)
+        => _notebookCellImage?.Invoke(index, notebook)
+           ?? Task.FromResult(NotebookCellImage.None("no notebook is open"));
+
     public Task<NotebookKernelInfo> GetKernelStateAsync(string? notebook = null)
         => _notebookKernel?.Invoke(notebook) ?? Task.FromResult(new NotebookKernelInfo("Dead", "no notebook open", ""));
 
@@ -395,4 +314,217 @@ public sealed class AppViewStateService
 
     public Task<OpenTabsState> ListTabsAsync()
         => _listTabs?.Invoke() ?? Task.FromResult(new OpenTabsState(0, 0, 0));
+
+    // ── Reaching a tab that is not the active one ────────────────────────────
+
+    private volatile Func<string, int?, Task<TabActionOutcome>>? _closeTabAt;
+
+    /// <summary>
+    /// Closing a tab that is not in front. Switching is per-viewer (switch_fits_tab / switch_cube_tab)
+    /// and registered with those viewers' own actions.
+    /// </summary>
+    public void SetTabNavigationActions(Func<string, int?, Task<TabActionOutcome>> closeAt)
+        => _closeTabAt = closeAt;
+
+    public Task<TabActionOutcome> CloseTabAtAsync(string kind, int? index)
+        => _closeTabAt?.Invoke(kind, index)
+           ?? Task.FromResult(new TabActionOutcome(false, kind, index, "viewer unavailable"));
+
+    // ── Search page (resolved lazily: the page is built the first time anyone asks for it) ───────
+
+    private volatile Func<Task<ISearchUiBridge?>>? _searchHost;
+
+    /// <summary>
+    /// The host registers how to REACH the Search page, not the page itself. The page is created on
+    /// first use — often by the agent call that needs it — so a bridge captured at startup would be
+    /// either permanently null or a page built before anyone asked for one. The resolver runs on the
+    /// UI thread and may create the page as a side effect.
+    /// </summary>
+    public void SetSearchHost(Func<Task<ISearchUiBridge?>> resolve) => _searchHost = resolve;
+
+    private const string SearchUnavailable = "the Search page is not available";
+
+    private Task<ISearchUiBridge?> ResolveSearchAsync()
+        => _searchHost?.Invoke() ?? Task.FromResult<ISearchUiBridge?>(null);
+
+    public async Task<SearchFormView> GetSearchFormAsync()
+        => await ResolveSearchAsync() is { } b ? await b.GetFormAsync() : SearchFormView.Unavailable(SearchUnavailable);
+
+    public async Task<SearchFormApplied> SetSearchFormAsync(SearchFormPatch patch)
+        => await ResolveSearchAsync() is { } b ? await b.SetFormAsync(patch) : SearchFormApplied.Unavailable(SearchUnavailable);
+
+    public async Task<SearchConstraintsView> GetSearchConstraintsAsync()
+        => await ResolveSearchAsync() is { } b ? await b.GetConstraintsAsync() : SearchConstraintsView.Unavailable(SearchUnavailable);
+
+    public async Task<SearchConstraintsApplied> SetSearchConstraintsAsync(SearchConstraintsPatch patch)
+        => await ResolveSearchAsync() is { } b ? await b.SetConstraintsAsync(patch) : SearchConstraintsApplied.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRunOutcome> RunSearchAsync()
+        => await ResolveSearchAsync() is { } b ? await b.RunSearchAsync() : SearchRunOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchAdqlOutcome> SetAdqlQueryAsync(string adql, bool execute)
+        => await ResolveSearchAsync() is { } b ? await b.SetAdqlAsync(adql, execute) : SearchAdqlOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchAdqlOutcome> ExecuteAdqlQueryAsync(string? adql)
+        => await ResolveSearchAsync() is { } b ? await b.ExecuteAdqlAsync(adql) : SearchAdqlOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchResultsView> GetSearchResultsAsync(SearchResultsQuery query)
+        => await ResolveSearchAsync() is { } b ? await b.GetResultsAsync(query) : SearchResultsView.Unavailable(SearchUnavailable);
+
+    public async Task<SearchResultsViewApplied> SetSearchResultsViewAsync(SearchResultsViewPatch patch)
+        => await ResolveSearchAsync() is { } b ? await b.SetResultsViewAsync(patch) : SearchResultsViewApplied.Unavailable(SearchUnavailable);
+
+    public async Task<SearchExportOutcome> ExportSearchResultsAsync(string format, string path)
+        => await ResolveSearchAsync() is { } b ? await b.ExportResultsAsync(format, path) : SearchExportOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRowDetailOutcome> ShowSearchRowDetailAsync(int? row)
+        => await ResolveSearchAsync() is { } b ? await b.ShowRowDetailAsync(row) : SearchRowDetailOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRowDetailOutcome> ShowObservationDetailAsync(string publisherId)
+        => await ResolveSearchAsync() is { } b ? await b.ShowObservationDetailAsync(publisherId) : SearchRowDetailOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRunOutcome> RunSavedQueryAsync(string name)
+        => await ResolveSearchAsync() is { } b ? await b.RunSavedQueryAsync(name) : SearchRunOutcome.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRecentRemoved> RemoveRecentSearchAsync(string match)
+        => await ResolveSearchAsync() is { } b ? await b.RemoveRecentSearchAsync(match) : SearchRecentRemoved.Unavailable(SearchUnavailable);
+
+    public async Task<SearchFormApplied> ResetSearchFormAsync()
+        => await ResolveSearchAsync() is { } b ? await b.ResetFormAsync() : SearchFormApplied.Unavailable(SearchUnavailable);
+
+    public async Task<SearchFormApplied> LoadRecentSearchAsync(string match)
+        => await ResolveSearchAsync() is { } b ? await b.LoadRecentSearchAsync(match) : SearchFormApplied.Unavailable(SearchUnavailable);
+
+    public async Task<SearchRecentRemoved> ClearRecentSearchesAsync()
+        => await ResolveSearchAsync() is { } b ? await b.ClearRecentSearchesAsync() : SearchRecentRemoved.Unavailable(SearchUnavailable);
+
+    // ── Annotations ─────────────────────────────────────────────────────────────────────────────
+
+    private volatile IAnnotationHost? _annotations;
+
+    /// <summary>The viewers register how to answer "which file are you showing" and "redraw".</summary>
+    public void SetAnnotationHost(IAnnotationHost host) => _annotations = host;
+
+    /// <summary>
+    /// Null when no viewer has registered, or none has a file open. The annotation tools read that as
+    /// "nothing is open", which is an answer with a way round it — they take a named `target` — rather
+    /// than a failure. So they work against files on disk before any viewer is wired to them.
+    /// </summary>
+    public Task<string?> ActiveTargetAsync(AnnotationViewer viewer)
+        => _annotations?.ActiveTargetAsync(viewer) ?? Task.FromResult<string?>(null);
+
+    public Task<bool> RefreshAsync(AnnotationViewer viewer, string target, string? selectId)
+        => _annotations?.RefreshAsync(viewer, target, selectId) ?? Task.FromResult(false);
+
+    public Task<bool> DeselectAsync(AnnotationViewer viewer, string target)
+        => _annotations?.DeselectAsync(viewer, target) ?? Task.FromResult(false);
+
+    // ── Figure export ───────────────────────────────────────────────────────────────────────────
+
+    private volatile Func<FitsFigureRequest, Task<FitsFigureOutcome>>? _exportFitsFigure;
+
+    private volatile Func<AnnotationExportRequest, Task<AnnotationExportOutcome>>? _exportAnnotations;
+
+    public void SetAnnotationExportAction(Func<AnnotationExportRequest, Task<AnnotationExportOutcome>> export)
+        => _exportAnnotations = export;
+
+    public Task<AnnotationExportOutcome> ExportAnnotationsAsync(AnnotationExportRequest request)
+        => _exportAnnotations?.Invoke(request)
+           ?? Task.FromResult(new AnnotationExportOutcome(false, request.Path, null, 0, "the viewer is unavailable"));
+
+    // ── The Remote Compute screen, and Storage at a folder ──────────────────────────────────────
+
+    private volatile Func<string?, Task<ComputeScreenView>>? _showComputeRun;
+    private volatile Func<ComputeSnippetRequest, Task<ComputeScreenView>>? _setComputeSnippet;
+    private volatile Func<Task<ComputeScreenView>>? _getComputeView;
+    private volatile Func<string, Task<StorageFolderShown>>? _showStorageFolder;
+
+    public void SetRemoteComputeActions(
+        Func<string?, Task<ComputeScreenView>> showRun,
+        Func<ComputeSnippetRequest, Task<ComputeScreenView>> setSnippet,
+        Func<Task<ComputeScreenView>> getView)
+    {
+        _showComputeRun = showRun;
+        _setComputeSnippet = setSnippet;
+        _getComputeView = getView;
+    }
+
+    public void SetStorageFolderAction(Func<string, Task<StorageFolderShown>> show) => _showStorageFolder = show;
+
+    private static ComputeScreenView NoComputeScreen => ComputeScreenView.Unavailable("the window is not available");
+
+    public Task<ComputeScreenView> ShowComputeRunAsync(string? executionId)
+        => _showComputeRun?.Invoke(executionId) ?? Task.FromResult(NoComputeScreen);
+
+    public Task<ComputeScreenView> SetComputeSnippetAsync(ComputeSnippetRequest request)
+        => _setComputeSnippet?.Invoke(request) ?? Task.FromResult(NoComputeScreen);
+
+    public Task<ComputeScreenView> GetComputeViewAsync()
+        => _getComputeView?.Invoke() ?? Task.FromResult(NoComputeScreen);
+
+    public Task<StorageFolderShown> ShowStorageFolderAsync(string folder)
+        => _showStorageFolder?.Invoke(folder)
+           ?? Task.FromResult(new StorageFolderShown(false, folder, "the window is not available"));
+
+    // ── Pointing the person at a control ────────────────────────────────────────────────────────
+
+    private volatile Func<UiPointRequest, Task<UiPointOutcome>>? _pointAtUi;
+    private volatile Func<string?, bool, Task<UiTargetListing>>? _listUiTargets;
+
+    public void SetUiPointerActions(
+        Func<UiPointRequest, Task<UiPointOutcome>> point,
+        Func<string?, bool, Task<UiTargetListing>> list)
+    {
+        _pointAtUi = point;
+        _listUiTargets = list;
+    }
+
+    public Task<UiPointOutcome> PointAtUiAsync(UiPointRequest request)
+        => _pointAtUi?.Invoke(request)
+           ?? Task.FromResult(new UiPointOutcome(false, request.Target, "the window is not available"));
+
+    public Task<UiTargetListing> ListUiTargetsAsync(string? contains, bool includeCollapsed)
+        => _listUiTargets?.Invoke(contains, includeCollapsed)
+           ?? Task.FromResult(new UiTargetListing([], []));
+
+    /// <summary>
+    /// The person has closed the last hint an agent put up.
+    ///
+    /// The host turns this into a <c>hintsDismissed</c> entry in the event log, which is how a guided
+    /// tour waits for a reader instead of a clock.
+    /// </summary>
+    public event Action? HintsDismissed;
+
+    /// <summary>Raised by the window when the hint layer empties.</summary>
+    public void NotifyHintsDismissed()
+    {
+        try { HintsDismissed?.Invoke(); }
+        catch { /* a listener must not take the UI down */ }
+    }
+
+    public void SetFitsFigureAction(Func<FitsFigureRequest, Task<FitsFigureOutcome>> export)
+        => _exportFitsFigure = export;
+
+    public Task<FitsFigureOutcome> ExportFitsFigureAsync(FitsFigureRequest request)
+        => _exportFitsFigure?.Invoke(request)
+           ?? Task.FromResult(FitsFigureOutcome.Unavailable("the FITS viewer is not available"));
+
+    // ── What an agent can see ────────────────────────────────────────────────
+
+    private volatile Func<ViewerCaptureRequest, Task<ViewerCapture>>? _captureFits;
+    private volatile Func<ViewerCaptureRequest, Task<ViewerCapture>>? _captureCube;
+
+    public void SetFitsCaptureAction(Func<ViewerCaptureRequest, Task<ViewerCapture>> capture)
+        => _captureFits = capture;
+
+    public void SetCubeCaptureAction(Func<ViewerCaptureRequest, Task<ViewerCapture>> capture)
+        => _captureCube = capture;
+
+    public Task<ViewerCapture> CaptureFitsAsync(ViewerCaptureRequest request)
+        => _captureFits?.Invoke(request)
+           ?? Task.FromResult(ViewerCapture.Unavailable("the FITS viewer is not available"));
+
+    public Task<ViewerCapture> CaptureCubeAsync(ViewerCaptureRequest request)
+        => _captureCube?.Invoke(request)
+           ?? Task.FromResult(ViewerCapture.Unavailable("the cube viewer is not available"));
 }

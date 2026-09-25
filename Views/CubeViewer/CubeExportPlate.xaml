@@ -2,7 +2,8 @@
 <UserControl
     x:Class="CanfarDesktop.Views.CubeViewer.CubeExportPlate"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CanfarDesktop.Views.Controls">
 
     <Border x:Name="RootBorder" Padding="26">
         <StackPanel x:Name="Stack" Spacing="0">
@@ -30,6 +31,12 @@
             <Border x:Name="FrameBorder" BorderThickness="1" HorizontalAlignment="Center">
                 <Grid>
                     <Image x:Name="FrameImage" Stretch="Fill" />
+
+                    <!-- The marks, drawn LIVE by the same renderer the viewer uses, exactly as the
+                         FITS plate does. Under the caption overlay: the box and axis captions are
+                         chrome and have to stay readable over a mark that lands on them. -->
+                    <controls:AnnotationLayer x:Name="MarkOverlay" IsHitTestVisible="False" />
+
                     <Canvas x:Name="CaptionOverlay" IsHitTestVisible="False" />
                 </Grid>
             </Border>

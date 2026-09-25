@@ -45,6 +45,16 @@ public sealed partial class CubeViewerPage
         if (_volume is null) return;
         var pt = e.GetCurrentPoint(SliceViewport);
         if (!pt.Properties.IsLeftButtonPressed) return;
+
+        // Offered to the marks first: a press that grabs a mark and also starts a pan drags the slice
+        // out from under the mark being moved.
+        if (TryBeginAnnotationGesture(pt.Position))
+        {
+            SliceViewport.CapturePointer(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         _slicePressed = true;
         _slicePanning = false;
         _slicePressOrigin = _sliceLastDrag = pt.Position;
@@ -56,6 +66,13 @@ public sealed partial class CubeViewerPage
     {
         if (_volume is null) return;
         var pos = e.GetCurrentPoint(SliceViewport).Position;
+
+        if (ContinueAnnotationGesture(pos))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (_slicePressed)
         {
             // Beyond a small threshold the press becomes a pan; a clean click still probes on release.
@@ -78,6 +95,13 @@ public sealed partial class CubeViewerPage
 
     private void OnSlicePointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (EndAnnotationGesture())
+        {
+            SliceViewport.ReleasePointerCapture(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         if (!_slicePressed) return;
         _slicePressed = false;
         SliceViewport.ReleasePointerCapture(e.Pointer);
@@ -98,7 +122,20 @@ public sealed partial class CubeViewerPage
         e.Handled = true;
     }
 
-    private void OnSliceDoubleTapped(object sender, DoubleTappedRoutedEventArgs e) => ResetSliceView();
+    /// <summary>
+    /// A double-press on a mark relabels it; anywhere else it still resets the view. The mark is checked
+    /// first because resetting the view while trying to rename a mark is the more annoying of the two
+    /// wrong answers — the reset is one gesture away, the label is not.
+    /// </summary>
+    private void OnSliceDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (TryRelabelAt(e.GetPosition(SliceViewport)))
+        {
+            e.Handled = true;
+            return;
+        }
+        ResetSliceView();
+    }
 
     /// <summary>Zoom by <paramref name="factor"/>, keeping the content under <paramref name="cursor"/> fixed.</summary>
     private void ZoomSliceToward(Point cursor, double factor)
@@ -122,6 +159,10 @@ public sealed partial class CubeViewerPage
         SliceTransform.ScaleY = _sliceZoom;
         SliceTransform.TranslateX = _slicePanX;
         SliceTransform.TranslateY = _slicePanY;
+
+        // The marks are pinned to voxels, so the zoom and the pan move them too. This is the one place
+        // both change.
+        RenderAnnotations();
     }
 
     /// <summary>Reset zoom/pan to the fit view (double-tap, and on every new cube).</summary>

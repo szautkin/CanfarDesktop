@@ -5,6 +5,8 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
 using Windows.UI;
+using CanfarDesktop.Helpers;
+using CanfarDesktop.Models;
 using CanfarDesktop.Services.CubeViewer;
 
 namespace CanfarDesktop.Views.CubeViewer;
@@ -42,6 +44,45 @@ public sealed partial class CubeExportPlate : UserControl
         public int VolNx, VolNy;
         public CubeMetadata? Meta;
         public bool CaptionsOn;
+
+        /// <summary>
+        /// The marks, and what the two views need to place them.
+        ///
+        /// <para>A cube figure is of one of two quite different things, and a mark lands differently on
+        /// each: the volume projects it through the export camera, while a slice is a flat picture of
+        /// one channel and shows only the marks that live on THAT channel. Both surfaces already exist
+        /// and both already answer <c>IAnnotationSurface</c>, so this carries the numbers they take
+        /// rather than any geometry of its own.</para>
+        /// </summary>
+        public IReadOnlyList<Annotation>? Marks;
+        public bool IsSlice;
+
+        /// <summary>
+        /// The voxel space the ANCHORS are in, which is not <see cref="VolNx"/>/<see cref="VolNy"/> —
+        /// those size the wireframe box, and the page already passes the two apart when it builds the
+        /// on-screen surfaces. Conflating them would put every mark in the wrong place on a cube whose
+        /// box aspect and voxel counts differ.
+        /// </summary>
+        public int AnchorNx, AnchorNy, AnchorNz;
+
+        /// <summary>Slice only: the channel the figure is of, and the dimensions it was rendered at.</summary>
+        public int Channel;
+        public int SliceDispNx, SliceDispNy;
+
+        /// <summary>
+        /// How much bigger this plate's picture is than the viewer on screen — what the marks are
+        /// drawn at. A stroke and a label are in device pixels deliberately, so on a frame twice the
+        /// size of the viewport they must be doubled or they are the one thing that did not grow.
+        ///
+        /// <para>Carried here rather than passed to <c>Populate</c> because the export dialog holds a
+        /// copy of this data and rasterises its own plates from it; a parameter would have to be
+        /// threaded through the dialog as a second, separately-maintained copy of the same number.</para>
+        ///
+        /// <para>Unlike the FITS plate, the resolution choice (2x/4x) is NOT applied here: the cube
+        /// dialog scales the whole plate at rasterisation, so the text and the marks grow together.
+        /// This is only the frame-to-viewport ratio.</para>
+        /// </summary>
+        public double InkScale;
     }
 
     /// <summary>User-tunable figure style (theme / font / text color / scale / annotations / transparency).</summary>
@@ -52,11 +93,13 @@ public sealed partial class CubeExportPlate : UserControl
         public string TextColor;   // "auto" | "white" | "black" | "cyan" | "amber"
         public double TextScale;   // 0.75 .. 1.5
         public bool Annotate;      // header + footer visible
+        public bool ShowMarks;     // the marks themselves
         public bool Transparent;   // no background fill
 
         public static PlateStyle Default => new()
         {
-            Dark = true, Font = "sans", TextColor = "auto", TextScale = 1.0, Annotate = true, Transparent = false,
+            Dark = true, Font = "sans", TextColor = "auto", TextScale = 1.0,
+            Annotate = true, ShowMarks = true, Transparent = false,
         };
     }
 
@@ -115,6 +158,8 @@ public sealed partial class CubeExportPlate : UserControl
 
         BuildMetaGrid(d, fam, smallF, main, dim);
 
+        BuildMarkOverlay(frameW, frameH, d, s);
+
         // ── Annotations toggle ──
         var ann = s.Annotate ? Visibility.Visible : Visibility.Collapsed;
         HeaderGrid.Visibility = ann;
@@ -122,6 +167,42 @@ public sealed partial class CubeExportPlate : UserControl
         DividerBot.Visibility = ann;
         FooterPanel.Visibility = ann;
         RootBorder.Padding = s.Annotate ? new Thickness(pad) : new Thickness(Math.Max(2, frameW * 0.004));
+    }
+
+    /// <summary>
+    /// The marks, drawn by the viewer's own renderer over whichever surface this figure is of.
+    ///
+    /// The same code as the screen, which is the point: a figure that drew its marks separately would
+    /// eventually disagree with the viewer about where one was, and the figure is the artefact that
+    /// outlives the session. A slice figure gets only the marks on its own channel for free —
+    /// <see cref="CubeSliceAnnotationSurface"/> already answers null for a mark on another one.
+    /// </summary>
+    private void BuildMarkOverlay(int frameW, int frameH, PlateData d, PlateStyle s)
+    {
+        MarkOverlay.Width = frameW;
+        MarkOverlay.Height = frameH;
+        MarkOverlay.EditingId = MarkOverlay.SelectedId = null;   // a figure has no selection
+
+        if (!s.ShowMarks || d.Marks is not { Count: > 0 })
+        {
+            MarkOverlay.Children.Clear();
+            return;
+        }
+
+        var ink = double.IsFinite(d.InkScale) && d.InkScale > 0 ? d.InkScale : 1.0;
+
+        IAnnotationSurface surface = d.IsSlice
+            ? new CubeSliceAnnotationSurface(
+                d.Channel,
+                Math.Max(1, d.AnchorNx), Math.Max(1, d.AnchorNy),
+                d.SliceDispNx, d.SliceDispNy,
+                frameW, frameH,
+                zoom: 1, panX: 0, panY: 0) { InkScale = ink }
+            : new CubeVolumeAnnotationSurface(
+                CubeProjector.Create(d.Az, d.El, d.Dist, d.SpectralScale, d.VolNx, d.VolNy, frameW, frameH),
+                Math.Max(1, d.AnchorNx), Math.Max(1, d.AnchorNy), Math.Max(1, d.AnchorNz)) { InkScale = ink };
+
+        MarkOverlay.Render(d.Marks, surface, frameW);
     }
 
     private void BuildCaptionOverlay(int frameW, int frameH, PlateData d, bool dark)

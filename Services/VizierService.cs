@@ -22,29 +22,79 @@ public class VizierService
     internal static readonly TimeSpan PerHostTimeout = TimeSpan.FromSeconds(20);
 
     /// <summary>
-    /// Ordered fallback list of VizieR TAP mirrors: primary CDS, CDS's legacy alias (different DNS
-    /// zone), ESAC (geographically distinct, separate operator), then the China-VO HTTP mirror
-    /// (last resort for when TLS itself is broken). All four mirror the same catalogue corpus.
+    /// Ordered fallback list of VizieR TAP mirrors: the canonical CDS host, its legacy alias, then the
+    /// China-VO HTTP mirror (last resort for when TLS itself is broken). All mirror the same corpus.
+    ///
+    /// <para>Two entries are gone. <c>tap.cds.unistra.fr</c> and <c>tapvizier.esac.esa.int</c> do not
+    /// resolve — checked, not assumed — and they were the FIRST and THIRD entries, so every cone
+    /// search opened by spending the per-host budget on two hosts that could not answer. The alias
+    /// that did work, <c>tapvizier.u-strasbg.fr</c>, is a CNAME to <c>tapvizier.cds.unistra.fr</c>,
+    /// which is the real host and now leads.</para>
+    ///
+    /// <para>This is the DEFAULT, not the list: it is a setting, because these hostnames have moved
+    /// before and a constant in the binary leaves nobody a way to route around the next move.</para>
     /// </summary>
-    public static readonly IReadOnlyList<VizierEndpoint> Endpoints = new[]
+    public static readonly IReadOnlyList<VizierEndpoint> DefaultEndpoints = new[]
     {
-        new VizierEndpoint("tap.cds.unistra.fr", "https://tap.cds.unistra.fr/tap/sync"),
+        new VizierEndpoint("tapvizier.cds.unistra.fr", "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync"),
         new VizierEndpoint("tapvizier.u-strasbg.fr", "https://tapvizier.u-strasbg.fr/TAPVizieR/tap/sync"),
-        new VizierEndpoint("tapvizier.esac.esa.int", "https://tapvizier.esac.esa.int/TAPVizieR/tap/sync"),
         new VizierEndpoint("vizier.china-vo.org", "http://vizier.china-vo.org/tap/sync"),
     };
 
     private readonly HttpClient _httpClient;
+    private readonly Func<IReadOnlyList<VizierEndpoint>>? _configuredEndpoints;
 
-    public VizierService(HttpClient httpClient) => _httpClient = httpClient;
+    public VizierService(HttpClient httpClient, Func<IReadOnlyList<VizierEndpoint>>? configuredEndpoints = null)
+    {
+        _httpClient = httpClient;
+        _configuredEndpoints = configuredEndpoints;
+    }
 
-    /// <summary>The canonical VizieR cone-search ADQL (byte-compatible with the macOS TAPClient).</summary>
+    /// <summary>The mirrors this search will try: the user's list when they have set one, else the default.</summary>
+    public IReadOnlyList<VizierEndpoint> Endpoints
+    {
+        get
+        {
+            var configured = _configuredEndpoints?.Invoke();
+            return configured is { Count: > 0 } ? configured : DefaultEndpoints;
+        }
+    }
+
+    /// <summary>
+    /// Parse a user-supplied mirror list: one URL per line, blank lines and <c>#</c> comments ignored.
+    /// The host is taken from the URL, so a caller states one thing rather than two that can disagree.
+    /// An unparseable line is dropped rather than failing the list — a typo in the fourth mirror should
+    /// not take out the first three.
+    /// </summary>
+    public static IReadOnlyList<VizierEndpoint> ParseEndpointList(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return [];
+
+        var list = new List<VizierEndpoint>();
+        foreach (var raw in text.ReplaceLineEndings("\n").Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#')) continue;
+            if (!Uri.TryCreate(line, UriKind.Absolute, out var uri)) continue;
+            if (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp) continue;
+            list.Add(new VizierEndpoint(uri.Host, line));
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// The canonical VizieR cone-search ADQL. With no <paramref name="columns"/> it is byte-compatible
+    /// with the macOS TAPClient (<c>SELECT TOP n *</c>); naming columns narrows the projection, which
+    /// is the difference between a usable answer and one nobody can hold — a Gaia DR3 cone is about
+    /// 230 columns a row, and 500 rows of that is ~760 KB.
+    /// </summary>
     public static string BuildAdql(
         string catalogue, double raDeg, double decDeg, double radiusDeg,
-        string raColumn, string decColumn, int maxRec)
+        string raColumn, string decColumn, int maxRec, IReadOnlyList<string>? columns = null)
     {
         var inv = CultureInfo.InvariantCulture;
-        return $"SELECT TOP {maxRec.ToString(inv)} *\n" +
+        var projection = FormatProjection(columns);
+        return $"SELECT TOP {maxRec.ToString(inv)} {projection}\n" +
                $"FROM \"{catalogue}\"\n" +
                "WHERE 1 = CONTAINS(\n" +
                $"    POINT('ICRS', {raColumn}, {decColumn}),\n" +
@@ -52,12 +102,31 @@ public class VizierService
                ")";
     }
 
+    /// <summary>
+    /// The SELECT list: <c>*</c> when no columns are named, else each column quoted so that VizieR's
+    /// own names — which carry <c>-</c>, <c>_</c> and mixed case, as in <c>e_RAJ2000</c> and
+    /// <c>Gmag</c> — survive as written. A name carrying a quote is dropped rather than escaped:
+    /// nothing in a VizieR column name needs one, so it is a caller error, not a value.
+    /// </summary>
+    private static string FormatProjection(IReadOnlyList<string>? columns)
+    {
+        if (columns is null || columns.Count == 0) return "*";
+
+        var names = columns
+            .Where(c => !string.IsNullOrWhiteSpace(c) && !c.Contains('"'))
+            .Select(c => $"\"{c.Trim()}\"")
+            .ToList();
+
+        return names.Count == 0 ? "*" : string.Join(", ", names);
+    }
+
     public virtual async Task<(IReadOnlyList<string> Headers, IReadOnlyList<IReadOnlyList<string>> Rows)> ConeSearchAsync(
         string catalogue, double raDeg, double decDeg, double radiusDeg,
         string raColumn = "RAJ2000", string decColumn = "DEJ2000", int maxRec = 500,
+        IReadOnlyList<string>? columns = null,
         CancellationToken cancellationToken = default)
     {
-        var adql = BuildAdql(catalogue, raDeg, decDeg, radiusDeg, raColumn, decColumn, maxRec);
+        var adql = BuildAdql(catalogue, raDeg, decDeg, radiusDeg, raColumn, decColumn, maxRec, columns);
 
         var attempts = new List<(string Host, string Error)>();
         foreach (var endpoint in Endpoints)
@@ -91,12 +160,17 @@ public class VizierService
 
     /// <summary>
     /// Predicate for "this error means THIS HOST is the problem, try the next one": any transport
-    /// failure (DNS, TLS, connection refused) or per-host timeout, and any 5xx. A 4xx is NOT — the
-    /// request is wrong and every mirror will tell us the same thing.
+    /// failure (DNS, TLS, connection refused) or per-host timeout, and every status except the two
+    /// that are definitively about the REQUEST.
+    ///
+    /// <para>Only 400 (the service read the query and refused it) and 403 (it refused the caller) mean
+    /// the next mirror would say the same thing. Everything else rotates — 404 above all, which was
+    /// stopping the chain even though it is the status that LEAST indicates a query problem: it means
+    /// the TAP path is not on that host, which is exactly what another mirror might fix.</para>
     /// </summary>
     internal static bool IsHostFailoverWorthy(Exception ex) => ex switch
     {
-        HttpRequestException h => h.StatusCode is null || (int)h.StatusCode >= 500,
+        HttpRequestException h => h.StatusCode is not (System.Net.HttpStatusCode.BadRequest or System.Net.HttpStatusCode.Forbidden),
         OperationCanceledException => true, // per-host timeout (caller cancellation never reaches here)
         IOException => true,
         _ => false,

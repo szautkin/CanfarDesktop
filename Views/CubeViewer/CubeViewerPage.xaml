@@ -2,9 +2,29 @@
 <UserControl
     x:Class="CanfarDesktop.Views.CubeViewer.CubeViewerPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CanfarDesktop.Views.Controls">
 
-    <Grid Background="#FF050810" RequestedTheme="Dark">
+    <Grid x:Name="PageRoot" Background="#FF050810" RequestedTheme="Dark">
+        <Grid.Resources>
+            <!--
+                A section header that collapses its section: the title, and a chevron saying which way
+                it will go next.
+
+                A Button, NOT a ToggleButton. A ToggleButton's checked state paints an accent bar behind
+                its content, and a visual-state setter beats any Background set here — so the open
+                section wore a solid highlight across the title. Which section is open is already said
+                by the section being visible; the title only needs to brighten.
+            -->
+            <Style x:Key="OverlaySectionHeaderStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="0,2" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            </Style>
+        </Grid.Resources>
+
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Space" Invoked="OnPlayPauseAccel" />
             <KeyboardAccelerator Key="Left" Invoked="OnChannelStepAccel" />
@@ -13,17 +33,32 @@
             <KeyboardAccelerator Key="Right" Modifiers="Shift" Invoked="OnChannelStepAccel" />
         </Grid.KeyboardAccelerators>
 
-        <!-- GPU volume render surface -->
-        <SwapChainPanel x:Name="RenderPanel"
-                        PointerPressed="OnPointerPressed"
-                        PointerMoved="OnPointerMoved"
-                        PointerReleased="OnPointerReleased"
-                        PointerWheelChanged="OnPointerWheelChanged"
-                        SizeChanged="OnPanelSizeChanged" />
+        <!-- The volume view, as ONE thing. The slice's layers live inside SliceViewport and so are
+             shown and hidden with it; the volume's used to be three siblings at this level, and
+             SetViewMode hid two of them — leaving VolumeAnnotationCanvas painting its marks over the
+             slice. Grouped, the mode switch has one visibility to set and cannot get it half-right. -->
+        <Grid x:Name="VolumeViewport">
+            <!-- GPU volume render surface -->
+            <SwapChainPanel x:Name="RenderPanel" x:Uid="Cube_VolumeCanvas"
+                            IsTabStop="True" UseSystemFocusVisuals="True"
+                            AutomationProperties.Name="Volume canvas"
+                            PointerPressed="OnPointerPressed"
+                            ContextRequested="OnMarkContextRequested"
+                            PointerMoved="OnPointerMoved"
+                            PointerReleased="OnPointerReleased"
+                            PointerCanceled="OnPointerReleased"
+                            PointerCaptureLost="OnPointerReleased"
+                            PointerWheelChanged="OnPointerWheelChanged"
+                            SizeChanged="OnPanelSizeChanged" />
 
-        <!-- Wireframe box + WCS axis captions, projected to match the GPU render.
-             Hit-test transparent so it never steals orbit/zoom input. -->
-        <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
+            <!-- Wireframe box + WCS axis captions, projected to match the GPU render.
+                 Hit-test transparent so it never steals orbit/zoom input. -->
+            <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
+
+            <!-- Marks in the volume. Above the wireframe: a mark inside the box would otherwise be lost
+                 behind an edge crossing it, and the box is chrome while the mark is the point. -->
+            <controls:AnnotationLayer x:Name="VolumeAnnotationCanvas" IsHitTestVisible="False" />
+        </Grid>
 
         <!-- Off-screen host: the export figure plate is parented here, laid out, and
              rasterized via RenderTargetBitmap, then removed. Children are positioned
@@ -34,11 +69,18 @@
              Click to probe the spectrum at a spaxel; wheel-zoom toward the cursor, drag to pan,
              double-tap to reset. Hovering shows a floating value + WCS readout chip. The viewport
              (not the Image) takes pointer input so the letterbox area still hit-tests, and it is
-             clipped so the zoomed slice never spills over the surrounding panels. -->
-        <Grid x:Name="SliceViewport" Visibility="Collapsed" Background="Transparent"
-              Margin="60,72,264,96"
+             clipped so the zoomed slice never spills over the surrounding panels.
+
+             The right inset clears the control column — its content width, its padding and its margin.
+             Short of that the slice runs UNDER the column, and a mark drawn near the right edge is
+             hidden behind the very controls that drew it. -->
+        <Grid x:Name="SliceViewport" x:Uid="Cube_SliceCanvas" Visibility="Collapsed" Background="Transparent"
+              IsTabStop="True" UseSystemFocusVisuals="True"
+              AutomationProperties.Name="Slice canvas"
+              Margin="60,72,320,96"
               SizeChanged="OnSliceViewportSizeChanged"
               PointerPressed="OnSlicePointerPressed"
+              ContextRequested="OnMarkContextRequested"
               PointerMoved="OnSlicePointerMoved"
               PointerReleased="OnSlicePointerReleased"
               PointerExited="OnSlicePointerExited"
@@ -49,6 +91,10 @@
                     <CompositeTransform x:Name="SliceTransform" />
                 </Image.RenderTransform>
             </Image>
+            <!-- Marks on this channel's slice. Inside the viewport, so it shares the coordinate
+                 space the pointer handlers already work in. -->
+            <controls:AnnotationLayer x:Name="SliceAnnotationCanvas" IsHitTestVisible="False" />
+
             <!-- Floating cursor readout (sky + spectral + value), positioned near the pointer -->
             <Canvas IsHitTestVisible="False">
                 <Border x:Name="CursorChip" Visibility="Collapsed"
@@ -84,6 +130,41 @@
                               MinWidth="84" Click="OnVolumeModeClick" />
                 <ToggleButton x:Name="SliceModeButton" x:Uid="Cube_SliceModeButton" Content="Slice"
                               MinWidth="84" Click="OnSliceModeClick" />
+
+                <!-- Marks. ONE labelled control, and it opens the panel where everything about
+                     marks lives — the pencil, the shape, the style and the list. Two unlabelled
+                     icons here were the whole feature's only entry point, and a picture of a pencil
+                     beside a picture of a chevron does not tell anybody that this image can be
+                     annotated, let alone how to name one.
+
+                     Drawing itself happens on the SLICE: placing a mark in a perspective view means
+                     guessing a depth from a flat press, while a slice already has its channel. -->
+                <AppBarSeparator Margin="4,0" />
+                <ToggleButton x:Name="MarksPanelToggle" Click="OnToggleMarksPanel" MinWidth="84"
+                              x:Uid="Cube_MarksPanelToggle"
+                              ToolTipService.ToolTip="Marks: draw, style and list"
+                              AutomationProperties.Name="Marks">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                        <TextBlock x:Uid="Cube_MarksPanelToggleLabel" Text="Marks" />
+                    </StackPanel>
+                </ToggleButton>
+
+                <!-- Get the picture back. The panels float OVER the render, so on a small window
+                     they cover most of the cube. Checked means shown, so the control reads the same
+                     way round as the two beside it. The mode buttons and the channel scrubber stay:
+                     one is how you get the panels back, and the other is the thing you are looking
+                     at the cube to move. -->
+                <AppBarSeparator Margin="4,0" />
+                <ToggleButton x:Name="PanelsToggle" x:Uid="Cube_PanelsToggle" IsChecked="True"
+                              MinWidth="84" Click="OnTogglePanels"
+                              ToolTipService.ToolTip="Show or hide the side panels"
+                              AutomationProperties.Name="Panels">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon x:Name="PanelsToggleIcon" Glyph="&#xE7B3;" FontSize="14" />
+                        <TextBlock x:Uid="Cube_PanelsToggleLabel" Text="Panels" />
+                    </StackPanel>
+                </ToggleButton>
             </StackPanel>
         </Border>
 
@@ -97,7 +178,7 @@
                    Style="{StaticResource BodyTextBlockStyle}" />
 
         <!-- Title / status -->
-        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top"
+        <StackPanel x:Name="TitlePanel" HorizontalAlignment="Left" VerticalAlignment="Top"
                     Margin="20" Spacing="2" IsHitTestVisible="False">
             <TextBlock x:Uid="Cube_Title" Text="Cube Viewer" FontWeight="Bold"
                        Foreground="#FFF0F0F0"
@@ -180,19 +261,58 @@
             </StackPanel>
         </Border>
 
-        <!-- Control panel -->
-        <Border HorizontalAlignment="Right" VerticalAlignment="Top"
-                Margin="20" Padding="16,14" CornerRadius="8"
+        <!-- Naming a mark, over the mark itself. An ordinary control rather than a flyout: a flyout
+             dismisses when the pointer returns to the image, commits on close so Escape saves, and has
+             nowhere to put a bin.
+
+             Parented to the page rather than to a view, because BOTH views name marks and the slice is
+             Collapsed while the volume is showing. Its position is translated from whichever view was
+             pressed — see BeginLabelEdit. -->
+        <controls:MarkLabelEditor x:Name="MarkEditorField" Visibility="Collapsed" />
+
+        <!--
+            The control column. ONE column on the right, holding every panel that is not the image.
+
+            It used to be top-aligned and unbounded, which meant the ScrollViewer inside it could never
+            scroll — it was handed infinite height, so in Volume mode the panel simply ran off the
+            bottom of the window and the opacity curve was unreachable.
+
+            The bound comes from the layout, not from code. An invisible host stretches between the mode
+            toggle and the scrubber; the card inside is top-aligned, so it is MEASURED against the
+            host's height but ARRANGED only as tall as its content. Short content is a short card;
+            long content stops at the host and scrolls. Computing a MaxHeight in a SizeChanged handler
+            did the same job on paper and collapsed the whole page in practice — writing a layout
+            property from a layout event re-triggers the pass that raised it.
+
+            Panels stack here as SECTIONS rather than floating separately. Two floating panels on the
+            same edge overlap, and no amount of careful margins survives the next window size; sections
+            in one column cannot overlap at all. Display is the permanent resident and comes first;
+            anything transient stacks underneath it, so nothing a person is using moves when something
+            else opens.
+        -->
+        <Grid x:Name="ControlColumnBounds" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+              Margin="20,64,20,96">
+        <Border x:Name="ControlColumn" VerticalAlignment="Top"
+                Padding="16,14" CornerRadius="8"
                 Background="#C0101622" BorderBrush="#40FFFFFF" BorderThickness="1">
             <ScrollViewer x:Name="ControlScroll" VerticalScrollBarVisibility="Auto"
                           VerticalScrollMode="Auto" HorizontalScrollMode="Disabled">
-            <StackPanel Spacing="12" Width="228">
+            <StackPanel Spacing="12" Width="264">
 
                 <!-- ── DISPLAY ── -->
-                <TextBlock x:Uid="Cube_DisplayHeader" Text="DISPLAY" FontWeight="SemiBold"
-                           Foreground="#90BFD8FF"
-                           Style="{StaticResource CaptionTextBlockStyle}" />
+                <Button x:Name="DisplayHeader" x:Uid="Cube_DisplaySection" Click="OnToggleDisplaySection"
+                              Style="{StaticResource OverlaySectionHeaderStyle}"
+                              AutomationProperties.Name="Display controls">
+                    <Grid>
+                        <TextBlock x:Name="DisplayTitle" x:Uid="Cube_DisplayHeader" Text="DISPLAY" FontWeight="SemiBold"
+                                   Foreground="#90BFD8FF" HorizontalAlignment="Left"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                        <FontIcon x:Name="DisplayChevron" Glyph="&#xE70D;" FontSize="10"
+                                  Foreground="#90BFD8FF" HorizontalAlignment="Right" />
+                    </Grid>
+                </Button>
 
+                <StackPanel x:Name="DisplaySection" Spacing="12">
                 <StackPanel Spacing="2">
                     <Grid>
                         <TextBlock x:Uid="Cube_WindowLabel" Text="Window" Foreground="#FFE0E0E0" HorizontalAlignment="Left"
@@ -202,18 +322,18 @@
                             <Button Content="99%" Padding="6,1" FontSize="11" Click="OnWindowP99" />
                         </StackPanel>
                     </Grid>
-                    <Slider x:Name="WindowLoSlider" Minimum="0" Maximum="1"
+                    <Slider x:Name="WindowLoSlider" x:Uid="Cube_WindowLoSlider" Minimum="0" Maximum="1"
                             StepFrequency="0.005" Value="0"
                             ValueChanged="OnWindowLoChanged" />
-                    <Slider x:Name="WindowHiSlider" Minimum="0" Maximum="1"
+                    <Slider x:Name="WindowHiSlider" x:Uid="Cube_WindowHiSlider" Minimum="0" Maximum="1"
                             StepFrequency="0.005" Value="1"
                             ValueChanged="OnWindowHiChanged" />
                 </StackPanel>
 
                 <StackPanel Spacing="2">
-                    <TextBlock x:Uid="Cube_StretchLabel" Text="Stretch" Foreground="#FFE0E0E0"
+                    <TextBlock x:Name="StretchCaption" x:Uid="Cube_StretchLabel" Text="Stretch" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
-                    <ComboBox x:Name="StretchCombo" HorizontalAlignment="Stretch"
+                    <ComboBox x:Name="StretchCombo" AutomationProperties.LabeledBy="{x:Bind StretchCaption}" HorizontalAlignment="Stretch"
                               SelectionChanged="OnStretchChanged">
                         <ComboBoxItem x:Uid="Cube_StretchLinear" Content="Linear" Tag="Linear" IsSelected="True" />
                         <ComboBoxItem x:Uid="Cube_StretchLog" Content="Log" Tag="Log" />
@@ -224,9 +344,9 @@
                 </StackPanel>
 
                 <StackPanel Spacing="2">
-                    <TextBlock x:Uid="Cube_ColormapLabel" Text="Colormap" Foreground="#FFE0E0E0"
+                    <TextBlock x:Name="ColormapCaption" x:Uid="Cube_ColormapLabel" Text="Colormap" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
-                    <ComboBox x:Name="ColormapCombo" HorizontalAlignment="Stretch"
+                    <ComboBox x:Name="ColormapCombo" AutomationProperties.LabeledBy="{x:Bind ColormapCaption}" HorizontalAlignment="Stretch"
                               SelectionChanged="OnColormapChanged" />
                     <!-- Live colorbar: active colormap across the window range -->
                     <Rectangle x:Name="ColorbarRect"
@@ -243,9 +363,9 @@
                 </StackPanel>
 
                 <StackPanel Spacing="2">
-                    <TextBlock x:Uid="Cube_BackgroundLabel" Text="Background" Foreground="#FFE0E0E0"
+                    <TextBlock x:Name="BackgroundCaption" x:Uid="Cube_BackgroundLabel" Text="Background" Foreground="#FFE0E0E0"
                                Style="{StaticResource CaptionTextBlockStyle}" />
-                    <ComboBox x:Name="BackgroundCombo" HorizontalAlignment="Stretch"
+                    <ComboBox x:Name="BackgroundCombo" AutomationProperties.LabeledBy="{x:Bind BackgroundCaption}" HorizontalAlignment="Stretch"
                               SelectionChanged="OnBackgroundChanged">
                         <ComboBoxItem x:Uid="Cube_BgDark" Content="Dark" IsSelected="True" />
                         <ComboBoxItem x:Uid="Cube_BgBlack" Content="Black" />
@@ -260,9 +380,9 @@
                                Style="{StaticResource CaptionTextBlockStyle}" />
 
                     <StackPanel Spacing="2">
-                        <TextBlock x:Uid="Cube_RenderModeLabel" Text="Render mode" Foreground="#FFE0E0E0"
+                        <TextBlock x:Name="RenderModeCaption" x:Uid="Cube_RenderModeLabel" Text="Render mode" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
-                        <ComboBox x:Name="RenderModeCombo" HorizontalAlignment="Stretch"
+                        <ComboBox x:Name="RenderModeCombo" AutomationProperties.LabeledBy="{x:Bind RenderModeCaption}" HorizontalAlignment="Stretch"
                                   SelectionChanged="OnRenderModeChanged">
                             <ComboBoxItem x:Uid="Cube_RenderEmission" Content="Emission" IsSelected="True" />
                             <ComboBoxItem x:Uid="Cube_RenderMip" Content="Max-Intensity" />
@@ -270,25 +390,25 @@
                     </StackPanel>
 
                     <StackPanel Spacing="2">
-                        <TextBlock x:Uid="Cube_DensityLabel" Text="Density" Foreground="#FFE0E0E0"
+                        <TextBlock x:Name="DensityCaption" x:Uid="Cube_DensityLabel" Text="Density" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
-                        <Slider x:Name="DensitySlider" Minimum="0.1" Maximum="3.0"
+                        <Slider x:Name="DensitySlider" AutomationProperties.LabeledBy="{x:Bind DensityCaption}" Minimum="0.1" Maximum="3.0"
                                 StepFrequency="0.05" Value="1.0"
                                 ValueChanged="OnDensityChanged" />
                     </StackPanel>
 
                     <StackPanel Spacing="2">
-                        <TextBlock x:Uid="Cube_SpectralLabel" Text="Spectral scale" Foreground="#FFE0E0E0"
+                        <TextBlock x:Name="SpectralCaption" x:Uid="Cube_SpectralLabel" Text="Spectral scale" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
-                        <Slider x:Name="SpectralSlider" Minimum="0.5" Maximum="4.0"
+                        <Slider x:Name="SpectralSlider" AutomationProperties.LabeledBy="{x:Bind SpectralCaption}" Minimum="0.5" Maximum="4.0"
                                 StepFrequency="0.05" Value="1.5"
                                 ValueChanged="OnSpectralChanged" />
                     </StackPanel>
 
                     <StackPanel Spacing="2">
-                        <TextBlock x:Uid="Cube_StepsLabel" Text="Quality (steps)" Foreground="#FFE0E0E0"
+                        <TextBlock x:Name="StepsCaption" x:Uid="Cube_StepsLabel" Text="Quality (steps)" Foreground="#FFE0E0E0"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
-                        <Slider x:Name="StepsSlider" Minimum="96" Maximum="768"
+                        <Slider x:Name="StepsSlider" AutomationProperties.LabeledBy="{x:Bind StepsCaption}" Minimum="96" Maximum="768"
                                 StepFrequency="16" Value="384"
                                 ValueChanged="OnStepsChanged" />
                     </StackPanel>
@@ -333,9 +453,26 @@
 
                 <Button x:Name="ExportButton" x:Uid="Cube_ExportButton" Content="Export figure…" HorizontalAlignment="Stretch"
                         Click="OnExportClick" />
+                </StackPanel>
+
+                <!-- ── MARKS ── Collapsed until asked for, by its own header or the toolbar button. -->
+                <Button x:Name="MarksHeader" x:Uid="Cube_MarksSection" Click="OnToggleMarksSection"
+                              Style="{StaticResource OverlaySectionHeaderStyle}"
+                              AutomationProperties.Name="Marks">
+                    <Grid>
+                        <TextBlock x:Name="MarksTitle" x:Uid="Cube_MarksHeader" Text="MARKS" FontWeight="SemiBold"
+                                   Foreground="#90BFD8FF" HorizontalAlignment="Left"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                        <FontIcon x:Name="MarksChevron" Glyph="&#xE70E;" FontSize="10"
+                                  Foreground="#90BFD8FF" HorizontalAlignment="Right" />
+                    </Grid>
+                </Button>
+
+                <controls:MarksPanel x:Name="MarksPanelControl" Visibility="Collapsed" />
             </StackPanel>
             </ScrollViewer>
         </Border>
+        </Grid>
 
         <!-- Cube load progress (bottom-center): stepped indicator + progress bar -->
         <Border x:Name="LoadingPanel" Visibility="Collapsed" IsHitTestVisible="False"
@@ -403,7 +540,7 @@
                 <StackPanel VerticalAlignment="Center">
                     <!-- Cube-mean per-channel waveform backdrop (the macOS ChannelScrubber) -->
                     <Canvas x:Name="WaveformCanvas" Width="340" Height="20" IsHitTestVisible="False" />
-                    <Slider x:Name="ChannelSlider" Width="340" Minimum="0" Maximum="0"
+                    <Slider x:Name="ChannelSlider" x:Uid="Cube_ChannelSlider" Width="340" Minimum="0" Maximum="0"
                             StepFrequency="1" ValueChanged="OnChannelChanged" VerticalAlignment="Center" />
                 </StackPanel>
                 <TextBlock x:Name="ChannelLabel" VerticalAlignment="Center" MinWidth="180"

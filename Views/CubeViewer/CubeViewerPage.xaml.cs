@@ -58,6 +58,17 @@ public sealed partial class CubeViewerPage : UserControl
     private CubeColormap _currentColormap = CubeColormap.Inferno;
     private string _cubeName = "";
     private string? _cubePath; // source file, for native-resolution slice export
+
+    /// <summary>
+    /// The file this tab was loaded from, or null when nothing is loaded.
+    ///
+    /// A REAL path, because a listing that shows the display name gives an agent something it cannot
+    /// reopen — the one thing a list of open files is for.
+    /// </summary>
+    public string? CubePath => _cubePath;
+
+    /// <summary>The tab's display name — the cube's object or file name.</summary>
+    public string CubeName => _cubeName;
     private NativeSliceSource? _nativeSource; // persistent native-plane reader (plain FITS); null otherwise
     private VolumeData? _volume; // kept for the 2D slice view + spectrum probe
 
@@ -67,6 +78,13 @@ public sealed partial class CubeViewerPage : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+
+        // A parked panel has to STAY parked when its size changes under it: the scrubber is collapsed
+        // in volume mode and has no width to measure until it comes back, and the control column grows
+        // and shrinks with the window. Re-measuring on size is what keeps a panel against its edge
+        // rather than half-way across the picture.
+        foreach (var panel in new FrameworkElement[] { TitlePanel, InfoPanel, ControlColumnBounds, SliceBar })
+            panel.SizeChanged += (_, _) => { if (!PanelsVisible) ApplyPanelSlide(animate: false); };
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -82,6 +100,7 @@ public sealed partial class CubeViewerPage : UserControl
             {
                 var (rw, rh) = PhysicalSize();
                 _renderer.Resize(rw, rh);
+                MarkRenderDirty();
             }
             HookRendering();
             return;
@@ -126,6 +145,7 @@ public sealed partial class CubeViewerPage : UserControl
         if (!_initialized || _closed) return;
         var (w, h) = PhysicalSize();
         _renderer.Resize(w, h);
+        MarkRenderDirty();
     }
 
     private string? _pendingCubePath; // a cube requested before the renderer finished initializing
@@ -192,6 +212,7 @@ public sealed partial class CubeViewerPage : UserControl
         float[]? channelProfile = null)
     {
         _renderer.SetVolume(volume);
+        MarkRenderDirty();
         _meta = volume.Meta;
         _volume = volume;
         _cubeName = volume.Name;
@@ -238,6 +259,71 @@ public sealed partial class CubeViewerPage : UserControl
         InfoNan.Text = meta.NanText;
         InfoMode.Text = meta.ModeText;
         InfoPanel.Visibility = Visibility.Visible;
+        ApplyPanelSlide(animate: false);
+    }
+
+    /// <summary>Whether the floating panels are parked. They cover the picture on a small window.</summary>
+    internal bool PanelsVisible { get; private set; } = true;
+
+    private void OnTogglePanels(object sender, RoutedEventArgs e)
+        => SetPanelsVisible(PanelsToggle.IsChecked == true);
+
+    /// <summary>
+    /// Park the floating panels against their nearest edge, or bring them back.
+    ///
+    /// The mode buttons stay put: they are how the panels come back.
+    /// </summary>
+    internal void SetPanelsVisible(bool visible)
+    {
+        PanelsVisible = visible;
+        if (PanelsToggle.IsChecked != visible) PanelsToggle.IsChecked = visible;
+        PanelsToggleIcon.Glyph = visible ? "" : "";
+        ApplyPanelSlide(animate: true);
+    }
+
+    /// <summary>
+    /// Move each panel to its own nearest edge, leaving a sliver showing.
+    ///
+    /// <para>Moved rather than hidden, and that is the point of doing it this way. Visibility here
+    /// already belongs to other rules — the info panel is empty for a cube with no metadata, the
+    /// scrubber is pointless for a cube with one channel — and a second opinion about it would fight
+    /// them. A transform cannot: a panel those rules have hidden simply slides while invisible.</para>
+    ///
+    /// <para>Each goes to the edge it is already against, so nothing crosses the picture on its way
+    /// out: the title and the info panel leave to the left, the controls to the right, the scrubber
+    /// downwards.</para>
+    /// </summary>
+    private void ApplyPanelSlide(bool animate)
+    {
+        var parked = !PanelsVisible;
+
+        Park(TitlePanel, -1, 0, parked, animate);
+        Park(InfoPanel, -1, 0, parked, animate);
+        Park(ControlColumnBounds, 1, 0, parked, animate);
+        Park(SliceBar, 0, 1, parked, animate);
+    }
+
+    /// <summary>
+    /// Send one panel towards (dirX, dirY) — each either -1, 0 or 1 — or bring it home.
+    ///
+    /// The distance is measured from the panel's own size and its own margin, so a panel that is wider
+    /// on one cube than another still ends up against the edge rather than short of it or past it.
+    /// </summary>
+    private static void Park(FrameworkElement? panel, int dirX, int dirY, bool parked, bool animate)
+    {
+        if (panel is null) return;
+
+        if (!parked)
+        {
+            Controls.SlideTo.Offset(panel, 0, 0, animate);
+            return;
+        }
+
+        var margin = panel.Margin;
+        var x = dirX * Helpers.PanelSlide.Offset(panel.ActualWidth, dirX < 0 ? margin.Left : margin.Right);
+        var y = dirY * Helpers.PanelSlide.Offset(panel.ActualHeight, dirY < 0 ? margin.Top : margin.Bottom);
+
+        Controls.SlideTo.Offset(panel, x, y, animate);
     }
 
     private void HookRendering()
@@ -265,9 +351,50 @@ public sealed partial class CubeViewerPage : UserControl
 
         ViewModel.AdvanceAutoOrbit();
         PushRenderState();
+
+        // Only when the picture would differ. This tick fires ~60 times a second and used to ray
+        // march the volume every single time — hundreds of steps per pixel — whether or not anything
+        // had changed. A cube sitting still on screen held the UI thread hard enough that queued
+        // work waited behind it: navigate_to timed out at thirty seconds with the cube merely OPEN,
+        // not doing anything.
+        var state = CurrentRenderState();
+        if (!_renderDirty && _lastRenderState == state) return;
+
+        _renderDirty = false;
+        _lastRenderState = state;
+
         _renderer.Render();
         UpdateOverlay();
     }
+
+    /// <summary>
+    /// Everything that changes the picture but does not arrive through <see cref="PushRenderState"/>
+    /// — a new volume, colormap, background, transfer curve, or a resize.
+    ///
+    /// A flag rather than more snapshot fields because these are not values to compare; the caller
+    /// knows it changed something and says so.
+    /// </summary>
+    private bool _renderDirty = true;
+
+    private RenderState? _lastRenderState;
+
+    private void MarkRenderDirty() => _renderDirty = true;
+
+    /// <summary>
+    /// The renderer's whole visible input, as one comparable value.
+    ///
+    /// A record struct on purpose: adding a field to <see cref="PushRenderState"/> and forgetting it
+    /// here would freeze the view on that setting, so the two lists are meant to be read together.
+    /// </summary>
+    private readonly record struct RenderState(
+        double Azimuth, double Elevation, double Distance,
+        double WindowLo, double WindowHi, double Density, double SpectralScale,
+        float Steps, int Stretch, bool Mip, bool Interacting);
+
+    private RenderState CurrentRenderState() => new(
+        ViewModel.CameraAzimuth, ViewModel.CameraElevation, ViewModel.CameraDistance,
+        ViewModel.WindowLo, ViewModel.WindowHi, ViewModel.Density, ViewModel.SpectralScale,
+        ViewModel.VolumeSteps, ViewModel.StretchIndex, ViewModel.Mip, _isDragging);
 
     /// <summary>Push the current view-model state into the renderer (camera + render params).</summary>
     private void PushRenderState()
@@ -341,6 +468,10 @@ public sealed partial class CubeViewerPage : UserControl
     /// <summary>Recompute the projected box + captions for the current camera and lay them out.</summary>
     private void UpdateOverlay()
     {
+        // Marks first, and outside the _overlayBuilt guard: the wireframe can be switched off, and the
+        // marks are not chrome — they should not disappear with it.
+        RenderAnnotations();
+
         if (!_overlayBuilt) return;
         double w = RenderPanel.ActualWidth, h = RenderPanel.ActualHeight;
 
@@ -443,11 +574,16 @@ public sealed partial class CubeViewerPage : UserControl
 
     private void OnPanelSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        // Keep the control panel scrollable within the viewport (independent of GPU init).
-        ControlScroll.MaxHeight = Math.Max(200, e.NewSize.Height - 56);
+        // The control column bounds itself, in the layout — see ControlColumnBounds in the XAML.
+        //
+        // This used to set ControlScroll.MaxHeight from the render panel's own size, which coupled the
+        // two in a circle: collapsing a section changed the column's height, that re-laid out the page,
+        // the render panel's SizeChanged fired, and it wrote a height back into the column. The visible
+        // result was the volume viewport collapsing when the panels were collapsed.
         if (!_initialized || _closed) return;
         var (w, h) = PhysicalSize();
         _renderer.Resize(w, h);
+        MarkRenderDirty();
     }
 
 
@@ -457,6 +593,16 @@ public sealed partial class CubeViewerPage : UserControl
     {
         var pt = e.GetCurrentPoint(RenderPanel);
         if (!pt.Properties.IsLeftButtonPressed) return;
+
+        // The marks are offered the press first, exactly as the slice offers it — a press that takes
+        // hold of a mark and also starts an orbit swings the cube out from under the mark being moved.
+        if (TryBeginAnnotationGesture(pt.Position))
+        {
+            RenderPanel.CapturePointer(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         _isDragging = true;
         _lastPointer = pt.Position;
         RenderPanel.CapturePointer(e.Pointer);
@@ -467,8 +613,22 @@ public sealed partial class CubeViewerPage : UserControl
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (ContinueAnnotationGesture(e.GetCurrentPoint(RenderPanel).Position))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        var point = e.GetCurrentPoint(RenderPanel);
+
+        // A drag needs its button. Orbiting purely on "a drag started once" meant that if the release
+        // was ever missed — the capture taken by something else, the button let go off-window — every
+        // later movement of the mouse kept turning the cube, with nothing holding it. Ending the drag
+        // here makes a missed release heal itself on the next move instead of sticking.
+        if (_isDragging && !point.Properties.IsLeftButtonPressed) EndOrbit(e.Pointer);
+
         if (!_isDragging) return;
-        var pos = e.GetCurrentPoint(RenderPanel).Position;
+        var pos = point.Position;
         float dx = (float)(pos.X - _lastPointer.X);
         float dy = (float)(pos.Y - _lastPointer.Y);
         _lastPointer = pos;
@@ -478,10 +638,29 @@ public sealed partial class CubeViewerPage : UserControl
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (EndAnnotationGesture())
+        {
+            RenderPanel.ReleasePointerCapture(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         if (!_isDragging) return;
-        _isDragging = false;
-        RenderPanel.ReleasePointerCapture(e.Pointer);
+        EndOrbit(e.Pointer);
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// Stop orbiting and let the pointer go.
+    ///
+    /// One place, because a drag can end in more ways than a button coming up: the capture can be
+    /// taken, the gesture cancelled, or the button released somewhere this panel never hears about.
+    /// All of them arrive here.
+    /// </summary>
+    private void EndOrbit(Pointer pointer)
+    {
+        _isDragging = false;
+        RenderPanel.ReleasePointerCapture(pointer);
     }
 
     private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
@@ -530,6 +709,7 @@ public sealed partial class CubeViewerPage : UserControl
         ViewModel.Colormap = _currentColormap;
         var lut = CubeColormaps.Build(_currentColormap);
         _renderer.SetColormap(lut);
+        MarkRenderDirty();
         UpdateColorbar(lut);
         RefreshSliceIfActive();
     }
@@ -625,6 +805,7 @@ public sealed partial class CubeViewerPage : UserControl
             case 2: _renderer.SetBackground(0.96f, 0.96f, 0.96f); break;   // Light
             default: _renderer.SetBackground(0.02f, 0.03f, 0.06f); break;  // Dark
         }
+        MarkRenderDirty();
     }
 
     private void OnAutoOrbitToggled(object sender, RoutedEventArgs e)

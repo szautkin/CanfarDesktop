@@ -209,9 +209,46 @@ public sealed partial class NotebookTabHost : UserControl
                 ClipText(text, McpNotebookTextCap), text.Length > McpNotebookTextCap,
                 o.IsError, o.ErrorType, // the exception type only ("ValueError"); the message is in the traceback
                 ClipText(tb, McpNotebookTextCap), tb.Length > McpNotebookTextCap,
-                o.HasImage, o.HasHtml));
+                o.HasImage, o.HasHtml, o.RichTypes));
         }
         return new NotebookCellOutputs(index, "code", code.ExecutionCount, outs);
+    }
+
+
+    /// <summary>
+    /// One cell's figure as bytes, for <c>get_cell_image</c>. Null-ish outcomes carry a reason: an agent
+    /// asking for a picture that is not there needs to know whether the cell has not run, produced text,
+    /// or does not exist.
+    /// </summary>
+    public NotebookCellImage GetCellImage(int index, string? selector = null)
+    {
+        var vm = ResolveTarget(selector);
+        if (vm is null) return NotebookCellImage.None("no notebook is open");
+        if (index < 0 || index >= vm.Cells.Count)
+            return NotebookCellImage.None($"this notebook has cells 0-{vm.Cells.Count - 1}; there is no cell {index}");
+
+        if (vm.Cells[index] is not CodeCellViewModel code)
+            return NotebookCellImage.None($"cell {index} is a {vm.Cells[index].CellType} cell, which produces no output");
+
+        // The LAST image the cell produced: a cell that plots in a loop ends with the one on screen, and
+        // that is the one someone asking about "the figure" means.
+        var output = code.Outputs.LastOrDefault(o => o.HasImage);
+        if (output is null)
+        {
+            var ran = code.ExecutionCount is > 0;
+            return NotebookCellImage.None(ran
+                ? $"cell {index} ran but produced no image"
+                : $"cell {index} has not been run yet");
+        }
+
+        try
+        {
+            return new NotebookCellImage(Convert.FromBase64String(output.ImageBase64.Trim()), "image/png", index);
+        }
+        catch (FormatException)
+        {
+            return NotebookCellImage.None($"cell {index}'s image could not be decoded");
+        }
     }
 
     /// <summary>A notebook's kernel status (active by default, or <paramref name="selector"/>), or a
@@ -269,7 +306,10 @@ public sealed partial class NotebookTabHost : UserControl
             cells.Add(new NotebookCellInfo(i, c.CellType, ClipText(src, McpNotebookTextCap), src.Length > McpNotebookTextCap, exec, outs));
         }
         return new NotebookState(
-            Loaded: true, NotebookId: vm.NotebookId, Title: vm.Title, FilePath: vm.FilePath, FileMode: vm.FileMode.ToString(),
+            // The kind an agent sees comes from the format, not a second reading of the extension — the
+            // Linux build kept a separate copy of that mapping and it drifted within a day, reporting a
+            // file as unsupported while the editor opened it happily.
+            Loaded: true, NotebookId: vm.NotebookId, Title: vm.Title, FilePath: vm.FilePath, FileMode: vm.Format.Kind(),
             IsDirty: vm.IsDirty, KernelState: vm.KernelState.ToString(), KernelName: vm.KernelDisplayName,
             SelectedIndex: vm.SelectedCellIndex, CellCount: vm.Cells.Count, Cells: cells);
     }
@@ -429,7 +469,9 @@ public sealed partial class NotebookTabHost : UserControl
 
             var picker = new Windows.Storage.Pickers.FileOpenPicker();
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
-            picker.FileTypeFilter.Add(".ipynb");
+            // Every format the loader takes, from the one list, so the dialog cannot offer less.
+            foreach (var extension in NotebookFormats.OpenableExtensions)
+                picker.FileTypeFilter.Add(extension);
             picker.FileTypeFilter.Add("*");
 
             var file = await picker.PickSingleFileAsync();
@@ -456,15 +498,21 @@ public sealed partial class NotebookTabHost : UserControl
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
 
             // File type matches the source format
-            switch (ActiveVM.FileMode)
+            // The file's own format first, then the others — Save As is also how a script becomes a
+            // notebook, so every format it can write is offered rather than only the one it came from.
+            switch (ActiveVM.Format)
             {
-                case NotebookFileMode.PythonScript:
+                case Helpers.Notebook.NotebookFormat.PercentPython:
                     picker.SuggestedFileName = ActiveVM.Title;
                     picker.FileTypeChoices.Add(Helpers.Loc.T("Nb_FileTypePython"), [".py"]);
                     break;
-                case NotebookFileMode.Markdown:
+                case Helpers.Notebook.NotebookFormat.Markdown:
                     picker.SuggestedFileName = ActiveVM.Title;
                     picker.FileTypeChoices.Add(Helpers.Loc.T("Nb_FileTypeMarkdown"), [".md"]);
+                    break;
+                case Helpers.Notebook.NotebookFormat.PlainText:
+                    picker.SuggestedFileName = ActiveVM.Title;
+                    picker.FileTypeChoices.Add(Helpers.Loc.T("Nb_FileTypeText"), [".txt"]);
                     break;
                 default:
                     picker.SuggestedFileName = ActiveVM.Title.Replace(".ipynb", "") + ".ipynb";

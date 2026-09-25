@@ -313,6 +313,9 @@ public partial class SessionLaunchViewModel : ObservableObject
         LaunchStatus = "Requesting session...";
         HasError = false;
 
+        // Registered so the launch survives this form. The dialog can be closed the moment the request
+        // is away, and the status bar is then the only thing that can say whether it worked.
+        using var task = TaskRegistry.Begin(TaskKind.Launch, $"Launch {SelectedType} {SessionName}");
         try
         {
             var launchParams = new SessionLaunchParams
@@ -352,15 +355,21 @@ public partial class SessionLaunchViewModel : ObservableObject
                 GenerateSessionName();
 
                 _recentLaunchService.Save(recentLaunch);
+                task.Succeed(sessionId);
             }
             else
             {
                 LaunchStatus = "Failed to launch session.";
                 HasError = true;
+
+                // No id and no exception: the service declined without saying why, which is exactly the
+                // outcome that used to leave nothing behind at all.
+                task.Fail("the service did not return a session id");
             }
         }
         catch (Exception ex)
         {
+            task.Fail(ex.Message);
             ErrorMessage = ex.Message;
             LaunchStatus = "Launch failed.";
             HasError = true;

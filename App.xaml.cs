@@ -38,6 +38,29 @@ public partial class App : Application
         }
         catch { /* defaults remain */ }
 
+        // The agent cues follow the Settings switch. Asked PER CUE rather than read once, so turning
+        // them off takes effect on the next one instead of on the next launch.
+        Helpers.AgentSounds.IsEnabled = () =>
+        {
+            try { return Services.GetRequiredService<ISettingsService>().AgentSounds; }
+            catch { return true; }
+        };
+
+        // The status bar's wording, through the same hook-rather-than-reference route as the guide
+        // catalog below: Helpers is test-linked, and the resource loader needs a packaged app.
+        Helpers.ActivitySummary.Translate = key =>
+        {
+            var value = Helpers.Loc.T(key);
+            return value == key ? null : value;
+        };
+
+        // The Marks list's wording, through the same hook-rather-than-reference route.
+        Helpers.MarkSummary.Translate = key =>
+        {
+            var value = Helpers.Loc.T(key);
+            return value == key ? null : value;
+        };
+
         // Localize the AI Guide category widgets (the catalog lives in Services and is test-linked,
         // so it takes translations via this hook instead of referencing Loc directly).
         CanfarDesktop.Services.AiGuide.AiGuideCatalog.Localize = key =>
@@ -152,7 +175,7 @@ public partial class App : Application
         }
     }
 
-    private static string AppVersion()
+    internal static string AppVersion()
     {
         try
         {
@@ -243,6 +266,9 @@ public partial class App : Application
             .AddHttpMessageHandler<TransientRetryHandler>();
         services.AddSingleton<ISearchStoreService, SearchStoreService>();
         services.AddSingleton<IColumnUnitStore, LocalSettingsColumnUnitStore>(); // per-column display units
+        // Singleton so the cache is a cache: the schema is ~400 columns over three queries, and built
+        // per call it would be re-read from CADC on every describe_tap_schema and every ADQL check.
+        services.AddSingleton<ITapSchemaService, TapSchemaService>();
         services.AddHttpClient<DataLinkService>();
         services.AddTransient<ObservationDownloadService>(); // shared resolve-URL + atomic download core
 
@@ -257,6 +283,9 @@ public partial class App : Application
         services.AddSingleton<IHeadlessProbeLauncher, HeadlessProbeAdapter>();
         services.AddSingleton<IVoSpaceFileTransfer, VoSpaceFileTransferAdapter>();
         services.AddSingleton<ImageDiscoverySettingsService>();
+        // What happened to jobs CANFAR has since reaped. Shared: the discovery coordinator writes probe
+        // failures into the same history the Batch Jobs card writes user jobs into, and reads back.
+        services.AddSingleton<IJobHistoryStore, JobHistoryStore>();
         services.AddSingleton(sp => new ImageDiscoveryCoordinator(
             sp.GetRequiredService<IManifestStore>(),
             sp.GetRequiredService<IHeadlessProbeLauncher>(),
@@ -273,7 +302,12 @@ public partial class App : Application
                 catch { return null; }
             },
             registryAuthProvider: () => Task.FromResult(sp.GetRequiredService<ImageDiscoverySettingsService>().CurrentAuthHeader()),
-            inspectorImageResolver: () => Task.FromResult(sp.GetRequiredService<ImageDiscoverySettingsService>().ResolveInspectorImage())));
+            inspectorImageResolver: () => Task.FromResult(sp.GetRequiredService<ImageDiscoverySettingsService>().ResolveInspectorImage()))
+        {
+            // A probe job is deleted the moment it finishes — success or failure — so the diagnosis is
+            // the only thing that survives it.
+            JobHistory = sp.GetRequiredService<IJobHistoryStore>(),
+        });
         // CAOM2 metadata (auth'd — proprietary collections need the token; host-allowlisted)
         services.AddHttpClient<ICAOM2Service, CAOM2Service>()
             .AddHttpMessageHandler<AuthTokenHandler>();
@@ -288,7 +322,9 @@ public partial class App : Application
             sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeSettingsService>(),
             sp.GetRequiredService<CanfarDesktop.Services.ISessionService>(),
             sp.GetRequiredService<CanfarDesktop.Services.IStorageService>(),
-            sp.GetRequiredService<CanfarDesktop.Services.IAuthService>()));
+            sp.GetRequiredService<CanfarDesktop.Services.IAuthService>(),
+            sp.GetRequiredService<CanfarDesktop.Services.AICompute.IComputeRunStore>()));
+        services.AddSingleton<CanfarDesktop.Services.AICompute.IComputeRunStore, CanfarDesktop.Services.AICompute.ComputeRunStore>();
         services.AddSingleton<CanfarDesktop.Mcp.AppViewStateService>();
         // Auth'd, redirect-following client for server-side preview fetches (get_preview_image).
         services.AddHttpClient("McpPreviewFetch").AddHttpMessageHandler<AuthTokenHandler>();
@@ -297,6 +333,16 @@ public partial class App : Application
 
         // FITS viewer services
         services.AddSingleton<ICoordinateStoreService, CoordinateStoreService>();
+        // Marks, keyed by the file they were drawn on. Singleton so the two viewers and the MCP tools
+        // are looking at one set rather than three copies of it.
+        services.AddSingleton<IAnnotationStore, AnnotationStore>();
+        // The user's own image list: read by the images card, the package search and the launch form, so
+        // one store rather than three copies that disagree the moment one of them adds to it.
+        services.AddSingleton<IUserImageStore, UserImageStore>();
+        // Background applies outlive the call that started them, so their record has to outlive it too.
+        services.AddSingleton<CanfarDesktop.Mcp.Tools.Proposals.JobRegistry>();
+        // A plain client: the registry is not CADC, and this must never carry the CADC token.
+        services.AddHttpClient<IRegistryService, RegistryService>();
         services.AddSingleton<IFitsTabFactory, FitsTabFactory>();
 
         // Notebook services
@@ -336,6 +382,7 @@ public partial class App : Application
         services.AddTransient<AiGuidePage>();
         services.AddSingleton<CanfarDesktop.Services.Workflows.WorkflowStore>();
         services.AddTransient<Views.WorkflowsPage>();
+        services.AddTransient<Views.RemoteComputePage>();
         // NotebookPage is created manually by NotebookTabHost (not DI-resolved)
 
         return services.BuildServiceProvider();

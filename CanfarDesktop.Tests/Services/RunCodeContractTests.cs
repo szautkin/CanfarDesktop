@@ -36,6 +36,18 @@ public class RunCodeContractTests
     public void NormalizeLanguage_OnlyPythonOrBash(string? input, string expected)
         => Assert.Equal(expected, RunCodeContract.NormalizeLanguage(input));
 
+    /// <summary>
+    /// A WinUI TextBox separates lines with a bare CR. Bash on the watcher then read a two-line snippet
+    /// as one command — "echo one", CR, "echo two" printed "oneecho two" — with no error to say so.
+    /// </summary>
+    [Theory]
+    [InlineData("echo one\recho two", "echo one\necho two")]        // the TextBox's own line breaks
+    [InlineData("echo one\r\necho two", "echo one\necho two")]      // pasted from Windows
+    [InlineData("echo one\necho two", "echo one\necho two")]        // already right
+    [InlineData("a\r\rb", "a\n\nb")]                                // blank lines survive
+    public void NormalizeNewlines_LeavesUnixLineEndings(string code, string expected)
+        => Assert.Equal(expected, RunCodeContract.NormalizeNewlines(code));
+
     [Fact]
     public void SanitizeId_ReplacesUnsafeFilenameChars()
     {

@@ -17,10 +17,10 @@ public class WorkflowTemplateTests
     private static readonly WorkflowStore Store = new(Path.GetTempPath());
 
     [Fact]
-    public void AllSevenTemplates_AreEmbedded()
+    public void EveryTemplate_IsEmbedded()
     {
         var builtins = Store.ListBuiltIn();
-        Assert.Equal(7, builtins.Count);
+        Assert.Equal(18, builtins.Count);
         Assert.Contains(builtins, w => w.Id == "builtin:cfht-imaging-recon");
         Assert.Contains(builtins, w => w.Id == "builtin:variable-star-photometry");
         Assert.Contains(builtins, w => w.Id == "builtin:jcmt-cube-kinematics");
@@ -28,6 +28,31 @@ public class WorkflowTemplateTests
         Assert.Contains(builtins, w => w.Id == "builtin:vizier-cadc-crossmatch");
         Assert.Contains(builtins, w => w.Id == "builtin:proposal-due-diligence");
         Assert.Contains(builtins, w => w.Id == "builtin:canfar-batch-reprocessing");
+        Assert.Contains(builtins, w => w.Id == "builtin:verbinal-onboarding");
+    }
+
+    /// <summary>
+    /// A detailed tour for every screen the onboarding tour visits, and nothing else calling itself one.
+    ///
+    /// The onboarding tour and describe_app both send an agent to these by id; a screen that grew a
+    /// tour, or lost one, without the other two knowing is an agent sent to a workflow that is not there.
+    /// </summary>
+    [Theory]
+    [InlineData("search")]
+    [InlineData("research")]
+    [InlineData("fits-viewer")]
+    [InlineData("cube-viewer")]
+    [InlineData("storage")]
+    [InlineData("portal")]
+    [InlineData("notebook")]
+    [InlineData("workflows")]
+    [InlineData("ai-guide")]
+    [InlineData("remote-compute")]
+    public void EveryScreenHasADetailedTour(string screen)
+    {
+        var tour = Assert.Single(Store.ListBuiltIn(), w => w.Id == $"builtin:tour-{screen}");
+        Assert.Contains("tour", tour.Doc.Tags);
+        Assert.StartsWith("Tour:", tour.Doc.Title);
     }
 
     [Fact]

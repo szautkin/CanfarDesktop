@@ -2,7 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Mcp.Agents;
 using CanfarDesktop.Mcp.Listener;
+using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Proposals;
+using CanfarDesktop.Mcp.Tools.Write;
 using CanfarDesktop.Services.AiGuide;
 
 namespace CanfarDesktop.Mcp;
@@ -109,10 +111,21 @@ public sealed class McpHost : IAsyncDisposable
         var tools = McpToolCatalog.Build(_services, _appVersion, EventLog);
         var identity = new ServerIdentity(ServerName, _appVersion);
 
-        // Shared write-surface state across connections.
-        var proposals = new InMemoryProposalStore();
+        // Shared write-surface state across connections. Journalled, because a restart used to destroy
+        // the review queue in silence — proposals awaiting a human vanished, and one already approved
+        // was voided. The host owns that decision; the store itself keeps nothing.
+        var proposals = new InMemoryProposalStore(journal: new JsonProposalJournal());
         proposals.Changed += () => ProposalsChanged?.Invoke();
         proposals.EventOccurred += e => EventLog.Append(e.Kind, e.Proposal, DateTimeOffset.UtcNow);
+
+        // Not a proposal, but something an agent waits on: the person has closed the last hint it
+        // put up, which is a guided tour's cue to move to the next screen.
+        try
+        {
+            _services.GetRequiredService<AppViewStateService>().HintsDismissed +=
+                () => EventLog.Append("hintsDismissed", "uiHints", DateTimeOffset.UtcNow);
+        }
+        catch { /* no view state in a headless host; the log simply never sees these */ }
         _proposals = proposals;
         var budget = new ProposalBudget();
 
@@ -120,6 +133,15 @@ public sealed class McpHost : IAsyncDisposable
         var registry = new ProposalApplierRegistry();
         registry.Register(McpToolCatalog.BuildAppliers(_services));
         _registry = registry;
+        // start_background_apply needs the store and the appliers, which are the host's rather than the
+        // catalogue's — so it is added here, where both exist, rather than taking them through DI and
+        // having two ideas of which store is the live one.
+        if (tools is List<IMcpTool> mutable)
+        {
+            var runner = new BackgroundApplyRunner(proposals, registry, _services.GetRequiredService<JobRegistry>());
+            mutable.Add(new StartBackgroundApplyTool(runner.StartAsync));
+        }
+
         var autoApply = new AutoApplyHook(
             // Destructive writes (deletes, etc.) NEVER auto-apply — they always queue for explicit
             // approval, even with auto-apply on. Auto-apply only fast-paths reversible SemanticWrite.
@@ -154,6 +176,16 @@ public sealed class McpHost : IAsyncDisposable
         _listener.Start(Guid.NewGuid());
         CrashLogger.Info($"MCP host started; pipe={_listener.PipeName}");
         RunningChanged?.Invoke();
+
+        // Put the bridge where AGENTS.md tells every assistant to find it, whenever the server runs —
+        // not only once the connect wizard or the settings panel has been opened, which is the Claude
+        // path; an agent following the instructions on its own would find nothing there. Off the UI
+        // thread: after an update it copies the new bridge out of the package.
+        _ = Task.Run(() =>
+        {
+            try { CrashLogger.Info($"MCP bridge at {Config.McpBridgeLocator.ResolveStable() ?? "(not found)"}"); }
+            catch (Exception ex) { CrashLogger.Info($"MCP bridge copy failed: {ex.Message}"); }
+        });
     }
 
     /// <summary>
@@ -230,7 +262,7 @@ public sealed class McpHost : IAsyncDisposable
     /// <summary>After an applied write, send the user to the relevant view (when follow-activity is on).</summary>
     private void FollowActivity(string kind)
     {
-        if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(ModeForTool(kind));
+        if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(AgentScreens.For(kind));
     }
 
     /// <summary>
@@ -239,7 +271,7 @@ public sealed class McpHost : IAsyncDisposable
     /// </summary>
     private Task FollowToolActivity(string toolName)
     {
-        if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(ModeForTool(toolName));
+        if (_settings.FollowAgentActivityEnabled) NavigateBestEffort(AgentScreens.For(toolName));
         return Task.CompletedTask;
     }
 
@@ -247,13 +279,18 @@ public sealed class McpHost : IAsyncDisposable
     /// follow-activity navigation toggle — the indicator always reflects that the agent is active).</summary>
     private void NotifyAgentWorking(string toolName)
     {
-        try { _services.GetRequiredService<AppViewStateService>().NotifyAgentActivity(toolName, ModeForTool(toolName)); }
+        try { _services.GetRequiredService<AppViewStateService>().NotifyAgentActivity(toolName, AgentScreens.For(toolName)); }
         catch { /* indicator is best-effort */ }
     }
 
     private void NavigateBestEffort(string? mode)
     {
         if (mode is null) return;
+
+        // Following is the app keeping up with an agent, never a request of the person: signed out, an
+        // agent's work on a screen that needs sign-in is not followed there, rather than putting a
+        // sign-in dialog in front of somebody who asked for nothing. navigate_to still asks.
+        if (AccountScreens.Contains(mode) && !_services.GetRequiredService<Services.IAuthService>().IsAuthenticated) return;
         try
         {
             var nav = _services.GetRequiredService<AppViewStateService>().NavigateAsync(mode);
@@ -261,37 +298,6 @@ public sealed class McpHost : IAsyncDisposable
         }
         catch { /* navigation is best-effort */ }
     }
-
-    /// <summary>
-    /// Map a tool name (read) or applied write kind to the app module to navigate to. Returns null for
-    /// tools that should not move the view: foundational/meta tools (describe_app, get_current_view,
-    /// get_auth_state, …), the view-state writes that navigate themselves (navigate_to, open_fits_file),
-    /// and the local FITS readers / preview fetch.
-    /// </summary>
-    private static string? ModeForTool(string name) => name switch
-    {
-        "search_observations" or "resolve_target" or "list_saved_queries" or "get_saved_query"
-            or "list_recent_searches" or "save_query" or "delete_saved_query"
-            or "get_search_form" or "set_search_form" or "get_search_constraints" or "set_search_constraints"
-            or "reset_search_form" or "run_search" or "set_adql_query" or "execute_adql_query"
-            or "get_search_results" or "set_search_results_view" or "export_search_results"
-            or "load_recent_search" or "run_saved_query"
-            or "remove_recent_search" or "clear_recent_searches" => "search",
-        "list_downloaded_observations" or "get_downloaded_observation" or "get_observation_notes"
-            or "get_observation_caom2" or "get_data_links" or "update_observation_note"
-            or "bulk_update_observation_notes" or "download_observation" or "delete_downloaded_observation" => "research",
-        "list_sessions" or "get_session" or "list_session_types" or "list_headless_jobs"
-            or "get_headless_job_logs" or "get_headless_job_events" or "list_session_images"
-            or "list_recent_launches" or "find_images_with_packages" or "get_platform_load"
-            or "launch_session" or "launch_headless_job" or "delete_session" or "renew_session" => "portal",
-        "get_storage_quota" or "list_vospace_path" or "read_vospace_file"
-            or "upload_text_to_vospace" or "create_vospace_folder" or "delete_vospace_node" => "storage",
-        // Workflow tools double as proposal kinds — one mapping covers the "Agent is working in
-        // Workflows" indicator AND follow-agent-activity navigation for reads and applied writes.
-        "list_workflows" or "get_workflow" or "save_workflow" or "update_workflow"
-            or "set_workflow_step" or "use_workflow" or "delete_workflow" => "workflows",
-        _ => null,
-    };
 
     /// <summary>Stop the server and remove the sidecar (idempotent).</summary>
     public async Task StopAsync()

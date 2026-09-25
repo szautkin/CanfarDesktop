@@ -323,8 +323,236 @@
   <data name="Settings_ClearDefaultsButton.Content" xml:space="preserve">
     <value>Effacer toutes les valeurs par défaut</value>
   </data>
+  <data name="Activity_Idle" xml:space="preserve">
+    <value>Au repos</value>
+  </data>
+  <data name="Activity_RunningCount" xml:space="preserve">
+    <value>{0} tâches en cours</value>
+  </data>
+  <data name="Activity_FailedCount" xml:space="preserve">
+    <value>{0} en échec</value>
+  </data>
+  <data name="Activity_FailedNoReason" xml:space="preserve">
+    <value>échec</value>
+  </data>
+  <data name="Activity_Abandoned" xml:space="preserve">
+    <value>abandonné avant la fin</value>
+  </data>
+  <data name="Activity_JustNow" xml:space="preserve">
+    <value>à l’instant</value>
+  </data>
+  <data name="Activity_Empty.Text" xml:space="preserve">
+    <value>Rien n’a encore été exécuté.</value>
+  </data>
+  <data name="Activity_ClearButton.Content" xml:space="preserve">
+    <value>Effacer les tâches terminées</value>
+  </data>
+  <data name="Activity_ExpandButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Afficher ce que fait l’application</value>
+  </data>
+  <data name="Activity_ExpandButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Afficher ce que fait l’application</value>
+  </data>
+  <data name="Settings_AboutVisitLink.Content" xml:space="preserve">
+    <value>verbinal.com</value>
+  </data>
+  <data name="Settings_AboutIssuesLink.Content" xml:space="preserve">
+    <value>Signaler un problème</value>
+  </data>
+  <data name="Settings_AboutCanfarLink.Content" xml:space="preserve">
+    <value>À propos de CANFAR, le service</value>
+  </data>
+  <data name="Settings_RuntimeExpander.Header" xml:space="preserve">
+    <value>Informations d’exécution</value>
+  </data>
+  <data name="Settings_CopyRuntimeButton.Content" xml:space="preserve">
+    <value>Copier</value>
+  </data>
+  <data name="Settings_CopyLabel" xml:space="preserve">
+    <value>Copier</value>
+  </data>
+  <data name="Settings_CopiedLabel" xml:space="preserve">
+    <value>Copié</value>
+  </data>
+  <data name="Batch_HistoryTab" xml:space="preserve">
+    <value>Historique ({0})</value>
+  </data>
+  <data name="Batch_HistoryEmpty.Text" xml:space="preserve">
+    <value>Aucune tâche terminée n’est encore conservée. CANFAR supprime les tâches une fois terminées ; ce qui se passe à partir de maintenant est gardé ici.</value>
+  </data>
+  <data name="Batch_ClearHistory.Content" xml:space="preserve">
+    <value>Effacer l’historique</value>
+  </data>
+  <data name="Marks_AddHeader.Text" xml:space="preserve">
+    <value>Ajouter un repère</value>
+  </data>
+  <data name="Marks_DrawLabel.Text" xml:space="preserve">
+    <value>Dessiner</value>
+  </data>
+  <data name="Marks_KindCircle.Content" xml:space="preserve">
+    <value>Cercle</value>
+  </data>
+  <data name="Marks_KindBox.Content" xml:space="preserve">
+    <value>Rectangle</value>
+  </data>
+  <data name="Marks_ColourButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Couleur du repère</value>
+  </data>
+  <data name="Marks_FontSize.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Taille de l’étiquette en pixels</value>
+  </data>
+  <data name="Marks_Bold.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Étiquette en gras</value>
+  </data>
+  <data name="Marks_Stroke.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Épaisseur du contour en pixels</value>
+  </data>
+  <data name="Marks_FilterBox.PlaceholderText" xml:space="preserve">
+    <value>Filtrer les repères…</value>
+  </data>
+  <data name="Marks_Hint.Text" xml:space="preserve">
+    <value>Cliquez sur un repère pour le modifier : faites glisser une poignée pour redimensionner, la forme pour déplacer, puis confirmez.</value>
+  </data>
+  <data name="Marks_ClearButton.Content" xml:space="preserve">
+    <value>Effacer tous les repères</value>
+  </data>
+  <data name="Marks_Empty" xml:space="preserve">
+    <value>Aucun repère pour l’instant. Activez Dessiner, puis cliquez sur l’image.</value>
+  </data>
+  <data name="Marks_NoneMatchFilter" xml:space="preserve">
+    <value>Aucun repère ne correspond à ce filtre.</value>
+  </data>
+  <data name="Marks_RowEdit" xml:space="preserve">
+    <value>Renommer ce repère</value>
+  </data>
+  <data name="Marks_RowDelete" xml:space="preserve">
+    <value>Supprimer ce repère</value>
+  </data>
+  <data name="Marks_CmdEditLabel" xml:space="preserve">
+    <value>Modifier l'étiquette</value>
+  </data>
+  <data name="Marks_CmdCopyCoordinates" xml:space="preserve">
+    <value>Copier les coordonnées</value>
+  </data>
+  <data name="Marks_CmdCentre" xml:space="preserve">
+    <value>Centrer sur ce repère</value>
+  </data>
+  <data name="Marks_CmdSearchHere" xml:space="preserve">
+    <value>Rechercher ici</value>
+  </data>
+  <data name="Marks_CmdExportFigure" xml:space="preserve">
+    <value>Exporter une figure autour</value>
+  </data>
+  <data name="Marks_CmdExportMarks" xml:space="preserve">
+    <value>Exporter les repères…</value>
+  </data>
+  <data name="Marks_CmdDelete" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Marks_CmdNeedsWcs" xml:space="preserve">
+    <value>Cette image n'a pas de WCS, ce repère n'a donc pas de position céleste</value>
+  </data>
+  <data name="Marks_CopiedCoordinates" xml:space="preserve">
+    <value>Coordonnées copiées</value>
+  </data>
+  <data name="Marks_ExportFailed" xml:space="preserve">
+    <value>Impossible d'écrire les repères : {0}</value>
+  </data>
+  <data name="Marks_ExportedCount" xml:space="preserve">
+    <value>{0} repère(s) écrit(s) dans {1}</value>
+  </data>
+  <data name="Marks_ExportTooltip" xml:space="preserve">
+    <value>Écrire ces repères en JSON avec la provenance, ou en fichier de régions DS9</value>
+  </data>
+  <data name="Marks_ExportButton.Content" xml:space="preserve">
+    <value>Exporter les repères…</value>
+  </data>
+  <data name="Marks_ClearTitle" xml:space="preserve">
+    <value>Supprimer tous les repères ?</value>
+  </data>
+  <data name="Marks_ClearBody" xml:space="preserve">
+    <value>Cela supprime tous les repères de cette image, y compris ceux créés par un agent. Cette action est irréversible.</value>
+  </data>
+  <data name="Marks_ClearConfirm" xml:space="preserve">
+    <value>Tout supprimer</value>
+  </data>
+  <data name="Marks_PanelHeader" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Marks_PanelToggle" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Mark_LabelField.PlaceholderText" xml:space="preserve">
+    <value>Qu’est-ce que c’est ?</value>
+  </data>
+  <data name="Mark_LabelDone.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Terminé</value>
+  </data>
+  <data name="Mark_LabelDelete.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Supprimer ce repère</value>
+  </data>
+  <data name="Mark_KindBox" xml:space="preserve">
+    <value>rectangle</value>
+  </data>
+  <data name="Mark_KindCircle" xml:space="preserve">
+    <value>cercle</value>
+  </data>
+  <data name="Mark_KindCallout" xml:space="preserve">
+    <value>légende</value>
+  </data>
+  <data name="Mark_KindText" xml:space="preserve">
+    <value>texte</value>
+  </data>
+  <data name="Mark_PlacePixel" xml:space="preserve">
+    <value>pixel {0:0}, {1:0}</value>
+  </data>
+  <data name="Mark_PlaceSky" xml:space="preserve">
+    <value>{0:0.0000}°, {1:0.0000}°</value>
+  </data>
+  <data name="Mark_PlaceVoxel" xml:space="preserve">
+    <value>voxel {0:0}, {1:0}, canal {2:0}</value>
+  </data>
+  <data name="Mark_ByAgent" xml:space="preserve">
+    <value>{0} — par l’agent</value>
+  </data>
+  <data name="Mark_Count" xml:space="preserve">
+    <value>{0} repères</value>
+  </data>
+  <data name="Cube_MarksPanelToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Repères : dessiner, styliser et lister</value>
+  </data>
+  <data name="Cube_MarksPanelToggleLabel.Text" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Cube_PanelsToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Afficher ou masquer les panneaux latéraux</value>
+  </data>
+  <data name="Cube_PanelsToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Panneaux</value>
+  </data>
+  <data name="Cube_PanelsToggleLabel.Text" xml:space="preserve">
+    <value>Panneaux</value>
+  </data>
+  <data name="Cube_MarksHeader.Text" xml:space="preserve">
+    <value>REPÈRES</value>
+  </data>
+  <data name="Fits_MarksExpander.Header" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Fits_MarksButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Repères : dessiner, styliser et lister</value>
+  </data>
+  <data name="Fits_MarksButtonLabel.Text" xml:space="preserve">
+    <value>Repères</value>
+  </data>
   <data name="Settings_AgentHeader.Text" xml:space="preserve">
     <value>Agent IA</value>
+  </data>
+  <data name="Settings_AgentSoundsToggle.Header" xml:space="preserve">
+    <value>Son au démarrage et à la fin d’un agent</value>
+  </data>
+  <data name="Settings_AgentSoundsHint.Text" xml:space="preserve">
+    <value>Deux courts signaux, pour remarquer qu’un agent travaille pendant que vous regardez autre chose.</value>
   </data>
   <data name="Settings_ConnectWizardButton.Content" xml:space="preserve">
     <value>Connecter un agent IA (assisté)…</value>
@@ -841,6 +1069,15 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Cube_ExpAnnotateToggle.OnContent" xml:space="preserve">
     <value>Activées</value>
   </data>
+  <data name="Cube_ExpMarksToggle.Header" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Cube_ExpMarksToggle.OffContent" xml:space="preserve">
+    <value>Désactivés</value>
+  </data>
+  <data name="Cube_ExpMarksToggle.OnContent" xml:space="preserve">
+    <value>Activés</value>
+  </data>
   <data name="Cube_ExpColorAmber.Content" xml:space="preserve">
     <value>Ambre</value>
   </data>
@@ -1008,6 +1245,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Cube_Saved" xml:space="preserve">
     <value>{0} enregistré</value>
+  </data>
+  <data name="Cube_SavedLimited" xml:space="preserve">
+    <value>{0} enregistré à {1}× — {2}× serait trop grand à assembler ({3}×{4} px)</value>
   </data>
   <data name="Cube_SliceModeButton.Content" xml:space="preserve">
     <value>Tranche</value>
@@ -1450,6 +1690,18 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Fits_OpenAnotherTab" xml:space="preserve">
     <value>Ouvrez d'abord un autre onglet</value>
   </data>
+  <data name="Fits_EmptyTitle.Text" xml:space="preserve">
+    <value>Aucune image ouverte</value>
+  </data>
+  <data name="Fits_EmptyBody.Text" xml:space="preserve">
+    <value>Ouvrez une image FITS pour l’examiner —étalement et palette, lecture WCS, sondage de pixels, marques et comparaison multi-onglets.</value>
+  </data>
+  <data name="Fits_OpenLabel.Text" xml:space="preserve">
+    <value>Ouvrir une image…</value>
+  </data>
+  <data name="Fits_RecentsHeader.Text" xml:space="preserve">
+    <value>Images récentes</value>
+  </data>
   <data name="Fits_OpenButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Ouvrir un fichier FITS</value>
   </data>
@@ -1476,6 +1728,12 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Fits_ResetButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Réinitialiser l'étirement et la vue</value>
+  </data>
+  <data name="Fits_SelectAreaToggle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Sélectionner une zone à exporter (ou maintenir Ctrl et faire glisser)</value>
+  </data>
+  <data name="Fits_SelectAreaToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Sélectionner une zone</value>
   </data>
   <data name="Fits_ResetButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Réinitialiser l'étirement et la vue</value>
@@ -1873,6 +2131,243 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Launch_TypeTip.Subtitle" xml:space="preserve">
     <value>Choisissez un type de session.</value>
   </data>
+  <data name="Launch_HelpAbout" xml:space="preserve">
+    <value>À propos de {0}</value>
+  </data>
+  <data name="Batch_StateCount" xml:space="preserve">
+    <value>{0} : {1}</value>
+  </data>
+  <data name="Cube_WindowLoSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Bas de la fenêtre</value>
+  </data>
+  <data name="Cube_WindowHiSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Haut de la fenêtre</value>
+  </data>
+  <data name="Cube_ChannelSlider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Canal</value>
+  </data>
+  <data name="Module_RemoteCompute" xml:space="preserve">
+    <value>Calcul distant</value>
+  </data>
+  <data name="Tile_RemoteCompute_Title" xml:space="preserve">
+    <value>Calcul distant</value>
+  </data>
+  <data name="Tile_RemoteCompute_Subtitle" xml:space="preserve">
+    <value>Laissez votre assistant exécuter du code sur CANFAR</value>
+  </data>
+  <data name="Compute_PageTitle.Text" xml:space="preserve">
+    <value>Calcul distant</value>
+  </data>
+  <data name="Compute_PageIntro.Text" xml:space="preserve">
+    <value>Le code que votre assistant IA exécute avec run_code, et celui que vous exécutez ici, part dans une session de votre compte CANFAR nommée verbinal-compute. Elle utilise vos cœurs, n’a ni shell ni accès réseau entrant, et écrit ses résultats dans votre stockage.</value>
+  </data>
+  <data name="Compute_StartButton.Content" xml:space="preserve">
+    <value>Démarrer</value>
+  </data>
+  <data name="Compute_StopButton.Content" xml:space="preserve">
+    <value>Arrêter</value>
+  </data>
+  <data name="Compute_RefreshButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Actualiser</value>
+  </data>
+  <data name="Compute_RefreshButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Actualiser</value>
+  </data>
+  <data name="Compute_SettingsButton.Content" xml:space="preserve">
+    <value>Paramètres</value>
+  </data>
+  <data name="Compute_OpenFolderButton.Content" xml:space="preserve">
+    <value>Ouvrir le dossier dans Stockage</value>
+  </data>
+  <data name="Compute_RepoLink.Content" xml:space="preserve">
+    <value>verbinal-execution sur GitHub</value>
+  </data>
+  <data name="Compute_SetupTitle.Text" xml:space="preserve">
+    <value>Configurer le calcul distant</value>
+  </data>
+  <data name="Compute_SetupStep1.Text" xml:space="preserve">
+    <value>1. Obtenez l’image de surveillance. Construisez verbinal-execution depuis son dépôt et publiez-la dans votre projet sur images.canfar.net.</value>
+  </data>
+  <data name="Compute_SetupStep2.Text" xml:space="preserve">
+    <value>2. Ouvrez Paramètres ▸ Calcul IA et indiquez l’image, les cœurs et la mémoire à utiliser, et un identifiant de registre si l’image est privée.</value>
+  </data>
+  <data name="Compute_SetupStep3.Text" xml:space="preserve">
+    <value>3. Revenez ici et appuyez sur Démarrer. La session met une minute ou deux à démarrer.</value>
+  </data>
+  <data name="Compute_SetupNote.Text" xml:space="preserve">
+    <value>Avec l’application automatique activée, le code de votre assistant s’exécute sans vous le demander. Désactivez-la dans les Paramètres pour approuver chaque exécution.</value>
+  </data>
+  <data name="Compute_SetupSettingsButton.Content" xml:space="preserve">
+    <value>Ouvrir les paramètres</value>
+  </data>
+  <data name="Compute_SetupRepoLink.Content" xml:space="preserve">
+    <value>Ouvrir le dépôt</value>
+  </data>
+  <data name="Compute_HistoryTitle.Text" xml:space="preserve">
+    <value>EXÉCUTIONS</value>
+  </data>
+  <data name="Compute_EmptyHistory.Text" xml:space="preserve">
+    <value>Rien n’a encore été exécuté.</value>
+  </data>
+  <data name="Compute_DetailTab.Header" xml:space="preserve">
+    <value>Exécution choisie</value>
+  </data>
+  <data name="Compute_RunTab.Header" xml:space="preserve">
+    <value>Exécuter du code</value>
+  </data>
+  <data name="Compute_CopyCodeButton.Content" xml:space="preserve">
+    <value>Copier le code</value>
+  </data>
+  <data name="Compute_RunAgainButton.Content" xml:space="preserve">
+    <value>Relancer</value>
+  </data>
+  <data name="Compute_CodeView.Header" xml:space="preserve">
+    <value>Code</value>
+  </data>
+  <data name="Compute_OutputLabel.Text" xml:space="preserve">
+    <value>Sortie</value>
+  </data>
+  <data name="Compute_ErrorLabel.Text" xml:space="preserve">
+    <value>Erreurs</value>
+  </data>
+  <data name="Compute_LanguageCombo.Header" xml:space="preserve">
+    <value>Langage</value>
+  </data>
+  <data name="Compute_TimeoutBox.Header" xml:space="preserve">
+    <value>Délai (secondes)</value>
+  </data>
+  <data name="Compute_SnippetBox.Header" xml:space="preserve">
+    <value>Code</value>
+  </data>
+  <data name="Compute_SnippetBox.PlaceholderText" xml:space="preserve">
+    <value>print('bonjour de CANFAR')</value>
+  </data>
+  <data name="Compute_RunButton.Content" xml:space="preserve">
+    <value>Exécuter</value>
+  </data>
+  <data name="Compute_State_NotSetUp" xml:space="preserve">
+    <value>Non configuré</value>
+  </data>
+  <data name="Compute_State_Stopped" xml:space="preserve">
+    <value>Arrêté</value>
+  </data>
+  <data name="Compute_State_Starting" xml:space="preserve">
+    <value>Démarrage…</value>
+  </data>
+  <data name="Compute_State_Running" xml:space="preserve">
+    <value>En cours</value>
+  </data>
+  <data name="Compute_State_Stopping" xml:space="preserve">
+    <value>Arrêt…</value>
+  </data>
+  <data name="Compute_State_Failed" xml:space="preserve">
+    <value>Échec</value>
+  </data>
+  <data name="Compute_StatusRunning" xml:space="preserve">
+    <value>{0} · {1} · {2} Go · depuis {3}</value>
+  </data>
+  <data name="Compute_StatusRunningNoUptime" xml:space="preserve">
+    <value>{0} · {1} · {2} Go</value>
+  </data>
+  <data name="Compute_UptimeMinutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="Compute_UptimeHours" xml:space="preserve">
+    <value>{0} h {1} min</value>
+  </data>
+  <data name="Compute_ByAssistant" xml:space="preserve">
+    <value>Assistant</value>
+  </data>
+  <data name="Compute_ByYou" xml:space="preserve">
+    <value>Vous</value>
+  </data>
+  <data name="Compute_RunState_running" xml:space="preserve">
+    <value>En cours</value>
+  </data>
+  <data name="Compute_RunState_ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Compute_RunState_error" xml:space="preserve">
+    <value>Erreur</value>
+  </data>
+  <data name="Compute_RunState_timeout" xml:space="preserve">
+    <value>Délai dépassé</value>
+  </data>
+  <data name="Compute_RunState_noResult" xml:space="preserve">
+    <value>Aucun résultat</value>
+  </data>
+  <data name="Compute_RunState_notSent" xml:space="preserve">
+    <value>Non envoyé</value>
+  </data>
+  <data name="Compute_Waiting" xml:space="preserve">
+    <value>En attente du résultat… Une session qui démarre met une minute ou deux.</value>
+  </data>
+  <data name="Compute_LoadingOutput" xml:space="preserve">
+    <value>Lecture de la sortie…</value>
+  </data>
+  <data name="Compute_NoResultHelp" xml:space="preserve">
+    <value>Rien n’est revenu. La session n’a peut-être pas démarré, ou son image n’est pas une image de surveillance verbinal-execution.</value>
+  </data>
+  <data name="Compute_NotSentHelp" xml:space="preserve">
+    <value>Le code n’a jamais atteint la session. Vérifiez que vous êtes connecté et que la session a pu démarrer.</value>
+  </data>
+  <data name="Compute_ExitCode" xml:space="preserve">
+    <value>code de sortie {0}</value>
+  </data>
+  <data name="Compute_Duration" xml:space="preserve">
+    <value>{0} s</value>
+  </data>
+  <data name="Compute_Truncated" xml:space="preserve">
+    <value>sortie tronquée à 1 Mo</value>
+  </data>
+  <data name="Compute_SignInFirst" xml:space="preserve">
+    <value>Connectez-vous à CANFAR pour utiliser le calcul distant.</value>
+  </data>
+  <data name="Compute_Starting" xml:space="preserve">
+    <value>Démarrage de verbinal-compute. Cela prend une minute ou deux.</value>
+  </data>
+  <data name="Compute_StopConfirmTitle" xml:space="preserve">
+    <value>Arrêter le calcul distant ?</value>
+  </data>
+  <data name="Compute_StopConfirmBody" xml:space="preserve">
+    <value>La session verbinal-compute est supprimée et ses cœurs libérés. Le code encore en cours est perdu.</value>
+  </data>
+  <data name="Compute_StopConfirmYes" xml:space="preserve">
+    <value>Arrêter</value>
+  </data>
+  <data name="Compute_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Sessions_ComputeType" xml:space="preserve">
+    <value>{0} · calcul distant de votre assistant</value>
+  </data>
+  <data name="Sessions_ComputeTooltip" xml:space="preserve">
+    <value>Démarrée pour le run_code de votre assistant IA. L’écran Calcul distant montre ce qu’elle a exécuté.</value>
+  </data>
+  <data name="Compute_CoreCountOne" xml:space="preserve">
+    <value>{0} cœur</value>
+  </data>
+  <data name="Compute_CoreCountMany" xml:space="preserve">
+    <value>{0} cœurs</value>
+  </data>
+  <data name="Compute_LanguageNote.Text" xml:space="preserve">
+    <value>Python ou Bash. Depuis Bash, vous pouvez lancer tout ce qui est installé dans l’image de calcul, comme Rscript ou julia si elle les contient.</value>
+  </data>
+  <data name="Compute_LanguageNote.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Python ou Bash. Depuis Bash, vous pouvez lancer tout ce qui est installé dans l’image de calcul, comme Rscript ou julia si elle les contient.</value>
+  </data>
+  <data name="Wizard_ComputeHintSetUp" xml:space="preserve">
+    <value>Facultatif : votre assistant peut aussi exécuter du Python ou du Bash sur CANFAR, dans une session de votre compte. Rien ne s’exécute tant que vous ne l’avez pas configuré.</value>
+  </data>
+  <data name="Wizard_ComputeHintReady" xml:space="preserve">
+    <value>Votre assistant peut exécuter du Python ou du Bash sur CANFAR. Chaque exécution, avec son code et sa sortie, figure sur l’écran Calcul distant.</value>
+  </data>
+  <data name="Wizard_ComputeLinkSetUp" xml:space="preserve">
+    <value>Configurer le calcul distant</value>
+  </data>
+  <data name="Wizard_ComputeLinkReady" xml:space="preserve">
+    <value>Ouvrir le calcul distant</value>
+  </data>
   <data name="Launch_TypeTip.Title" xml:space="preserve">
     <value>Type de session</value>
   </data>
@@ -2230,6 +2725,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Nb_FileTypeNotebook" xml:space="preserve">
     <value>Carnet Jupyter</value>
+  </data>
+  <data name="Nb_FileTypeText" xml:space="preserve">
+    <value>Notes texte</value>
   </data>
   <data name="Nb_FileTypePython" xml:space="preserve">
     <value>Script Python</value>
@@ -2906,6 +3404,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Search_AdqlPivot.Header" xml:space="preserve">
     <value>Éditeur ADQL</value>
   </data>
+  <data name="Search_FromFitsViewer" xml:space="preserve">
+    <value>Depuis la visionneuse FITS</value>
+  </data>
   <data name="Search_ApplyFiltersBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Convertir les filtres actifs en requête ADQL</value>
   </data>
@@ -2950,6 +3451,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Search_DownloadedFile" xml:space="preserve">
     <value>{0} téléchargé</value>
+  </data>
+  <data name="Search_DownloadedSoFar" xml:space="preserve">
+    <value>{0} téléchargés — taille totale inconnue</value>
   </data>
   <data name="Search_DownloadingFile" xml:space="preserve">
     <value>Téléchargement de {0}...</value>
@@ -3623,6 +4127,15 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Settings_ProbeFail" xml:space="preserve">
     <value>✗ {0} — injoignable ({1})</value>
   </data>
+  <data name="Settings_ProbeDown" xml:space="preserve">
+    <value>⚠ {0} — se déclare indisponible ({1})</value>
+  </data>
+  <data name="Settings_ProbeAuthSuffix" xml:space="preserve">
+    <value> · connexion requise</value>
+  </data>
+  <data name="Settings_ProbeSummary" xml:space="preserve">
+    <value>{0} sur {1} en service · {2} utilisables sans connexion</value>
+  </data>
   <data name="Search_LoadedRecent" xml:space="preserve">
     <value>Recherche récente chargée : {0}</value>
   </data>
@@ -3770,8 +4283,23 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Fits_WcsSyncWarningBar.Title" xml:space="preserve">
     <value>WCS approximatif</value>
   </data>
+  <data name="Fits_ToolbarBack.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Faire défiler la barre d'outils vers l'arrière</value>
+  </data>
+  <data name="Fits_ToolbarBack.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Outils précédents</value>
+  </data>
+  <data name="Fits_ToolbarForward.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Faire défiler la barre d'outils vers l'avant</value>
+  </data>
+  <data name="Fits_ToolbarForward.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Plus d'outils</value>
+  </data>
   <data name="Fits_WcsSyncWarningBar.Message" xml:space="preserve">
     <value>Une ou plusieurs images n'ont pas de solution WCS précise ; la synchronisation du réticule et du zoom est donc approximative.</value>
+  </data>
+  <data name="Mark_CountOtherExtensions" xml:space="preserve">
+    <value>{0} sur d’autres extensions</value>
   </data>
   <data name="Fits_ImageInfoHeader.Text" xml:space="preserve">
     <value>Infos image</value>
@@ -3835,5 +4363,227 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Fits_HduNoImage" xml:space="preserve">
     <value>sans image</value>
+  </data>
+  <data name="Fits_ExpFontLabel.Text" xml:space="preserve">
+    <value>Police</value>
+  </data>
+  <data name="Fits_ExpScaleLabel.Text" xml:space="preserve">
+    <value>Échelle</value>
+  </data>
+  <data name="Fits_ExpThemeLabel.Text" xml:space="preserve">
+    <value>Thème</value>
+  </data>
+  <data name="Fits_ExpSaveText.Text" xml:space="preserve">
+    <value>Enregistrer la figure…</value>
+  </data>
+  <data name="Fits_ExportDialog.Title" xml:space="preserve">
+    <value>Exporter la figure</value>
+  </data>
+  <data name="Images_DetailDialog.Title" xml:space="preserve">
+    <value>Détails de l'image</value>
+  </data>
+  <data name="Images_RegistryDialog.Title" xml:space="preserve">
+    <value>Parcourir le registre d'images</value>
+  </data>
+  <data name="Images_FindInRegistryBtn.Content" xml:space="preserve">
+    <value>Registre…</value>
+  </data>
+  <data name="Marks_KindCombo.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Forme du repère</value>
+  </data>
+  <data name="Settings_AboutTermsLink.Content" xml:space="preserve">
+    <value>Conditions d'utilisation</value>
+  </data>
+  <data name="Images_AllProjects" xml:space="preserve">
+    <value>Tous les projets</value>
+  </data>
+  <data name="Images_AlreadyAdded" xml:space="preserve">
+    <value>Déjà ajoutée</value>
+  </data>
+  <data name="Images_ContentsBtn" xml:space="preserve">
+    <value>Contenu</value>
+  </data>
+  <data name="Images_ContentsTooltip" xml:space="preserve">
+    <value>Lister les paquets de cette image</value>
+  </data>
+  <data name="Images_RowInspectBtn" xml:space="preserve">
+    <value>Inspecter</value>
+  </data>
+  <data name="Images_InspectTooltip" xml:space="preserve">
+    <value>Afficher les détails de cette image</value>
+  </data>
+  <data name="Images_NoRegistryMatches" xml:space="preserve">
+    <value>Aucune image ne correspond à cette recherche</value>
+  </data>
+  <data name="Images_NoSessionTypes" xml:space="preserve">
+    <value>Aucun type de session disponible</value>
+  </data>
+  <data name="Images_Searching" xml:space="preserve">
+    <value>Recherche dans le registre…</value>
+  </data>
+  <data name="Images_TypeSomething" xml:space="preserve">
+    <value>Saisissez du texte pour rechercher dans le registre</value>
+  </data>
+  <data name="Images_FindInRegistryBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Trouver une image que le catalogue ne répertorie pas</value>
+  </data>
+  <data name="Mark_LabelField.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Étiquette du repère</value>
+  </data>
+  <data name="Mark_LabelDone.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Terminé</value>
+  </data>
+  <data name="Mark_LabelDelete.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Supprimer ce repère</value>
+  </data>
+  <data name="Marks_ColourButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Couleur du repère</value>
+  </data>
+  <data name="Marks_Bold.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Étiquette en gras</value>
+  </data>
+  <data name="Marks_FontSize.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Taille de l’étiquette en pixels</value>
+  </data>
+  <data name="Marks_Stroke.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Épaisseur du contour en pixels</value>
+  </data>
+  <data name="Marks_FilterBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Filtrer les repères</value>
+  </data>
+  <data name="Cube_MarksPanelToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Fits_MarksButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Images_DetailDialog.CloseButtonText" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="Images_DetailDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Utiliser cette image</value>
+  </data>
+  <data name="Images_RegistryDialog.CloseButtonText" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="Fits_ExportDialog.CloseButtonText" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="Images_ProjectFilter.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Filtrer les images par projet</value>
+  </data>
+  <data name="Images_ProjectFilter.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Filtrer par projet</value>
+  </data>
+  <data name="Marks_DrawToggle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Dessiner des repères</value>
+  </data>
+  <data name="Marks_List.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Cube_VolumeCanvas.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Canevas du volume</value>
+  </data>
+  <data name="Cube_SliceCanvas.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Canevas de la tranche</value>
+  </data>
+  <data name="Cube_DisplaySection.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Commandes d’affichage</value>
+  </data>
+  <data name="Cube_MarksSection.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Images_PackageFilter.PlaceholderText" xml:space="preserve">
+    <value>Filtrer les paquets</value>
+  </data>
+  <data name="Images_PackageFilter.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Filtrer les paquets</value>
+  </data>
+  <data name="Images_RegistryIntro.Text" xml:space="preserve">
+    <value>Le catalogue de la plateforme répertorie les images qu’elle peut lancer. Ceci interroge le registre qui se trouve derrière — la version d’un collègue, ou une étiquette que le catalogue n’a pas encore prise en compte. Rien n’est recherché tant que vous ne le demandez pas.</value>
+  </data>
+  <data name="Images_RegistryQuery.PlaceholderText" xml:space="preserve">
+    <value>Nom du dépôt, ou une partie</value>
+  </data>
+  <data name="Images_RegistryQuery.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Rechercher dans le registre</value>
+  </data>
+  <data name="Images_RegistrySearch.Content" xml:space="preserve">
+    <value>Rechercher</value>
+  </data>
+  <data name="Images_RegistryAdd.Content" xml:space="preserve">
+    <value>Ajouter</value>
+  </data>
+  <data name="Images_RegistryAdd.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Ajouter cette image à ma liste</value>
+  </data>
+  <data name="Fits_ExpThemeDark.Content" xml:space="preserve">
+    <value>Cockpit sombre</value>
+  </data>
+  <data name="Fits_ExpThemeLight.Content" xml:space="preserve">
+    <value>Revue claire</value>
+  </data>
+  <data name="Fits_ExpFontSans.Content" xml:space="preserve">
+    <value>Sans-serif</value>
+  </data>
+  <data name="Fits_ExpFontMono.Content" xml:space="preserve">
+    <value>Mono</value>
+  </data>
+  <data name="Fits_ExpFontSerif.Content" xml:space="preserve">
+    <value>Serif</value>
+  </data>
+  <data name="Fits_ExpScaleNote.Text" xml:space="preserve">
+    <value>Les repères et le texte suivent l’échelle de la figure : 4× donne une image plus grande, et non la même image agrandie.</value>
+  </data>
+  <data name="Fits_ExpAnnotateToggle.Header" xml:space="preserve">
+    <value>En-tête et pied de page</value>
+  </data>
+  <data name="Fits_ExpMarksToggle.Header" xml:space="preserve">
+    <value>Repères</value>
+  </data>
+  <data name="Fits_ExpTransparentToggle.Header" xml:space="preserve">
+    <value>Arrière-plan transparent</value>
+  </data>
+  <data name="Fits_ExportFigureButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Exporter une figure (Ctrl + glisser sur l’image pour une région)</value>
+  </data>
+  <data name="Fits_ExportFigureButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Exporter une figure</value>
+  </data>
+  <data name="Fits_OpenImageButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Ouvrir une image</value>
+  </data>
+  <data name="Fits_ExpPngType" xml:space="preserve">
+    <value>Image PNG</value>
+  </data>
+  <data name="Fits_ExpPdfType" xml:space="preserve">
+    <value>Document PDF</value>
+  </data>
+  <data name="Fits_ExpSaved" xml:space="preserve">
+    <value>{0} enregistré</value>
+  </data>
+  <data name="Marks_FileTypeJson" xml:space="preserve">
+    <value>Repères avec provenance (JSON)</value>
+  </data>
+  <data name="Marks_FileTypeDs9" xml:space="preserve">
+    <value>Fichier de régions DS9</value>
+  </data>
+  <data name="Marks_ViewerUnavailable" xml:space="preserve">
+    <value>la visionneuse n’est pas disponible</value>
+  </data>
+  <data name="Marks_UnknownError" xml:space="preserve">
+    <value>erreur inconnue</value>
+  </data>
+  <data name="Search_AdqlRefused" xml:space="preserve">
+    <value>Cette requête sera refusée</value>
+  </data>
+  <data name="Search_AdqlRefusedCount" xml:space="preserve">
+    <value>Cette requête sera refusée ({0} problèmes)</value>
+  </data>
+  <data name="Images_NoPackageMatches" xml:space="preserve">
+    <value>Rien dans cette image ne correspond à « {0} »</value>
+  </data>
+  <data name="Fits_ImageCanvas.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Canevas de l’image</value>
   </data>
 </root>

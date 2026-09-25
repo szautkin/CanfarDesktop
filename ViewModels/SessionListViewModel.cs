@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 
@@ -10,7 +11,13 @@ public partial class SessionListViewModel : ObservableObject
 {
     private readonly ISessionService _sessionService;
     private CancellationTokenSource? _pollCts;
-    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(15);
+    /// <summary>
+    /// How long to wait before asking again — adaptive, because the interval IS the notification delay.
+    ///
+    /// This loop only runs while a session is pending, which is a bounded window at the end of which
+    /// sits the most-awaited notification in the app. See <see cref="PollCadence"/>.
+    /// </summary>
+    private PollCadence _cadence = new(PollCadence.SessionWatchSeconds);
 
     [ObservableProperty]
     private bool _isLoading;
@@ -103,6 +110,15 @@ public partial class SessionListViewModel : ObservableObject
     public bool HasPendingSessions() =>
         Sessions.Any(s => s.Status is "Pending" or "Terminating");
 
+    /// <summary>
+    /// What the list looked like, for "did anything move?".
+    ///
+    /// Ids and statuses only — a session's expiry time changes on every poll, and treating that as a
+    /// change would mean the cadence never eased off at all.
+    /// </summary>
+    private string StatusFingerprint()
+        => string.Join("|", Sessions.Select(s => $"{s.Id}:{s.Status}"));
+
     public void StartPolling()
     {
         if (_pollCts is not null) return; // already polling
@@ -126,7 +142,7 @@ public partial class SessionListViewModel : ObservableObject
         {
             while (!ct.IsCancellationRequested)
             {
-                PollCountdown = (int)PollInterval.TotalSeconds;
+                PollCountdown = _cadence.Seconds;
                 while (PollCountdown > 0 && !ct.IsCancellationRequested)
                 {
                     await Task.Delay(1000, ct);
@@ -135,10 +151,14 @@ public partial class SessionListViewModel : ObservableObject
 
                 if (ct.IsCancellationRequested) break;
 
+                var before = StatusFingerprint();
                 await LoadSessionsAsync();
 
+                var pending = HasPendingSessions();
+                _cadence.Observe(inFlight: pending, changed: StatusFingerprint() != before);
+
                 // LoadSessionsAsync will call StopPolling if no pending sessions remain
-                if (!HasPendingSessions()) break;
+                if (!pending) break;
             }
         }
         catch (TaskCanceledException) { }
@@ -147,32 +167,44 @@ public partial class SessionListViewModel : ObservableObject
     [RelayCommand]
     private async Task DeleteSessionAsync(string sessionId)
     {
-        var success = await _sessionService.DeleteSessionAsync(sessionId);
-        if (success)
-        {
-            var session = Sessions.FirstOrDefault(s => s.Id == sessionId);
-            if (session is not null)
-                Sessions.Remove(session);
+        using var task = TaskRegistry.Begin(TaskKind.Session, $"Delete session {sessionId}");
 
-            await Task.Delay(3000);
-            await LoadSessionsAsync();
+        var success = await _sessionService.DeleteSessionAsync(sessionId);
+        if (!success)
+        {
+            task.Fail("the service refused the delete");
+            return;
         }
+
+        task.Succeed();
+
+        var session = Sessions.FirstOrDefault(s => s.Id == sessionId);
+        if (session is not null)
+            Sessions.Remove(session);
+
+        // Skaha reports the session as still there for a moment after accepting the delete.
+        await Task.Delay(3000);
+        await LoadSessionsAsync();
     }
 
     public async Task<(bool Success, string? ErrorMessage)> TryRenewSessionAsync(string sessionId)
     {
+        using var task = TaskRegistry.Begin(TaskKind.Session, $"Renew session {sessionId}");
         try
         {
             await _sessionService.RenewSessionAsync(sessionId);
             await LoadSessionsAsync();
+            task.Succeed();
             return (true, null);
         }
         catch (HttpRequestException ex)
         {
+            task.Fail(ex.Message);
             return (false, ex.Message);
         }
         catch (Exception ex)
         {
+            task.Fail(ex.Message);
             return (false, $"Unexpected error: {ex.Message}");
         }
     }

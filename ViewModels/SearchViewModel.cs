@@ -16,6 +16,9 @@ public partial class SearchViewModel : ObservableObject
     public IReadOnlyList<DataTrainRow> AllDataTrainRows => _allDataTrainRows;
     private CancellationTokenSource? _resolverCts;
 
+    /// <summary>The latest target resolution, finished or not. A search waits on it; see SearchAsync.</summary>
+    private Task _resolving = Task.CompletedTask;
+
     #region Observation
 
     [ObservableProperty] private string _observationId = string.Empty;
@@ -194,9 +197,12 @@ public partial class SearchViewModel : ObservableObject
 
     /// <summary>
     /// Load the data train and WAIT for rows: cache first, then a synchronous network fetch when the
-    /// cache is empty (unlike <see cref="LoadDataTrainAsync"/>, whose network refresh is fire-and-forget
-    /// — on a first run with no cache that leaves the facets empty until the next launch). Used by the
-    /// MCP constraints tools so "Additional Constraints" is never silently unloaded.
+    /// cache is empty.
+    ///
+    /// <para><see cref="LoadDataTrainAsync"/> fires its network refresh and forgets it, which is right
+    /// when the cache already has something to show. On a FIRST run there is no cache, so that path
+    /// leaves Additional Constraints empty until the next launch — the facets appear only once the
+    /// forgotten fetch has written the cache for next time.</para>
     /// </summary>
     public async Task EnsureDataTrainAsync()
     {
@@ -219,6 +225,10 @@ public partial class SearchViewModel : ObservableObject
                 SaveDataTrainToCache(fresh);
                 RefreshDataTrainOptions();
             }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Data train ensure failed: {ex.Message}");
         }
         finally
         {
@@ -360,7 +370,7 @@ public partial class SearchViewModel : ObservableObject
             ResolverStatus = string.Empty;
             return;
         }
-        _ = ResolveTargetDebouncedAsync(value);
+        _resolving = ResolveTargetDebouncedAsync(value);
     }
 
     private async Task ResolveTargetDebouncedAsync(string target)
@@ -440,6 +450,12 @@ public partial class SearchViewModel : ObservableObject
     [RelayCommand]
     public async Task SearchAsync()
     {
+        // A target typed a moment ago is still being resolved — half a second of debounce, then the
+        // network. Searching without waiting built the query with no coordinates, fell back to a
+        // target-name match, and an M31 search returned a quasar at Dec −31° because "J0305M3150"
+        // contains "m31". Whatever the resolver concludes, the query should be built from it.
+        await _resolving;
+
         var state = BuildFormState();
         var adql = ADQLBuilder.Build(state);
         AdqlText = adql;
@@ -598,17 +614,24 @@ public partial class SearchViewModel : ObservableObject
     public string GetColumnFilter(string columnKey) =>
         _columnFilters.TryGetValue(columnKey, out var v) ? v : string.Empty;
 
-    /// <summary>Snapshot of the active per-column filters (column key → filter text).</summary>
-    public IReadOnlyDictionary<string, string> ActiveColumnFilters
-        => new Dictionary<string, string>(_columnFilters, StringComparer.OrdinalIgnoreCase);
+    /// <summary>Every column filter currently set, keyed by column key. Read-only view of the live state.</summary>
+    public IReadOnlyDictionary<string, string> ActiveColumnFilters => _columnFilters;
 
-    /// <summary>Row count after the active filters (equals TotalRows when none are set).</summary>
-    public int FilteredRowCount => GetProcessedRows().Count;
+    /// <summary>
+    /// The rows the grid would show across ALL pages — the user's filters and sort applied, paging not.
+    /// The same list <see cref="GetCurrentPageRows"/> pages through, so a reader and the screen can
+    /// never disagree about what "the results" are.
+    /// </summary>
+    public IReadOnlyList<SearchResultRow> ProcessedRows => GetProcessedRows();
 
-    /// <summary>Set an explicit sort (unlike <see cref="SortBy"/>, which toggles on repeat).</summary>
-    public void SetSort(string columnKey, bool ascending)
+    /// <summary>
+    /// Sort by a column in a stated direction. <see cref="SortBy"/> TOGGLES, which is what a header
+    /// click means and not what "sort ascending by exposure" means — a caller that has to click twice
+    /// to find out which way it went cannot ask for a direction at all.
+    /// </summary>
+    public void SetSort(string? columnKey, bool ascending)
     {
-        _sortColumnKey = columnKey;
+        _sortColumnKey = string.IsNullOrWhiteSpace(columnKey) ? null : columnKey;
         _sortAscending = ascending;
         CurrentPage = 1;
         InvalidateFilterCache();

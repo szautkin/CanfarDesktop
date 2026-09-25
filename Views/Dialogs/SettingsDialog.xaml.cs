@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Services;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace CanfarDesktop.Views.Dialogs;
 
@@ -24,8 +25,9 @@ public sealed partial class SettingsDialog : ContentDialog
     {
         InitializeComponent();
         _settings = App.Services.GetRequiredService<ISettingsService>();
-        VersionText.Text = Loc.F("About_Version", AppVersion());
+        VersionText.Text = Loc.F("About_Version", RuntimeInfo.AppVersion());
         AboutSubtitleText.Text = Loc.T("About_Subtitle");
+        PopulateAbout();
         PopulateGeneral();
         PopulatePortal();
         Nav.SelectedItem = Nav.MenuItems.Count > 0 ? Nav.MenuItems[0] : null; // General
@@ -57,6 +59,7 @@ public sealed partial class SettingsDialog : ContentDialog
         _loading = true;
         SelectByTag(ThemeCombo, _settings.Theme);
         SelectByTag(LanguageCombo, _settings.Language);
+        AgentSoundsToggle.IsOn = _settings.AgentSounds;
         PopulateEndpoints();
         _loading = false;
     }
@@ -99,10 +102,10 @@ public sealed partial class SettingsDialog : ContentDialog
             var factory = App.Services.GetRequiredService<System.Net.Http.IHttpClientFactory>();
             var endpoints = App.Services.GetRequiredService<Helpers.ApiEndpoints>();
             var results = await Services.ServiceHealthProbe.ProbeAllAsync(factory, endpoints);
-            // A host that answers 404/5xx is reachable but NOT healthy — show the status, not "OK" (QA F3).
-            ProbeResultsList.ItemsSource = results.Select(r => r.Reachable && r.Ok
-                ? Loc.F("Settings_ProbeOk", r.Name, r.LatencyMs)
-                : Loc.F("Settings_ProbeFail", r.Name, r.Error ?? $"HTTP {r.StatusCode}")).ToList();
+            var summary = Services.ServiceHealthProbe.Summarize(results);
+            var rows = results.Select(DescribeProbe).ToList();
+            rows.Add(Loc.F("Settings_ProbeSummary", summary.HealthyCount, summary.Count, summary.UsableCount));
+            ProbeResultsList.ItemsSource = rows;
         }
         catch (Exception ex)
         {
@@ -113,6 +116,24 @@ public sealed partial class SettingsDialog : ContentDialog
             _probing = false;
             TestConnectionsButton.IsEnabled = true;
         }
+    }
+
+    /// <summary>
+    /// One probe result as a line. Three outcomes, not two: unreachable, reachable but declaring
+    /// itself unavailable (its own note is the useful part), and up. A service that needs a sign-in
+    /// says so, because "healthy" and "usable to you right now" are different answers.
+    /// </summary>
+    private static string DescribeProbe(Helpers.ServiceProbeResult r)
+    {
+        // Unreachable, or reachable but answering 404/5xx — a host that replies is not a service that
+        // works (QA F3), so the status is the reason when there is no exception to name.
+        if (!r.Reachable || !r.Ok)
+            return Loc.F("Settings_ProbeFail", r.Name, r.Error ?? $"HTTP {r.StatusCode}");
+
+        var auth = r.RequiresAuth ? Loc.T("Settings_ProbeAuthSuffix") : string.Empty;
+        return r.Available == false
+            ? Loc.F("Settings_ProbeDown", r.Name, r.Note ?? "?") + auth
+            : Loc.F("Settings_ProbeOk", r.Name, r.LatencyMs) + auth;
     }
 
     private void PopulatePortal()
@@ -144,6 +165,17 @@ public sealed partial class SettingsDialog : ContentDialog
     private static Visibility Vis(bool show) => show ? Visibility.Visible : Visibility.Collapsed;
 
     // ── General persistence (auto-save) ──
+
+    /// <summary>
+    /// Saved at once, and heard at once: AgentSounds.IsEnabled asks the settings service per cue, so the
+    /// very next one follows this switch rather than waiting for a restart.
+    /// </summary>
+    private void OnAgentSoundsToggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _settings.AgentSounds = AgentSoundsToggle.IsOn;
+        _settings.Save();
+    }
 
     private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -294,16 +326,41 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private static string? SelectedTag(ComboBox combo) => (combo.SelectedItem as ComboBoxItem)?.Tag as string;
 
-    private static string AppVersion()
+    /// <summary>
+    /// The About page's links and its runtime block.
+    ///
+    /// The URLs come from <see cref="AppLinks"/> rather than being typed into the XAML, so the app's
+    /// home, its issue tracker and the observatory's site cannot drift apart across the surfaces that
+    /// name them.
+    /// </summary>
+    private void PopulateAbout()
+    {
+        WebsiteLink.NavigateUri = new Uri(AppLinks.Website);
+        IssuesLink.NavigateUri = new Uri(AppLinks.Issues);
+        RuntimeText.Text = RuntimeInfo.AsText(RuntimeInfo.Facts());
+    }
+
+    private void OnCopyRuntimeInfo(object sender, RoutedEventArgs e)
     {
         try
         {
-            var v = Windows.ApplicationModel.Package.Current.Id.Version;
-            return $"{v.Major}.{v.Minor}.{v.Build}";
+            var package = new DataPackage();
+            package.SetText(RuntimeText.Text);
+            Clipboard.SetContent(package);
+
+            // Says it worked, and goes back on its own. A dialog for a copy would be worse than silence.
+            CopyRuntimeButton.Content = Loc.T("Settings_CopiedLabel");
+            var back = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            back.Tick += (_, _) =>
+            {
+                back.Stop();
+                CopyRuntimeButton.Content = Loc.T("Settings_CopyLabel");
+            };
+            back.Start();
         }
         catch
         {
-            return System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0";
+            // The clipboard can be held by another process. The text is selectable either way.
         }
     }
 }

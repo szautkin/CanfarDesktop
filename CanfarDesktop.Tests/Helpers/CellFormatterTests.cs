@@ -135,4 +135,18 @@ public class CellFormatterTests
     {
         Assert.Equal("hello world", CellFormatter.Format("unknowncolumn", "  hello world  "));
     }
+
+    // A column named the way the grid shows it, not only by its key
+    [Theory]
+    [InlineData("startdate", "startdate")]
+    [InlineData("startdate", "STARTDATE")]
+    [InlineData("startdate", "Start Date")]
+    [InlineData("ra(j20000)", "RA (J2000.0)")]
+    [InlineData("dec(j20000)", "\"Dec. (J2000.0)\"")]
+    public void NamesColumn_AcceptsTheKeyOrTheHeader(string key, string asked)
+        => Assert.True(CellFormatter.NamesColumn(key, asked));
+
+    [Fact]
+    public void NamesColumn_DoesNotGuess()
+        => Assert.False(CellFormatter.NamesColumn("startdate", "date"));
 }

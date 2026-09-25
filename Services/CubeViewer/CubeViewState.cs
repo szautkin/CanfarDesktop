@@ -29,6 +29,7 @@ public sealed record CubeViewState(
     string Background = "dark",
     bool ShowSlicePlane = false,
     bool ShowCaptions = false,
+    bool ShowPanels = true,
     bool AutoOrbit = false,
     bool Playing = false,
     // ── Full read parity: everything else the UI shows (info panel, slice view, spectrum panel,
@@ -49,7 +50,8 @@ public sealed record CubeViewState(
     bool SpectrumPanelOpen = false,  // the click-to-probe spectrum panel
     int? SpectrumX = null,           // probed spaxel shown in the panel title (display pixels, as the UI labels it)
     int? SpectrumY = null,
-    IReadOnlyList<CubeTransferPoint>? TransferPoints = null); // opacity curve control points
+    IReadOnlyList<CubeTransferPoint>? TransferPoints = null, // opacity curve control points
+    bool Loading = false);           // a cube is being read into this tab right now
 
 /// <summary>One opacity transfer-function control point: data value → alpha, both normalized [0,1].</summary>
 public sealed record CubeTransferPoint(double X, double Y);

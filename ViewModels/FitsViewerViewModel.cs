@@ -20,6 +20,14 @@ public partial class FitsViewerViewModel : ObservableObject
 
     [ObservableProperty] private string _title = "FITS Viewer";
     [ObservableProperty] private string _statusMessage = "No file loaded";
+
+    /// <summary>
+    /// How far through the file the parser is, 0 to 1 — or null while that cannot be known.
+    ///
+    /// Null is a real answer and not a zero: a stream that cannot report its length should leave the
+    /// bar indeterminate rather than sit at the left pretending nothing has happened.
+    /// </summary>
+    [ObservableProperty] private double? _loadFraction;
     [ObservableProperty] private string _coordinateText = "";
     [ObservableProperty] private WorldCoordinate? _crosshairPosition;
 
@@ -51,6 +59,7 @@ public partial class FitsViewerViewModel : ObservableObject
     public async Task OpenFileAsync(string filePath)
     {
         IsLoading = true;
+        LoadFraction = null;
         StatusMessage = $"Loading {Path.GetFileName(filePath)}...";
         LoadError = null;
 
@@ -59,12 +68,21 @@ public partial class FitsViewerViewModel : ObservableObject
             FilePath = filePath;
             Title = Path.GetFileName(filePath);
 
+            // Reported from the parse thread, so it is marshalled back before anything is bound to.
+            // A mosaic takes tens of seconds and every extension of it is visible progress.
+            var name = Path.GetFileName(filePath);
+            var progress = new Progress<Helpers.FitsParseProgress>(p =>
+            {
+                LoadFraction = Helpers.FitsLoadProgress.Fraction(p);
+                StatusMessage = Helpers.FitsLoadProgress.Describe(name, p);
+            });
+
             _hdus = await Task.Run(() =>
             {
                 // Unwrap a tar/gzip container (CADC ships multi-product downloads as tar bundles)
                 // so the parser sees a single FITS member, not the archive header.
                 using var stream = FitsContainer.OpenFits(filePath);
-                return FitsParser.Parse(stream);
+                return FitsParser.Parse(stream, progress);
             });
 
             // Find first image HDU
@@ -96,6 +114,7 @@ public partial class FitsViewerViewModel : ObservableObject
         finally
         {
             IsLoading = false;
+            LoadFraction = null;
         }
     }
 
@@ -159,16 +178,16 @@ public partial class FitsViewerViewModel : ObservableObject
             return;
         }
 
-        // FITS Y is flipped: display row 0 = FITS row (height-1)
-        var fitsY = _imageData.Height - 1 - iy;
-        var pixelIdx = fitsY * _imageData.Width + ix;
+        // Display row 0 is the LAST row of the array: the renderer flips Y to draw.
+        var (_, arrayY) = PixelConvention.DisplayToArray(ix, iy, _imageData.Height);
+        var pixelIdx = (int)arrayY * _imageData.Width + ix;
         var value = _imageData.Pixels[pixelIdx];
 
         PixelText = $"({ix}, {iy}) = {value:G6}";
 
         if (_imageData.Wcs is { IsValid: true } wcs)
         {
-            var (ra, dec) = wcs.PixelToWorld(ix + 1, fitsY + 1); // FITS pixels are 1-based
+            var (ra, dec) = PixelConvention.SkyAtDisplay(wcs, _imageData.Height, ix, iy);
             CoordinateText = $"RA {WcsInfo.FormatRa(ra)}  Dec {WcsInfo.FormatDec(dec)}";
         }
         else
@@ -211,12 +230,7 @@ public partial class FitsViewerViewModel : ObservableObject
     public (double X, double Y)? GoToCoordinate(double ra, double dec)
     {
         if (_imageData?.Wcs is not { IsValid: true } wcs) return null;
-        var pixel = wcs.WorldToPixel(ra, dec);
-        if (pixel is null) return null;
-        // 1-based FITS pixel → 0-based display pixel, flip Y
-        var displayX = pixel.Value.Px - 1;
-        var displayY = _imageData.Height - 1 - (pixel.Value.Py - 1);
-        return (displayX, displayY);
+        return PixelConvention.DisplayOfSky(wcs, _imageData.Height, ra, dec);
     }
 
     /// <summary>

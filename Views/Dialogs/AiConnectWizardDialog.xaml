@@ -80,6 +80,13 @@
                     <ProgressRing x:Name="SelfTestProgress" IsActive="False" Visibility="Collapsed"
                                   Width="20" Height="20" VerticalAlignment="Center" />
                 </StackPanel>
+                <!-- Offered only once the assistant is connected, and never as a step: remote compute is
+                     its own opt-in, with its own image and the person's own allocation behind it. -->
+                <StackPanel x:Name="ComputeHint" Spacing="2" Visibility="Collapsed">
+                    <TextBlock x:Name="ComputeHintText" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <HyperlinkButton x:Name="ComputeLink" Padding="0" Click="OnComputeLinkClick" />
+                </StackPanel>
             </StackPanel>
 
             <InfoBar x:Name="ResultBar" IsOpen="False" IsClosable="True" />

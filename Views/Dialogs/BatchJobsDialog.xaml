@@ -42,6 +42,37 @@
                 </StackPanel>
             </Grid>
         </DataTemplate>
+
+        <!--
+            History rows carry no Events / Logs / Delete buttons on purpose: the job is GONE. Skaha has
+            reaped it, and the probe jobs the app runs itself are deleted the moment they finish, so
+            those three buttons would all be dead. The reason captured while the job still existed is
+            what the row has instead, and it is the whole point of remembering.
+        -->
+        <DataTemplate x:Key="HistoryRowTemplate">
+            <Grid Padding="4,6" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <FontIcon Grid.Row="0" Grid.Column="0" Glyph="{Binding Glyph}" FontSize="12"
+                          Foreground="{Binding Colour}" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}"
+                           Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding When}" Opacity="0.6"
+                           FontSize="12" VerticalAlignment="Center" />
+
+                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Detail}"
+                           Opacity="0.75" FontSize="12" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+            </Grid>
+        </DataTemplate>
     </ContentDialog.Resources>
 
     <Grid x:Name="ContentRoot">
@@ -77,6 +108,30 @@
                 </PivotItem.Header>
                 <ListView x:Name="CompletedList" SelectionMode="None"
                           ItemTemplate="{StaticResource JobRowTemplate}" />
+            </PivotItem>
+
+            <PivotItem x:Name="HistoryTab">
+                <PivotItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE81C;" FontSize="12" />
+                        <TextBlock x:Name="HistoryHeader" />
+                    </StackPanel>
+                </PivotItem.Header>
+                <Grid RowSpacing="6">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ListView Grid.Row="0" x:Name="HistoryList" SelectionMode="None"
+                              ItemTemplate="{StaticResource HistoryRowTemplate}" />
+                    <TextBlock Grid.Row="0" x:Name="HistoryEmptyText" x:Uid="Batch_HistoryEmpty"
+                               Visibility="Collapsed" Opacity="0.7" TextWrapping="Wrap" MaxWidth="420"
+                               VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center"
+                               Text="No finished jobs remembered yet. CANFAR clears jobs once they end, so what happens from now on is kept here." />
+                    <HyperlinkButton Grid.Row="1" x:Name="ClearHistoryButton" x:Uid="Batch_ClearHistory"
+                                     Content="Clear history" Click="OnClearHistory"
+                                     HorizontalAlignment="Left" Visibility="Collapsed" />
+                </Grid>
             </PivotItem>
 
             <PivotItem x:Name="FailedTab">

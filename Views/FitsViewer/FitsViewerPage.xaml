@@ -2,7 +2,8 @@
 <UserControl
     x:Class="CanfarDesktop.Views.FitsViewer.FitsViewerPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CanfarDesktop.Views.Controls">
 
     <Grid RowDefinitions="*,Auto">
 
@@ -17,9 +18,19 @@
             <Border Grid.Column="0" Background="{ThemeResource LayerFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="0,0,1,0">
-                <Grid RowDefinitions="Auto,Auto,Auto,*">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+                    <!-- Marks, at the top of the control column and collapsed until wanted. Everything
+                         about them lives here — the pencil, the shape, the style and the list — rather
+                         than the pencil being in the toolbar and the list nowhere. -->
+                    <Expander Grid.Row="0" x:Name="MarksExpander" x:Uid="Fits_MarksExpander"
+                              Header="Marks" HorizontalAlignment="Stretch" Margin="4,4,4,0"
+                              HorizontalContentAlignment="Stretch"
+                              Expanding="OnMarksExpanding" Collapsed="OnMarksCollapsed">
+                        <controls:MarksPanel x:Name="MarksPanelControl" MaxHeight="420" />
+                    </Expander>
+
                     <!-- HDU selector (multi-extension files only): pick which HDU/extension to view -->
-                    <StackPanel x:Name="HduSection" Grid.Row="0" Spacing="2" Margin="6,6,6,2" Visibility="Collapsed">
+                    <StackPanel x:Name="HduSection" Grid.Row="1" Spacing="2" Margin="6,6,6,2" Visibility="Collapsed">
                         <TextBlock x:Uid="Fits_HduHeader" Text="Extensions (HDUs)"
                                    Style="{StaticResource BodyStrongTextBlockStyle}" FontSize="12" />
                         <ListView x:Name="HduList" SelectionMode="Single" MaxHeight="140"
@@ -41,7 +52,7 @@
                     </StackPanel>
 
                     <!-- Synthesized image summary (WCS, scale, field, instrument…) above the raw header -->
-                    <StackPanel Grid.Row="1" Spacing="2" Margin="6,6,6,2">
+                    <StackPanel Grid.Row="2" Spacing="2" Margin="6,6,6,2">
                         <TextBlock x:Uid="Fits_ImageInfoHeader" Text="Image info"
                                    Style="{StaticResource BodyStrongTextBlockStyle}" FontSize="12" />
                         <ItemsControl x:Name="ImageInfoList">
@@ -58,10 +69,10 @@
                         </ItemsControl>
                         <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4,0,0" />
                     </StackPanel>
-                    <TextBox Grid.Row="2" x:Name="HeaderFilter" x:Uid="Fits_HeaderFilter"
+                    <TextBox Grid.Row="3" x:Name="HeaderFilter" x:Uid="Fits_HeaderFilter"
                              PlaceholderText="Search headers..."
                              Margin="4" TextChanged="OnHeaderFilterChanged" />
-                    <ListView Grid.Row="3" x:Name="HeaderList" SelectionMode="None"
+                    <ListView Grid.Row="4" x:Name="HeaderList" SelectionMode="None"
                               Padding="4">
                         <ListView.ItemTemplate>
                             <DataTemplate>
@@ -84,12 +95,16 @@
             </Border>
 
             <!-- Image canvas: manual zoom/pan via CompositeTransform -->
-            <Grid Grid.Column="1" Background="Black" x:Name="ImageCanvas"
+            <Grid Grid.Column="1" Background="Black" x:Name="ImageCanvas" x:Uid="Fits_ImageCanvas"
+                  IsTabStop="True" UseSystemFocusVisuals="True"
+                  AutomationProperties.Name="Image canvas"
                   PointerPressed="OnCanvasPointerPressed"
                   PointerMoved="OnCanvasPointerMoved"
                   PointerReleased="OnCanvasPointerReleased"
                   PointerCanceled="OnCanvasPointerReleased"
-                  PointerWheelChanged="OnCanvasWheelChanged">
+                  PointerWheelChanged="OnCanvasWheelChanged"
+                  ContextRequested="OnCanvasContextRequested"
+                  DoubleTapped="OnCanvasDoubleTapped">
                 <Image x:Name="FitsImage"
                        Stretch="Uniform"
                        HorizontalAlignment="Center"
@@ -99,6 +114,11 @@
                         <CompositeTransform x:Name="ImageTransform" />
                     </Image.RenderTransform>
                 </Image>
+
+                <!-- Naming a mark, over the mark itself. An ordinary control rather than a flyout: a
+                     flyout dismisses when the pointer returns to the image, commits on close so Escape
+                     saves, and has nowhere to put a bin. -->
+                <controls:MarkLabelEditor x:Name="MarkEditorField" Visibility="Collapsed" />
 
                 <!-- Blink overlay (fades on top of main image, never changes transforms) -->
                 <Image x:Name="BlinkImage"
@@ -113,6 +133,40 @@
                         <CompositeTransform x:Name="BlinkTransform" />
                     </Image.RenderTransform>
                 </Image>
+
+                <!-- Marks. Under the crosshair, which is chrome and has to stay readable over them;
+                     never hit-testable, because the canvas beneath decides what a press means. -->
+                <controls:AnnotationLayer x:Name="AnnotationCanvas" IsHitTestVisible="False" />
+
+                <!-- Off-screen host: the export plate is parented here, laid out, and rasterized, then
+                     removed. Its children sit far off-screen so they never appear over the viewer. -->
+                <Canvas x:Name="ExportHost" IsHitTestVisible="False" />
+
+                <!-- What is happening while a file is read.
+                     A mosaic has forty-one extensions and takes tens of seconds; the only thing on
+                     screen for that was a twenty-pixel spinner in the toolbar, which says something
+                     is happening and not whether it is nearly done or stuck. -->
+                <Border x:Name="LoadingPanel" Visibility="Collapsed"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Padding="20,16" CornerRadius="8" MinWidth="280"
+                        Background="#D0101622" BorderBrush="#40FFFFFF" BorderThickness="1"
+                        IsHitTestVisible="False">
+                    <StackPanel Spacing="10">
+                        <TextBlock x:Name="LoadingTitle" FontWeight="SemiBold"
+                                   Foreground="#FFF0F0F0" TextTrimming="CharacterEllipsis" />
+                        <ProgressBar x:Name="LoadingBar" Minimum="0" Maximum="1" Width="240" />
+                        <TextBlock x:Name="LoadingDetail" FontSize="12" Opacity="0.75"
+                                   Foreground="#FFE0E0E0" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+
+                <!-- The region being dragged out for a figure. -->
+                <Canvas x:Name="RegionCanvas" IsHitTestVisible="False">
+                    <Rectangle x:Name="RegionRect" Visibility="Collapsed"
+                               Stroke="{ThemeResource SystemFillColorAttentionBrush}"
+                               StrokeThickness="1.5" StrokeDashArray="5,3"
+                               Fill="#20FFFFFF" />
+                </Canvas>
 
                 <!-- Crosshair overlay (click to place) -->
                 <Canvas x:Name="CrosshairCanvas" IsHitTestVisible="False">

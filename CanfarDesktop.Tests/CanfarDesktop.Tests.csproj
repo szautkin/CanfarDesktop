@@ -21,8 +21,11 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="NSubstitute" Version="5.3.0" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <!-- The same versions the app ships: these compile the app's own linked sources, and a test that
+         runs against an older library tests something nobody installs. DependencyAlignmentTests
+         fails the run when the two drift apart. -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
   </ItemGroup>
 
   <!-- Embed the probe scripts so EmbeddedProbeScripts.FromAssembly resolves them in tests too. -->
@@ -39,12 +42,44 @@
     <Compile Include="..\Services\ISessionService.cs" Link="Linked\ISessionService.cs" />
     <Compile Include="..\Services\HeadlessLaunchException.cs" Link="Linked\HeadlessLaunchException.cs" />
     <Compile Include="..\Helpers\HeadlessRequestBuilder.cs" Link="Linked\HeadlessRequestBuilder.cs" />
+    <Compile Include="..\Helpers\AgentSounds.cs" Link="Linked\AgentSounds.cs" />
+    <Compile Include="..\Helpers\AgentCueTracker.cs" Link="Linked\AgentCueTracker.cs" />
+    <Compile Include="..\Helpers\TaskRegistry.cs" Link="Linked\TaskRegistry.cs" />
+    <Compile Include="..\Helpers\ActivitySummary.cs" Link="Linked\ActivitySummary.cs" />
+    <Compile Include="..\Helpers\MarkSummary.cs" Link="Linked\MarkSummary.cs" />
+    <Compile Include="..\Helpers\MarkEditor.cs" Link="Linked\MarkEditor.cs" />
+    <Compile Include="..\Helpers\MarkStore.cs" Link="Linked\MarkStore.cs" />
+    <Compile Include="..\Helpers\MarkStylePreference.cs" Link="Linked\MarkStylePreference.cs" />
+    <Compile Include="..\Helpers\RuntimeInfo.cs" Link="Linked\RuntimeInfo.cs" />
+    <Compile Include="..\Helpers\PollCadence.cs" Link="Linked\PollCadence.cs" />
+    <Compile Include="..\Helpers\AgentCapture.cs" Link="Linked\AgentCapture.cs" />
+    <Compile Include="..\Helpers\AtomicFile.cs" Link="Linked\AtomicFile.cs" />
+    <Compile Include="..\Helpers\IsoTime.cs" Link="Linked\IsoTime.cs" />
+    <Compile Include="..\Helpers\PdfImageWriter.cs" Link="Linked\PdfImageWriter.cs" />
+    <Compile Include="..\Helpers\RowSelection.cs" Link="Linked\RowSelection.cs" />
+    <Compile Include="..\Helpers\SaveFileName.cs" Link="Linked\SaveFileName.cs" />
+    <Compile Include="..\Helpers\StreamToFile.cs" Link="Linked\StreamToFile.cs" />
+    <Compile Include="..\Services\RecentFilesStore.cs" Link="Linked\RecentFilesStore.cs" />
+    <Compile Include="..\Services\Fits\RecentFitsService.cs" Link="Linked\Fits\RecentFitsService.cs" />
+    <Compile Include="..\Mcp\Tools\Write\ViewerCaptureContracts.cs" Link="Linked\Mcp\ViewerCaptureContracts.cs" />
+    <Compile Include="..\Models\JobRecord.cs" Link="Linked\JobRecord.cs" />
+    <Compile Include="..\Services\JobHistoryStore.cs" Link="Linked\JobHistoryStore.cs" />
+    <!-- The cue files themselves, at the path AgentSounds.FileFor probes, so the tests check the
+         real installed layout rather than a fixture that could drift from it. -->
+    <Content Include="..\Assets\Sounds\*.wav" Link="Assets\Sounds\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
     <!-- Image discovery backend (M4b) -->
     <Compile Include="..\Models\ImageDiscovery\ImageManifest.cs" Link="Linked\ImageDiscovery\ImageManifest.cs" />
     <Compile Include="..\Models\ImageDiscovery\PackageQuery.cs" Link="Linked\ImageDiscovery\PackageQuery.cs" />
     <Compile Include="..\Models\ImageDiscovery\ImageDiscoverySettings.cs" Link="Linked\ImageDiscovery\ImageDiscoverySettings.cs" />
     <Compile Include="..\Services\ImageDiscovery\ManifestParser.cs" Link="Linked\ImageDiscovery\ManifestParser.cs" />
     <Compile Include="..\Services\ImageDiscovery\RegistryCredentialTest.cs" Link="Linked\ImageDiscovery\RegistryCredentialTest.cs" />
+    <!-- The other door: images the platform does not list, and the user's own list of them. -->
+    <Compile Include="..\Models\RegistryImage.cs" Link="Linked\ImageDiscovery\RegistryImage.cs" />
+    <Compile Include="..\Services\ImageDiscovery\RegistryService.cs" Link="Linked\ImageDiscovery\RegistryService.cs" />
+    <Compile Include="..\Services\ImageDiscovery\UserImageStore.cs" Link="Linked\ImageDiscovery\UserImageStore.cs" />
+    <Compile Include="..\Mcp\Tools\Read\RegistryImageTools.cs" Link="Linked\Mcp\RegistryImageTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\RegistryImageWriteTools.cs" Link="Linked\Mcp\RegistryImageWriteTools.cs" />
     <Compile Include="..\Helpers\RollingTagPolicy.cs" Link="Linked\ImageDiscovery\RollingTagPolicy.cs" />
     <Compile Include="..\Helpers\ImageDiscovery\FacetEngine.cs" Link="Linked\ImageDiscovery\FacetEngine.cs" />
     <Compile Include="..\Helpers\ImageDiscovery\ImageParser.cs" Link="Linked\ImageDiscovery\ImageParser.cs" />
@@ -99,7 +134,14 @@
     <Compile Include="..\Helpers\VoSpaceParser.cs" Link="Linked\VoSpaceParser.cs" />
     <Compile Include="..\Models\VoSpaceNode.cs" Link="Linked\VoSpaceNode.cs" />
     <Compile Include="..\Services\TAPService.cs" Link="Linked\TAPService.cs" />
+    <!-- The service's own schema, and the ADQL pre-flight that reads it. -->
+    <Compile Include="..\Models\TapSchema.cs" Link="Linked\TapSchema.cs" />
+    <Compile Include="..\Services\TapSchemaService.cs" Link="Linked\TapSchemaService.cs" />
+    <Compile Include="..\Helpers\AdqlValidator.cs" Link="Linked\AdqlValidator.cs" />
+    <Compile Include="..\Mcp\Tools\Read\TapSchemaTools.cs" Link="Linked\Mcp\TapSchemaTools.cs" />
     <Compile Include="..\Services\DataLinkService.cs" Link="Linked\DataLinkService.cs" />
+    <Compile Include="..\Services\DownloadFaults.cs" Link="Linked\DownloadFaults.cs" />
+    <Compile Include="..\Services\ObservationDownloadService.cs" Link="Linked\ObservationDownloadService.cs" />
     <!-- CAOM2 metadata (M2c) -->
     <Compile Include="..\Models\Caom2\CAOM2Observation.cs" Link="Linked\Caom2\CAOM2Observation.cs" />
     <Compile Include="..\Helpers\Caom2Uri.cs" Link="Linked\Caom2Uri.cs" />
@@ -137,24 +179,39 @@
     <Compile Include="..\Mcp\Tools\ToolPaths.cs" Link="Linked\Mcp\ToolPaths.cs" />
     <Compile Include="..\Mcp\Tools\ToolTimeout.cs" Link="Linked\Mcp\ToolTimeout.cs" />
     <Compile Include="..\Mcp\Tools\Builtin\FoundationalTools.cs" Link="Linked\Mcp\FoundationalTools.cs" />
+    <Compile Include="..\Mcp\Tools\Builtin\ToolMapTools.cs" Link="Linked\Mcp\ToolMapTools.cs" />
     <Compile Include="..\Mcp\Tools\ViewState\ViewStateTools.cs" Link="Linked\Mcp\ViewStateTools.cs" />
     <Compile Include="..\Mcp\AppViewStateService.cs" Link="Linked\Mcp\AppViewStateService.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\Proposal.cs" Link="Linked\Mcp\Proposal.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\ProposalApplier.cs" Link="Linked\Mcp\ProposalApplier.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\ProposalStore.cs" Link="Linked\Mcp\ProposalStore.cs" />
+    <Compile Include="..\Mcp\Tools\Proposals\ProposalJournal.cs" Link="Linked\Mcp\ProposalJournal.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\ProposalBudget.cs" Link="Linked\Mcp\ProposalBudget.cs" />
+    <!-- Work that outlives the call that asked for it. -->
+    <Compile Include="..\Mcp\Tools\Proposals\JobRegistry.cs" Link="Linked\Mcp\JobRegistry.cs" />
+    <Compile Include="..\Mcp\Tools\Read\JobTools.cs" Link="Linked\Mcp\JobTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\StartBackgroundApplyTool.cs" Link="Linked\Mcp\StartBackgroundApplyTool.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\AutoApplyHook.cs" Link="Linked\Mcp\AutoApplyHook.cs" />
     <Compile Include="..\Mcp\Tools\Proposals\AutoApplyPolicy.cs" Link="Linked\Mcp\AutoApplyPolicy.cs" />
     <Compile Include="..\Models\AICompute\AIComputeSettings.cs" Link="Linked\AICompute\AIComputeSettings.cs" />
     <Compile Include="..\Services\AICompute\RunCodeContract.cs" Link="Linked\AICompute\RunCodeContract.cs" />
     <Compile Include="..\Services\AICompute\RunCodeModels.cs" Link="Linked\AICompute\RunCodeModels.cs" />
+    <Compile Include="..\Services\AICompute\ComputeRunStore.cs" Link="Linked\AICompute\ComputeRunStore.cs" />
+    <Compile Include="..\Models\AICompute\ComputeRun.cs" Link="Linked\AICompute\ComputeRun.cs" />
+    <Compile Include="..\Helpers\ComputeStatus.cs" Link="Linked\ComputeStatus.cs" />
+    <Compile Include="..\Helpers\StorageFolder.cs" Link="Linked\StorageFolder.cs" />
+    <Compile Include="..\Helpers\AccountScreens.cs" Link="Linked\AccountScreens.cs" />
+    <Compile Include="..\Mcp\AgentScreens.cs" Link="Linked\Mcp\AgentScreens.cs" />
+    <Compile Include="..\Mcp\Tools\Write\RemoteComputeViewTools.cs" Link="Linked\Mcp\RemoteComputeViewTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\AIComputeTools.cs" Link="Linked\Mcp\AIComputeTools.cs" />
     <Compile Include="..\Mcp\Tools\JsonWriteTool.cs" Link="Linked\Mcp\JsonWriteTool.cs" />
     <Compile Include="..\Mcp\Tools\Write\ProposalLifecycleTools.cs" Link="Linked\Mcp\ProposalLifecycleTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ViewStateWriteTools.cs" Link="Linked\Mcp\ViewStateWriteTools.cs" />
-    <Compile Include="..\Mcp\Tools\Write\SavedQueryWriteTools.cs" Link="Linked\Mcp\SavedQueryWriteTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\UiPointerTools.cs" Link="Linked\Mcp\UiPointerTools.cs" />
+    <!-- Search page steering: contracts first — AppViewStateService forwards to ISearchUiBridge. -->
+    <Compile Include="..\Mcp\Tools\Write\SearchUiContracts.cs" Link="Linked\Mcp\SearchUiContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\SearchUiTools.cs" Link="Linked\Mcp\SearchUiTools.cs" />
-    <Compile Include="..\Mcp\Tools\Read\SearchUiReadTools.cs" Link="Linked\Mcp\SearchUiReadTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\SavedQueryWriteTools.cs" Link="Linked\Mcp\SavedQueryWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\RecentSearchWriteTools.cs" Link="Linked\Mcp\RecentSearchWriteTools.cs" />
     <Compile Include="..\Mcp\Agents\AgentActivity.cs" Link="Linked\Mcp\AgentActivity.cs" />
     <Compile Include="..\Models\AgentAttribution.cs" Link="Linked\AgentAttribution.cs" />
@@ -212,6 +269,7 @@
     <Compile Include="..\Mcp\Tools\Read\SearchReadTools.cs" Link="Linked\Mcp\SearchReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\PlatformReadTools.cs" Link="Linked\Mcp\PlatformReadTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\ServiceHealthTool.cs" Link="Linked\Mcp\ServiceHealthTool.cs" />
+    <Compile Include="..\Helpers\ServiceAvailability.cs" Link="Linked\ServiceAvailability.cs" />
     <Compile Include="..\Models\PlatformLoad.cs" Link="Linked\Mcp\PlatformLoad.cs" />
     <Compile Include="..\Mcp\Tools\Read\SearchExecTools.cs" Link="Linked\Mcp\SearchExecTools.cs" />
     <Compile Include="..\Mcp\Tools\Read\SessionReadTools.cs" Link="Linked\Mcp\SessionReadTools.cs" />
@@ -222,6 +280,7 @@
     <Compile Include="..\Mcp\Tools\Read\ListEventsTool.cs" Link="Linked\Mcp\ListEventsTool.cs" />
     <Compile Include="..\Mcp\Tools\Read\VizierConeSearchTool.cs" Link="Linked\Mcp\VizierConeSearchTool.cs" />
     <Compile Include="..\Mcp\Tools\AliasedTool.cs" Link="Linked\Mcp\AliasedTool.cs" />
+    <Compile Include="..\Mcp\Tools\SignedInTool.cs" Link="Linked\Mcp\SignedInTool.cs" />
     <Compile Include="..\Services\VizierService.cs" Link="Linked\VizierService.cs" />
     <Compile Include="..\Models\RecentLaunch.cs" Link="Linked\RecentLaunch.cs" />
     <Compile Include="..\Models\StorageQuota.cs" Link="Linked\StorageQuota.cs" />
@@ -232,6 +291,7 @@
     <Compile Include="..\Models\Notebook\NotebookCell.cs" Link="Linked\Notebook\NotebookCell.cs" />
     <Compile Include="..\Models\Notebook\CellOutput.cs" Link="Linked\Notebook\CellOutput.cs" />
     <Compile Include="..\Helpers\Notebook\NotebookParser.cs" Link="Linked\Notebook\NotebookParser.cs" />
+    <Compile Include="..\Helpers\Notebook\NotebookFormats.cs" Link="Linked\Notebook\NotebookFormats.cs" />
     <Compile Include="..\Helpers\Notebook\AnalysisNotebookBuilder.cs" Link="Linked\Notebook\AnalysisNotebookBuilder.cs" />
     <Compile Include="..\Helpers\Notebook\AnsiParser.cs" Link="Linked\Notebook\AnsiParser.cs" />
     <Compile Include="..\Helpers\Notebook\PythonSyntaxHighlighter.cs" Link="Linked\Notebook\PythonSyntaxHighlighter.cs" />
@@ -248,16 +308,49 @@
     <Compile Include="..\Services\Notebook\INotebookTabFactory.cs" Link="Linked\Notebook\INotebookTabFactory.cs" />
     <Compile Include="..\ViewModels\Notebook\NotebookTabItem.cs" Link="Linked\Notebook\NotebookTabItem.cs" />
     <Compile Include="..\ViewModels\Notebook\NotebookTabHostViewModel.cs" Link="Linked\Notebook\NotebookTabHostViewModel.cs" />
-    <Compile Include="..\ViewModels\Notebook\NotebookFileMode.cs" Link="Linked\Notebook\NotebookFileMode.cs" />
     <!-- Viewport math + models -->
     <Compile Include="..\Helpers\ViewportMath.cs" Link="Linked\ViewportMath.cs" />
     <Compile Include="..\Helpers\BlinkAligner.cs" Link="Linked\BlinkAligner.cs" />
     <Compile Include="..\Models\Fits\WorldCoordinate.cs" Link="Linked\Fits\WorldCoordinate.cs" />
     <Compile Include="..\Models\Fits\SavedCoordinate.cs" Link="Linked\Fits\SavedCoordinate.cs" />
     <!-- FITS Viewer -->
+    <!-- Marks: the model, the shared geometry, and the store keyed by the file drawn on. -->
+    <Compile Include="..\Models\Annotation.cs" Link="Linked\Annotation.cs" />
+    <Compile Include="..\Helpers\AnnotationGeometry.cs" Link="Linked\AnnotationGeometry.cs" />
+    <Compile Include="..\Helpers\PlateInk.cs" Link="Linked\PlateInk.cs" />
+    <Compile Include="..\Helpers\RasterLimit.cs" Link="Linked\RasterLimit.cs" />
+    <Compile Include="..\Helpers\PanelSlide.cs" Link="Linked\PanelSlide.cs" />
+    <Compile Include="..\Helpers\TiledRaster.cs" Link="Linked\TiledRaster.cs" />
+    <Compile Include="..\Helpers\DialogSize.cs" Link="Linked\DialogSize.cs" />
+    <Compile Include="..\Helpers\PressOwner.cs" Link="Linked\PressOwner.cs" />
+    <Compile Include="..\Helpers\FitsLoadProgress.cs" Link="Linked\FitsLoadProgress.cs" />
+    <Compile Include="..\Helpers\MarkExport.cs" Link="Linked\MarkExport.cs" />
+    <Compile Include="..\Helpers\Ds9Regions.cs" Link="Linked\Ds9Regions.cs" />
+    <Compile Include="..\Helpers\MarkCommands.cs" Link="Linked\MarkCommands.cs" />
+    <Compile Include="..\Helpers\MarkClipboard.cs" Link="Linked\MarkClipboard.cs" />
+    <Compile Include="..\Helpers\CubeDownsample.cs" Link="Linked\CubeDownsample.cs" />
+    <Compile Include="..\Helpers\UiPointer.cs" Link="Linked\UiPointer.cs" />
+    <Compile Include="..\Helpers\ToolbarOverflow.cs" Link="Linked\ToolbarOverflow.cs" />
+    <Compile Include="..\Helpers\MarkTarget.cs" Link="Linked\MarkTarget.cs" />
+    <Compile Include="..\Services\Fits\AnnotationStore.cs" Link="Linked\Fits\AnnotationStore.cs" />
+    <Compile Include="..\Mcp\Tools\Write\AnnotationContracts.cs" Link="Linked\Mcp\AnnotationContracts.cs" />
+    <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\AnnotationExportTools.cs" Link="Linked\Mcp\AnnotationExportTools.cs" />
+    <!-- The FITS projection. No XAML in it: it takes the transform as a function, so it can be tested. -->
+    <Compile Include="..\Views\FitsViewer\FitsAnnotationSurface.cs" Link="Linked\Fits\FitsAnnotationSurface.cs" />
+    <!-- Figure export: the region a figure is of, and the plate the marks land on. -->
+    <Compile Include="..\Models\Fits\FitsRegion.cs" Link="Linked\Fits\FitsRegion.cs" />
+    <Compile Include="..\Views\FitsViewer\FitsExportSurface.cs" Link="Linked\Fits\FitsExportSurface.cs" />
+    <Compile Include="..\Mcp\Tools\Write\FitsFigureTool.cs" Link="Linked\Mcp\FitsFigureTool.cs" />
+    <!-- The cube's projections. CubeProjector was pulled out of the axes overlay so the marks and the
+         wireframe land on the same box — and so both can be tested without a GPU. -->
+    <Compile Include="..\Services\CubeViewer\CubeMath.cs" Link="Linked\CubeViewer\CubeMath.cs" />
+    <Compile Include="..\Services\CubeViewer\CubeProjector.cs" Link="Linked\CubeViewer\CubeProjector.cs" />
+    <Compile Include="..\Views\CubeViewer\CubeAnnotationSurfaces.cs" Link="Linked\CubeViewer\CubeAnnotationSurfaces.cs" />
     <Compile Include="..\Models\Fits\FitsCard.cs" Link="Linked\Fits\FitsCard.cs" />
     <Compile Include="..\Models\Fits\FitsHeader.cs" Link="Linked\Fits\FitsHeader.cs" />
     <Compile Include="..\Models\Fits\WcsInfo.cs" Link="Linked\Fits\WcsInfo.cs" />
+    <Compile Include="..\Models\Fits\PixelConvention.cs" Link="Linked\Fits\PixelConvention.cs" />
     <Compile Include="..\Models\Fits\FitsImageData.cs" Link="Linked\Fits\FitsImageData.cs" />
     <Compile Include="..\Models\Fits\FitsHdu.cs" Link="Linked\Fits\FitsHdu.cs" />
     <Compile Include="..\Services\Fits\FitsParser.cs" Link="Linked\Fits\FitsParser.cs" />

@@ -15,9 +15,6 @@ public readonly record struct CubeLoadProgress(int Step, double Fraction, string
 /// </summary>
 internal static class FitsCubeReader
 {
-    /// <summary>Down-sample so max(nx,ny,nz) ≤ this (keeps the Texture3D + RAM budget sane).</summary>
-    private const int MaxDim = 256;
-
     public static VolumeData Read(string path, IProgress<CubeLoadProgress>? progress = null)
     {
         progress?.Report(new(0, 0.01, "")); // reading header
@@ -36,10 +33,11 @@ internal static class FitsCubeReader
             throw new InvalidDataException($"Unsupported BITPIX {bitpix}.");
         double bscale = header.BScale, bzero = header.BZero;
 
-        // Stride so the longest axis fits the cap.
-        int step = 1;
-        while (Math.Max(nx, Math.Max(ny, nz)) / step > MaxDim) step++;
-        int onx = CeilDiv(nx, step), ony = CeilDiv(ny, step), onz = CeilDiv(nz, step);
+        // One stride for the sky plane and one for the spectral axis — see Helpers.CubeDownsample for
+        // why a single stride taken from the longest of the three was wrong, and what it cost.
+        var plan = Helpers.CubeDownsample.For(nx, ny, nz);
+        int stepXY = plan.StrideXY, stepZ = plan.StrideZ;
+        int onx = plan.Nx, ony = plan.Ny, onz = plan.Nz;
 
         var outData = new float[(long)onx * ony * onz];
         var plane = new byte[(long)nx * ny * bytesPerSample];
@@ -68,13 +66,13 @@ internal static class FitsCubeReader
                 if (v > gmax) gmax = v;
             }
 
-            if (z % step != 0) continue;
+            if (z % stepZ != 0) continue;
             int oy = 0;
-            for (int y = 0; y < ny; y += step, oy++)
+            for (int y = 0; y < ny; y += stepXY, oy++)
             {
                 long rowOff = (long)y * nx;
                 int ox = 0;
-                for (int x = 0; x < nx; x += step, ox++)
+                for (int x = 0; x < nx; x += stepXY, ox++)
                 {
                     float v = Decode(plane, (int)((rowOff + x) * bytesPerSample), bitpix, bscale, bzero);
                     outData[((long)oz * ony + oy) * onx + ox] = v;
@@ -101,7 +99,7 @@ internal static class FitsCubeReader
             normHi = finite[Math.Min(finite.Count - 1, (int)(finite.Count * 0.995f))];
         }
 
-        var meta = BuildMetadata(header, nx, ny, nz, onx, ony, oz, step,
+        var meta = BuildMetadata(header, nx, ny, nz, onx, ony, oz, stepXY, stepZ,
                                  gmin, gmax, median, (double)nan / Math.Max(1, totalVox),
                                  normLo, normHi, path);
 
@@ -171,7 +169,7 @@ internal static class FitsCubeReader
     /// </summary>
     private static CubeMetadata BuildMetadata(
         Models.Fits.FitsHeader header,
-        int nx, int ny, int nz, int rnx, int rny, int rnz, int stride,
+        int nx, int ny, int nz, int rnx, int rny, int rnz, int strideXY, int strideZ,
         double min, double max, double median, double nanFraction,
         double normLo, double normHi, string path)
     {
@@ -186,7 +184,8 @@ internal static class FitsCubeReader
             Bunit = (header.GetString("BUNIT") ?? "").Trim(),
             Nx = nx, Ny = ny, Nz = nz,
             RenderNx = rnx, RenderNy = rny, RenderNz = rnz,
-            Stride = stride,
+            StrideXY = strideXY,
+            StrideZ = strideZ,
             DataMin = min, DataMax = max, Median = median,
             NormLo = normLo, NormHi = normHi,
             NanFraction = nanFraction,

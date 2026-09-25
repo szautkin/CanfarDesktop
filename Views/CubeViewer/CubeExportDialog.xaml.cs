@@ -1,14 +1,10 @@
 using System.IO;
 using System.Threading.Tasks;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Graphics.Imaging;
-using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
-using CanfarDesktop.Services.CubeViewer;
 
 namespace CanfarDesktop.Views.CubeViewer;
 
@@ -27,7 +23,30 @@ public sealed partial class CubeExportDialog : ContentDialog
     private bool _ready;
     private CubeExportPlate? _plate;
 
-    public CubeExportDialog() => InitializeComponent();
+    public CubeExportDialog()
+    {
+        InitializeComponent();
+        Opened += FitToWindow;
+    }
+
+    /// <summary>
+    /// Take the size the window can actually give, rather than the size this dialog would prefer.
+    ///
+    /// A ContentDialog clips content it cannot fit rather than shrinking it, so a fixed size is a
+    /// promise the window may not be able to keep — and what gets clipped is the bottom, which is
+    /// where the buttons are. Done on Opened, because that is when the root is measurable.
+    /// </summary>
+    private void FitToWindow(object sender, ContentDialogOpenedEventArgs args)
+    {
+        if (XamlRoot is null) return;
+
+        DialogRoot.Width = Helpers.DialogSize.Fit(XamlRoot.Size.Width, PreferredWidth, DialogRoot.MinWidth);
+        DialogRoot.Height = Helpers.DialogSize.Fit(XamlRoot.Size.Height, PreferredHeight, DialogRoot.MinHeight);
+    }
+
+    /// <summary>What this dialog asks for when there is room. Matches the size set in its markup.</summary>
+    private const double PreferredWidth = 1000, PreferredHeight = 600;
+
 
     /// <summary>Provide the captured (transparent) volume snapshot + plate content, and show the live preview.</summary>
     public void Initialize(WriteableBitmap frame, int frameW, int frameH, CubeExportPlate.PlateData data, string baseName)
@@ -55,6 +74,7 @@ public sealed partial class CubeExportDialog : ContentDialog
         TextColor = TextColorCombo.SelectedIndex switch { 1 => "white", 2 => "black", 3 => "cyan", 4 => "amber", _ => "auto" },
         TextScale = ScaleSlider.Value,
         Annotate = AnnotateToggle.IsOn,
+        ShowMarks = MarksToggle.IsOn,
         Transparent = TransparentToggle.IsOn,
     };
 
@@ -93,17 +113,18 @@ public sealed partial class CubeExportDialog : ContentDialog
             Canvas.SetLeft(raster, -100000);
             raster.UpdateLayout();
 
-            int reqW = (int)Math.Ceiling(raster.ActualWidth * scale);
-            int reqH = (int)Math.Ceiling(raster.ActualHeight * scale);
-            var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(raster, reqW, reqH);
-            int rw = rtb.PixelWidth, rh = rtb.PixelHeight;
-            byte[] buf = (await rtb.GetPixelsAsync()).ToArray();
-            if (rw <= 0 || rh <= 0 || buf.Length < (long)rw * rh * 4)
+            // One rasterisation, capped at what the machine can produce: a 4x request on a large plate
+            // comes back nearer 2.8x, and figure.Scale says so (see PlateRasterizer.TilingWorks).
+            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(
+                raster, RasterHost, scale, expectOpaque: !TransparentToggle.IsOn);
+            if (rendered is not { } figure)
             {
                 StatusLabel.Text = scale >= 4 ? Helpers.Loc.T("Cube_ExpTooLarge") : Helpers.Loc.T("Cube_ExpRenderFailed");
                 return;
             }
+
+            int rw = figure.Width, rh = figure.Height;
+            byte[] buf = figure.Pixels;
 
             var hwnd = WindowHelper.ActiveWindows.Count > 0
                 ? WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0]) : nint.Zero;
@@ -118,25 +139,13 @@ public sealed partial class CubeExportDialog : ContentDialog
             var file = await picker.PickSaveFileAsync();
             if (file is null) { StatusLabel.Text = string.Empty; return; }
 
-            if (pdf)
-            {
-                // PDF has no alpha here, so flatten a transparent figure onto white paper.
-                var rgb = TransparentToggle.IsOn
-                    ? PdfImageWriter.BgraToRgbOverWhite(buf, rw, rh)
-                    : PdfImageWriter.BgraToRgb(buf, rw, rh);
-                using var fs = await file.OpenStreamForWriteAsync();
-                fs.SetLength(0);
-                PdfImageWriter.Write(fs, rgb, rw, rh);
-            }
-            else
-            {
-                using var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
-                var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
-                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied,
-                    (uint)rw, (uint)rh, 96, 96, buf);
-                await encoder.FlushAsync();
-            }
-            StatusLabel.Text = Helpers.Loc.F("Cube_Saved", file.Name);
+            await Helpers.FigureFile.WriteAsync(file.Path, buf, rw, rh, pdf);
+
+            // Say what was really produced when the limit got in the way, rather than letting the
+            // 4x button quietly hand back something closer to 3x.
+            StatusLabel.Text = figure.Scale < scale - 1e-9
+                ? Helpers.Loc.F("Cube_SavedLimited", file.Name, $"{figure.Scale:0.#}", scale, rw, rh)
+                : Helpers.Loc.F("Cube_Saved", file.Name);
         }
         catch (Exception ex)
         {

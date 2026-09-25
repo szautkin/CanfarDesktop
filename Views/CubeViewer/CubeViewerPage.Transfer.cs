@@ -96,7 +96,11 @@ public sealed partial class CubeViewerPage
         }
     }
 
-    private void ApplyTransferFunction() => _renderer.SetTransferFunction(_transfer.Points);
+    private void ApplyTransferFunction()
+    {
+        _renderer.SetTransferFunction(_transfer.Points);
+        MarkRenderDirty();
+    }
 
     /// <summary>Redraw the curve: filled area under it, the line, and one handle per point.</summary>
     private void DrawTransferEditor()

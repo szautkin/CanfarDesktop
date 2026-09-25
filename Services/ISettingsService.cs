@@ -15,6 +15,31 @@ public interface ISettingsService
     string EndpointResolverBase { get; set; }
     /// <summary>Restore every endpoint to its standard CANFAR default.</summary>
     void ResetEndpoints();
+
+    /// <summary>
+    /// Whether the two agent cues play. On by default: the point of a sound is to reach someone who is
+    /// not watching the window, and a cue nobody has been told about is one they never turn on.
+    /// </summary>
+    bool AgentSounds { get; set; }
+
+    /// <summary>
+    /// What the NEXT mark will look like, as <c>MarkStyle.Encode</c> writes it.
+    ///
+    /// A default, not the storage: every mark carries its own style, because it persists, travels over
+    /// MCP and ends up in an exported figure that has to look the same when reopened. This is only what
+    /// the style controls start at when nothing is selected — so a person who prefers thicker outlines
+    /// sets it once rather than on every mark.
+    /// </summary>
+    string DefaultMarkStyle { get; set; }
+
+    /// <summary>
+    /// VizieR TAP mirrors, one URL per line; empty means the shipped default list.
+    ///
+    /// A setting rather than a constant because these hostnames have moved before — two of the four
+    /// we shipped stopped resolving — and a constant in the binary leaves nobody a way to route around
+    /// the next move until the next release.
+    /// </summary>
+    string VizierMirrors { get; set; }
     /// <summary>Push the endpoint settings into the live URL builder (validating each value).</summary>
     void ApplyEndpointsTo(Helpers.ApiEndpoints endpoints);
 

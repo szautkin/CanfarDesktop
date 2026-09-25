@@ -1,3 +1,4 @@
+using CanfarDesktop.Mcp.Wire;
 using CanfarDesktop.Services.Notebook;
 
 namespace CanfarDesktop.Mcp.Tools.Write;
@@ -94,9 +95,12 @@ public sealed class GetCellOutputTool : JsonReadTool<GetCellOutputTool.Args, Not
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_cell_output",
-        "Read the outputs of a cell (by 0-based index): each output's type, text, and error/image/html flags " +
-        "(binary image data is flagged, not returned). Returns null if no notebook is open or the index is out " +
-        "of range." + NbSel.Note,
+        "Read the outputs of a cell (by 0-based index): each output's type, text, error/image/html flags, " +
+        "and `richTypes` — every MIME type the output carries, richest first. Binary image data is NOT " +
+        "returned here: when richTypes contains image/png, fetch it with get_cell_image. Text alone " +
+        "cannot tell a figure from a printed number, because matplotlib's plain-text fallback is the " +
+        "string \"<Figure size 640x480>\". Returns null if no notebook is open or the index is out of " +
+        "range." + NbSel.Note,
         $$"""{"type":"object","properties":{"index":{"type":"integer","minimum":0},{{NbSel.Prop}}},"required":["index"],"additionalProperties":false}""");
 
     protected override Task<NotebookCellOutputs?> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -107,6 +111,72 @@ public sealed class GetCellOutputTool : JsonReadTool<GetCellOutputTool.Args, Not
     }
 
     public sealed record Args { public int? Index { get; init; } public string? Notebook { get; init; } }
+}
+
+
+/// <summary>
+/// <c>get_cell_image</c> — a cell's figure, as an actual picture.
+///
+/// Returned as MCP image content rather than base64 in a JSON string. An image handed back as text is
+/// one the client has to be told how to decode, and the protocol already has a content type for
+/// pictures — which is the difference between an agent that can SEE the plot it just made and one that
+/// can only be told a plot exists.
+/// </summary>
+public sealed class GetCellImageTool : IMcpTool
+{
+    private readonly Func<int, string?, Task<NotebookCellImage>> _get;
+
+    public GetCellImageTool(Func<int, string?, Task<NotebookCellImage>> get) => _get = get;
+
+    public McpVerbClass VerbClass => McpVerbClass.Read;
+    public bool AgentSafe => true;
+
+    public ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "get_cell_image",
+        "Fetch the figure a code cell produced, as an image you can look at. Use it after " +
+        "get_cell_output reports image/png among a cell's richTypes. A cell that plots several times " +
+        "returns its LAST image — the one on screen." + NbSel.Note,
+        $$"""{"type":"object","properties":{"index":{"type":"integer","minimum":0},{{NbSel.Prop}}},"required":["index"],"additionalProperties":false}""");
+
+    public async Task<ToolResult> InvokeAsync(JsonValue arguments, McpToolContext context, CancellationToken cancellationToken)
+    {
+        Args args;
+        try
+        {
+            args = arguments is JsonNull
+                ? new Args()
+                : System.Text.Json.JsonSerializer.Deserialize<Args>(arguments.ToJsonString(), McpJson.Options) ?? new Args();
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            return ToolResult.Fail(new InvalidArgument(ex.Message));
+        }
+
+        if (args.Index is null) return ToolResult.Fail(new InvalidArgument("index is required"));
+        if (args.Index < 0) return ToolResult.Fail(new InvalidArgument("index must be >= 0"));
+
+        try
+        {
+            var image = await _get(args.Index.Value, args.Notebook);
+
+            // "There is no picture" is a typed answer with the reason in it — not run yet, produced
+            // text, wrong kind of cell — because each of those has a different next step.
+            if (image.Data.Length == 0)
+                return ToolResult.Fail(new UnknownTarget(image.Message ?? "that cell has no image"));
+
+            return ToolResult.ImageResult(image.Data, image.MimeType, $"cell {image.Index}");
+        }
+        catch (Exception ex)
+        {
+            return ToolResult.Fail(new BackendError(ex.Message));
+        }
+    }
+
+    public sealed record Args
+    {
+        public int? Index { get; init; }
+        public string? Notebook { get; init; }
+    }
 }
 
 /// <summary><c>get_kernel_state</c> — a notebook's kernel status.</summary>

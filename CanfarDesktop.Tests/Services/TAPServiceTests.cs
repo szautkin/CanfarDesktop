@@ -7,12 +7,9 @@ namespace CanfarDesktop.Tests.Services;
 
 public class TAPServiceTests
 {
-    private static SearchResults ParseCsv(string csv)
-    {
-        var method = typeof(TAPService).GetMethod("ParseCsv",
-            BindingFlags.NonPublic | BindingFlags.Static);
-        return (SearchResults)method!.Invoke(null, [csv, "test query"])!;
-    }
+    // Called directly rather than by reflection: ParseCsv is public now, because the TAP_SCHEMA reader
+    // parses captured responses through it too and a pure function with real inputs is worth reaching.
+    private static SearchResults ParseCsv(string csv) => TAPService.ParseCsv(csv, "test query");
 
     private static List<DataTrainRow> ParseDataTrainCsv(string csv)
     {

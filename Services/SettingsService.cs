@@ -70,6 +70,17 @@ public class SettingsService : ISettingsService
     public int DefaultRam { get; set; } = 8;
     public int DefaultGpus { get; set; }
     public string Theme { get; set; } = "System";
+    public bool AgentSounds { get; set; } = true;
+
+    /// <summary>Empty until somebody moves a style control; the model's own default stands until then.</summary>
+    public string DefaultMarkStyle { get; set; } = string.Empty;
+
+    /// <summary>
+    /// VizieR TAP mirrors, one URL per line. Empty means the shipped default list, so a release that
+    /// corrects a moved host reaches everyone who never edited this — the same discipline the endpoint
+    /// fields use.
+    /// </summary>
+    public string VizierMirrors { get; set; } = string.Empty;
     public string Language { get; set; } = "system";
 
     public void Save()
@@ -81,6 +92,9 @@ public class SettingsService : ISettingsService
         _localSettings.Values["DefaultRam"] = DefaultRam;
         _localSettings.Values["DefaultGpus"] = DefaultGpus;
         _localSettings.Values["Theme"] = Theme;
+        _localSettings.Values["AgentSounds"] = AgentSounds;
+        _localSettings.Values["DefaultMarkStyle"] = DefaultMarkStyle;
+        _localSettings.Values["VizierMirrors"] = VizierMirrors;
         _localSettings.Values["Language"] = Language;
         // Endpoints: persist only real customizations. Freezing the current defaults into
         // settings would pin every user to this release's hosts forever.
@@ -121,6 +135,12 @@ public class SettingsService : ISettingsService
             Theme = (string)theme;
         if (_localSettings.Values.TryGetValue("Language", out var language))
             Language = (string)language;
+        if (_localSettings.Values.TryGetValue("AgentSounds", out var sounds))
+            AgentSounds = (bool)sounds;
+        if (_localSettings.Values.TryGetValue("DefaultMarkStyle", out var markStyle))
+            DefaultMarkStyle = (string)markStyle;
+        if (_localSettings.Values.TryGetValue("VizierMirrors", out var vizierMirrors))
+            VizierMirrors = (string)vizierMirrors;
         if (_localSettings.Values.TryGetValue("EndpointLoginBase", out var e1)) EndpointLoginBase = (string)e1;
         if (_localSettings.Values.TryGetValue("EndpointSkahaBase", out var e2)) EndpointSkahaBase = (string)e2;
         if (_localSettings.Values.TryGetValue("EndpointAcBase", out var e3)) EndpointAcBase = (string)e3;

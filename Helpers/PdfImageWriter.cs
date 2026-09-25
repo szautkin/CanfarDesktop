@@ -2,12 +2,13 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 
-namespace CanfarDesktop.Services.CubeViewer;
+namespace CanfarDesktop.Helpers;
 
 /// <summary>
 /// Writes a minimal, dependency-free single-page PDF that embeds one RGB raster (the export
 /// figure plate) losslessly via FlateDecode. The page is sized 1:1 to the image in points.
-/// Used so the cube viewer can export a publication figure as PDF as well as PNG.
+/// Both viewers' figure exports reach it through <c>FigureFile</c>. It lived under the cube
+/// viewer's services because the cube exported PDFs first; it knows nothing about cubes.
 /// </summary>
 internal static class PdfImageWriter
 {
@@ -90,21 +91,6 @@ internal static class PdfImageWriter
             rgb[d + 0] = (byte)Math.Min(255, bgra[s + 2] + inv); // R
             rgb[d + 1] = (byte)Math.Min(255, bgra[s + 1] + inv); // G
             rgb[d + 2] = (byte)Math.Min(255, bgra[s + 0] + inv); // B
-        }
-        return rgb;
-    }
-
-    /// <summary>Convert tight BGRA8 (top-down) to tight RGB8 (top-down), dropping alpha.</summary>
-    public static byte[] BgraToRgb(byte[] bgra, int width, int height)
-    {
-        var rgb = new byte[(long)width * height * 3];
-        long n = (long)width * height;
-        for (long i = 0; i < n; i++)
-        {
-            long s = i * 4, d = i * 3;
-            rgb[d + 0] = bgra[s + 2]; // R
-            rgb[d + 1] = bgra[s + 1]; // G
-            rgb[d + 2] = bgra[s + 0]; // B
         }
         return rgb;
     }

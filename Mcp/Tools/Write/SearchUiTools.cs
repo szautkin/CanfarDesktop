@@ -1,374 +1,244 @@
-using System.Text.Json.Serialization;
-using CanfarDesktop.Helpers;
+using System.Text.Json;
 
 namespace CanfarDesktop.Mcp.Tools.Write;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Live Search-page steering: models + ViewState tools that drive the CADC Archive
-// Search UI 1-to-1 (form fields, Additional Constraints facets, run/reset, the
-// ADQL editor, the results table, exports, and the side-panel pickers). Each tool
-// takes an injected delegate that AppViewStateService routes to the real page on
-// the UI thread, so the tools stay pure and unit-testable — the same pattern as
-// the cube/FITS viewer tools.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// <summary>Full snapshot of the Search form (every field the Search Form tab shows).</summary>
-public sealed class SearchFormSnapshot
-{
-    // Observation column
-    public string ObservationId { get; init; } = string.Empty;
-    public string PiName { get; init; } = string.Empty;
-    public string ProposalId { get; init; } = string.Empty;
-    public string ProposalTitle { get; init; } = string.Empty;
-    public string Keywords { get; init; } = string.Empty;
-    public string DataRelease { get; init; } = string.Empty;
-    public bool PublicOnly { get; init; }
-    public string Intent { get; init; } = string.Empty;
-
-    // Spatial column
-    public string Target { get; init; } = string.Empty;
-    public string Resolver { get; init; } = "ALL";
-    public string ResolverStatus { get; init; } = string.Empty;
-    public double? ResolvedRa { get; init; }
-    public double? ResolvedDec { get; init; }
-    public double RadiusDeg { get; init; }
-    public string PixelScale { get; init; } = string.Empty;
-    public string PixelScaleUnit { get; init; } = "arcsec";
-    public bool SpatialCutout { get; init; }
-
-    // Temporal column
-    public string ObservationDate { get; init; } = string.Empty;
-    public string DatePreset { get; init; } = string.Empty;
-    public string IntegrationTime { get; init; } = string.Empty;
-    public string IntegrationTimeUnit { get; init; } = "s";
-    [JsonPropertyName("timeSpan")] public string TimeSpanRange { get; init; } = string.Empty;
-    public string TimeSpanUnit { get; init; } = "d";
-
-    // Spectral column
-    public string SpectralCoverage { get; init; } = string.Empty;
-    public string SpectralCoverageUnit { get; init; } = "nm";
-    public string SpectralSampling { get; init; } = string.Empty;
-    public string SpectralSamplingUnit { get; init; } = "nm";
-    public string ResolvingPower { get; init; } = string.Empty;
-    public string BandpassWidth { get; init; } = string.Empty;
-    public string BandpassWidthUnit { get; init; } = "nm";
-    public string RestFrameEnergy { get; init; } = string.Empty;
-    public string RestFrameEnergyUnit { get; init; } = "nm";
-    public bool SpectralCutout { get; init; }
-
-    // General
-    public int MaxRecords { get; init; }
-    public string AdqlText { get; init; } = string.Empty;
-    public bool IsSearching { get; init; }
-
-    // Additional Constraints selections (see get_search_constraints for available values)
-    public IReadOnlyList<string> Bands { get; init; } = [];
-    public IReadOnlyList<string> Collections { get; init; } = [];
-    public IReadOnlyList<string> Instruments { get; init; } = [];
-    public IReadOnlyList<string> Filters { get; init; } = [];
-    public IReadOnlyList<string> CalLevels { get; init; } = [];
-    public IReadOnlyList<string> DataTypes { get; init; } = [];
-    public IReadOnlyList<string> ObsTypes { get; init; } = [];
-}
-
-/// <summary>Patch for <c>set_search_form</c> — only non-null fields are applied.</summary>
-public sealed class SearchFormPatch
-{
-    public string? ObservationId { get; init; }
-    public string? PiName { get; init; }
-    public string? ProposalId { get; init; }
-    public string? ProposalTitle { get; init; }
-    public string? Keywords { get; init; }
-    public string? DataRelease { get; init; }
-    public bool? PublicOnly { get; init; }
-    public string? Intent { get; init; }
-    public string? Target { get; init; }
-    public string? Resolver { get; init; }
-    public double? RadiusDeg { get; init; }
-    public string? PixelScale { get; init; }
-    public string? PixelScaleUnit { get; init; }
-    public bool? SpatialCutout { get; init; }
-    public string? ObservationDate { get; init; }
-    public string? DatePreset { get; init; }
-    public string? IntegrationTime { get; init; }
-    public string? IntegrationTimeUnit { get; init; }
-    [JsonPropertyName("timeSpan")] public string? TimeSpanRange { get; init; }
-    public string? TimeSpanUnit { get; init; }
-    public string? SpectralCoverage { get; init; }
-    public string? SpectralCoverageUnit { get; init; }
-    public string? SpectralSampling { get; init; }
-    public string? SpectralSamplingUnit { get; init; }
-    public string? ResolvingPower { get; init; }
-    public string? BandpassWidth { get; init; }
-    public string? BandpassWidthUnit { get; init; }
-    public string? RestFrameEnergy { get; init; }
-    public string? RestFrameEnergyUnit { get; init; }
-    public bool? SpectralCutout { get; init; }
-    public int? MaxRecords { get; init; }
-}
-
-/// <summary>One Additional-Constraints facet: cascade-filtered available values + current selection.</summary>
-public sealed record SearchFacetView(IReadOnlyList<string> Available, IReadOnlyList<string> Selected);
-
-/// <summary>The Additional Constraints (data train) state — the seven cascading facet lists.</summary>
-public sealed class SearchFacetsSnapshot
-{
-    public bool Loaded { get; init; }
-    public int RowCount { get; init; }
-    public SearchFacetView Bands { get; init; } = new([], []);
-    public SearchFacetView Collections { get; init; } = new([], []);
-    public SearchFacetView Instruments { get; init; } = new([], []);
-    public SearchFacetView Filters { get; init; } = new([], []);
-    public SearchFacetView CalLevels { get; init; } = new([], []);
-    public SearchFacetView DataTypes { get; init; } = new([], []);
-    public SearchFacetView ObsTypes { get; init; } = new([], []);
-}
-
-/// <summary>Args for <c>set_search_constraints</c> — provided facets REPLACE that facet's selection.</summary>
-public sealed class SearchFacetSelections
-{
-    public IReadOnlyList<string>? Bands { get; init; }
-    public IReadOnlyList<string>? Collections { get; init; }
-    public IReadOnlyList<string>? Instruments { get; init; }
-    public IReadOnlyList<string>? Filters { get; init; }
-    public IReadOnlyList<string>? CalLevels { get; init; }
-    public IReadOnlyList<string>? DataTypes { get; init; }
-    public IReadOnlyList<string>? ObsTypes { get; init; }
-    public bool ClearAll { get; init; }
-}
-
-/// <summary>Result of a constraints write: values the cascade dropped, plus the resulting facet state.</summary>
-public sealed record SearchConstraintsOutcome(bool Applied, IReadOnlyList<string> Dropped, SearchFacetsSnapshot Facets);
-
-/// <summary>Outcome of running a search (form or ADQL): the ADQL run, row count, and the UI status line.</summary>
-public sealed record SearchRunOutcome(bool Ran, string? Adql, int TotalRows, string? Status, string? Error);
-
-/// <summary>Outcome of staging ADQL text into the editor without running it.</summary>
-public sealed record AdqlStageOutcome(bool Applied, string Adql);
-
-/// <summary>One results-table column: key (for sort/filter/visibility), display label, visibility.</summary>
-public sealed record SearchResultColumnView(string Key, string Label, bool Visible);
-
-/// <summary>Snapshot of the Results tab: status, pagination, sort/filter state, columns, current page rows.</summary>
-public sealed class SearchResultsSnapshot
-{
-    public bool HasResults { get; init; }
-    public string Status { get; init; } = string.Empty;
-    public string? Adql { get; init; }
-    public int TotalRows { get; init; }
-    public int FilteredRows { get; init; }
-    public int CurrentPage { get; init; }
-    public int TotalPages { get; init; }
-    public int RowsPerPage { get; init; }
-    public string PageStatus { get; init; } = string.Empty;
-    public string? SortColumn { get; init; }
-    public bool SortAscending { get; init; }
-    public IReadOnlyDictionary<string, string> Filters { get; init; } = new Dictionary<string, string>();
-    public IReadOnlyList<SearchResultColumnView> Columns { get; init; } = [];
-    /// <summary>Original TAP headers for <see cref="Rows"/> cells, in cell order (null when rows omitted).</summary>
-    public IReadOnlyList<string>? RowColumns { get; init; }
-    /// <summary>Current-page rows (raw cell values aligned to <see cref="RowColumns"/>; null when omitted).</summary>
-    public IReadOnlyList<IReadOnlyList<string>>? Rows { get; init; }
-}
-
-/// <summary>Args for <c>set_search_results_view</c> — apply any subset of results-table changes at once.</summary>
-public sealed class SearchResultsCommand
-{
-    public int? Page { get; init; }
-    /// <summary>"first" | "prev" | "next" | "last" (alternative to an absolute page).</summary>
-    public string? PageAction { get; init; }
-    public int? RowsPerPage { get; init; }
-    public string? SortColumn { get; init; }
-    /// <summary>With sortColumn: explicit direction; omitted = ascending (repeat with false to flip).</summary>
-    public bool? SortAscending { get; init; }
-    /// <summary>Column key → filter text. An empty value clears that column's filter.</summary>
-    public Dictionary<string, string>? SetFilters { get; init; }
-    public bool ClearFilters { get; init; }
-    public IReadOnlyList<string>? ShowColumns { get; init; }
-    public IReadOnlyList<string>? HideColumns { get; init; }
-    /// <summary>Column key → display unit id (empty value = column default). Same menu as the header dropdown.</summary>
-    public Dictionary<string, string>? ColumnUnits { get; init; }
-    /// <summary>Convert the active filters to ADQL WHERE clauses and stage into the ADQL editor.</summary>
-    public bool ApplyFiltersToAdql { get; init; }
-}
-
-/// <summary>Outcome of exporting the results table to a local CSV/TSV file.</summary>
-public sealed record SearchExportOutcome(bool Exported, string? Path, int Rows, string? Error);
-
-/// <summary>Outcome of loading a recent search back into the form.</summary>
-public sealed record LoadRecentSearchOutcome(bool Loaded, string? Summary, string? Error, SearchFormSnapshot? Form);
-
-/// <summary>Shared validation for the search UI tools.</summary>
-internal static class SearchUiGuard
-{
-    public static readonly string[] Intents = ["", "science", "calibration"];
-    public static readonly string[] Resolvers = ["ALL", "SIMBAD", "NED", "VIZIER", "NONE"];
-    public static readonly string[] DatePresets = ["", "Last24h", "LastWeek", "LastMonth"];
-    public static readonly int[] RowsPerPageOptions = [25, 50, 100, 250, 500];
-    public static readonly string[] PageActions = ["first", "prev", "next", "last"];
-
-    public static void Choice(string? value, string[] allowed, string field)
-    {
-        if (value is not null && !allowed.Contains(value, StringComparer.OrdinalIgnoreCase))
-            throw new McpToolException(new InvalidArgument(
-                $"{field} must be one of: {string.Join(", ", allowed.Where(a => a.Length > 0))}"));
-    }
-
-    public static T NotNull<T>(T? snapshot) where T : class
-        => snapshot ?? throw new McpToolException(new BackendError(
-            "the Search page is unavailable (app UI not ready); retry shortly"));
-
-    public static void ValidatePatch(SearchFormPatch p)
-    {
-        Choice(p.Intent, Intents, "intent");
-        Choice(p.Resolver, Resolvers, "resolver");
-        Choice(p.DatePreset, DatePresets, "datePreset");
-        Choice(p.PixelScaleUnit, UnitConverter.PixelScaleUnits, "pixelScaleUnit");
-        Choice(p.IntegrationTimeUnit, UnitConverter.TimeUnits, "integrationTimeUnit");
-        Choice(p.TimeSpanUnit, UnitConverter.TimeUnits, "timeSpanUnit");
-        Choice(p.SpectralCoverageUnit, UnitConverter.SpectralUnits, "spectralCoverageUnit");
-        Choice(p.SpectralSamplingUnit, UnitConverter.SpectralUnits, "spectralSamplingUnit");
-        Choice(p.BandpassWidthUnit, UnitConverter.SpectralUnits, "bandpassWidthUnit");
-        Choice(p.RestFrameEnergyUnit, UnitConverter.SpectralUnits, "restFrameEnergyUnit");
-        if (p.RadiusDeg is < 0 or > 90)
-            throw new McpToolException(new InvalidArgument("radiusDeg must be in [0, 90]"));
-        if (p.MaxRecords is < 1 or > 30000)
-            throw new McpToolException(new InvalidArgument("maxRecords must be in [1, 30000]"));
-    }
-}
+// The search_* UI tools: read and drive the live Search page — its form, its facets, the query it
+// runs, and the results grid it shows.
+//
+// All of them are McpVerbClass.ViewState: they change what the user is looking at, not what is
+// stored, so they are live-applied rather than proposed. Each takes the one delegate it needs (never
+// the whole ISearchUiBridge), so a test supplies a lambda.
+//
+// search_observations (in SearchExecTools) remains the headless way to run a query and get rows
+// back. These tools are for the case where the point is that the USER sees the result.
 
 /// <summary>
-/// <c>set_search_form</c> — fill any subset of the Search form's fields (all four constraint columns +
-/// Max Records) exactly as typing into the UI would, and bring the form into view. Setting
-/// <c>target</c> triggers the same debounced name resolution as typing it. Verb class ViewState:
-/// live-applied, no proposal. Use set_search_constraints for the Additional Constraints facets.
+/// The vocabulary the search tools accept, and the conversions from JSON to the page's own types.
+///
+/// The field and facet name lists are the ones the tool SCHEMAS advertise. The page holds the table
+/// that actually applies them (<c>SearchPage.Mcp.cs</c>) and checks itself against these lists, so a
+/// name can never be advertised to an agent without something behind it.
 /// </summary>
-public sealed class SetSearchFormTool : JsonReadTool<SearchFormPatch, SearchFormSnapshot>
+public static class SearchToolArgs
 {
-    private readonly Func<SearchFormPatch, Task<SearchFormSnapshot?>> _apply;
+    /// <summary>Every field <c>set_search_form</c> accepts, in the order the form shows them.</summary>
+    public static readonly string[] FormFields =
+    [
+        "observationId", "proposalPi", "proposalId", "proposalTitle", "proposalKeywords", "intent", "publicOnly",
+        "target", "resolverService", "searchRadius", "pixelScale", "pixelScaleUnit", "spatialCutout",
+        "observationDate", "datePreset", "dateStart", "dateEnd", "integrationTimeMin", "integrationTimeMax",
+        "integrationTimeUnit", "timeSpan", "timeSpanUnit", "dataRelease",
+        "wavelengthMin", "wavelengthMax", "spectralCoverage", "spectralCoverageUnit", "spectralSampling",
+        "spectralSamplingUnit", "resolvingPower", "bandpassWidth", "bandpassWidthUnit", "restFrameEnergy",
+        "restFrameEnergyUnit", "spectralCutout", "maxRecords",
+    ];
 
-    public SetSearchFormTool(Func<SearchFormPatch, Task<SearchFormSnapshot?>> apply) => _apply = apply;
+    /// <summary>Every facet <c>set_search_constraints</c> accepts.</summary>
+    public static readonly string[] Facets =
+    [
+        "bands", "collections", "instruments", "filters", "calibrationLevels", "dataProductTypes", "observationTypes",
+    ];
+
+    /// <summary>
+    /// A form value as the page stores it — text. A number or a boolean is accepted and written in its
+    /// invariant form (an agent that sends <c>0.5</c> rather than <c>"0.5"</c> means the same thing);
+    /// an explicit null clears the field. An object or an array is a mistake worth naming.
+    /// </summary>
+    public static string? ToFormValue(string name, JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString(),
+        JsonValueKind.Number => value.GetRawText(),
+        JsonValueKind.True => "true",
+        JsonValueKind.False => "false",
+        JsonValueKind.Null or JsonValueKind.Undefined => null,
+        _ => throw new McpToolException(new InvalidArgument(
+            $"'{name}' takes a string, number, boolean or null — got {value.ValueKind.ToString().ToLowerInvariant()}")),
+    };
+
+    /// <summary>A facet selection: an array of strings, or one string as shorthand for a single value.</summary>
+    public static IReadOnlyList<string> ToFacetValues(string name, JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.String)
+            return [value.GetString() ?? string.Empty];
+
+        if (value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return Array.Empty<string>();
+
+        if (value.ValueKind != JsonValueKind.Array)
+            throw new McpToolException(new InvalidArgument(
+                $"facet '{name}' takes an array of strings — got {value.ValueKind.ToString().ToLowerInvariant()}"));
+
+        var list = new List<string>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String)
+                throw new McpToolException(new InvalidArgument($"facet '{name}' takes strings — got {item.ValueKind.ToString().ToLowerInvariant()}"));
+            var s = item.GetString();
+            if (!string.IsNullOrWhiteSpace(s)) list.Add(s!);
+        }
+        return list;
+    }
+
+    /// <summary>Build a JSON-Schema property map from a name list, all of them optional.</summary>
+    public static string SchemaFor(IEnumerable<string> names, string valueSchema) =>
+        string.Join(",", names.Select(n => $"\"{n}\":{valueSchema}"));
+
+    /// <summary>Values close enough to be worth suggesting when one was rejected. Capped so a reply stays readable.</summary>
+    public static IReadOnlyList<string> DidYouMean(string value, IReadOnlyList<string> available, int cap = 5)
+    {
+        if (available.Count == 0) return Array.Empty<string>();
+        var near = available
+            .Where(a => a.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                        value.Contains(a, StringComparison.OrdinalIgnoreCase))
+            .Take(cap)
+            .ToList();
+        return near.Count > 0 ? near : available.Take(cap).ToList();
+    }
+}
+
+/// <summary>Args shaped as "any of these named fields" — the tool validates the names, not the schema alone.</summary>
+public sealed class NamedFieldArgs : Dictionary<string, JsonElement>;
+
+// ── Form ────────────────────────────────────────────────────────────────────────────────────────
+
+/// <summary><c>get_search_form</c> — every field of the Search form as it currently stands.</summary>
+public sealed class GetSearchFormTool : JsonReadTool<EmptyArgs, SearchFormView>
+{
+    private readonly Func<Task<SearchFormView>> _get;
+
+    public GetSearchFormTool(Func<Task<SearchFormView>> get) => _get = get;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "get_search_form",
+        "Read the live Search form: every constraint field with its value (and its own unit, where the " +
+        "field carries one), the resolved sky position, the record limit, the ADQL the form would run, " +
+        "and which tab is showing. Use before set_search_form so you change one field rather than " +
+        "replacing a form the user has been filling in.",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override Task<SearchFormView> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct) => _get();
+}
+
+/// <summary><c>set_search_form</c> — set one or more form fields. An unknown field applies nothing.</summary>
+public sealed class SetSearchFormTool : JsonReadTool<NamedFieldArgs, SearchFormApplied>
+{
+    private readonly Func<SearchFormPatch, Task<SearchFormApplied>> _set;
+
+    public SetSearchFormTool(Func<SearchFormPatch, Task<SearchFormApplied>> set) => _set = set;
 
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "set_search_form",
-        "Fill Search form fields (only the fields you pass change) and bring the form into view — the UI " +
-        "equivalent of typing into the CADC Archive Search form. Setting `target` auto-resolves it to " +
-        "RA/Dec (check `resolverStatus` in the returned snapshot). Range fields accept the UI's range " +
-        "syntax (e.g. \"2020..2021\", \"> 2019\"). Facet lists (band/collection/…) are set via " +
-        "set_search_constraints; run the query with run_search. Live-applied (no proposal).",
-        """
+        "Set one or more fields on the live Search form (the user sees the change; nothing runs until " +
+        "run_search). Send only the fields you are changing. A field name the form does not have " +
+        "applies NOTHING and comes back named, with the vocabulary that would have worked — a partly " +
+        "applied form is a state neither of us can reason about. Values may be strings, numbers or " +
+        "booleans; null clears a field.",
+        $$"""
         {"type":"object","properties":{
-          "observationId":{"type":"string","description":"Observation ID pattern (e.g. jw01345*)"},
-          "piName":{"type":"string"},"proposalId":{"type":"string"},"proposalTitle":{"type":"string"},
-          "keywords":{"type":"string"},"dataRelease":{"type":"string","description":"e.g. > 2023-01-01"},
-          "publicOnly":{"type":"boolean"},
-          "intent":{"type":"string","enum":["","science","calibration"]},
-          "target":{"type":"string","description":"Target name or coordinates (e.g. M31)"},
-          "resolver":{"type":"string","enum":["ALL","SIMBAD","NED","VIZIER","NONE"]},
-          "radiusDeg":{"type":"number","minimum":0,"maximum":90},
-          "pixelScale":{"type":"string","description":"e.g. 0.1..1.0"},
-          "pixelScaleUnit":{"type":"string","enum":["arcsec","arcmin","deg"]},
-          "spatialCutout":{"type":"boolean"},
-          "observationDate":{"type":"string","description":"e.g. 2020..2021"},
-          "datePreset":{"type":"string","enum":["","Last24h","LastWeek","LastMonth"]},
-          "integrationTime":{"type":"string","description":"e.g. 100..3600"},
-          "integrationTimeUnit":{"type":"string","enum":["s","m","h","d","y"]},
-          "timeSpan":{"type":"string","description":"e.g. 1..10"},
-          "timeSpanUnit":{"type":"string","enum":["s","m","h","d","y"]},
-          "spectralCoverage":{"type":"string","description":"e.g. 400..700"},
-          "spectralCoverageUnit":{"type":"string"},
-          "spectralSampling":{"type":"string"},"spectralSamplingUnit":{"type":"string"},
-          "resolvingPower":{"type":"string","description":"e.g. 1000..5000"},
-          "bandpassWidth":{"type":"string"},"bandpassWidthUnit":{"type":"string"},
-          "restFrameEnergy":{"type":"string"},"restFrameEnergyUnit":{"type":"string"},
-          "spectralCutout":{"type":"boolean"},
-          "maxRecords":{"type":"integer","minimum":1,"maximum":30000}
+          {{SearchToolArgs.SchemaFor(SearchToolArgs.FormFields, """{"type":["string","number","boolean","null"]}""")}}
         },"additionalProperties":false}
         """);
 
-    protected override async Task<SearchFormSnapshot> HandleAsync(SearchFormPatch args, McpToolContext context, CancellationToken ct)
+    protected override async Task<SearchFormApplied> HandleAsync(NamedFieldArgs args, McpToolContext context, CancellationToken ct)
     {
-        SearchUiGuard.ValidatePatch(args);
-        return SearchUiGuard.NotNull(await _apply(args));
+        if (args.Count == 0)
+            throw new McpToolException(new InvalidArgument(
+                $"give at least one field to set. Known fields: {string.Join(", ", SearchToolArgs.FormFields)}"));
+
+        var patch = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, value) in args)
+            patch[name] = SearchToolArgs.ToFormValue(name, value);
+
+        var applied = await _set(new SearchFormPatch(patch));
+
+        if (applied.Unknown.Count > 0)
+            throw new McpToolException(new InvalidArgument(
+                $"no such form field: {string.Join(", ", applied.Unknown)}. " +
+                $"Known fields: {string.Join(", ", applied.KnownFields)}"));
+
+        return applied;
     }
 }
 
-/// <summary>
-/// <c>set_search_constraints</c> — set the Additional Constraints facet selections (band, collection,
-/// instrument, filter, cal. level, data type, obs. type). Loads the data train first if needed, applies
-/// the same cascade the UI applies (upstream picks narrow downstream availability; invalid downstream
-/// picks are dropped and reported), and expands the Additional Constraints panel so the user sees the
-/// change. Verb class ViewState: live-applied, no proposal.
-/// </summary>
-public sealed class SetSearchConstraintsTool : JsonReadTool<SearchFacetSelections, SearchConstraintsOutcome>
-{
-    private readonly Func<SearchFacetSelections, Task<SearchConstraintsOutcome?>> _apply;
+// ── Constraints ─────────────────────────────────────────────────────────────────────────────────
 
-    public SetSearchConstraintsTool(Func<SearchFacetSelections, Task<SearchConstraintsOutcome?>> apply) => _apply = apply;
+/// <summary><c>get_search_constraints</c> — the faceted data train: what each facet offers, and what is selected.</summary>
+public sealed class GetSearchConstraintsTool : JsonReadTool<EmptyArgs, SearchConstraintsView>
+{
+    private readonly Func<Task<SearchConstraintsView>> _get;
+
+    public GetSearchConstraintsTool(Func<Task<SearchConstraintsView>> get) => _get = get;
 
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
-    // The data train may need a network fetch on first use — allow more than the UI-dispatch default.
-    protected override TimeSpan Timeout => TimeSpan.FromSeconds(90);
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "get_search_constraints",
+        "Read the Search page's faceted data train: for each facet (bands, collections, instruments, " +
+        "filters, calibration levels, data product types, observation types) the values it currently " +
+        "offers and the values selected. The facets CASCADE — what one offers depends on what the " +
+        "others have selected — so read this again after every set_search_constraints.",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override Task<SearchConstraintsView> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct) => _get();
+}
+
+/// <summary><c>set_search_constraints</c> — replace the selection in one or more facets.</summary>
+public sealed class SetSearchConstraintsTool : JsonReadTool<NamedFieldArgs, SearchConstraintsApplied>
+{
+    private readonly Func<SearchConstraintsPatch, Task<SearchConstraintsApplied>> _set;
+
+    public SetSearchConstraintsTool(Func<SearchConstraintsPatch, Task<SearchConstraintsApplied>> set) => _set = set;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "set_search_constraints",
-        "Set the Search form's Additional Constraints facets. Each facet you pass REPLACES that facet's " +
-        "selection (pass [] to clear one; clearAll:true to clear everything). Facets cascade top-down " +
-        "(band → collection → instrument → filter → cal. level → data type → obs. type): values invalid " +
-        "under the cascade are dropped and returned in `dropped` — check it. Call get_search_constraints " +
-        "first to see available values. Live-applied (no proposal).",
-        """
+        "Select values in the Search page's facets. Each facet you name is REPLACED by the values you " +
+        "give (send an empty array to clear one); facets you omit are untouched. A value the facet does " +
+        "not offer applies nothing and comes back with the values that were available — check " +
+        "get_search_constraints first, since the facets cascade.",
+        $$"""
         {"type":"object","properties":{
-          "bands":{"type":"array","items":{"type":"string"}},
-          "collections":{"type":"array","items":{"type":"string"}},
-          "instruments":{"type":"array","items":{"type":"string"}},
-          "filters":{"type":"array","items":{"type":"string"}},
-          "calLevels":{"type":"array","items":{"type":"string"}},
-          "dataTypes":{"type":"array","items":{"type":"string"}},
-          "obsTypes":{"type":"array","items":{"type":"string"}},
-          "clearAll":{"type":"boolean"}
+          {{SearchToolArgs.SchemaFor(SearchToolArgs.Facets, """{"type":["array","string","null"],"items":{"type":"string"}}""")}}
         },"additionalProperties":false}
         """);
 
-    protected override async Task<SearchConstraintsOutcome> HandleAsync(SearchFacetSelections args, McpToolContext context, CancellationToken ct)
+    protected override async Task<SearchConstraintsApplied> HandleAsync(NamedFieldArgs args, McpToolContext context, CancellationToken ct)
     {
-        if (!args.ClearAll && args.Bands is null && args.Collections is null && args.Instruments is null
-            && args.Filters is null && args.CalLevels is null && args.DataTypes is null && args.ObsTypes is null)
-            throw new McpToolException(new InvalidArgument("pass at least one facet array, or clearAll:true"));
+        if (args.Count == 0)
+            throw new McpToolException(new InvalidArgument(
+                $"give at least one facet to set. Known facets: {string.Join(", ", SearchToolArgs.Facets)}"));
 
-        return SearchUiGuard.NotNull(await _apply(args));
+        var patch = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, value) in args)
+            patch[name] = SearchToolArgs.ToFacetValues(name, value);
+
+        var applied = await _set(new SearchConstraintsPatch(patch));
+
+        if (applied.Unknown.Count > 0)
+            throw new McpToolException(new InvalidArgument(
+                $"no such facet: {string.Join(", ", applied.Unknown)}. " +
+                $"Known facets: {string.Join(", ", applied.KnownFacets)}"));
+
+        if (applied.Rejected.Count > 0)
+        {
+            var detail = string.Join("; ", applied.Rejected.Select(r =>
+                $"{r.Facet} does not offer '{r.Value}'" +
+                (r.DidYouMean.Count > 0 ? $" (available: {string.Join(", ", r.DidYouMean)})" : "")));
+            throw new McpToolException(new InvalidArgument(detail));
+        }
+
+        return applied;
     }
 }
 
-/// <summary>
-/// <c>reset_search_form</c> — the Search form's Reset button: clear every field and facet selection.
-/// Verb class ViewState: live-applied (only clears the in-progress form, not saved state).
-/// </summary>
-public sealed class ResetSearchFormTool : JsonReadTool<EmptyArgs, SearchFormSnapshot>
-{
-    private readonly Func<Task<SearchFormSnapshot?>> _reset;
+// ── Running ─────────────────────────────────────────────────────────────────────────────────────
 
-    public ResetSearchFormTool(Func<Task<SearchFormSnapshot?>> reset) => _reset = reset;
-
-    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
-
-    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
-        "reset_search_form",
-        "Reset the Search form: clear every field and Additional Constraints selection (the form's Reset " +
-        "button). Does not touch saved queries or search history. Live-applied (no proposal).",
-        """{"type":"object","properties":{},"additionalProperties":false}""");
-
-    protected override async Task<SearchFormSnapshot> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
-        => SearchUiGuard.NotNull(await _reset());
-}
-
-/// <summary>
-/// <c>run_search</c> — the Search button: build ADQL from the current form (including facets), execute
-/// it, show the Results tab, and record the search in Recent Searches. Verb class ViewState.
-/// </summary>
+/// <summary><c>run_search</c> — run the form as the Execute button would, and show the results.</summary>
 public sealed class RunSearchTool : JsonReadTool<EmptyArgs, SearchRunOutcome>
 {
     private readonly Func<Task<SearchRunOutcome>> _run;
@@ -377,153 +247,218 @@ public sealed class RunSearchTool : JsonReadTool<EmptyArgs, SearchRunOutcome>
 
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
+    /// <summary>A deep archive query outlives the 60s default; the user is watching a spinner either way.</summary>
+    protected override TimeSpan Timeout => TimeSpan.FromMinutes(3);
+
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "run_search",
-        "Click Search: build ADQL from the current Search form (set_search_form / set_search_constraints " +
-        "first), run it, show the Results tab, and record it in Recent Searches. Returns the ADQL and row " +
-        "count. For a headless query that doesn't touch the user's UI, use search_observations instead. " +
-        "Live-applied (no proposal).",
+        "Run the Search form exactly as its Search button would: build the ADQL from the current fields " +
+        "and facets, execute it, show the Results tab, and record it in the user's recent searches. " +
+        "Returns the ADQL that ran and the row count. If `truncated` is true the record limit was " +
+        "reached and MORE rows match — the sample is incomplete; narrow the query or raise maxRecords.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
-    protected override Task<SearchRunOutcome> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
-        => _run();
+    protected override Task<SearchRunOutcome> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct) => _run();
 }
 
-/// <summary>
-/// <c>set_adql_query</c> — stage ADQL text into the ADQL Editor tab WITHOUT running it (so the user can
-/// review/edit). Verb class ViewState.
-/// </summary>
-public sealed class SetAdqlQueryTool : JsonReadTool<SetAdqlQueryTool.Args, AdqlStageOutcome>
+/// <summary><c>set_adql_query</c> — put ADQL in the editor, and optionally run it.</summary>
+public sealed class SetAdqlQueryTool : JsonReadTool<SetAdqlQueryTool.Args, SearchAdqlOutcome>
 {
-    private readonly Func<string, Task<AdqlStageOutcome?>> _apply;
+    private readonly Func<string, bool, Task<SearchAdqlOutcome>> _set;
 
-    public SetAdqlQueryTool(Func<string, Task<AdqlStageOutcome?>> apply) => _apply = apply;
+    public SetAdqlQueryTool(Func<string, bool, Task<SearchAdqlOutcome>> set) => _set = set;
 
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    protected override TimeSpan Timeout => TimeSpan.FromMinutes(3);
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "set_adql_query",
-        "Put ADQL text into the Search page's ADQL Editor tab and show it, WITHOUT executing — the user " +
-        "can review and edit first. Use execute_adql_query to run it. Live-applied (no proposal).",
-        """{"type":"object","properties":{"adql":{"type":"string"}},"required":["adql"],"additionalProperties":false}""");
+        "Put an ADQL query in the Search page's ADQL editor so the user can see and edit it, and " +
+        "optionally execute it. Use this rather than search_observations when the point is that the " +
+        "user ends up looking at the query and its results.",
+        """
+        {"type":"object","properties":{
+          "adql":{"type":"string","description":"The ADQL query text."},
+          "execute":{"type":"boolean","description":"Run it as well as showing it (default false)."}
+        },"required":["adql"],"additionalProperties":false}
+        """);
 
-    protected override async Task<AdqlStageOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    protected override async Task<SearchAdqlOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(args.Adql))
-            throw new McpToolException(new InvalidArgument("adql is required"));
-        return SearchUiGuard.NotNull(await _apply(args.Adql.Trim()));
+        var adql = (args.Adql ?? string.Empty).Trim();
+        if (adql.Length == 0) throw new McpToolException(new InvalidArgument("adql is required"));
+        return await _set(adql, args.Execute ?? false);
     }
 
-    public sealed record Args { public string? Adql { get; init; } }
+    public sealed record Args
+    {
+        public string? Adql { get; init; }
+        public bool? Execute { get; init; }
+    }
 }
 
-/// <summary>
-/// <c>execute_adql_query</c> — the ADQL Editor's Execute button: run the editor's current ADQL (or the
-/// ADQL passed in, which is staged first) and show the Results tab. Verb class ViewState.
-/// </summary>
-public sealed class ExecuteAdqlQueryTool : JsonReadTool<ExecuteAdqlQueryTool.Args, SearchRunOutcome>
+/// <summary><c>run_saved_query</c> — run one of the user's saved ADQL queries by name.</summary>
+public sealed class RunSavedQueryTool : JsonReadTool<RunSavedQueryTool.Args, SearchRunOutcome>
 {
-    private readonly Func<string?, Task<SearchRunOutcome>> _execute;
+    private readonly Func<string, Task<SearchRunOutcome>> _run;
 
-    public ExecuteAdqlQueryTool(Func<string?, Task<SearchRunOutcome>> execute) => _execute = execute;
+    public RunSavedQueryTool(Func<string, Task<SearchRunOutcome>> run) => _run = run;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    protected override TimeSpan Timeout => TimeSpan.FromMinutes(3);
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "run_saved_query",
+        "Run one of the user's saved ADQL queries by its exact name (see list_saved_queries) and show " +
+        "the results. The query text is loaded into the ADQL editor first, so the user can see what ran.",
+        """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"],"additionalProperties":false}""");
+
+    protected override async Task<SearchRunOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var name = (args.Name ?? string.Empty).Trim();
+        if (name.Length == 0) throw new McpToolException(new InvalidArgument("name is required"));
+        return await _run(name);
+    }
+
+    public sealed record Args { public string? Name { get; init; } }
+}
+
+// ── Results ─────────────────────────────────────────────────────────────────────────────────────
+
+/// <summary><c>get_search_results</c> — the rows the grid is showing, with its filters and sort applied.</summary>
+public sealed class GetSearchResultsTool : JsonReadTool<GetSearchResultsTool.Args, SearchResultsView>
+{
+    private readonly Func<SearchResultsQuery, Task<SearchResultsView>> _get;
+
+    public GetSearchResultsTool(Func<SearchResultsQuery, Task<SearchResultsView>> get) => _get = get;
 
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
-        "execute_adql_query",
-        "Execute ADQL in the Search page's ADQL Editor and show the Results tab. Pass `adql` to stage and " +
-        "run it, or omit it to run whatever is already in the editor. For a headless query that doesn't " +
-        "touch the user's UI, use search_observations instead. Live-applied (no proposal).",
-        """{"type":"object","properties":{"adql":{"type":"string"}},"additionalProperties":false}""");
+        "get_search_results",
+        "Read the live results grid — the rows on the current page, with the user's per-column filters " +
+        "and sort applied. `rowColumns` lists EVERY column the query returned (with its display unit and " +
+        "any active filter), not just the ones on screen, and is answered even when there are no rows. " +
+        "Pass allColumns:true to get every column's cells rather than only the visible ones — the grid " +
+        "shows about a dozen of roughly forty. `selectedRow` is the row a detail request acts on and " +
+        "`selectedRows` is everything highlighted: a person can Ctrl- or Shift-click several rows to " +
+        "compare them, and the two differ whenever they have. Pagination is reported as `page` " +
+        "(1-based), `totalPages` and `rowsPerPage`.",
+        """
+        {"type":"object","properties":{
+          "allColumns":{"type":"boolean","description":"Return every column's cells, not just the visible ones."},
+          "page":{"type":"integer","minimum":1,"description":"Page to read (default: the page on screen)."},
+          "limit":{"type":"integer","minimum":1,"maximum":500,"description":"Rows to return (default: the grid's page size)."}
+        },"additionalProperties":false}
+        """);
 
-    protected override Task<SearchRunOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
-        => _execute(string.IsNullOrWhiteSpace(args.Adql) ? null : args.Adql.Trim());
+    protected override Task<SearchResultsView> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        if (args.Page is <= 0) throw new McpToolException(new InvalidArgument("page must be 1 or more"));
+        if (args.Limit is <= 0) throw new McpToolException(new InvalidArgument("limit must be 1 or more"));
+        return _get(new SearchResultsQuery(args.AllColumns ?? false, args.Page, args.Limit));
+    }
 
-    public sealed record Args { public string? Adql { get; init; } }
+    public sealed record Args
+    {
+        public bool? AllColumns { get; init; }
+        public int? Page { get; init; }
+        public int? Limit { get; init; }
+    }
 }
 
-/// <summary>
-/// <c>set_search_results_view</c> — drive the Results tab exactly as the user can: pagination, rows per
-/// page, column sort, per-column filters, column visibility, display units, and "Apply to ADQL".
-/// Verb class ViewState.
-/// </summary>
-public sealed class SetSearchResultsViewTool : JsonReadTool<SearchResultsCommand, SearchResultsSnapshot>
+/// <summary><c>set_search_results_view</c> — page, sort, filter, hide, re-unit and highlight the grid.</summary>
+public sealed class SetSearchResultsViewTool : JsonReadTool<SetSearchResultsViewTool.Args, SearchResultsViewApplied>
 {
-    private readonly Func<SearchResultsCommand, Task<SearchResultsSnapshot?>> _apply;
+    private readonly Func<SearchResultsViewPatch, Task<SearchResultsViewApplied>> _set;
 
-    public SetSearchResultsViewTool(Func<SearchResultsCommand, Task<SearchResultsSnapshot?>> apply) => _apply = apply;
+    public SetSearchResultsViewTool(Func<SearchResultsViewPatch, Task<SearchResultsViewApplied>> set) => _set = set;
 
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "set_search_results_view",
-        "Steer the search Results table (after run_search / execute_adql_query): go to a page, change " +
-        "rows per page, sort by a column, set/clear per-column text filters, show/hide columns, change a " +
-        "column's display unit, or convert the active filters to ADQL (applyFiltersToAdql stages the " +
-        "filtered query into the ADQL editor). Column keys come from get_search_results. Live-applied " +
-        "(no proposal).",
+        "Change how the results are shown: page, page size, sort column and direction, per-column text " +
+        "filters, which columns are visible, each column's display unit, and which row is highlighted. " +
+        "A column is named by its key or by the header the grid shows ('startdate' or 'Start Date'); " +
+        "get_search_results.rowColumns lists both. rowsPerPage " +
+        "must be one of the sizes the grid offers, and a display unit a column does not take comes back " +
+        "with the units it does.",
         """
         {"type":"object","properties":{
           "page":{"type":"integer","minimum":1},
-          "pageAction":{"type":"string","enum":["first","prev","next","last"]},
-          "rowsPerPage":{"type":"integer","enum":[25,50,100,250,500]},
-          "sortColumn":{"type":"string","description":"Column key to sort by"},
-          "sortAscending":{"type":"boolean","description":"With sortColumn; default true"},
-          "setFilters":{"type":"object","additionalProperties":{"type":"string"},"description":"Column key -> filter text ('' clears that column)"},
-          "clearFilters":{"type":"boolean"},
-          "showColumns":{"type":"array","items":{"type":"string"}},
-          "hideColumns":{"type":"array","items":{"type":"string"}},
-          "columnUnits":{"type":"object","additionalProperties":{"type":"string"},"description":"Column key -> unit id ('' = column default)"},
-          "applyFiltersToAdql":{"type":"boolean"}
+          "rowsPerPage":{"type":"integer","description":"One of the grid's offered sizes (see rowsPerPageOptions)."},
+          "sortColumn":{"type":"string","description":"Column key to sort by."},
+          "sortAscending":{"type":"boolean"},
+          "filters":{"type":"object","description":"Column key -> filter text (null clears that column's filter).","additionalProperties":{"type":["string","null"]}},
+          "visible":{"type":"object","description":"Column key -> whether it is shown.","additionalProperties":{"type":"boolean"}},
+          "units":{"type":"object","description":"Column key -> display unit id (null restores the default).","additionalProperties":{"type":["string","null"]}},
+          "selectRow":{"type":"integer","minimum":0,"description":"Zero-based row on the current page to highlight and scroll to."},
+          "resetFilters":{"type":"boolean","description":"Clear every column filter and the sort."}
         },"additionalProperties":false}
         """);
 
-    protected override async Task<SearchResultsSnapshot> HandleAsync(SearchResultsCommand args, McpToolContext context, CancellationToken ct)
+    protected override async Task<SearchResultsViewApplied> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
-        if (args.PageAction is not null)
-            SearchUiGuard.Choice(args.PageAction, SearchUiGuard.PageActions, "pageAction");
-        if (args.Page is < 1)
-            throw new McpToolException(new InvalidArgument("page must be >= 1"));
-        if (args.RowsPerPage is { } rpp && !SearchUiGuard.RowsPerPageOptions.Contains(rpp))
-            throw new McpToolException(new InvalidArgument(
-                $"rowsPerPage must be one of: {string.Join(", ", SearchUiGuard.RowsPerPageOptions)}"));
+        if (args.Page is <= 0) throw new McpToolException(new InvalidArgument("page must be 1 or more"));
+        if (args.SelectRow is < 0) throw new McpToolException(new InvalidArgument("selectRow must be 0 or more"));
 
-        var hasDirective = args.Page is not null || args.PageAction is not null || args.RowsPerPage is not null
-            || args.SortColumn is not null || args.SetFilters is { Count: > 0 } || args.ClearFilters
-            || args.ShowColumns is { Count: > 0 } || args.HideColumns is { Count: > 0 }
-            || args.ColumnUnits is { Count: > 0 } || args.ApplyFiltersToAdql;
-        if (!hasDirective)
-            throw new McpToolException(new InvalidArgument(
-                "pass at least one change (page, sort, filters, columns, units, or applyFiltersToAdql); " +
-                "use get_search_results to read the current state"));
+        var patch = new SearchResultsViewPatch(
+            args.Page, args.RowsPerPage, string.IsNullOrWhiteSpace(args.SortColumn) ? null : args.SortColumn!.Trim(),
+            args.SortAscending, args.Filters, args.Visible, args.Units, args.SelectRow, args.ResetFilters ?? false);
 
-        return SearchUiGuard.NotNull(await _apply(args));
+        var applied = await _set(patch);
+
+        if (applied.UnknownColumns.Count > 0)
+            throw new McpToolException(new InvalidArgument(
+                $"no such column: {string.Join(", ", applied.UnknownColumns)}. " +
+                $"Columns: {string.Join(", ", applied.View.RowColumns.Select(c => c.Key))}"));
+
+        if (applied.RejectedUnits.Count > 0)
+        {
+            var detail = string.Join("; ", applied.RejectedUnits.Select(r =>
+                $"'{r.Column}' does not take the unit '{r.Requested}'" +
+                (r.Accepts.Count > 0 ? $" (it takes: {string.Join(", ", r.Accepts)})" : " (it has no unit menu)")));
+            throw new McpToolException(new InvalidArgument(detail));
+        }
+
+        return applied;
+    }
+
+    public sealed record Args
+    {
+        public int? Page { get; init; }
+        public int? RowsPerPage { get; init; }
+        public string? SortColumn { get; init; }
+        public bool? SortAscending { get; init; }
+        public Dictionary<string, string?>? Filters { get; init; }
+        public Dictionary<string, bool>? Visible { get; init; }
+        public Dictionary<string, string?>? Units { get; init; }
+        public int? SelectRow { get; init; }
+        public bool? ResetFilters { get; init; }
     }
 }
 
-/// <summary>
-/// <c>export_search_results</c> — the Results toolbar's CSV/TSV export, minus the file picker: write the
-/// full result set to a local file (default: Downloads\Verbinal). Verb class ViewState (live file
-/// export, same class as export_cube_figure).
-/// </summary>
+/// <summary><c>export_search_results</c> — write the current results to a CSV or TSV file.</summary>
 public sealed class ExportSearchResultsTool : JsonReadTool<ExportSearchResultsTool.Args, SearchExportOutcome>
 {
-    private readonly Func<string, string?, Task<SearchExportOutcome>> _export;
+    private readonly Func<string, string, Task<SearchExportOutcome>> _export;
 
-    public ExportSearchResultsTool(Func<string, string?, Task<SearchExportOutcome>> export) => _export = export;
+    public ExportSearchResultsTool(Func<string, string, Task<SearchExportOutcome>> export) => _export = export;
 
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "export_search_results",
-        "Export the current search results to a local CSV or TSV file (all rows, not just the visible " +
-        "page). Default destination is a timestamped file in Downloads\\Verbinal; pass `path` to choose. " +
-        "Run a search first. Live-applied (no proposal).",
+        "Write the current search results to a local CSV or TSV file — the same export the Results tab's " +
+        "buttons produce, with every column the query returned (not only the visible ones).",
         """
         {"type":"object","properties":{
           "format":{"type":"string","enum":["csv","tsv"]},
-          "path":{"type":"string","description":"Optional absolute destination file path"}
-        },"required":["format"],"additionalProperties":false}
+          "path":{"type":"string","description":"Absolute local path to write."}
+        },"required":["format","path"],"additionalProperties":false}
         """);
 
     protected override async Task<SearchExportOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -531,7 +466,12 @@ public sealed class ExportSearchResultsTool : JsonReadTool<ExportSearchResultsTo
         var format = (args.Format ?? string.Empty).Trim().ToLowerInvariant();
         if (format is not ("csv" or "tsv"))
             throw new McpToolException(new InvalidArgument("format must be 'csv' or 'tsv'"));
-        return await _export(format, string.IsNullOrWhiteSpace(args.Path) ? null : args.Path.Trim());
+
+        var path = (args.Path ?? string.Empty).Trim();
+        if (path.Length == 0) throw new McpToolException(new InvalidArgument("path is required"));
+        if (!Path.IsPathRooted(path)) throw new McpToolException(new InvalidArgument("path must be absolute"));
+
+        return await _export(format, path);
     }
 
     public sealed record Args
@@ -541,60 +481,145 @@ public sealed class ExportSearchResultsTool : JsonReadTool<ExportSearchResultsTo
     }
 }
 
-/// <summary>
-/// <c>load_recent_search</c> — the Recent Searches panel's "load into form" button: restore a past
-/// search's form state (and its ADQL) by index from list_recent_searches. Verb class ViewState.
-/// </summary>
-public sealed class LoadRecentSearchTool : JsonReadTool<LoadRecentSearchTool.Args, LoadRecentSearchOutcome>
-{
-    private readonly Func<int, Task<LoadRecentSearchOutcome?>> _load;
+// ── Detail + history ────────────────────────────────────────────────────────────────────────────
 
-    public LoadRecentSearchTool(Func<int, Task<LoadRecentSearchOutcome?>> load) => _load = load;
+/// <summary><c>show_search_row_detail</c> — open the CAOM2 detail page for a results row.</summary>
+public sealed class ShowSearchRowDetailTool : JsonReadTool<ShowSearchRowDetailTool.Args, SearchRowDetailOutcome>
+{
+    private readonly Func<int?, Task<SearchRowDetailOutcome>> _show;
+
+    public ShowSearchRowDetailTool(Func<int?, Task<SearchRowDetailOutcome>> show) => _show = show;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "show_search_row_detail",
+        "Open the full CAOM2 observation detail for a row of the results grid — the same view a click on " +
+        "the row gives. Omit `row` to open the highlighted row (set one with " +
+        "set_search_results_view.selectRow). `row` is zero-based within the page on screen.",
+        """{"type":"object","properties":{"row":{"type":"integer","minimum":0}},"additionalProperties":false}""");
+
+    protected override async Task<SearchRowDetailOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        if (args.Row is < 0) throw new McpToolException(new InvalidArgument("row must be 0 or more"));
+        return await _show(args.Row);
+    }
+
+    public sealed record Args { public int? Row { get; init; } }
+}
+
+/// <summary><c>show_observation_detail</c> — open the CAOM2 detail page for a publisher id.</summary>
+public sealed class ShowObservationDetailTool : JsonReadTool<ShowObservationDetailTool.Args, SearchRowDetailOutcome>
+{
+    private readonly Func<string, Task<SearchRowDetailOutcome>> _show;
+
+    public ShowObservationDetailTool(Func<string, Task<SearchRowDetailOutcome>> show) => _show = show;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "show_observation_detail",
+        "Open one observation's full CAOM2 detail page (overview, coverage, files, provenance, raw " +
+        "metadata) by its publisher id — the `publisher_id` column of a search result, or the id from " +
+        "get_observation_caom2. Unlike get_observation_caom2 this puts it on the user's screen.",
+        """{"type":"object","properties":{"publisherId":{"type":"string"}},"required":["publisherId"],"additionalProperties":false}""");
+
+    protected override async Task<SearchRowDetailOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var id = (args.PublisherId ?? string.Empty).Trim();
+        if (id.Length == 0) throw new McpToolException(new InvalidArgument("publisherId is required"));
+        return await _show(id);
+    }
+
+    public sealed record Args { public string? PublisherId { get; init; } }
+}
+
+/// <summary>
+/// <c>reset_search_form</c> — empty the form, the way the Clear button does.
+///
+/// An agent that had filled in six fields for one target and wanted a different one had to overwrite
+/// each of them by name, and any it forgot silently narrowed the next search. Worse, the Additional
+/// Constraints facets are not form fields: a tick left in one of those columns constrains a query with
+/// nothing on screen to say so.
+/// </summary>
+public sealed class ResetSearchFormTool : JsonReadTool<EmptyArgs, SearchFormApplied>
+{
+    private readonly Func<Task<SearchFormApplied>> _reset;
+
+    public ResetSearchFormTool(Func<Task<SearchFormApplied>> reset) => _reset = reset;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "reset_search_form",
+        "Empty the Search form — every field AND every Additional Constraints facet, which is what the " +
+        "Clear button does. Call this between unrelated searches: a value left in a field you did not " +
+        "overwrite, or a facet left ticked, silently narrows the next query. Returns the empty form. " +
+        "The recent-searches rail and the saved queries are untouched.",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override Task<SearchFormApplied> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
+        => _reset();
+}
+
+/// <summary>
+/// <c>load_recent_search</c> — put one of the recent searches back in the form.
+///
+/// The rail could be read and its entries deleted, but not USED, which is the one thing the rail is
+/// for. Matching is the same as remove_recent_search's, so a string read out of list_recent_searches
+/// works in either.
+/// </summary>
+public sealed class LoadRecentSearchTool : JsonReadTool<LoadRecentSearchTool.Args, SearchFormApplied>
+{
+    private readonly Func<string, Task<SearchFormApplied>> _load;
+
+    public LoadRecentSearchTool(Func<string, Task<SearchFormApplied>> load) => _load = load;
 
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "load_recent_search",
-        "Load a recent search back into the Search form (form fields, facets, and ADQL) and show it — " +
-        "the Recent Searches panel's load button. `index` is 0-based, newest first, matching " +
-        "list_recent_searches order. Live-applied (no proposal).",
-        """{"type":"object","properties":{"index":{"type":"integer","minimum":0}},"required":["index"],"additionalProperties":false}""");
+        "Load one of the Search page's recent searches back into the form, matched by its summary or by " +
+        "its exact ADQL (see list_recent_searches). Fills the fields and the Additional Constraints " +
+        "facets and returns the form; it does NOT run the search — call run_search when you want that.",
+        """{"type":"object","properties":{"match":{"type":"string","description":"The entry's summary, or its exact ADQL."}},"required":["match"],"additionalProperties":false}""");
 
-    protected override async Task<LoadRecentSearchOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+    protected override async Task<SearchFormApplied> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
-        if (args.Index is null or < 0)
-            throw new McpToolException(new InvalidArgument("index (>= 0) is required"));
-        return SearchUiGuard.NotNull(await _load(args.Index.Value));
+        var match = (args.Match ?? string.Empty).Trim();
+        if (match.Length == 0) throw new McpToolException(new InvalidArgument("match is required"));
+        return await _load(match);
     }
 
-    public sealed record Args { public int? Index { get; init; } }
+    public sealed record Args { public string? Match { get; init; } }
 }
 
 /// <summary>
-/// <c>run_saved_query</c> — the Saved Queries panel's Run button: execute a saved query by name in the
-/// UI and show the Results tab. Verb class ViewState.
+/// <c>execute_adql_query</c> — the ADQL Editor's Execute button: run the editor's current ADQL (or the
+/// ADQL passed in, which is staged first) and show the Results tab.
+///
+/// Distinct from <c>set_adql_query</c>, which always STAGES text: an agent that wants to run what a
+/// PERSON typed has nothing to stage, and this is the call for that.
 /// </summary>
-public sealed class RunSavedQueryTool : JsonReadTool<RunSavedQueryTool.Args, SearchRunOutcome>
+public sealed class ExecuteAdqlQueryTool : JsonReadTool<ExecuteAdqlQueryTool.Args, SearchAdqlOutcome>
 {
-    private readonly Func<string, Task<SearchRunOutcome>> _run;
+    private readonly Func<string?, Task<SearchAdqlOutcome>> _execute;
 
-    public RunSavedQueryTool(Func<string, Task<SearchRunOutcome>> run) => _run = run;
+    public ExecuteAdqlQueryTool(Func<string?, Task<SearchAdqlOutcome>> execute) => _execute = execute;
 
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
-        "run_saved_query",
-        "Run one of the user's saved ADQL queries by exact name in the Search UI and show the Results " +
-        "tab (the Saved Queries panel's Run button). Names come from list_saved_queries. Live-applied " +
-        "(no proposal).",
-        """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"],"additionalProperties":false}""");
+        "execute_adql_query",
+        "Execute ADQL in the Search page's ADQL Editor and show the Results tab. Pass `adql` to stage and " +
+        "run it, or omit it to run whatever is already in the editor. The query is checked against the " +
+        "service's own schema first, so a query CADC would refuse comes back with the reason instead of " +
+        "spending a round trip. For a headless query that does not touch the user's UI, use " +
+        "search_observations instead. Live-applied (no proposal).",
+        """{"type":"object","properties":{"adql":{"type":"string"}},"additionalProperties":false}""");
 
-    protected override Task<SearchRunOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(args.Name))
-            throw new McpToolException(new InvalidArgument("name is required"));
-        return _run(args.Name.Trim());
-    }
+    protected override Task<SearchAdqlOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
+        => _execute(string.IsNullOrWhiteSpace(args.Adql) ? null : args.Adql.Trim());
 
-    public sealed record Args { public string? Name { get; init; } }
+    public sealed record Args { public string? Adql { get; init; } }
 }

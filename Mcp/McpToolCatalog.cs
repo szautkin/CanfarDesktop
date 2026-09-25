@@ -38,6 +38,12 @@ public static class McpToolCatalog
         var notes = sp.GetRequiredService<ObservationNoteStore>();
         var searchStore = sp.GetRequiredService<ISearchStoreService>();
         var tap = sp.GetRequiredService<ITAPService>();
+        var tapSchema = sp.GetRequiredService<ITapSchemaService>();
+        var annotations = sp.GetRequiredService<IAnnotationStore>();
+        var jobs = sp.GetRequiredService<Tools.Proposals.JobRegistry>();
+        var userImages = sp.GetRequiredService<IUserImageStore>();
+        var registry = sp.GetRequiredService<IRegistryService>();
+        var discoverySettings = sp.GetRequiredService<ImageDiscoverySettingsService>();
         var sessions = sp.GetRequiredService<ISessionService>();
         var imageCatalog = sp.GetRequiredService<IImageService>();
         var recentLaunches = sp.GetRequiredService<IRecentLaunchService>();
@@ -54,13 +60,24 @@ public static class McpToolCatalog
         var aiCompute = sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeService>();
         var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
         var previewFetcher = new McpPreviewFetcher(dataLink, httpFactory);
-        // VizieR is public (no auth) — a plain client is deliberate.
-        var vizier = new VizierService(httpFactory.CreateClient());
+        // VizieR is public (no auth) — a plain client is deliberate. The mirror list is read live from
+        // settings rather than captured, so editing it takes effect on the next search, not the next run.
+        var appSettings = sp.GetRequiredService<ISettingsService>();
+        var vizier = new VizierService(
+            httpFactory.CreateClient(),
+            () => VizierService.ParseEndpointList(appSettings.VizierMirrors));
 
         // Built once and exposed under BOTH the Windows name and its macOS alias (G5 wire parity).
         var uploadFileToVoSpace = new UploadFileToVoSpaceTool();
         var downloadVoSpaceFile = new DownloadVoSpaceFileTool((path, ct) => storage.DownloadFileAsync(path, ct));
         var createVoSpaceFolder = new CreateVoSpaceFolderTool();
+
+        // Remote compute is the person's CANFAR account at work, and its tools are locked as its screen
+        // is until they sign in — the history and state are answered from this machine, where nothing on
+        // the platform would turn a signed-out caller away (see SignedInTool).
+        IMcpTool Compute(IMcpTool tool) => new SignedInTool(tool, () => auth.IsAuthenticated,
+            "Remote compute runs on the person's CANFAR account, so they need to sign in first. The Remote " +
+            "Compute screen stays locked until they do, like Portal and Storage.");
 
         var tools = new List<IMcpTool>
         {
@@ -84,27 +101,13 @@ public static class McpToolCatalog
                 (target, service, ct) => tap.ResolveTargetAsync(target, service, ct)),
             new ResolveTargetTool((target, service, ct) => tap.ResolveTargetAsync(target, service, ct)),
 
-            // Live Search-page steering: the full Search UI surface — form fields, Additional
-            // Constraints facets, run/reset, the ADQL editor, the results table, exports, and the
-            // side-panel pickers (ViewState; routed to the page on the UI thread via AppViewStateService).
-            new GetSearchFormTool(() => viewState.GetSearchFormAsync()),
-            new SetSearchFormTool(patch => viewState.SetSearchFormAsync(patch)),
-            new GetSearchConstraintsTool(() => viewState.GetSearchConstraintsAsync()),
-            new SetSearchConstraintsTool(sel => viewState.SetSearchConstraintsAsync(sel)),
-            new ResetSearchFormTool(() => viewState.ResetSearchFormAsync()),
-            new RunSearchTool(() => viewState.RunSearchAsync()),
-            new SetAdqlQueryTool(adql => viewState.SetAdqlQueryAsync(adql)),
-            new ExecuteAdqlQueryTool(adql => viewState.ExecuteAdqlQueryAsync(adql)),
-            new GetSearchResultsTool((includeRows, maxRows) => viewState.GetSearchResultsAsync(includeRows, maxRows)),
-            new SetSearchResultsViewTool(cmd => viewState.SetSearchResultsViewAsync(cmd)),
-            new ExportSearchResultsTool((format, path) => viewState.ExportSearchResultsAsync(format, path)),
-            new LoadRecentSearchTool(index => viewState.LoadRecentSearchAsync(index)),
-            new RunSavedQueryTool(name => viewState.RunSavedQueryAsync(name)),
-            // Recent-search history deletes (Destructive proposals)
-            new RemoveRecentSearchTool(() => searchStore.LoadRecentSearches()),
-            new ClearRecentSearchesTool(() => searchStore.LoadRecentSearches()),
+            // The service's own schema, and the check that reads it. Both fetch on first use and share
+            // one cached copy (TapSchemaService is a singleton).
+            new DescribeTapSchemaTool(ct => tapSchema.GetSchemaAsync(ct)),
+            new ValidateAdqlQueryTool(ct => tapSchema.GetSchemaAsync(ct)),
             new VizierConeSearchTool((req, ct) => vizier.ConeSearchAsync(
-                req.Catalogue, req.RaDeg, req.DecDeg, req.RadiusDeg, req.RaColumn, req.DecColumn, req.MaxRec, ct)),
+                req.Catalogue, req.RaDeg, req.DecDeg, req.RadiusDeg, req.RaColumn, req.DecColumn, req.MaxRec,
+                req.Columns, ct)),
 
             // Skaha sessions / headless jobs
             new ListSessionsTool(async ct => (IReadOnlyList<Session>)await sessions.GetSessionsAsync(ct)),
@@ -138,15 +141,30 @@ public static class McpToolCatalog
             // discover_image_packages (write) — probe an image so find_images_with_packages can match it.
             new DiscoverImagePackagesTool(),
 
+            // The other door: images the platform does not list, and what is inside the ones it does.
+            // The same credentials the discovery settings already mint for x-skaha-registry-auth: someone
+            // who configured discovery has configured this too, and nobody is asked for a secret twice.
+            new SearchImageRegistryTool((query, ct) => registry.SearchAsync(
+                discoverySettings.Settings.RegistryHost, query,
+                new RegistryAuth(discoverySettings.CurrentAuthHeader()), ct)),
+            new ListMyImagesTool(() => userImages.All()),
+            new SearchPackagesTool(() => discovery.AllPackages()),
+            new DescribeImageTool(id => discovery.DiscoveredManifests()
+                .FirstOrDefault(m => string.Equals(m.ImageID, id, StringComparison.OrdinalIgnoreCase))),
+            new AddRegistryImageTool(),
+            new RemoveRegistryImageTool(),
+
             // AI Compute (Feature B): run agent code on a warm contributed session via the /arc file-drop.
             // run_code/start_compute are SemanticWrite (macOS parity — CANFAR compute is platform UX, not
             // billed usage), so they auto-apply under the user's auto-apply setting; stop_compute stays
             // Destructive (tears down a session mid-work). Disabled until an AI compute image is set in
             // Settings ▸ AI compute.
-            new RunCodeTool(() => aiComputeSettings.Settings),
-            new RunCodeOutputTool((id, ct) => aiCompute.FetchOutAsync(id, ct)),
-            new StartComputeTool(() => aiComputeSettings.Settings),
-            new StopComputeTool(),
+            Compute(new RunCodeTool(() => aiComputeSettings.Settings)),
+            Compute(new RunCodeOutputTool((id, ct) => aiCompute.FetchOutAsync(id, ct))),
+            Compute(new StartComputeTool(() => aiComputeSettings.Settings)),
+            Compute(new StopComputeTool()),
+            Compute(new GetComputeStateTool(async ct => DescribeCompute(await aiCompute.SnapshotAsync(ct)))),
+            Compute(new ListComputeRunsTool(() => aiCompute.Runs.All())),
 
             // CAOM2 metadata + DataLink (download/preview URLs)
             new GetObservationCaom2Tool((id, ct) => caom2.GetByPublisherIdAsync(id, ct)),
@@ -183,6 +201,11 @@ public static class McpToolCatalog
             // Proposal lifecycle: let the agent see + manage its queued write proposals
             new ListPendingProposalsTool(),
             new GetProposalStateTool(),
+
+            // Work that outlives the call that asked for it.
+            new GetJobStatusTool(id => id is null
+                ? jobs.All()
+                : jobs.Get(id) is { } one ? [one] : []),
             new WithdrawProposalTool(),
 
             // Live ViewState writes: steer the user's view (no proposal)
@@ -190,6 +213,65 @@ public static class McpToolCatalog
             new SetSearchFocusTool((ra, dec) => viewState.SetSearchFocusActionAsync(ra, dec)),
             new OpenFitsFileTool(id => viewState.OpenFitsAsync(id)),
 
+            // Search page: the form, the facets, the query, and the results grid the user is looking at.
+            // search_observations (above) stays the headless way to run a query; these are for when the
+            // point is that the USER ends up seeing it.
+            new GetSearchFormTool(() => viewState.GetSearchFormAsync()),
+            new SetSearchFormTool(patch => viewState.SetSearchFormAsync(patch)),
+            new GetSearchConstraintsTool(() => viewState.GetSearchConstraintsAsync()),
+            new SetSearchConstraintsTool(patch => viewState.SetSearchConstraintsAsync(patch)),
+            new RunSearchTool(() => viewState.RunSearchAsync()),
+            new SetAdqlQueryTool((adql, execute) => viewState.SetAdqlQueryAsync(adql, execute)),
+            new ExecuteAdqlQueryTool(adql => viewState.ExecuteAdqlQueryAsync(adql)),
+            new RunSavedQueryTool(name => viewState.RunSavedQueryAsync(name)),
+            new GetSearchResultsTool(query => viewState.GetSearchResultsAsync(query)),
+            new SetSearchResultsViewTool(patch => viewState.SetSearchResultsViewAsync(patch)),
+            new ExportSearchResultsTool((format, path) => viewState.ExportSearchResultsAsync(format, path)),
+            new ShowSearchRowDetailTool(row => viewState.ShowSearchRowDetailAsync(row)),
+            new ShowObservationDetailTool(id => viewState.ShowObservationDetailAsync(id)),
+
+            // The Remote Compute screen and Storage-at-a-folder: what a person can do there, an agent
+            // can show them — a run, code ready to run, the exec folder. Showing asks a signed-out person
+            // to sign in, as navigate_to does; reading what the screen shows does not, since it cannot
+            // be showing anything.
+            new ShowComputeRunTool(id => viewState.ShowComputeRunAsync(id)),
+            new SetComputeSnippetTool(r => viewState.SetComputeSnippetAsync(r)),
+            Compute(new GetComputeViewTool(() => viewState.GetComputeViewAsync())),
+            new ShowStorageFolderTool(folder => viewState.ShowStorageFolderAsync(folder)),
+            new LoadRecentSearchTool(match => viewState.LoadRecentSearchAsync(match)),
+
+            // The Search page's "Remove from history" and "Clear All". Written, tested and given
+            // appliers, then never put on the server — so the two buttons had no agent equivalent.
+            new RemoveRecentSearchTool(() => searchStore.LoadRecentSearches()),
+            new ClearRecentSearchesTool(() => searchStore.LoadRecentSearches()),
+            new ResetSearchFormTool(() => viewState.ResetSearchFormAsync()),
+
+            // Marks on an image or a cube. The store is what makes them persist with the FILE, so these
+            // work on a target that is not currently open — which is how a batch is prepared before
+            // anyone looks at it.
+            new AnnotateFitsTool(annotations, viewState),
+            new AnnotateCubeTool(annotations, viewState),
+            new ListFitsAnnotationsTool(annotations, viewState),
+            new ListCubeAnnotationsTool(annotations, viewState),
+            new UpdateAnnotationTool(annotations, viewState),
+            new RemoveAnnotationTool(annotations, viewState),
+            new ClearAnnotationsTool(annotations, viewState),
+
+            new SelectAnnotationTool(annotations, viewState),
+
+            // The figure the marks are drawn for.
+            new ExportFitsFigureTool(request => viewState.ExportFitsFigureAsync(request)),
+            new ExportAnnotationsTool(request => viewState.ExportAnnotationsAsync(request)),
+
+            // Pointing a person at a control, and the vocabulary for doing it.
+            new PointAtUiTool(request => viewState.PointAtUiAsync(request)),
+            new ListUiTargetsTool((contains, collapsed) => viewState.ListUiTargetsAsync(contains, collapsed)),
+
+            // Looking at what the person is looking at, as opposed to writing a plate for a paper.
+            new GetFitsImageTool(request => viewState.CaptureFitsAsync(request)),
+            new GetCubeImageTool(request => viewState.CaptureCubeAsync(request)),
+
+            // 3D Cube Viewer: open + steer + read + probe + export figure
             // 3D Cube Viewer: open + steer + read + probe + export figure + transfer curve + tabs/recents
             new OpenCubeTool(target => viewState.OpenCubeAsync(target)),
             new SetCubeViewTool(args => viewState.SetCubeAsync(args)),
@@ -228,6 +310,7 @@ public static class McpToolCatalog
             new ListOpenNotebooksTool(() => viewState.ListOpenNotebooksAsync()),
             new GetNotebookTool(nb => viewState.GetNotebookAsync(nb)),
             new GetCellOutputTool((i, nb) => viewState.GetCellOutputAsync(i, nb)),
+            new GetCellImageTool((i, nb) => viewState.GetCellImageAsync(i, nb)),
             new GetKernelStateTool(nb => viewState.GetKernelStateAsync(nb)),
             new OpenNotebookTool(cmd => viewState.NotebookMutateAsync(cmd)),
             new CreateNotebookTool(cmd => viewState.NotebookMutateAsync(cmd)),
@@ -249,6 +332,10 @@ public static class McpToolCatalog
             // Tab management: close the active viewer tab / count open tabs (open_* tools accumulate them)
             new CloseActiveTabTool(kind => viewState.CloseTabAsync(kind)),
             new ListOpenTabsTool(() => viewState.ListTabsAsync()),
+
+            // Reaching a tab that is not the active one — every other viewer tool acts on the active
+            // one, so without these a second open file was unreachable.
+            new CloseTabTool((kind, index) => viewState.CloseTabAtAsync(kind, index)),
 
             // Semantic writes (proposals; auto-apply or queue per the autonomy toggle)
             new SaveQueryTool(),
@@ -318,6 +405,13 @@ public static class McpToolCatalog
         if (eventLog is not null)
             tools.Add(new ListEventsTool(eventLog));
 
+        // The map, added last and reading the finished catalogue — including itself. The closures hold
+        // the list rather than a copy of it, so a tool added above this line is one they can find; a
+        // snapshot taken here would go stale the moment anything else was appended.
+        tools.Add(new ListAppsTool(() => tools.Select(t => t.Descriptor.Name).ToList()));
+        tools.Add(new SearchToolsTool(() => tools.Select(t => t.Descriptor).ToList()));
+        tools.Add(new ManTool(() => tools.Select(t => t.Descriptor).ToList()));
+
         return tools;
     }
 
@@ -335,9 +429,20 @@ public static class McpToolCatalog
         var aiGuide = sp.GetRequiredService<AiGuideService>();
         var caom2 = sp.GetRequiredService<ICAOM2Service>();
         var aiCompute = sp.GetRequiredService<CanfarDesktop.Services.AICompute.AIComputeService>();
+        var userImages = sp.GetRequiredService<IUserImageStore>();
 
         return new IProposalApplier[]
         {
+            new AddRegistryImageApplier(payload =>
+            {
+                userImages.Add(Models.RegistryImage.FromLabels(payload.ImageID, payload.Types));
+                return Task.CompletedTask;
+            }),
+            new RemoveRegistryImageApplier(payload =>
+            {
+                userImages.Remove(payload.ImageID);
+                return Task.CompletedTask;
+            }),
             new SaveQueryApplier((payload, attribution) =>
             {
                 searchStore.SaveQuery(new SavedQuery
@@ -399,7 +504,7 @@ public static class McpToolCatalog
                 DownloadObservationAsync(downloads, observations, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
             new DeleteDownloadedObservationApplier(p =>
             {
-                var match = observations.Observations.FirstOrDefault(o => o.Id == p.Id || o.PublisherID == p.Id);
+                var match = observations.Find(p.Id);
                 if (match is not null) observations.Remove(match);
                 return Task.CompletedTask;
             }),
@@ -425,7 +530,7 @@ public static class McpToolCatalog
                 (path, ct) => storage.DeleteNodeAsync(path, ct)),
 
             // AI Compute: submit code / pre-warm / stop the contributed compute session.
-            new RunCodeApplier(req => aiCompute.SubmitAsync(req)),
+            new RunCodeApplier(req => aiCompute.SubmitAsync(req, CanfarDesktop.Models.AICompute.ComputeRunAuthor.Agent)),
             new StartComputeApplier(() => aiCompute.EnsureSessionAsync()),
             new StopComputeApplier(() => aiCompute.StopAsync()),
 
@@ -494,27 +599,63 @@ public static class McpToolCatalog
         store.Save(observation);
     }
 
-    /// <summary>Fill the research-record metadata fields from a CAOM2 document (RA/Dec from the plane footprint centroid).</summary>
+    /// <summary>The compute snapshot as get_compute_state reports it: state names in camelCase, as on the wire.</summary>
+    private static ComputeStateView DescribeCompute(CanfarDesktop.Services.AICompute.ComputeSnapshot s)
+    {
+        var up = ComputeStatus.Uptime(s.Session?.StartedTime, DateTimeOffset.UtcNow);
+        return new ComputeStateView(
+            ComputeStatus.Name(s.State),
+            s.State != ComputeState.NotSetUp,
+            s.State == ComputeState.NotSetUp ? null : s.Image,
+            s.Cores, s.Ram,
+            s.Session?.Id, s.Session?.Status, s.Session?.StartedTime,
+            up is { } u ? (int)u.TotalMinutes : null,
+            s.State == ComputeState.NotSetUp
+                ? "Not set up: the Remote Compute screen (navigate_to remoteCompute) explains how."
+                : null);
+    }
+
+    /// <summary>
+    /// Fill the research-record metadata fields from a CAOM2 document (RA/Dec from the plane footprint
+    /// centroid). Only EMPTY fields are written: a record saved from a search row already carries the
+    /// grid's own values, and this must top it up rather than overwrite it.
+    /// </summary>
     private static void PopulateFromCaom2(DownloadedObservation obs, CAOM2Observation? caom2)
     {
         if (caom2 is null) return;
         var inv = System.Globalization.CultureInfo.InvariantCulture;
-        obs.Collection = caom2.Collection;
-        obs.ObservationID = caom2.ObservationID;
-        obs.TargetName = caom2.Target?.Name ?? string.Empty;
-        obs.Instrument = caom2.Instrument?.Name ?? string.Empty;
+
+        static void Fill(Func<string> read, Action<string> write, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(read()) || string.IsNullOrWhiteSpace(value)) return;
+            write(value!);
+        }
+
+        Fill(() => obs.Collection, v => obs.Collection = v, caom2.Collection);
+        Fill(() => obs.ObservationID, v => obs.ObservationID = v, caom2.ObservationID);
+        Fill(() => obs.TargetName, v => obs.TargetName = v, caom2.Target?.Name);
+        Fill(() => obs.Instrument, v => obs.Instrument = v, caom2.Instrument?.Name);
         if (caom2.Proposal is { } prop)
         {
-            obs.ProposalId = prop.Id ?? string.Empty;
-            obs.ProposalPi = prop.Pi ?? string.Empty;
-            obs.ProposalTitle = prop.Title ?? string.Empty;
+            Fill(() => obs.ProposalId, v => obs.ProposalId = v, prop.Id);
+            Fill(() => obs.ProposalPi, v => obs.ProposalPi = v, prop.Pi);
+            Fill(() => obs.ProposalTitle, v => obs.ProposalTitle = v, prop.Title);
         }
 
         var plane = caom2.Planes.FirstOrDefault();
         if (plane is null) return;
-        if (plane.CalibrationLevel is int cl) obs.CalLevel = cl.ToString(inv);
-        if (plane.DataRelease is { } dr) obs.DataRelease = dr.ToString("yyyy-MM-dd", inv);
-        if (plane.Position?.Polygon is { Count: > 0 } poly)
+        Fill(() => obs.CalLevel, v => obs.CalLevel = v,
+            plane.CalibrationLevel is int cl ? cl.ToString(inv) : null);
+        Fill(() => obs.DataRelease, v => obs.DataRelease = v,
+            plane.DataRelease is { } dr ? dr.ToString("yyyy-MM-dd", inv) : null);
+
+        // The two the record used to stay anonymous in even when CAOM2 had them: the bandpass IS the
+        // filter, and the temporal lower bound is the start of the observation.
+        Fill(() => obs.Filter, v => obs.Filter = v, plane.Energy?.BandpassName);
+        Fill(() => obs.StartDate, v => obs.StartDate = v,
+            plane.Time?.LowerMJD is { } mjd ? Caom2Format.MjdToDate(mjd) : null);
+
+        if (plane.Position?.Polygon is { Count: > 0 } poly && string.IsNullOrWhiteSpace(obs.RA))
         {
             obs.RA = poly.Average(v => v.Ra).ToString("F6", inv);
             obs.Dec = poly.Average(v => v.Dec).ToString("F6", inv);
@@ -566,10 +707,12 @@ public static class McpToolCatalog
         return name.Length > 80 ? name[^80..] : name;
     }
 
-    /// <summary>Probe the upstream services concurrently: any HTTP response = host reachable.</summary>
+    /// <summary>Probe the upstream services concurrently by reading each one's IVOA availability document.</summary>
     private static async Task<IReadOnlyList<ServiceHealthEntry>> ProbeServicesAsync(IHttpClientFactory factory, ApiEndpoints endpoints)
         => (await CanfarDesktop.Services.ServiceHealthProbe.ProbeCoreAsync(factory, endpoints))
-            .Select(r => new ServiceHealthEntry(r.Name, r.Url, r.Reachable, r.Ok, r.StatusCode, r.LatencyMs, r.Error))
+            .Select(r => new ServiceHealthEntry(
+                r.Name, r.Url, r.Reachable, r.Ok, r.StatusCode, r.LatencyMs, r.Error,
+                r.Available, r.Note, r.RequiresAuth))
             .ToList();
 
     /// <summary>A safe Skaha session name (lowercase, hyphenated) — generated when the agent omits one.</summary>

@@ -7,11 +7,43 @@
 
     <Grid RowDefinitions="Auto,*">
 
-        <!-- Shared toolbar -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Padding="12,6"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                    BorderThickness="0,0,0,1">
+        <!-- Shared toolbar.
+
+             It carries more controls than a narrow window has room for, and none of them collapses —
+             so the last ones used to sit off the end of the strip with nothing to scroll and no sign
+             they existed. It scrolls sideways now: a mouse wheel over it, a touch drag, keyboard focus
+             moving onto a hidden control, or the step buttons at either end, which appear only while
+             there is something out of sight that way. The arithmetic is Helpers.ToolbarOverflow.
+
+             The strip's inner panel keeps its original indentation below, deliberately: re-indenting
+             two hundred lines to wrap them would bury the one line that changed. -->
+        <Grid Grid.Row="0" x:Name="ToolbarStrip"
+              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="0,0,0,1"
+              SizeChanged="OnToolbarSizeChanged">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button x:Name="ToolbarBackButton" x:Uid="Fits_ToolbarBack" Grid.Column="0"
+                    Visibility="Collapsed" Click="OnToolbarBack"
+                    Padding="6,4" Margin="4,0,0,0" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="0"
+                    ToolTipService.ToolTip="Earlier tools"
+                    AutomationProperties.Name="Scroll the toolbar back">
+                <FontIcon Glyph="&#xE76B;" FontSize="12" />
+            </Button>
+
+            <ScrollViewer x:Name="ToolbarScroller" Grid.Column="1"
+                          HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled"
+                          ViewChanged="OnToolbarViewChanged"
+                          PointerWheelChanged="OnToolbarWheel">
+        <StackPanel Orientation="Horizontal" Spacing="8" Padding="12,6"
+                    SizeChanged="OnToolbarSizeChanged">
 
             <Button x:Uid="Fits_OpenButton" Click="OnOpenFile" ToolTipService.ToolTip="Open FITS" Padding="8,4"
                     AutomationProperties.Name="Open FITS file">
@@ -69,6 +101,38 @@
                           AutomationProperties.Name="Toggle North up orientation">
                 <FontIcon Glyph="&#xE816;" FontSize="14" />
             </ToggleButton>
+
+            <!-- Select an area. Ctrl-drag has always done this, but a modifier nobody is told about
+                 is a feature only its author can find. Armed, the next drag picks a region and the
+                 mode turns itself off again — one region per arming. -->
+            <ToggleButton x:Name="SelectAreaToggle" x:Uid="Fits_SelectAreaToggle"
+                          Click="OnToggleSelectArea" Padding="8,4"
+                          ToolTipService.ToolTip="Select an area to export (or hold Ctrl and drag)"
+                          AutomationProperties.Name="Select area">
+                <FontIcon Glyph="&#xEF20;" FontSize="14" />
+            </ToggleButton>
+
+            <Button x:Name="ExportFigureButton" x:Uid="Fits_ExportFigureButton" Click="OnExportFigure" Padding="8,4"
+                    ToolTipService.ToolTip="Export a figure (Ctrl-drag the image for a region)"
+                    AutomationProperties.Name="Export figure">
+                <FontIcon Glyph="&#xE7C5;" FontSize="14" />
+            </Button>
+
+            <AppBarSeparator />
+
+            <!-- Marks. ONE labelled control, and it opens the panel where everything about marks
+                 lives — the pencil, the shape, the style and the list. A picture of a pencil beside a
+                 picture of a chevron was the whole feature's only entry point, and it told nobody that
+                 this image could be annotated, let alone how to name a mark once drawn. -->
+            <Button x:Name="MarksButton" Click="OnOpenMarksPanel" Padding="8,4"
+                    x:Uid="Fits_MarksButton"
+                    ToolTipService.ToolTip="Marks: draw, style and list"
+                    AutomationProperties.Name="Marks">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                    <TextBlock x:Uid="Fits_MarksButtonLabel" Text="Marks" />
+                </StackPanel>
+            </Button>
 
             <AppBarSeparator />
 
@@ -171,6 +235,17 @@
             <ProgressRing x:Name="LoadingRing" IsActive="False" Width="20" Height="20"
                           VerticalAlignment="Center" />
         </StackPanel>
+            </ScrollViewer>
+
+            <Button x:Name="ToolbarForwardButton" x:Uid="Fits_ToolbarForward" Grid.Column="2"
+                    Visibility="Collapsed" Click="OnToolbarForward"
+                    Padding="6,4" Margin="0,0,4,0" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="0"
+                    ToolTipService.ToolTip="More tools"
+                    AutomationProperties.Name="Scroll the toolbar forward">
+                <FontIcon Glyph="&#xE76C;" FontSize="12" />
+            </Button>
+        </Grid>
 
         <!-- Tab view + coordinate panel -->
         <Grid Grid.Row="1">
@@ -184,6 +259,37 @@
                      AddTabButtonClick="OnAddTab"
                      TabCloseRequested="OnTabCloseRequested"
                      SelectionChanged="OnTabSelectionChanged" />
+
+            <!-- Empty state shown when no image is open. The cube viewer next door has offered the
+                 files you opened before since it shipped; this one offered a blank tab strip. -->
+            <StackPanel x:Name="EmptyState" Grid.Column="0"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Spacing="14" MaxWidth="400" Visibility="Collapsed">
+                <FontIcon Glyph="&#xEB9F;" FontSize="56" HorizontalAlignment="Center"
+                          Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                <TextBlock x:Uid="Fits_EmptyTitle" Text="No image open" HorizontalAlignment="Center"
+                           Style="{StaticResource SubtitleTextBlockStyle}" />
+                <TextBlock x:Uid="Fits_EmptyBody" TextWrapping="Wrap" TextAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Style="{StaticResource BodyTextBlockStyle}"
+                           Text="Open a FITS image to inspect it — stretch and colormap, WCS readout, pixel probing, marks, and multi-tab comparison." />
+                <Button x:Name="OpenImageButton" x:Uid="Fits_OpenImageButton" Click="OnOpenFileEmpty" HorizontalAlignment="Center"
+                        AutomationProperties.Name="Open image"
+                        Style="{StaticResource AccentButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE8E5;" FontSize="16" />
+                        <TextBlock x:Uid="Fits_OpenLabel" Text="Open image…" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Recently opened images (persisted; rows built in code from RecentFitsService) -->
+                <StackPanel x:Name="RecentsPanel" Visibility="Collapsed" Spacing="2" Margin="0,10,0,0">
+                    <TextBlock x:Uid="Fits_RecentsHeader" Text="Recent images" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Style="{StaticResource CaptionTextBlockStyle}" />
+                    <ItemsControl x:Name="RecentsList" HorizontalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
 
             <!-- Warns when crosshair/zoom sync is on but a file lacks a precise WCS (e.g. a raw
                  DAO frame with only a pointing): the linked position/zoom will be approximate. -->

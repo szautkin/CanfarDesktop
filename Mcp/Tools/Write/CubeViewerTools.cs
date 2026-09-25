@@ -3,7 +3,12 @@ using CanfarDesktop.Services.CubeViewer;
 namespace CanfarDesktop.Mcp.Tools.Write;
 
 /// <summary>Result of <c>open_cube</c>: whether the 3D Cube Viewer opened the cube + its dimensions.</summary>
-public sealed record CubeOpenOutcome(bool Opened, string? Path, int Nx, int Ny, int Nz, string? Message);
+/// <param name="Loading">
+/// True when the cube is still being read after the call's budget ran out. Not a failure: it goes
+/// on loading, and get_cube_view reports <c>loaded</c> once it is in.
+/// </param>
+public sealed record CubeOpenOutcome(
+    bool Opened, string? Path, int Nx, int Ny, int Nz, string? Message, bool Loading = false);
 
 /// <summary>Result of <c>export_cube_figure</c>: whether the figure was written + its path.</summary>
 public sealed record CubeExportOutcome(bool Exported, string? Path, string? Message);
@@ -15,6 +20,7 @@ public sealed record CubeViewArgs(
     double? Azimuth = null, double? Elevation = null, double? Distance = null,
     double? Density = null, double? SpectralScale = null, int? Steps = null,
     string? Background = null, bool? ShowSlicePlane = null, bool? ShowCaptions = null,
+    bool? ShowPanels = null,
     bool? AutoOrbit = null, bool? Playing = null, bool? ResetCamera = null,
     string? WindowPreset = null,      // "minmax" | "p99" (the two window buttons)
     double? SliceZoom = null,         // slice-view zoom 1–20 (1 = fit)
@@ -29,7 +35,8 @@ public sealed record CubeExportRequest(
     string TextColor = "auto",        // auto | white | black | cyan | amber
     double TextScale = 1.0,           // 0.75–1.5 (the dialog's text-size slider)
     bool Annotate = true,             // camera/metadata annotations line
-    bool Transparent = false);        // transparent background (PNG)
+    bool Transparent = false,         // transparent background (PNG)
+    bool Marks = true);               // the marks drawn on the cube
 
 /// <summary>
 /// <c>open_cube</c> — open a FITS spectral cube (NAXIS=3) in the 3D Cube Viewer, by local file path or
@@ -45,8 +52,10 @@ public sealed class OpenCubeTool : JsonReadTool<OpenCubeTool.Args, CubeOpenOutco
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "open_cube",
         "Open a FITS spectral cube (NAXIS=3) in the 3D Cube Viewer and switch to it — by local file " +
-        "path, or by the id/publisher id of a DOWNLOADED observation (download_observation first). " +
-        "Reports the cube dimensions; fails gracefully if the file is not a 3D cube. Live-applied.",
+        "path, or by the id, publisher id or observation id of a DOWNLOADED observation (download_observation first). " +
+        "Reports the cube dimensions; fails gracefully if the file is not a 3D cube. A large cube " +
+        "still loading after about 20 seconds comes back loading:true rather than as a failure — it " +
+        "carries on, so do not open it again; poll get_cube_view until loaded is true. Live-applied.",
         """{"type":"object","properties":{"path":{"type":"string"},"observationId":{"type":"string"}},"additionalProperties":false}""");
 
     protected override async Task<CubeOpenOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -77,12 +86,14 @@ public sealed class SetCubeViewTool : JsonReadTool<SetCubeViewTool.Args, CubeVie
         "stretch, render mode, window levels (or windowPreset minmax/p99, the two window buttons). Camera: " +
         "azimuth/elevation (radians) and distance (zoom), or resetCamera to recenter. Volume tuning: density " +
         "(opacity 0.1–3), spectralScale (z-stretch 0.5–4), steps (ray-march quality 96–768). Visibility: " +
-        "background (dark/black/light), showSlicePlane, showCaptions, autoOrbit. Playback: playing " +
+        "background (dark/black/light), showSlicePlane, showCaptions, autoOrbit, and showPanels — the " +
+        "floating info and controls panels, which cover the render on a small window, so hiding them " +
+        "is how to see the whole cube. Playback: playing " +
         "(start/stop the channel animation). Slice navigation: sliceZoom (1–20, 1 = fit) with " +
         "sliceCenterX/Y (the NATIVE cube pixel to center on — use to zoom the user into a region), or " +
         "resetSliceView for the fit view. Only the fields you pass change. Returns the resulting cube view " +
         "state. Live-applied.",
-        """{"type":"object","properties":{"mode":{"type":"string","enum":["volume","slice"]},"channel":{"type":"integer","minimum":0},"colormap":{"type":"string","enum":["grayscale","inverted","heat","cool","viridis","inferno","magma","plasma"]},"stretch":{"type":"string","enum":["linear","log","sqrt","squared","asinh"]},"renderMode":{"type":"string","enum":["emission","maxIntensity"]},"windowLo":{"type":"number","minimum":0,"maximum":1},"windowHi":{"type":"number","minimum":0,"maximum":1},"windowPreset":{"type":"string","enum":["minmax","p99"]},"azimuth":{"type":"number"},"elevation":{"type":"number"},"distance":{"type":"number","minimum":0.5,"maximum":8},"density":{"type":"number","minimum":0.1,"maximum":3},"spectralScale":{"type":"number","minimum":0.5,"maximum":4},"steps":{"type":"integer","minimum":96,"maximum":768},"background":{"type":"string","enum":["dark","black","light"]},"showSlicePlane":{"type":"boolean"},"showCaptions":{"type":"boolean"},"autoOrbit":{"type":"boolean"},"playing":{"type":"boolean"},"resetCamera":{"type":"boolean"},"sliceZoom":{"type":"number","minimum":1,"maximum":20},"sliceCenterX":{"type":"integer","minimum":0},"sliceCenterY":{"type":"integer","minimum":0},"resetSliceView":{"type":"boolean"}},"additionalProperties":false}""");
+        """{"type":"object","properties":{"mode":{"type":"string","enum":["volume","slice"]},"channel":{"type":"integer","minimum":0},"colormap":{"type":"string","enum":["grayscale","inverted","heat","cool","viridis","inferno","magma","plasma"]},"stretch":{"type":"string","enum":["linear","log","sqrt","squared","asinh"]},"renderMode":{"type":"string","enum":["emission","maxIntensity"]},"windowLo":{"type":"number","minimum":0,"maximum":1},"windowHi":{"type":"number","minimum":0,"maximum":1},"windowPreset":{"type":"string","enum":["minmax","p99"]},"azimuth":{"type":"number"},"elevation":{"type":"number"},"distance":{"type":"number","minimum":0.5,"maximum":8},"density":{"type":"number","minimum":0.1,"maximum":3},"spectralScale":{"type":"number","minimum":0.5,"maximum":4},"steps":{"type":"integer","minimum":96,"maximum":768},"background":{"type":"string","enum":["dark","black","light"]},"showSlicePlane":{"type":"boolean"},"showCaptions":{"type":"boolean"},"showPanels":{"type":"boolean"},"autoOrbit":{"type":"boolean"},"playing":{"type":"boolean"},"resetCamera":{"type":"boolean"},"sliceZoom":{"type":"number","minimum":1,"maximum":20},"sliceCenterX":{"type":"integer","minimum":0},"sliceCenterY":{"type":"integer","minimum":0},"resetSliceView":{"type":"boolean"}},"additionalProperties":false}""");
 
     protected override async Task<CubeViewState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
@@ -93,7 +104,8 @@ public sealed class SetCubeViewTool : JsonReadTool<SetCubeViewTool.Args, CubeVie
         var state = await _apply(new CubeViewArgs(
             args.Mode, args.Channel, args.Colormap, args.Stretch, args.RenderMode, args.WindowLo, args.WindowHi,
             args.Azimuth, args.Elevation, args.Distance, args.Density, args.SpectralScale, args.Steps,
-            args.Background, args.ShowSlicePlane, args.ShowCaptions, args.AutoOrbit, args.Playing, args.ResetCamera,
+            args.Background, args.ShowSlicePlane, args.ShowCaptions, args.ShowPanels,
+            args.AutoOrbit, args.Playing, args.ResetCamera,
             args.WindowPreset, args.SliceZoom, args.SliceCenterX, args.SliceCenterY, args.ResetSliceView));
         return state ?? throw new McpToolException(new TargetNotResolved("the cube viewer is not open — open a cube with open_cube first"));
     }
@@ -117,6 +129,7 @@ public sealed class SetCubeViewTool : JsonReadTool<SetCubeViewTool.Args, CubeVie
         public string? Background { get; init; }
         public bool? ShowSlicePlane { get; init; }
         public bool? ShowCaptions { get; init; }
+        public bool? ShowPanels { get; init; }
         public bool? AutoOrbit { get; init; }
         public bool? Playing { get; init; }
         public bool? ResetCamera { get; init; }
@@ -144,9 +157,10 @@ public sealed class ExportCubeFigureTool : JsonReadTool<ExportCubeFigureTool.Arg
         "Export the current 3D Cube Viewer view as a publication figure (box + axis captions + legend + " +
         "colorbar) to a local PNG or PDF path, at 2× or 4× resolution. Style options mirror the export " +
         "dialog: theme (dark/light), font (sans/mono/serif), textColor (auto/white/black/cyan/amber), " +
-        "textScale (0.75–1.5), annotate (the camera/metadata line), transparent (background, PNG). The " +
-        "viewer must be visible. Live-applied.",
-        """{"type":"object","properties":{"path":{"type":"string"},"format":{"type":"string","enum":["png","pdf"]},"scale":{"type":"integer","enum":[2,4]},"theme":{"type":"string","enum":["dark","light"]},"font":{"type":"string","enum":["sans","mono","serif"]},"textColor":{"type":"string","enum":["auto","white","black","cyan","amber"]},"textScale":{"type":"number","minimum":0.75,"maximum":1.5},"annotate":{"type":"boolean"},"transparent":{"type":"boolean"}},"required":["path"],"additionalProperties":false}""");
+        "textScale (0.75–1.5), annotate (the camera/metadata line), marks (the marks drawn on the cube, " +
+        "default true — a slice figure shows only the marks on the channel it is of), transparent " +
+        "(background, PNG). The viewer must be visible. Live-applied.",
+        """{"type":"object","properties":{"path":{"type":"string"},"format":{"type":"string","enum":["png","pdf"]},"scale":{"type":"integer","enum":[2,4]},"theme":{"type":"string","enum":["dark","light"]},"font":{"type":"string","enum":["sans","mono","serif"]},"textColor":{"type":"string","enum":["auto","white","black","cyan","amber"]},"textScale":{"type":"number","minimum":0.75,"maximum":1.5},"annotate":{"type":"boolean"},"marks":{"type":"boolean"},"transparent":{"type":"boolean"}},"required":["path"],"additionalProperties":false}""");
 
     protected override async Task<CubeExportOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
@@ -166,7 +180,8 @@ public sealed class ExportCubeFigureTool : JsonReadTool<ExportCubeFigureTool.Arg
         double textScale = Math.Clamp(args.TextScale ?? 1.0, 0.75, 1.5);
         return await _export(new CubeExportRequest(
             path, format, scale, dark, font, textColor, textScale,
-            Annotate: args.Annotate ?? true, Transparent: args.Transparent ?? false));
+            Annotate: args.Annotate ?? true, Transparent: args.Transparent ?? false,
+            Marks: args.Marks ?? true));
     }
 
     public sealed record Args
@@ -180,6 +195,7 @@ public sealed class ExportCubeFigureTool : JsonReadTool<ExportCubeFigureTool.Arg
         public double? TextScale { get; init; }
         public bool? Annotate { get; init; }
         public bool? Transparent { get; init; }
+        public bool? Marks { get; init; }
     }
 }
 
@@ -200,7 +216,8 @@ public sealed class GetCubeViewTool : JsonReadTool<GetCubeViewTool.Args, CubeVie
         "NaN fraction. Camera/volume: azimuth/elevation/distance, density, spectral scale, ray-march steps, " +
         "background, the slice-plane / captions / auto-orbit toggles, playback state. Slice view: sliceZoom " +
         "+ the native pixel at its center. Spectrum panel: open flag + probed spaxel. Opacity curve: " +
-        "transferPoints (set with set_cube_transfer).",
+        "transferPoints (set with set_cube_transfer). loading is true while a cube is still " +
+        "being read in — poll it after open_cube answers loading:true.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<CubeViewState?> HandleAsync(Args args, McpToolContext context, CancellationToken ct) => _get();

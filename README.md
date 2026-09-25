@@ -41,7 +41,7 @@ Browse, upload, download, organize, and share your VOSpace/ARC files with quota 
 Launch and manage CANFAR sessions (Jupyter, Desktop, CARTA, Firefly) and submit headless batch jobs with replicas; follow logs and events live. Image Discovery shows which software packages a container image carries before you launch it.
 
 ### [AI Assistant](docs/10-ai-assistant.md) (optional)
-Connect Claude Desktop or Claude Code through a guided wizard and let an AI agent drive Verbinal with 115+ tools: search, download, open viewers, run notebooks, manage storage and sessions, and follow or author Workflows. You stay in control — a proposal review strip gates every consequential action, destructive operations always require explicit approval, and every agent change is badged.
+Connect Claude Desktop or Claude Code through a guided wizard and let an AI agent drive Verbinal with 170+ tools: search, download, open viewers, run notebooks, manage storage and sessions, and follow or author Workflows. Any other MCP client — Codex, Copilot, Cursor, Gemini and the rest — connects the same way: [AGENTS.md](AGENTS.md) tells the agent how, so point your assistant at it. You stay in control — a proposal review strip gates every consequential action, destructive operations always require explicit approval, and every agent change is badged.
 
 ### Cross-Module Integration
 - **Search to FITS** — download from the archive, view in the FITS viewer, crosshair back to Search

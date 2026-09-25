@@ -40,16 +40,24 @@ public class VizierServiceTests
 
     // ── Mirror registry ───────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Two of the four mirrors we shipped do not resolve — tap.cds.unistra.fr and
+    /// tapvizier.esac.esa.int, which were the FIRST and THIRD entries, so every cone search opened by
+    /// spending the per-host budget on two hosts that could not answer. The alias that did work is a
+    /// CNAME to tapvizier.cds.unistra.fr, which is the real host and now leads.
+    /// </summary>
     [Fact]
-    public void Endpoints_AreTheFourMacOSMirrorsInFailoverOrder()
+    public void DefaultEndpoints_AreTheMirrorsThatResolve_InFailoverOrder()
     {
         Assert.Equal(new[]
         {
-            "https://tap.cds.unistra.fr/tap/sync",
+            "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync",
             "https://tapvizier.u-strasbg.fr/TAPVizieR/tap/sync",
-            "https://tapvizier.esac.esa.int/TAPVizieR/tap/sync",
             "http://vizier.china-vo.org/tap/sync",
-        }, VizierService.Endpoints.Select(e => e.SyncUrl).ToArray());
+        }, VizierService.DefaultEndpoints.Select(e => e.SyncUrl).ToArray());
+
+        Assert.DoesNotContain(VizierService.DefaultEndpoints, e => e.Host == "tap.cds.unistra.fr");
+        Assert.DoesNotContain(VizierService.DefaultEndpoints, e => e.Host == "tapvizier.esac.esa.int");
     }
 
     // ── Happy path ────────────────────────────────────────────────────────────
@@ -67,7 +75,7 @@ public class VizierServiceTests
 
         var (headers, rows) = await svc.ConeSearchAsync("V/97/catalog", 298.4438, 18.7792, 0.05);
 
-        Assert.Equal("https://tap.cds.unistra.fr/tap/sync", url);
+        Assert.Equal("https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync", url);
         Assert.Contains("LANG=ADQL", form);
         Assert.Contains("FORMAT=csv", form);
         Assert.Contains("MAXREC=500", form);
@@ -92,7 +100,7 @@ public class VizierServiceTests
         });
 
         var (_, rows) = await svc.ConeSearchAsync("V/97/catalog", 1, 2, 0.01);
-        Assert.Equal(new[] { "tap.cds.unistra.fr", "tapvizier.u-strasbg.fr" }, seen);
+        Assert.Equal(new[] { "tapvizier.cds.unistra.fr", "tapvizier.u-strasbg.fr" }, seen);
         Assert.Single(rows);
     }
 
@@ -126,7 +134,7 @@ public class VizierServiceTests
             () => svc.ConeSearchAsync("nope/nope", 1, 2, 0.01));
 
         Assert.Equal(1, calls); // 4xx would give the same answer on every mirror
-        Assert.Contains("vizier_cone_search at tap.cds.unistra.fr", ex.Message);
+        Assert.Contains("vizier_cone_search at tapvizier.cds.unistra.fr", ex.Message);
         Assert.Contains("not retrying other mirrors (looks like a query problem, not a host problem).", ex.Message);
     }
 
@@ -139,23 +147,122 @@ public class VizierServiceTests
             () => svc.ConeSearchAsync("V/97/catalog", 1, 2, 0.01));
 
         Assert.Contains("vizier_cone_search exhausted all VizieR mirrors " +
-            "[tap.cds.unistra.fr, tapvizier.u-strasbg.fr, tapvizier.esac.esa.int, vizier.china-vo.org]", ex.Message);
+            "[tapvizier.cds.unistra.fr, tapvizier.u-strasbg.fr, vizier.china-vo.org]", ex.Message);
         Assert.Contains("last error: connection refused", ex.Message);
         Assert.Contains("use astroquery from inside a Skaha session as a workaround", ex.Message);
     }
 
+    /// <summary>
+    /// Only 400 and 403 are definitive. A 404 is the status that LEAST indicates a query problem — it
+    /// means the TAP path is not on that host, which is exactly what another mirror might fix — and
+    /// stopping the chain on it ended a search at the first mirror that had moved its endpoint.
+    /// </summary>
     [Fact]
-    public void IsHostFailoverWorthy_TransportAnd5xxRotate_4xxDoesNot()
+    public void IsHostFailoverWorthy_OnlyBadRequestAndForbiddenAreDefinitive()
     {
         Assert.True(VizierService.IsHostFailoverWorthy(new HttpRequestException("dns"))); // no status = transport
         Assert.True(VizierService.IsHostFailoverWorthy(
             new HttpRequestException("500", null, HttpStatusCode.InternalServerError)));
         Assert.True(VizierService.IsHostFailoverWorthy(new IOException("reset")));
         Assert.True(VizierService.IsHostFailoverWorthy(new TaskCanceledException())); // per-host timeout
+
+        // The one this changes.
+        Assert.True(VizierService.IsHostFailoverWorthy(
+            new HttpRequestException("404", null, HttpStatusCode.NotFound)));
+        Assert.True(VizierService.IsHostFailoverWorthy(
+            new HttpRequestException("503", null, HttpStatusCode.ServiceUnavailable)));
+
         Assert.False(VizierService.IsHostFailoverWorthy(
             new HttpRequestException("400", null, HttpStatusCode.BadRequest)));
+        Assert.False(VizierService.IsHostFailoverWorthy(
+            new HttpRequestException("403", null, HttpStatusCode.Forbidden)));
         Assert.False(VizierService.IsHostFailoverWorthy(new InvalidOperationException("parse")));
     }
+
+    // ── The mirror list is a setting ──────────────────────────────────────────
+
+    /// <summary>One URL per line; blanks and # comments ignored; the host comes from the URL.</summary>
+    [Fact]
+    public void ParseEndpointList_ReadsUrlsAndTakesTheHostFromEach()
+    {
+        var parsed = VizierService.ParseEndpointList(
+            "# my mirrors\nhttps://tap.example.org/tap/sync\n\n  http://other.example/tap/sync  \n");
+
+        Assert.Equal(new[] { "tap.example.org", "other.example" }, parsed.Select(e => e.Host).ToArray());
+        Assert.Equal("https://tap.example.org/tap/sync", parsed[0].SyncUrl);
+    }
+
+    /// <summary>A typo in the fourth mirror must not take out the first three.</summary>
+    [Fact]
+    public void ParseEndpointList_DropsUnusableLinesRatherThanTheList()
+    {
+        var parsed = VizierService.ParseEndpointList(
+            "https://good.example/tap/sync\nnot a url\nftp://wrong.example/tap\n");
+
+        Assert.Single(parsed);
+        Assert.Equal("good.example", parsed[0].Host);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   \n # only a comment \n")]
+    public void ParseEndpointList_EmptyMeansUseTheDefault(string? text)
+        => Assert.Empty(VizierService.ParseEndpointList(text));
+
+    /// <summary>An empty or unset setting falls back to the shipped list rather than to no mirrors.</summary>
+    [Fact]
+    public void Endpoints_FallBackToTheDefaultWhenNothingIsConfigured()
+    {
+        var svc = new VizierService(new HttpClient(), () => []);
+        Assert.Equal(VizierService.DefaultEndpoints, svc.Endpoints);
+    }
+
+    [Fact]
+    public void Endpoints_UseTheConfiguredListWhenThereIsOne()
+    {
+        var mine = VizierService.ParseEndpointList("https://mine.example/tap/sync");
+        var svc = new VizierService(new HttpClient(), () => mine);
+
+        Assert.Equal(new[] { "mine.example" }, svc.Endpoints.Select(e => e.Host).ToArray());
+    }
+
+    // ── Projection ────────────────────────────────────────────────────────────
+
+    /// <summary>No columns means SELECT *, byte-identical to what the tool has always sent.</summary>
+    [Fact]
+    public void BuildAdql_WithoutColumns_SelectsEverything()
+        => Assert.Contains("SELECT TOP 500 *",
+            VizierService.BuildAdql("I/355/gaiadr3", 1, 2, 0.01, "RAJ2000", "DEJ2000", 500));
+
+    /// <summary>
+    /// Named columns are quoted, because VizieR own names carry - and _ and mixed case: e_RAJ2000,
+    /// Gmag. A Gaia DR3 cone is ~230 columns a row and 500 rows of that is past what a caller can hold.
+    /// </summary>
+    [Fact]
+    public void BuildAdql_WithColumns_QuotesEachName()
+    {
+        var adql = VizierService.BuildAdql("I/355/gaiadr3", 1, 2, 0.01, "RAJ2000", "DEJ2000", 500,
+            ["RAJ2000", "DEJ2000", "Gmag", "e_RAJ2000"]);
+
+        Assert.Contains("SELECT TOP 500 \"RAJ2000\", \"DEJ2000\", \"Gmag\", \"e_RAJ2000\"", adql);
+    }
+
+    /// <summary>A name carrying a quote is a caller error, not a value — dropped rather than escaped.</summary>
+    [Fact]
+    public void BuildAdql_DropsNamesCarryingAQuote()
+    {
+        var adql = VizierService.BuildAdql("x", 1, 2, 0.01, "RAJ2000", "DEJ2000", 10, ["Gmag", "bad\"name"]);
+
+        Assert.Contains("SELECT TOP 10 \"Gmag\"", adql);
+        Assert.DoesNotContain("badname", adql);
+    }
+
+    /// <summary>All names unusable falls back to * rather than to a query that selects nothing.</summary>
+    [Fact]
+    public void BuildAdql_AllNamesUnusable_FallsBackToEverything()
+        => Assert.Contains("SELECT TOP 10 *",
+            VizierService.BuildAdql("x", 1, 2, 0.01, "RAJ2000", "DEJ2000", 10, ["   ", "\"\""]));
 
     // ── CSV parsing (same rules as TAPService) ────────────────────────────────
 

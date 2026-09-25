@@ -221,6 +221,7 @@ public static partial class WorkflowFormat
     /// <summary>The NavigateByKey keys a `View:` attachment may use (mirrors MainWindow.NavigateByKey).</summary>
     public static readonly IReadOnlySet<string> KnownViews = new HashSet<string>(StringComparer.Ordinal)
     {
-        "landing", "portal", "search", "research", "storage", "notebook", "fitsViewer", "aiGuide", "workflows",
+        "landing", "portal", "search", "research", "storage", "notebook", "fitsViewer", "cubeViewer",
+        "aiGuide", "workflows", "remoteCompute",
     };
 }

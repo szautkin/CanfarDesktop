@@ -100,6 +100,71 @@ public class AIComputeToolsTests
         Assert.Equal("hello", doc.GetProperty("stdout").GetString());
     }
 
+    // ── the person's view: state and history ──
+
+    /// <summary>An agent refused because nothing is set up is told where the person can set it up.</summary>
+    [Fact]
+    public async Task RunCode_NotSetUp_SendsTheAgentToRemoteCompute()
+    {
+        var (ctx, _) = Ctx();
+        var result = await new RunCodeTool(() => new AIComputeSettings()).InvokeAsync(Args("""{"code":"x"}"""), ctx, default);
+        var reason = Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason);
+        Assert.Contains("remoteCompute", reason.Detail);
+    }
+
+    [Fact]
+    public async Task GetComputeState_ReportsWhatItIsGiven()
+    {
+        var ctx = McpToolContext.ForExternal("c1", Guid.Empty);
+        var state = new ComputeStateView("running", true, "img:1", 2, 4, "s1", "Running", "2026-09-24T11:00:00Z", 30, null);
+        var doc = Json(await new GetComputeStateTool(_ => Task.FromResult(state)).InvokeAsync(Args("{}"), ctx, default));
+
+        Assert.Equal("running", doc.GetProperty("state").GetString());
+        Assert.Equal(30, doc.GetProperty("uptimeMinutes").GetInt32());
+    }
+
+    private static ComputeRun Run(string id, ComputeRunAuthor author, string? status, string code = "print(1)")
+        => new(id, author, "python", code, 60, "2026-09-24T12:00:00Z") { Status = status };
+
+    [Fact]
+    public async Task ListComputeRuns_SaysWhoSentEachAndWhereItStands()
+    {
+        var ctx = McpToolContext.ForExternal("c1", Guid.Empty);
+        var runs = new[] { Run("b", ComputeRunAuthor.User, null), Run("a", ComputeRunAuthor.Agent, "ok") };
+        var doc = Json(await new ListComputeRunsTool(() => runs).InvokeAsync(Args("{}"), ctx, default));
+
+        Assert.Equal(2, doc.GetProperty("total").GetInt32());
+        var listed = doc.GetProperty("runs");
+        Assert.Equal("user", listed[0].GetProperty("author").GetString());
+        Assert.Equal("running", listed[0].GetProperty("status").GetString());   // still out
+        Assert.Equal("agent", listed[1].GetProperty("author").GetString());
+        Assert.Equal("ok", listed[1].GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task ListComputeRuns_QuotesTheStartOfLongCodeAndCountsTheRest()
+    {
+        var ctx = McpToolContext.ForExternal("c1", Guid.Empty);
+        var code = new string('x', ListComputeRunsTool.PreviewLength + 100);
+        var doc = Json(await new ListComputeRunsTool(() => [Run("a", ComputeRunAuthor.Agent, "ok", code)])
+            .InvokeAsync(Args("{}"), ctx, default));
+
+        var run = doc.GetProperty("runs")[0];
+        Assert.Equal(ListComputeRunsTool.PreviewLength, run.GetProperty("codePreview").GetString()!.Length);
+        Assert.Equal(code.Length, run.GetProperty("codeLength").GetInt32());
+    }
+
+    [Fact]
+    public async Task ListComputeRuns_HonoursTheLimit()
+    {
+        var ctx = McpToolContext.ForExternal("c1", Guid.Empty);
+        var runs = Enumerable.Range(0, 20).Select(i => Run($"r{i}", ComputeRunAuthor.Agent, "ok")).ToArray();
+        var doc = Json(await new ListComputeRunsTool(() => runs).InvokeAsync(Args("""{"limit":3}"""), ctx, default));
+
+        Assert.Equal(20, doc.GetProperty("total").GetInt32());
+        Assert.Equal(3, doc.GetProperty("runs").GetArrayLength());
+    }
+
     // ── appliers ──
 
     [Fact]

@@ -103,6 +103,27 @@ public class ResultSorterTests
         Assert.Equal("", sorted[2].Get("col")); // empty last
     }
 
+    /// <summary>
+    /// Newest first still means blanks last. Negating the whole comparison put every row with no
+    /// start date at the top of an M31 search sorted by date, ahead of the 2025 data.
+    /// </summary>
+    [Fact]
+    public void Sort_EmptyValues_SortLast_Descending()
+    {
+        var rows = new List<SearchResultRow>
+        {
+            MakeRow(("col", "")),
+            MakeRow(("col", "60000")),
+            MakeRow(("col", "")),
+            MakeRow(("col", "61000")),
+        };
+        var sorted = ResultSorter.Sort(rows, "col", ascending: false);
+        Assert.Equal("61000", sorted[0].Get("col"));
+        Assert.Equal("60000", sorted[1].Get("col"));
+        Assert.Equal("", sorted[2].Get("col"));
+        Assert.Equal("", sorted[3].Get("col"));
+    }
+
     [Fact]
     public void Sort_EmptyList_ReturnsEmpty()
     {

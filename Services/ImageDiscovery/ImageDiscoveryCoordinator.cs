@@ -1,6 +1,7 @@
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.ImageDiscovery;
+using CanfarDesktop.Services;
 
 namespace CanfarDesktop.Services.ImageDiscovery;
 
@@ -25,6 +26,12 @@ public class ImageDiscoveryCoordinator
     private readonly Func<int, Task> _raceDelay;
     private readonly Func<Task> _pollDelay;
     private readonly int _maxPolls;
+
+    /// <summary>
+    /// Where a failed probe is remembered after its job has been deleted. Optional: a coordinator built
+    /// without one still works, it just forgets — which is what every one of them did before.
+    /// </summary>
+    public IJobHistoryStore? JobHistory { get; set; }
 
     private readonly object _inFlightGate = new();
     private readonly Dictionary<string, Task<ImageManifest>> _inFlight = new();
@@ -129,8 +136,33 @@ public class ImageDiscoveryCoordinator
         return manifest;
     }
 
+    /// <summary>
+    /// Registers the probe with <see cref="TaskRegistry"/> and runs it.
+    ///
+    /// A probe is seven stages long and used to report as one boolean, so two images being inspected at
+    /// once both read "Discovering…" and neither said which stage it was on — a job three minutes into
+    /// polling looked exactly like one that could not be submitted. The stages below are the same
+    /// milestones already written to the crash log; this puts them where a person can see them.
+    /// </summary>
     private async Task<ImageManifest> RunDiscoveryAsync(string imageID, bool force, CancellationToken ct)
     {
+        using var task = TaskRegistry.Begin(TaskKind.Discovery, $"Inspect {imageID}");
+        try
+        {
+            var manifest = await RunDiscoveryCoreAsync(imageID, force, ct, task);
+            task.Succeed();
+            return manifest;
+        }
+        catch (Exception ex)
+        {
+            task.Fail(ex.Message);
+            throw;
+        }
+    }
+
+    private async Task<ImageManifest> RunDiscoveryCoreAsync(string imageID, bool force, CancellationToken ct, TaskHandle task)
+    {
+        task.Stage("working out how to inspect it");
         var strategy = DiscoveryHeuristics.Strategy(await _imageTypesLookup(imageID));
         CrashLogger.Info($"[Discovery] START image={imageID} force={force} strategy={strategy} user={_usernameProvider()}");
 
@@ -144,6 +176,7 @@ public class ImageDiscoveryCoordinator
             throw e;
         }
 
+        task.Stage("uploading the probe script");
         try
         {
             await EnsureScriptAsync(strategy, ct);
@@ -159,12 +192,14 @@ public class ImageDiscoveryCoordinator
         // Recovery short-circuit: a previous probe may have written the manifest already.
         if (!force)
         {
+            task.Stage("looking for a manifest already published");
             var recovered = await FetchManifestIfPresentAsync(imageID, ct);
             CrashLogger.Info($"[Discovery] pre-launch manifest recovery image={imageID} -> {(recovered is null ? "none (will launch job)" : "FOUND, short-circuit")}");
             if (recovered is not null) { _store.SetManifest(recovered); return recovered; }
         }
 
         string jobId;
+        task.Stage("launching the probe job");
         try
         {
             jobId = await LaunchWithRetryAsync(strategy, imageID, ct);
@@ -174,6 +209,7 @@ public class ImageDiscoveryCoordinator
         catch (HeadlessLaunchException hle) { CrashLogger.Info($"[Discovery] launch FAILED image={imageID}: {hle.Message}"); var e = ImageDiscoveryException.JobSubmitFailed(hle.Message); PersistFailure(imageID, e, null); throw e; }
         catch (Exception ex) { CrashLogger.Info($"[Discovery] launch FAILED image={imageID}: {ex.Message}"); var e = ImageDiscoveryException.JobSubmitFailed(ex.Message); PersistFailure(imageID, e, null); throw e; }
 
+        task.Stage($"waiting for job {jobId}");
         try
         {
             await PollUntilTerminalAsync(jobId, ct);
@@ -192,6 +228,7 @@ public class ImageDiscoveryCoordinator
         }
 
         string json;
+        task.Stage("fetching the manifest");
         try
         {
             json = await FetchManifestDataAsync(imageID, ct);
@@ -206,6 +243,7 @@ public class ImageDiscoveryCoordinator
         }
 
         ImageManifest manifest;
+        task.Stage("reading the manifest");
         try
         {
             manifest = ManifestParser.Parse(json);
@@ -396,5 +434,25 @@ public class ImageDiscoveryCoordinator
     {
         try { _store.SetFailure(imageID, error.Category, error.Message, DateTimeOffset.UtcNow, jobId); }
         catch { /* never let failure-persistence mask the real error */ }
+
+        // And in the job history, which outlives the probe job itself. This coordinator DELETES its own
+        // jobs the moment they finish, so by the time anybody asks why one failed, the job, its logs and
+        // its events are gone. The diagnosis assembled above is the only surviving copy of the answer.
+        try
+        {
+            JobHistory?.Record(new Models.JobRecord
+            {
+                Id = jobId ?? $"probe:{imageID}",
+                Name = $"Inspect {imageID}",
+                Image = imageID,
+                Origin = Models.JobOrigin.ImageProbe,
+                Outcome = Models.JobOutcome.Failed,
+                Status = error.Category.ToString(),
+                FinishedAt = IsoTime.Now(),
+                FailureReason = error.Message,
+                TargetImage = imageID,
+            });
+        }
+        catch { /* the history is a convenience; the error above is the answer */ }
     }
 }

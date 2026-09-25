@@ -1,8 +1,13 @@
 using System.Net;
 using System.Text;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
+using CanfarDesktop.Models.AICompute;
 
 namespace CanfarDesktop.Services.AICompute;
+
+/// <summary>Where remote compute stands: its state, its session if there is one, and what it launches.</summary>
+public sealed record ComputeSnapshot(ComputeState State, Session? Session, string Image, int Cores, int Ram);
 
 /// <summary>
 /// Runs agent-authored code on remote compute via the file-drop RPC the external <c>verbinal-execution</c>
@@ -18,13 +23,66 @@ public sealed class AIComputeService
     private readonly ISessionService _sessions;
     private readonly IStorageService _storage;
     private readonly IAuthService _auth;
+    private readonly IComputeRunStore _runs;
 
-    public AIComputeService(AIComputeSettingsService settings, ISessionService sessions, IStorageService storage, IAuthService auth)
+    /// <summary>How often a sent run is checked for its result.</summary>
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// How long past a run's own timeout to keep waiting before calling it lost. A cold contributed
+    /// session takes a minute or two to start, and the watcher only picks the request up once it has.
+    /// </summary>
+    private static readonly TimeSpan StartupAllowance = TimeSpan.FromMinutes(5);
+
+    public AIComputeService(AIComputeSettingsService settings, ISessionService sessions, IStorageService storage,
+        IAuthService auth, IComputeRunStore runs)
     {
         _settings = settings;
         _sessions = sessions;
         _storage = storage;
         _auth = auth;
+        _runs = runs;
+    }
+
+    /// <summary>Every run sent from this app, by an agent or by the person, newest first.</summary>
+    public IComputeRunStore Runs => _runs;
+
+    /// <summary>Whether somebody is signed in to CANFAR — the session and the exec folder are theirs.</summary>
+    public bool IsSignedIn => _auth.CurrentUsername is { Length: > 0 };
+
+    /// <summary>Whether a compute image is set — without one, nothing here can run.</summary>
+    public bool IsConfigured => _settings.Settings.IsEnabled;
+
+    /// <summary>The (cores, RAM) the session is launched with.</summary>
+    public (int Cores, int Ram) Size => _settings.ResolveResources();
+
+    /// <summary>The image the session is launched from, as configured and resolved.</summary>
+    public string Image => _settings.ResolveImage();
+
+    /// <summary>
+    /// The compute session as the platform has it, whatever its state — null when there is none.
+    ///
+    /// <para>Unlike the warm-session lookup that decides whether to launch, this also returns a failed
+    /// or terminating session: the Remote Compute screen has to say so, not claim there is nothing.
+    /// A live one wins over a dead one of the same name.</para>
+    /// </summary>
+    public async Task<Session?> CurrentSessionAsync(CancellationToken ct = default)
+    {
+        var ours = (await _sessions.GetSessionsAsync(ct)).Where(IsComputeSession).ToList();
+        return ours.FirstOrDefault(s => IsLive(s.Status)) ?? ours.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Where remote compute stands — the one answer the Remote Compute screen and get_compute_state
+    /// both give. Signed out, there is no session to look for, so it reads as stopped.
+    /// </summary>
+    public async Task<ComputeSnapshot> SnapshotAsync(CancellationToken ct = default)
+    {
+        var (cores, ram) = Size;
+        if (!IsConfigured) return new(ComputeState.NotSetUp, null, string.Empty, cores, ram);
+
+        var session = IsSignedIn ? await CurrentSessionAsync(ct) : null;
+        return new(ComputeStatus.From(true, session?.Status), session, Image, cores, ram);
     }
 
     /// <summary>Reuse the warm verbinal-compute session, or launch one at the configured size. Does NOT
@@ -54,17 +112,82 @@ public sealed class AIComputeService
         }, ct);
     }
 
-    /// <summary>Ensure the compute session, then drop the request file in the inbox. Returns without
-    /// waiting for a result — the caller polls <see cref="FetchOutAsync"/> (run_code_output).</summary>
-    public async Task SubmitAsync(RunCodeRequest request, CancellationToken ct = default)
+    /// <summary>
+    /// Ensure the compute session, then drop the request file in the inbox. Returns without waiting for
+    /// a result — the caller polls <see cref="FetchOutAsync"/> (run_code_output).
+    ///
+    /// <para>Every run is remembered with who sent it, shown in the activity bar while it is out, and
+    /// watched here until its result arrives or it is given up on — so the Remote Compute screen and
+    /// the activity bar settle whether or not anybody polls for the output.</para>
+    /// </summary>
+    public async Task SubmitAsync(RunCodeRequest request, ComputeRunAuthor author, CancellationToken ct = default)
     {
         var user = RequireUsername();
-        await EnsureSessionAsync(ct);
-        await EnsureInboxTreeAsync(user, ct);
 
-        var json = RunCodeJson.SerializeRequest(request);
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-        await _storage.UploadFileAsync(RunCodeContract.InboxPath(user, request.Id), stream, "application/json", ct);
+        // Whoever wrote it — the Run code box, Run again, an agent's run_code — it leaves with Unix line
+        // endings, and is remembered the way it was sent.
+        request = request with { Code = RunCodeContract.NormalizeNewlines(request.Code) };
+        _runs.Add(new ComputeRun(request.Id, author, request.Language, request.Code, request.TimeoutSeconds, IsoTime.Now()));
+
+        var who = author == ComputeRunAuthor.Agent ? "Assistant" : "You";
+        var task = TaskRegistry.Begin(TaskKind.Session, $"{who}: {request.Language} on {RunCodeContract.SessionName}");
+        try
+        {
+            await EnsureSessionAsync(ct);
+            await EnsureInboxTreeAsync(user, ct);
+
+            var json = RunCodeJson.SerializeRequest(request);
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            await _storage.UploadFileAsync(RunCodeContract.InboxPath(user, request.Id), stream, "application/json", ct);
+        }
+        catch (Exception ex)
+        {
+            _runs.Close(request.Id, ComputeRun.NotSent);
+            task.Fail(ex.Message);
+            throw;
+        }
+
+        task.Stage("Waiting for the result");
+        _ = WatchAsync(request, task);
+    }
+
+    /// <summary>Poll for a run's result until it arrives or the run cannot still be going.</summary>
+    private async Task WatchAsync(RunCodeRequest request, TaskHandle task)
+    {
+        var giveUpAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(request.TimeoutSeconds) + StartupAllowance;
+        try
+        {
+            while (DateTimeOffset.UtcNow < giveUpAt)
+            {
+                // Somebody else — run_code_output, or the screen — may have read it already.
+                if (_runs.Find(request.Id) is { IsFinished: true } done)
+                {
+                    Settle(task, done.Status);
+                    return;
+                }
+
+                if (await FetchOutAsync(request.Id) is { } result)
+                {
+                    Settle(task, result.Status);
+                    return;
+                }
+
+                await Task.Delay(PollInterval);
+            }
+
+            _runs.Close(request.Id, ComputeRun.NoResult);
+            task.Fail("No result came back");
+        }
+        catch (Exception ex)
+        {
+            task.Fail(ex.Message);
+        }
+    }
+
+    private static void Settle(TaskHandle task, string? status)
+    {
+        if (string.Equals(status, "ok", StringComparison.OrdinalIgnoreCase)) task.Succeed();
+        else task.Fail(status ?? "error");
     }
 
     /// <summary>Read + parse the result file for an execution id; null when it isn't ready yet (absent,
@@ -76,7 +199,11 @@ public sealed class AIComputeService
         {
             await using var stream = await _storage.DownloadFileAsync(RunCodeContract.OutPath(user, id), ct);
             var text = await ReadBoundedAsync(stream, RunCodeContract.MaxResultBytes, ct);
-            return RunCodeJson.TryParseResult(text);
+            var result = RunCodeJson.TryParseResult(text);
+
+            // Whoever reads the result first records it, so the history does not wait on the watcher loop.
+            if (result is not null) _runs.Complete(id, result);
+            return result;
         }
         catch (HttpRequestException)
         {
@@ -97,11 +224,16 @@ public sealed class AIComputeService
         var sessions = await _sessions.GetSessionsAsync(ct);
         // Reuse by NAME (not image — survives registry-prefix normalization); count Pending so rapid
         // cold-start calls don't spawn duplicates.
-        return sessions.FirstOrDefault(s =>
-            string.Equals(s.SessionType, RunCodeContract.SessionType, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(s.SessionName, RunCodeContract.SessionName, StringComparison.Ordinal)
-            && IsLive(s.Status));
+        return sessions.FirstOrDefault(s => IsComputeSession(s) && IsLive(s.Status));
     }
+
+    /// <summary>
+    /// Whether a session is the compute session. Matched by name and type, not image, so it survives
+    /// registry-prefix normalisation — and so the Portal can mark it as the assistant's.
+    /// </summary>
+    public static bool IsComputeSession(Session s)
+        => string.Equals(s.SessionType, RunCodeContract.SessionType, StringComparison.OrdinalIgnoreCase)
+           && string.Equals(s.SessionName, RunCodeContract.SessionName, StringComparison.Ordinal);
 
     private static bool IsLive(string status) =>
         status.Equals("Running", StringComparison.OrdinalIgnoreCase)

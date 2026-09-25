@@ -55,6 +55,12 @@ public sealed partial class SessionCard : UserControl
 
         TypeBadge.Background = new SolidColorBrush(typeColor);
         TypeText.Text = typeLabel;
+
+        // The session run_code starts is named like any other, so without this it read as one the
+        // person had launched and forgotten — using their cores for reasons nothing on the card gave.
+        var forCompute = Services.AICompute.AIComputeService.IsComputeSession(session);
+        if (forCompute) TypeText.Text = Helpers.Loc.F("Sessions_ComputeType", typeLabel);
+        ToolTipService.SetToolTip(TypeBadge, forCompute ? Helpers.Loc.T("Sessions_ComputeTooltip") : null);
         TypeImage.Source = new BitmapImage(new Uri($"ms-appx:///Assets/{typeImageFile}"));
 
         OpenButton.IsEnabled = session.Status == "Running";

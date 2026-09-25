@@ -48,7 +48,7 @@
                                  Fill="#FFFF9800" />
                         <TextBlock x:Name="PendingCount" Style="{StaticResource BodyStrongTextBlockStyle}"
                                    VerticalAlignment="Center" />
-                        <TextBlock x:Uid="Batch_PendingLabel" Text="Pending" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
+                        <TextBlock x:Name="PendingLabel" x:Uid="Batch_PendingLabel" Text="Pending" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
                 </Button>
@@ -63,7 +63,7 @@
                                  Fill="#FF4CAF50" />
                         <TextBlock x:Name="RunningCount" Style="{StaticResource BodyStrongTextBlockStyle}"
                                    VerticalAlignment="Center" />
-                        <TextBlock x:Uid="Batch_RunningLabel" Text="Running" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
+                        <TextBlock x:Name="RunningLabel" x:Uid="Batch_RunningLabel" Text="Running" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
                 </Button>
@@ -78,7 +78,7 @@
                                  Fill="#FF2196F3" />
                         <TextBlock x:Name="CompletedCount" Style="{StaticResource BodyStrongTextBlockStyle}"
                                    VerticalAlignment="Center" />
-                        <TextBlock x:Uid="Batch_CompletedLabel" Text="Completed" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
+                        <TextBlock x:Name="CompletedLabel" x:Uid="Batch_CompletedLabel" Text="Completed" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
                 </Button>
@@ -93,7 +93,7 @@
                                  Fill="#FFF44336" />
                         <TextBlock x:Name="FailedCount" Style="{StaticResource BodyStrongTextBlockStyle}"
                                    VerticalAlignment="Center" />
-                        <TextBlock x:Uid="Batch_FailedLabel" Text="Failed" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
+                        <TextBlock x:Name="FailedLabel" x:Uid="Batch_FailedLabel" Text="Failed" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"
                                    Style="{StaticResource CaptionTextBlockStyle}" />
                     </StackPanel>
                 </Button>

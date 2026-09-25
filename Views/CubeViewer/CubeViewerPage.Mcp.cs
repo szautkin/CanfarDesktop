@@ -53,6 +53,7 @@ public sealed partial class CubeViewerPage
             BackgroundName(),
             ViewModel.ShowSlicePlane,
             _captionsOn,
+            PanelsVisible,
             ViewModel.AutoOrbit,
             ViewModel.IsPlaying,
             // Full read parity: the info panel, slice view, spectrum panel, and opacity curve.
@@ -72,7 +73,8 @@ public sealed partial class CubeViewerPage
             SpectrumPanelOpen: SpectrumPanel.Visibility == Visibility.Visible,
             SpectrumX: _probeX >= 0 ? _probeX : null,
             SpectrumY: _probeY >= 0 ? _probeY : null,
-            TransferPoints: _transfer.Points.Select(p => new CubeTransferPoint(p.X, p.Y)).ToList());
+            TransferPoints: _transfer.Points.Select(p => new CubeTransferPoint(p.X, p.Y)).ToList(),
+            Loading: LoadingPanel.Visibility == Visibility.Visible);
     }
 
     private string BackgroundName() => BackgroundCombo.SelectedIndex switch { 1 => "black", 2 => "light", _ => "dark" };
@@ -89,6 +91,7 @@ public sealed partial class CubeViewerPage
         double? azimuth = null, double? elevation = null, double? distance = null,
         double? density = null, double? spectralScale = null, int? steps = null,
         string? background = null, bool? showSlicePlane = null, bool? showCaptions = null,
+        bool? showPanels = null,
         bool? autoOrbit = null, bool? playing = null, bool? resetCamera = null,
         string? windowPreset = null, double? sliceZoom = null,
         int? sliceCenterX = null, int? sliceCenterY = null, bool? resetSliceView = null)
@@ -133,6 +136,7 @@ public sealed partial class CubeViewerPage
             BackgroundCombo.SelectedIndex = background.Trim().ToLowerInvariant() switch { "black" => 1, "light" => 2, _ => 0 };
         if (showSlicePlane is not null) SlicePlaneToggle.IsOn = showSlicePlane.Value;
         if (showCaptions is not null) CaptionsToggle.IsOn = showCaptions.Value;
+        if (showPanels is not null) SetPanelsVisible(showPanels.Value);
         if (autoOrbit is not null) AutoOrbitToggle.IsOn = autoOrbit.Value;
 
         // Playback — start/stop the channel animation (works in both modes).

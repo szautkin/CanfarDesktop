@@ -208,26 +208,22 @@ public sealed class CubeWcs
 
     // ── Compact sexagesimal / decimal formatters for captions ──
 
+    /// <summary>
+    /// Whole-second RA for an axis caption. The carry fix this used to spell out inline — <c>if (s ==
+    /// 60) { s = 0; m++; }</c> — is what <see cref="Helpers.Sexagesimal.SplitRa"/> does for every
+    /// caller, so the knowledge lives in one place instead of in whichever copies remembered it.
+    /// </summary>
     private static string FormatRaShort(double raDeg)
     {
-        var ra = raDeg / 15.0;
-        ra %= 24.0; if (ra < 0) ra += 24.0;
-        int h = (int)ra;
-        int m = (int)((ra - h) * 60);
-        int s = (int)Math.Round((ra - h - m / 60.0) * 3600);
-        if (s == 60) { s = 0; m++; } if (m == 60) { m = 0; h = (h + 1) % 24; }
-        return $"{h:00}:{m:00}:{s:00}";
+        var p = Helpers.Sexagesimal.SplitRa(raDeg, 0);
+        return $"{p.Units:00}:{p.Minutes:00}:{p.Seconds:00}";
     }
 
+    /// <summary>Whole-second Dec, with this readout's own minus glyph.</summary>
     private static string FormatDecShort(double decDeg)
     {
-        var sign = decDeg >= 0 ? "+" : "−";
-        var d = Math.Abs(decDeg);
-        int dd = (int)d;
-        int m = (int)((d - dd) * 60);
-        int s = (int)Math.Round((d - dd - m / 60.0) * 3600);
-        if (s == 60) { s = 0; m++; } if (m == 60) { m = 0; dd++; }
-        return $"{sign}{dd:00}:{m:00}:{s:00}";
+        var p = Helpers.Sexagesimal.SplitDec(decDeg, 0);
+        return $"{(p.Sign < 0 ? "−" : "+")}{p.Units:00}:{p.Minutes:00}:{p.Seconds:00}";
     }
 
     private static string FormatDeg(double deg) =>
@@ -256,12 +252,25 @@ public sealed class CubeMetadata
     public int RenderNy { get; init; }
     public int RenderNz { get; init; }
 
-    /// <summary>Down-sample stride: rendered voxel i on any axis is native sample i·Stride (1 = full res).</summary>
-    public int Stride { get; init; } = 1;
+    /// <summary>
+    /// Sky-plane down-sample stride: rendered voxel i on x or y is native sample i·StrideXY
+    /// (1 = full res). Shared by the two spatial axes, which are strided together.
+    /// </summary>
+    public int StrideXY { get; init; } = 1;
+
+    /// <summary>
+    /// Spectral down-sample stride, taken from NAXIS3 alone.
+    ///
+    /// Separate from <see cref="StrideXY"/> because the axes are not comparable quantities: one
+    /// stride for all three came from the longest of them, so a deep cube's spectral length chose the
+    /// sampling of its sky plane and collapsed a small one to a single voxel. See
+    /// <see cref="Helpers.CubeDownsample"/>.
+    /// </summary>
+    public int StrideZ { get; init; } = 1;
 
     /// <summary>The native (NAXIS3) channel a rendered channel corresponds to — required wherever a
     /// slider/volume channel index meets the native-resolution spectral WCS (CRPIX3/CDELT3).</summary>
-    public int NativeChannel(int renderChannel) => Math.Min(renderChannel * Stride, Math.Max(0, Nz - 1));
+    public int NativeChannel(int renderChannel) => Math.Min(renderChannel * StrideZ, Math.Max(0, Nz - 1));
 
     public double DataMin { get; init; }
     public double DataMax { get; init; }

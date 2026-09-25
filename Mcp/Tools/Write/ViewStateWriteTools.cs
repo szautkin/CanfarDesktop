@@ -1,10 +1,17 @@
 namespace CanfarDesktop.Mcp.Tools.Write;
 
 /// <summary>Result of a <c>navigate_to</c>: whether the app switched, and the resolved mode + title.</summary>
-public sealed record NavigationOutcome(bool Navigated, string Mode, string ModeTitle);
+/// <summary>Result of a <c>navigate_to</c>.</summary>
+/// <param name="Note">Why it did not go, when it did not — the person declined to sign in, say.</param>
+public sealed record NavigationOutcome(bool Navigated, string Mode, string ModeTitle, string? Note = null);
 
 /// <summary>Result of an <c>open_fits_file</c>: whether the viewer opened, the resolved id + local path.</summary>
-public sealed record OpenFitsOutcome(bool Opened, string ObservationId, string? LocalPath, string? Message);
+/// <param name="Loading">
+/// True when the file is still being read after the call's budget ran out. Not a failure: it goes
+/// on loading, and get_fits_view reports <c>loaded</c> once it is in.
+/// </param>
+public sealed record OpenFitsOutcome(
+    bool Opened, string ObservationId, string? LocalPath, string? Message, bool Loading = false);
 
 /// <summary>
 /// <c>open_fits_file</c> — open a DOWNLOADED observation's FITS in the viewer and switch to it. The
@@ -22,8 +29,11 @@ public sealed class OpenFitsFileTool : JsonReadTool<OpenFitsFileTool.Args, OpenF
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "open_fits_file",
         "Open a FITS file in the 2D viewer and switch the app to it — by local file path, or by the " +
-        "id/publisher id of a DOWNLOADED observation (from list_downloaded_observations; " +
-        "download_observation first if needed). Live-applied (no proposal).",
+        "id, publisher id or observation id of a DOWNLOADED observation (from list_downloaded_observations; " +
+        "download_observation first if needed). Waits for the file to load and reports the real " +
+        "result; a large file still loading after about 20 seconds comes back loading:true rather " +
+        "than as a failure — it carries on, so do not open it again; poll get_fits_view until " +
+        "loaded is true. Live-applied (no proposal).",
         """{"type":"object","properties":{"observationId":{"type":"string"},"path":{"type":"string"}},"additionalProperties":false}""");
 
     protected override async Task<OpenFitsOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -51,8 +61,10 @@ public sealed class NavigateToTool : JsonReadTool<NavigateToTool.Args, Navigatio
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "navigate_to",
-        "Switch the app to a top-level mode so the user sees the relevant view. Live-applied (no proposal).",
-        """{"type":"object","properties":{"mode":{"type":"string","enum":["landing","portal","search","research","storage","notebook","fitsViewer","aiGuide","workflows"]}},"required":["mode"],"additionalProperties":false}""");
+        "Switch the app to a top-level mode so the user sees the relevant view. Live-applied (no proposal). " +
+        "portal, remoteCompute and storage are the person's CANFAR account: signed out, the app asks them to " +
+        "sign in first, and navigated is false (with a note) if they decline.",
+        """{"type":"object","properties":{"mode":{"type":"string","enum":["landing","portal","search","research","storage","notebook","fitsViewer","cubeViewer","aiGuide","workflows","remoteCompute"]}},"required":["mode"],"additionalProperties":false}""");
 
     protected override async Task<NavigationOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {

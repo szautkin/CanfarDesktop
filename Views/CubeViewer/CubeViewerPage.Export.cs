@@ -4,7 +4,6 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Graphics.Imaging;
 using Windows.Storage;
 using CanfarDesktop.Services.CubeViewer;
 using CanfarDesktop.ViewModels.CubeViewer;
@@ -20,6 +19,15 @@ namespace CanfarDesktop.Views.CubeViewer;
 public sealed partial class CubeViewerPage
 {
     private bool _exporting;
+
+    /// <summary>
+    /// The dimensions of the plane the last slice frame was rendered from.
+    ///
+    /// The exported slice is read at NATIVE resolution, which is not the down-sampled volume the marks
+    /// are anchored in, so placing a mark on that frame needs both numbers. Recorded when the frame is
+    /// captured rather than recomputed, because working it out again means reading the plane again.
+    /// </summary>
+    private (int Nx, int Ny, int FrameW)? _lastSlicePlane;
 
     private async void OnExportClick(object sender, RoutedEventArgs e)
     {
@@ -66,6 +74,7 @@ public sealed partial class CubeViewerPage
             _freezeRenderLoop = true;
             PushRenderState();
             _renderer.CameraDistance = dist;
+            MarkRenderDirty();
             float steps = Math.Max(ViewModel.VolumeSteps, 384f);
             byte[]? volume = _renderer.RenderToBgra(w, h, steps, transparent: true);
             if (volume is null) return null;
@@ -122,7 +131,30 @@ public sealed partial class CubeViewerPage
         double target = Math.Clamp(Math.Max(nx, ny), 900, 1600);
         double k = target / Math.Max(nx, ny);
         int dw = Math.Max(1, (int)Math.Round(nx * k)), dh = Math.Max(1, (int)Math.Round(ny * k));
+        _lastSlicePlane = (nx, ny, dw);
         return (wb, dw, dh);
+    }
+
+    /// <summary>
+    /// How much bigger the exported picture is than the one on screen — what the marks are drawn at.
+    ///
+    /// <para>A volume figure is a fixed 1400px snapshot and a slice figure is framed at 900–1600px,
+    /// while the viewport they came from is whatever size the window happens to be. Marks are stroked
+    /// and labelled in device pixels, so without this they would be drawn at screen weight on a
+    /// picture two or three times the size — finer, relative to the figure, than the user drew them.</para>
+    ///
+    /// <para>The 2x/4x resolution choice is deliberately NOT part of this: the dialog rasterises the
+    /// whole plate at that factor, so the text and the marks grow together there.</para>
+    ///
+    /// <para>The clamping and the degenerate cases live in <see cref="Helpers.PlateInk"/>, which is
+    /// where they can be tested; this only picks which two numbers to compare.</para>
+    /// </summary>
+    private double PlateInkScale(bool isSlice)
+    {
+        double frame = isSlice ? _lastSlicePlane?.FrameW ?? 0 : 1400;
+        double onScreen = isSlice ? SliceViewport.ActualWidth : RenderPanel.ActualWidth;
+
+        return Helpers.PlateInk.ScaleFor(frame, onScreen);
     }
 
     /// <summary>Read the native-resolution plane matching the current (down-sampled) channel, or null.</summary>
@@ -152,7 +184,7 @@ public sealed partial class CubeViewerPage
     /// textScale 0.75–1.5, annotations line, transparent background).</summary>
     public async Task<string?> ExportCubeToPathAsync(string path, string format, int scale, bool dark,
         string font = "sans", string textColor = "auto", double textScale = 1.0,
-        bool annotate = true, bool transparent = false)
+        bool annotate = true, bool transparent = false, bool marks = true)
     {
         if (_exporting) return "an export is already in progress";
         if (_volume is null) return "no cube is loaded";
@@ -182,6 +214,7 @@ public sealed partial class CubeViewerPage
                     TextColor = textColor,
                     TextScale = Math.Clamp(textScale, 0.75, 1.5),
                     Annotate = annotate,
+                    ShowMarks = marks,
                     Transparent = transparent,
                 });
             ExportHost.Children.Add(plate);
@@ -189,27 +222,15 @@ public sealed partial class CubeViewerPage
             plate.UpdateLayout();
 
             int sc = Math.Clamp(scale, 1, 4);
-            var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(plate, (int)Math.Ceiling(plate.ActualWidth * sc), (int)Math.Ceiling(plate.ActualHeight * sc));
-            int rw = rtb.PixelWidth, rh = rtb.PixelHeight;
-            byte[] buf = (await rtb.GetPixelsAsync()).ToArray();
-            if (rw <= 0 || rh <= 0 || buf.Length < (long)rw * rh * 4) return "plate rasterization failed";
 
-            using (var fs = new FileStream(full, FileMode.Create))
-            {
-                if (pdf)
-                {
-                    PdfImageWriter.Write(fs, PdfImageWriter.BgraToRgb(buf, rw, rh), rw, rh);
-                }
-                else
-                {
-                    using var ras = fs.AsRandomAccessStream();
-                    var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, ras);
-                    encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied,
-                        (uint)rw, (uint)rh, 96, 96, buf);
-                    await encoder.FlushAsync();
-                }
-            }
+            // RenderTargetBitmap will not exceed its longest-edge limit and does not say so — it
+            // quietly renders smaller. Ask for what is actually achievable, so the figure's size and
+            // the scale reported back are the same number.
+            var rendered = await Views.Controls.PlateRasterizer.RenderAsync(
+                plate, ExportHost, sc, expectOpaque: !transparent);
+            if (rendered is not { } figure) return "plate rasterization failed";
+
+            await Helpers.FigureFile.WriteAsync(full, figure.Pixels, figure.Width, figure.Height, pdf);
             ShowStatus(Helpers.Loc.F("Cube_Saved", Path.GetFileName(full)));
             return null;
         }
@@ -226,8 +247,16 @@ public sealed partial class CubeViewerPage
     }
 
     /// <summary>Build the plate's content (text + colorbar + the camera/metadata for the live overlay).</summary>
-    private CubeExportPlate.PlateData BuildPlateData()
+    /// <param name="asSlice">
+    /// Whether the picture this data describes is a SLICE. Null means "whatever the viewer is showing",
+    /// which is right for an export but not for a capture: get_cube_image takes an explicit view, so it
+    /// can ask for the slice while the viewer is orbiting the volume. Taking the mode from the viewer
+    /// in that case put a volume surface under a slice frame, and every mark landed where the box would
+    /// have projected it rather than where it is on the plane.
+    /// </param>
+    private CubeExportPlate.PlateData BuildPlateData(bool? asSlice = null)
     {
+        var isSlice = asSlice ?? (ViewModel.ViewMode == CubeViewMode.Slice);
         string title = !string.IsNullOrEmpty(_meta?.Object) ? _meta!.Object
             : (string.IsNullOrEmpty(_cubeName) ? Helpers.Loc.T("Cube_DefaultTitle") : _cubeName);
 
@@ -250,7 +279,19 @@ public sealed partial class CubeViewerPage
             VolNy = _volNy,
             Meta = _meta,
             // Box + captions only make sense over the 3D volume, not the flat slice.
-            CaptionsOn = ViewModel.ViewMode == CubeViewMode.Volume && _captionsOn,
+            CaptionsOn = !isSlice && _captionsOn,
+
+            // The marks, and what each surface needs to place them. The anchor space is the volume's
+            // own voxels, which is NOT VolNx/VolNy above — those size the wireframe box.
+            Marks = Marks.Marks,
+            IsSlice = isSlice,
+            AnchorNx = _volume?.Nx ?? 1,
+            AnchorNy = _volume?.Ny ?? 1,
+            AnchorNz = _volume?.Nz ?? 1,
+            Channel = ViewModel.Channel,
+            SliceDispNx = _lastSlicePlane?.Nx ?? _volume?.Nx ?? 1,
+            SliceDispNy = _lastSlicePlane?.Ny ?? _volume?.Ny ?? 1,
+            InkScale = PlateInkScale(isSlice),
         };
 
         if (_meta is not null)

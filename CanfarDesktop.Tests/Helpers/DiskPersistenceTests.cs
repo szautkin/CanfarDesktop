@@ -82,4 +82,22 @@ public class DiskPersistenceTests : IDisposable
     [Fact]
     public void Write_NullPath_ReturnsFalse()
         => Assert.False(DiskPersistence.Write<List<string>>(null, new(), 1));
+
+    [Fact]
+    public void Write_CreatesAMissingFolder_AndLeavesNoTempFile()
+    {
+        // Every store used to make its own folder first; the write owns that now.
+        var folder = Path.Combine(Path.GetTempPath(), "verbinal_test_" + Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(folder, "nested", "store.json");
+        try
+        {
+            Assert.True(DiskPersistence.Write(path, new List<string> { "a" }, 1));
+            Assert.Equal(new[] { "a" }, DiskPersistence.Read(path, 1, Empty).Value);
+            Assert.False(File.Exists(path + ".tmp"));
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+        }
+    }
 }

@@ -30,12 +30,13 @@
                         <TextBlock x:Name="QuotaText" Style="{StaticResource BodyStrongTextBlockStyle}" HorizontalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                        <TextBlock x:Uid="Quota_UsageLabel" Text="Usage" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="UsageCaption" x:Uid="Quota_UsageLabel" Text="Usage" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
                         <TextBlock x:Name="UsageText" Style="{StaticResource BodyStrongTextBlockStyle}" HorizontalAlignment="Center" />
                     </StackPanel>
                 </Grid>
 
-                <ProgressBar x:Name="UsageBar" Maximum="100" Height="6" CornerRadius="3" />
+                <ProgressBar x:Name="UsageBar" AutomationProperties.LabeledBy="{x:Bind UsageCaption}"
+                             Maximum="100" Height="6" CornerRadius="3" />
             </StackPanel>
 
             <InfoBar x:Name="ErrorBar" x:Uid="Quota_ErrorBar" IsOpen="False" Severity="Error" Title="Error" />

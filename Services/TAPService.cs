@@ -86,7 +86,14 @@ public class TAPService : ITAPService
         return ParseResolverResponse(text, target);
     }
 
-    private static SearchResults ParseCsv(string csv, string? query)
+    /// <summary>
+    /// Parse a TAP CSV response into rows keyed by column name.
+    ///
+    /// Public because it is pure, and because the interesting cases are in the data rather than in the
+    /// transport: CADC's own TAP_SCHEMA descriptions carry commas and embedded quotes, which is exactly
+    /// where a hand-rolled CSV reader goes wrong. Tests feed it captured responses.
+    /// </summary>
+    public static SearchResults ParseCsv(string csv, string? query)
     {
         var result = new SearchResults { Query = query };
         var lines = csv.ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);

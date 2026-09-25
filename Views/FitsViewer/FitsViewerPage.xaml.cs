@@ -105,6 +105,11 @@ public sealed partial class FitsViewerPage : UserControl
             {
                 case nameof(ViewModel.StatusMessage):
                     StatusLabel.Text = ViewModel.StatusMessage;
+                    LoadingDetail.Text = ViewModel.StatusMessage;
+                    break;
+                case nameof(ViewModel.IsLoading):
+                case nameof(ViewModel.LoadFraction):
+                    ShowLoadingProgress();
                     break;
                 case nameof(ViewModel.CoordinateText):
                     CoordLabel.Text = ViewModel.CoordinateText;
@@ -113,7 +118,7 @@ public sealed partial class FitsViewerPage : UserControl
                     PixelLabel.Text = ViewModel.PixelText;
                     break;
                 case nameof(ViewModel.RenderedImage):
-                    FitsImage.Source = ViewModel.RenderedImage;
+                    ShowRenderedImage();
                     break;
             }
         });
@@ -123,7 +128,34 @@ public sealed partial class FitsViewerPage : UserControl
     {
         // Restore image source when tab becomes visible again after WinUI unload
         if (FitsImage.Source is null && ViewModel.RenderedImage is not null)
-            FitsImage.Source = ViewModel.RenderedImage;
+            ShowRenderedImage();
+    }
+
+    /// <summary>
+    /// Put the rendered frame on screen, capped at its own native size.
+    ///
+    /// <para><c>Stretch="Uniform"</c> fits the frame to the canvas, which is what an 11471x4593 mosaic
+    /// wants — but Uniform scales UP as readily as down, so a 64x64 cutout was blown across the whole
+    /// viewport and interpolated into a blur. Enlarging invents detail the data does not have.</para>
+    ///
+    /// <para>The cap is expressed as a maximum SIZE rather than as a zoom, so the existing coordinate
+    /// chain follows it for free: every screen↔image conversion here is derived from
+    /// <c>FitsImage.ActualWidth</c>, so constraining that constrains all of them consistently.</para>
+    /// </summary>
+    private void ShowRenderedImage()
+    {
+        FitsImage.Source = ViewModel.RenderedImage;
+
+        if (ViewModel.ImageData is { Width: > 0, Height: > 0 } data)
+        {
+            FitsImage.MaxWidth = data.Width;
+            FitsImage.MaxHeight = data.Height;
+        }
+        else
+        {
+            FitsImage.MaxWidth = double.PositiveInfinity;
+            FitsImage.MaxHeight = double.PositiveInfinity;
+        }
     }
 
     /// <summary>
@@ -145,6 +177,34 @@ public sealed partial class FitsViewerPage : UserControl
         UpdateHeaderList();
         UpdateImageInfo();
         ComputeSliderRange();
+        AdoptLegacyMarks();
+    }
+
+    /// <summary>
+    /// Show what the parse is doing, or take the panel away when it is finished.
+    ///
+    /// <para>The bar goes indeterminate when the fraction is unknown rather than sitting at zero: a
+    /// bar that has not moved and a bar that cannot move look the same, and only one of them means
+    /// something is wrong.</para>
+    /// </summary>
+    private void ShowLoadingProgress()
+    {
+        var loading = ViewModel.IsLoading;
+        LoadingPanel.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+        if (!loading) return;
+
+        LoadingTitle.Text = ViewModel.Title;
+        LoadingDetail.Text = ViewModel.StatusMessage;
+
+        if (ViewModel.LoadFraction is { } fraction)
+        {
+            LoadingBar.IsIndeterminate = false;
+            LoadingBar.Value = fraction;
+        }
+        else
+        {
+            LoadingBar.IsIndeterminate = true;
+        }
     }
 
     public void ToggleHeader() => SetHeaderPanelVisible(!_headerVisible);
@@ -154,6 +214,19 @@ public sealed partial class FitsViewerPage : UserControl
     {
         _headerVisible = visible;
         HeaderColumn.Width = _headerVisible ? new GridLength(320) : new GridLength(0);
+    }
+
+    /// <summary>
+    /// Open the control column if it is shut.
+    ///
+    /// Separate from <see cref="ToggleHeader"/> because opening the Marks section has to SHOW the
+    /// column, not flip it: a Marks button that hides the panel when the column happens to be open is
+    /// a button that does the opposite of what it says every other time.
+    /// </summary>
+    public void ShowHeaderColumn()
+    {
+        _headerVisible = true;
+        HeaderColumn.Width = new GridLength(320);
     }
 
     /// <summary>Whether the header + image-info panel is open (for get_fits_view).</summary>
@@ -503,10 +576,13 @@ public sealed partial class FitsViewerPage : UserControl
             string shape;
             if (hdu.HasImage)
             {
-                var n3 = hdu.Header.GetInt("NAXIS3");
+                // The IMAGE's axes, not the HDU's. A tile-compressed extension stores its picture in
+                // a binary table, so NAXISn is the table's shape and every extension of a .fits.fz
+                // read "8×4644" — the width of a table row in bytes.
+                var n3 = hdu.Header.ImageAxis(3);
                 shape = n3 > 1
-                    ? $"{hdu.Header.NAxis1}×{hdu.Header.NAxis2}×{n3}"
-                    : $"{hdu.Header.NAxis1}×{hdu.Header.NAxis2}";
+                    ? $"{hdu.Header.ImageAxis(1)}×{hdu.Header.ImageAxis(2)}×{n3}"
+                    : $"{hdu.Header.ImageAxis(1)}×{hdu.Header.ImageAxis(2)}";
             }
             else
             {
@@ -525,16 +601,30 @@ public sealed partial class FitsViewerPage : UserControl
     {
         var hdus = ViewModel.Hdus;
         if (hdus is null || index < 0 || index >= hdus.Count || !hdus[index].HasImage) return false;
-        ViewModel.SelectHdu(index);
         if (HduList.ItemsSource is not null)
         {
             _suppressHduSelect = true;
             HduList.SelectedIndex = index;
             _suppressHduSelect = false;
         }
+        ShowHdu(index);
+        return true;
+    }
+
+    /// <summary>
+    /// Show another extension. The list and <c>set_fits_view</c> both come through here, so the two
+    /// cannot disagree about what changing extension involves.
+    ///
+    /// Marks belong to an extension now, so they are redrawn for the new one here rather than whenever
+    /// the image next happens to re-render — the panel listing them would otherwise go on showing the
+    /// previous chip's marks until the next pan.
+    /// </summary>
+    private void ShowHdu(int index)
+    {
+        ViewModel.SelectHdu(index);
         UpdateImageInfo();
         UpdateHeaderList();
-        return true;
+        RenderAnnotations();
     }
 
     /// <summary>Populate the HDU selector (shown only for multi-extension files). The ViewModel
@@ -569,9 +659,7 @@ public sealed partial class FitsViewerPage : UserControl
             _suppressHduSelect = false;
             return;
         }
-        ViewModel.SelectHdu(row.Index);
-        UpdateImageInfo();
-        UpdateHeaderList();
+        ShowHdu(row.Index);
     }
 
     /// <summary>
@@ -743,7 +831,29 @@ public sealed partial class FitsViewerPage : UserControl
 
         if (point.Properties.IsRightButtonPressed)
         {
-            PlaceCrosshair(point.Position);
+            // On a mark, the right button asks about that mark; anywhere else it keeps its older
+            // meaning. Taking the press away from the crosshair everywhere would have cost a gesture
+            // people already use, to buy a menu that is only ever wanted over a mark.
+            if (!TryShowMarkMenu(point.Position)) PlaceCrosshair(point.Position);
+            e.Handled = true;
+            return;
+        }
+
+        // Who owns this press is decided in ONE place (CanvasPress), and select-area is asked first
+        // because it owns every press while armed — marks included. The region someone wants almost
+        // always starts on top of something interesting, and marks are what people put on those.
+        if (point.Properties.IsLeftButtonPressed && TryBeginRegionDrag(point.Position))
+        {
+            ImageCanvas.CapturePointer(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
+        // Asked before the pan, not after: a press that takes hold of a mark and ALSO starts a pan drags
+        // the image out from under the mark being moved.
+        if (point.Properties.IsLeftButtonPressed && TryBeginAnnotationGesture(point.Position))
+        {
+            ImageCanvas.CapturePointer(e.Pointer);
             e.Handled = true;
             return;
         }
@@ -799,6 +909,11 @@ public sealed partial class FitsViewerPage : UserControl
     /// </summary>
     private void RedrawCrosshairFromImage()
     {
+        // The marks are pinned to the DATA, so every pan, zoom and rotation moves them on screen. This is
+        // the one hook all three already call — hanging the redraw anywhere else would mean finding out
+        // later which of them had been missed.
+        RenderAnnotations();
+
         if (_crosshairImagePos is null || ViewModel.ImageData is null) return;
 
         var screenPos = ImageToScreen(_crosshairImagePos.Value);
@@ -835,9 +950,8 @@ public sealed partial class FitsViewerPage : UserControl
                 // readout by up to half a pixel — ~10" on a coarse TESS frame (20.5"/px) — so the
                 // same sky point read differently across two linked images. The pixel value stays
                 // per-integer-pixel; only the coordinate uses the fractional position.
-                var fracX = _crosshairImagePos.Value.X;
-                var fracFitsY = (h - 1) - _crosshairImagePos.Value.Y;
-                var (ra, dec) = wcs.PixelToWorld(fracX + 1, fracFitsY + 1);
+                var (ra, dec) = PixelConvention.SkyAtDisplay(
+                    wcs, h, _crosshairImagePos.Value.X, _crosshairImagePos.Value.Y);
                 lines.Add(Loc.F("Fits_ReadoutRa", WcsInfo.FormatRa(ra)));
                 lines.Add(Loc.F("Fits_ReadoutDec", WcsInfo.FormatDec(dec)));
                 ViewModel.CrosshairPosition = new WorldCoordinate(ra, dec);
@@ -905,6 +1019,21 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void OnCanvasPointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (ContinueRegionDrag(e.GetCurrentPoint(ImageCanvas).Position)
+            || ContinueAnnotationGesture(e.GetCurrentPoint(ImageCanvas).Position))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        // A pan needs its button too, for the same reason the cube's orbit does: a release this
+        // canvas never saw would otherwise leave the image following the pointer around.
+        if (_isDragging && !e.GetCurrentPoint(ImageCanvas).Properties.IsLeftButtonPressed)
+        {
+            _isDragging = false;
+            ImageCanvas.ReleasePointerCapture(e.Pointer);
+        }
+
         if (_isDragging)
         {
             var pos = e.GetCurrentPoint(ImageCanvas).Position;
@@ -930,6 +1059,13 @@ public sealed partial class FitsViewerPage : UserControl
 
     private void OnCanvasPointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (EndRegionDrag() || EndAnnotationGesture())
+        {
+            ImageCanvas.ReleasePointerCapture(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         if (_isDragging)
         {
             _isDragging = false;

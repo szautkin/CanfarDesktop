@@ -3,15 +3,24 @@ using CanfarDesktop.Models;
 namespace CanfarDesktop.Mcp.Tools.Read;
 
 /// <summary>Compact view of a Skaha session for MCP output.</summary>
+/// <summary>
+/// One session as an agent sees it.
+///
+/// <para>Both halves of the resource picture, because Skaha reports only one of them for some session
+/// types: it leaves the REQUESTED figures empty for notebook sessions while still reporting usage, so
+/// a payload carrying only <c>cpuAllocated</c> carried an empty string and nothing else. "How much is
+/// this session using" and "how much did it ask for" are different questions and a caller may only be
+/// able to get an answer to one.</para>
+/// </summary>
 public sealed record SessionSummary(
     string Id, string Name, string Type, string Status, string Image,
     string StartedTime, string ExpiresTime, string CpuAllocated, string MemoryAllocated, string? GpuAllocated,
-    string? ConnectUrl = null)
+    string? ConnectUrl = null, string? CpuInUse = null, string? MemoryInUse = null)
 {
     public static SessionSummary From(Session s) => new(
         s.Id, s.SessionName, s.SessionType, s.Status, s.ContainerImage,
         s.StartedTime, s.ExpiresTime, s.CpuAllocated, s.MemoryAllocated, s.GpuAllocated,
-        s.ConnectUrl);
+        s.ConnectUrl, s.CpuUsage, s.MemoryUsage);
 }
 
 /// <summary><c>list_sessions</c> — the user's active Skaha sessions.</summary>
@@ -24,6 +33,9 @@ public sealed class ListSessionsTool : JsonReadTool<EmptyArgs, ListSessionsTool.
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_sessions",
         "List the user's active Skaha sessions (id, name, type, status, image, resources, and the connectUrl to " +
+        "open one). Resources come in two halves: `cpuAllocated`/`memoryAllocated` are what the session " +
+        "REQUESTED and `cpuInUse`/`memoryInUse` what it is actually using. Skaha leaves the requested " +
+        "figures empty for notebook sessions, so read the in-use pair when the allocated one is blank. " +
         "open an interactive session in the browser).",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
