@@ -2368,6 +2368,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Wizard_ComputeLinkReady" xml:space="preserve">
     <value>Open Remote Compute</value>
   </data>
+  <data name="Compute_SessionWithoutSetup" xml:space="preserve">
+    <value>A compute session is running on your account, but remote compute isn't set up in this app — it may be left from before a reinstall. Stop it to free its cores, or set compute up to use it.</value>
+  </data>
   <data name="Launch_TypeTip.Title" xml:space="preserve">
     <value>Session Type</value>
   </data>

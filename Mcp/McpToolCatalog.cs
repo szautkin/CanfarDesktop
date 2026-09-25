@@ -163,7 +163,7 @@ public static class McpToolCatalog
             Compute(new RunCodeOutputTool((id, ct) => aiCompute.FetchOutAsync(id, ct))),
             Compute(new StartComputeTool(() => aiComputeSettings.Settings)),
             Compute(new StopComputeTool()),
-            Compute(new GetComputeStateTool(async ct => DescribeCompute(await aiCompute.SnapshotAsync(ct)))),
+            Compute(new GetComputeStateTool(async ct => ComputeStateView.From(await aiCompute.SnapshotAsync(ct), DateTimeOffset.UtcNow))),
             Compute(new ListComputeRunsTool(() => aiCompute.Runs.All())),
 
             // CAOM2 metadata + DataLink (download/preview URLs)
@@ -181,7 +181,7 @@ public static class McpToolCatalog
 
             // Platform load + upstream service health
             new GetPlatformLoadTool(ct => platform.GetStatsAsync(ct)),
-            new GetServiceHealthTool(() => ProbeServicesAsync(httpFactory, endpoints)),
+            new GetServiceHealthTool(() => ProbeServicesAsync(httpFactory, endpoints), () => auth.IsAuthenticated),
 
             // View state: what the user is looking at + autonomy/budget + server-side preview fetch
             new GetCurrentViewTool(ctx =>
@@ -597,22 +597,6 @@ public static class McpToolCatalog
         catch { /* keep the downloaded file even if metadata is unavailable */ }
 
         store.Save(observation);
-    }
-
-    /// <summary>The compute snapshot as get_compute_state reports it: state names in camelCase, as on the wire.</summary>
-    private static ComputeStateView DescribeCompute(CanfarDesktop.Services.AICompute.ComputeSnapshot s)
-    {
-        var up = ComputeStatus.Uptime(s.Session?.StartedTime, DateTimeOffset.UtcNow);
-        return new ComputeStateView(
-            ComputeStatus.Name(s.State),
-            s.State != ComputeState.NotSetUp,
-            s.State == ComputeState.NotSetUp ? null : s.Image,
-            s.Cores, s.Ram,
-            s.Session?.Id, s.Session?.Status, s.Session?.StartedTime,
-            up is { } u ? (int)u.TotalMinutes : null,
-            s.State == ComputeState.NotSetUp
-                ? "Not set up: the Remote Compute screen (navigate_to remoteCompute) explains how."
-                : null);
     }
 
     /// <summary>

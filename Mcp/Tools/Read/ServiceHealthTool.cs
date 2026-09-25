@@ -24,8 +24,14 @@ public sealed record ServiceHealthEntry(
 public sealed class GetServiceHealthTool : JsonReadTool<EmptyArgs, GetServiceHealthTool.Output>
 {
     private readonly Func<Task<IReadOnlyList<ServiceHealthEntry>>> _probe;
+    private readonly Func<bool> _signedIn;
 
-    public GetServiceHealthTool(Func<Task<IReadOnlyList<ServiceHealthEntry>>> probe) => _probe = probe;
+    /// <param name="signedIn">Whether somebody is signed in now — read per call, since usable depends on it.</param>
+    public GetServiceHealthTool(Func<Task<IReadOnlyList<ServiceHealthEntry>>> probe, Func<bool> signedIn)
+    {
+        _probe = probe;
+        _signedIn = signedIn;
+    }
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_service_health",
@@ -35,22 +41,26 @@ public sealed class GetServiceHealthTool : JsonReadTool<EmptyArgs, GetServiceHea
         "any status), `ok` (the endpoint answered sanely, not 404/5xx) and, where the service publishes " +
         "an IVOA availability document, `available` plus its own `note` — a service can be up and still " +
         "say it should not be used, which no status code expresses. Trust `healthyCount` for \"is it " +
-        "up\" and `usableCount` for \"can I use it right now\": the latter excludes services needing a " +
-        "signed-in session, so a signed-out caller can see everything healthy and nothing usable.",
+        "up\" and `usableCount` for \"can I use it right now\": a service needing a signed-in session " +
+        "counts as usable only while the person is signed in, so a signed-out caller can see everything " +
+        "healthy and little usable.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override async Task<Output> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
     {
         var services = await _probe();
 
-        // Healthy needs all three to agree; usable also needs the caller not to be locked out of it.
+        // Healthy needs all three to agree; usable also needs the caller not to be locked out of it —
+        // which a service needing sign-in is only while nobody is signed in. It used to count those as
+        // locked out regardless: two of four usable, for a signed-in person with all four healthy.
         var healthy = services.Where(s => s.Reachable && s.Ok && s.Available != false).ToList();
+        var signedIn = _signedIn();
 
         return new Output(
             services.Count,
             services.Count(s => s.Reachable),
             healthy.Count,
-            healthy.Count(s => !s.RequiresAuth),
+            healthy.Count(s => signedIn || !s.RequiresAuth),
             services);
     }
 

@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Xunit;
+using CanfarDesktop.Helpers;
+using CanfarDesktop.Models;
 using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Proposals;
 using CanfarDesktop.Mcp.Tools.Write;
@@ -163,6 +165,56 @@ public class AIComputeToolsTests
 
         Assert.Equal(20, doc.GetProperty("total").GetInt32());
         Assert.Equal(3, doc.GetProperty("runs").GetArrayLength());
+    }
+
+    // ── get_compute_state: the snapshot as an agent reads it ──
+
+    private static readonly DateTimeOffset Now = new(2026, 9, 25, 12, 0, 0, TimeSpan.Zero);
+
+    private static Session ComputeSession(string status) => new()
+    {
+        Id = "kedczixz", SessionName = RunCodeContract.SessionName, Status = status, StartedTime = "2026-09-24T02:23:42Z",
+    };
+
+    /// <summary>
+    /// The Store test's case: a fresh install with no image set, and yesterday's compute session still
+    /// running on the account. It read "not set up", with nothing about a session the agent could stop.
+    /// </summary>
+    [Fact]
+    public void ASessionRunningWhereNothingIsSetUpIsReportedWithAWayToStopIt()
+    {
+        var view = ComputeStateView.From(
+            new ComputeSnapshot(ComputeState.Running, ComputeSession("Running"), "", 1, 1, Configured: false), Now);
+
+        Assert.Equal("running", view.State);
+        Assert.False(view.Configured);
+        Assert.Null(view.Image);
+        Assert.Equal("kedczixz", view.SessionId);
+        Assert.Equal(2016, view.UptimeMinutes);
+        Assert.Contains("stop_compute", view.Note);
+    }
+
+    [Fact]
+    public void NothingSetUpAndNothingRunningPointsToTheSetUp()
+    {
+        var view = ComputeStateView.From(new ComputeSnapshot(ComputeState.NotSetUp, null, "", 1, 1, Configured: false), Now);
+
+        Assert.Equal("notSetUp", view.State);
+        Assert.False(view.Configured);
+        Assert.Null(view.SessionId);
+        Assert.Contains("navigate_to remoteCompute", view.Note);
+    }
+
+    [Fact]
+    public void SetUpAndStoppedSaysSoPlainly()
+    {
+        var view = ComputeStateView.From(
+            new ComputeSnapshot(ComputeState.Stopped, null, "images.canfar.net/p/verbinal-compute:1", 2, 4, Configured: true), Now);
+
+        Assert.Equal("stopped", view.State);
+        Assert.True(view.Configured);
+        Assert.Equal("images.canfar.net/p/verbinal-compute:1", view.Image);
+        Assert.Null(view.Note);
     }
 
     // ── appliers ──

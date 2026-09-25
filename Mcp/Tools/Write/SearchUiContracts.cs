@@ -136,6 +136,12 @@ public sealed record SearchRunOutcome(
     string? Error = null,
     string? Message = null)
 {
+    /// <summary>
+    /// The query as run, with <c>\n</c> line breaks. It comes from the ADQL box, a WinUI TextBox, whose
+    /// lines are kept apart with a bare <c>\r</c> — and went back to an agent as one line of them.
+    /// </summary>
+    public string Adql { get; init; } = CanfarDesktop.Helpers.LineEndings.ToLf(Adql);
+
     public static SearchRunOutcome Unavailable(string message) => new(
         false, string.Empty, 0, false, 0, 0, null, message);
 }

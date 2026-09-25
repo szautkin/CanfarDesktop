@@ -23,7 +23,7 @@ public class ServiceHealthToolTests
             },
         }[0];
 
-        var tool = new GetServiceHealthTool(() => Task.FromResult(entries));
+        var tool = new GetServiceHealthTool(() => Task.FromResult(entries), () => false);
         var doc = JsonDocument.Parse(Assert.IsType<DataResult>(await tool.InvokeAsync(JsonValue.Null, Ctx, default)).Json).RootElement;
 
         Assert.Equal(3, doc.GetProperty("count").GetInt32());
@@ -44,7 +44,7 @@ public class ServiceHealthToolTests
             new ServiceHealthEntry("Skaha", "https://d", true, true, 401, 80, null),
         };
 
-        var tool = new GetServiceHealthTool(() => Task.FromResult(entries));
+        var tool = new GetServiceHealthTool(() => Task.FromResult(entries), () => false);
         var doc = JsonDocument.Parse(Assert.IsType<DataResult>(await tool.InvokeAsync(JsonValue.Null, Ctx, default)).Json).RootElement;
 
         Assert.Equal(4, doc.GetProperty("reachableCount").GetInt32());
@@ -52,5 +52,29 @@ public class ServiceHealthToolTests
         Assert.False(doc.GetProperty("services")[1].GetProperty("ok").GetBoolean());
         Assert.Equal(404, doc.GetProperty("services")[1].GetProperty("statusCode").GetInt32());
         Assert.True(doc.GetProperty("services")[3].GetProperty("ok").GetBoolean());
+    }
+
+    /// <summary>
+    /// Usable means usable by whoever is asking. It counted only the services that need no sign-in, so
+    /// a signed-in person with every service healthy was told two of four were usable.
+    /// </summary>
+    [Theory]
+    [InlineData(true, 4)]
+    [InlineData(false, 2)]
+    public async Task UsableCountsTheServicesThisPersonCanUse(bool signedIn, int usable)
+    {
+        IReadOnlyList<ServiceHealthEntry> entries = new[]
+        {
+            new ServiceHealthEntry("TAP", "https://a", true, true, 200, 40, null, Available: true),
+            new ServiceHealthEntry("Skaha", "https://b", true, true, 200, 40, null, Available: true, RequiresAuth: true),
+            new ServiceHealthEntry("Storage", "https://c", true, true, 200, 40, null, RequiresAuth: true),
+            new ServiceHealthEntry("Auth", "https://d", true, true, 200, 40, null),
+        };
+
+        var tool = new GetServiceHealthTool(() => Task.FromResult(entries), () => signedIn);
+        var doc = JsonDocument.Parse(Assert.IsType<DataResult>(await tool.InvokeAsync(JsonValue.Null, Ctx, default)).Json).RootElement;
+
+        Assert.Equal(4, doc.GetProperty("healthyCount").GetInt32());
+        Assert.Equal(usable, doc.GetProperty("usableCount").GetInt32());
     }
 }

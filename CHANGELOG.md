@@ -9,6 +9,10 @@ Fixes found by testing the published 1.4.0 from the Microsoft Store.
 - **Go To off the image** — the assistant's `fits_goto_coordinate` reported a move for a position off the image while the viewer, rightly, stayed where it was; both now give the same answer, and say where the position falls
 - **Viridis in the FITS viewer** — was a teal-to-orange approximation rather than viridis, and figures went out labelled VIRIDIS; the FITS viewer now uses the cube viewer's colour tables, so every colormap looks the same in both
 - **Notebook cells** — a cell showed the value of its last line only when the whole cell was one expression; like Jupyter, a cell ending in an expression now shows it (`df.head()` after a few statements), and a trailing `;` hides it
+- **Remote Compute after a reinstall** — a compute session still running on your account showed as "Not set up", with no way to see or stop it from the screen; it is now shown with Stop whether or not compute is set up in this install, and `get_compute_state` reports it too
+- **Finding a tool** — `search_tools` matched the whole query as one phrase, so "cube spectrum" found nothing; it now matches the words
+- **Service health** — `usableCount` left out the services that need sign-in even while you were signed in
+- **Queries read back** — the ADQL `run_search` reported came back with bare carriage returns for line breaks
 
 ## [1.4.0] - 2026-09-25
 

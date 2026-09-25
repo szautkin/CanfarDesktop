@@ -31,6 +31,7 @@ public sealed partial class RemoteComputePage : UserControl
     private readonly DispatcherTimer _poll = new() { Interval = TimeSpan.FromSeconds(10) };
 
     private ComputeState _state = ComputeState.NotSetUp;
+    private bool _configured;
 
     /// <summary>The run on the detail tab, and the status its output was read at.</summary>
     private (string Id, string? Status)? _shown;
@@ -92,18 +93,27 @@ public sealed partial class RemoteComputePage : UserControl
     private void ShowSnapshot(ComputeSnapshot snapshot)
     {
         _state = snapshot.State;
-        var setUp = _state != ComputeState.NotSetUp;
+        _configured = snapshot.Configured;
 
-        SetupPanel.Visibility = setUp ? Visibility.Collapsed : Visibility.Visible;
-        MainPanel.Visibility = setUp ? Visibility.Visible : Visibility.Collapsed;
+        // A session can be on the account with nothing set up here — left from another install, or
+        // from before a reinstall. It is shown with Stop, so its cores can be let go; starting and
+        // running code still need the setup.
+        var session = snapshot.Session is not null;
 
-        StartButton.Visibility = setUp ? Visibility.Visible : Visibility.Collapsed;
-        StopButton.Visibility = setUp ? Visibility.Visible : Visibility.Collapsed;
-        OpenFolderButton.Visibility = setUp ? Visibility.Visible : Visibility.Collapsed;
+        SetupPanel.Visibility = _configured ? Visibility.Collapsed : Visibility.Visible;
+        MainPanel.Visibility = _configured ? Visibility.Visible : Visibility.Collapsed;
 
-        StartButton.IsEnabled = ComputeStatus.CanStart(_state);
+        StartButton.Visibility = _configured ? Visibility.Visible : Visibility.Collapsed;
+        StopButton.Visibility = _configured || session ? Visibility.Visible : Visibility.Collapsed;
+        OpenFolderButton.Visibility = _configured || session ? Visibility.Visible : Visibility.Collapsed;
+
+        StartButton.IsEnabled = ComputeStatus.CanStart(_state, _configured);
         StopButton.IsEnabled = ComputeStatus.CanStop(_state);
-        RunButton.IsEnabled = ComputeStatus.CanRun(_state);
+        RunButton.IsEnabled = ComputeStatus.CanRun(_state, _configured);
+
+        // Said once, and never over another message: an error the person has not read yet matters more.
+        if (!_configured && session && !MessageBar.IsOpen)
+            ShowMessage(InfoBarSeverity.Informational, Loc.T("Compute_SessionWithoutSetup"));
 
         StatusText.Text = Describe(snapshot);
 
@@ -199,7 +209,7 @@ public sealed partial class RemoteComputePage : UserControl
         _shown = (run.Id, run.Status);
         CodeView.Text = run.Code;
         CopyCodeButton.IsEnabled = true;
-        RunAgainButton.IsEnabled = ComputeStatus.CanRun(_state);
+        RunAgainButton.IsEnabled = ComputeStatus.CanRun(_state, _configured);
         RunMeta.Text = Meta(run, truncated: false);
         ErrorView.Text = string.Empty;
 
@@ -416,9 +426,9 @@ public sealed partial class RemoteComputePage : UserControl
         SnippetBox.Text = request.Code;
         ComputePivot.SelectedItem = RunTab;
 
-        return Capture(true, _state == ComputeState.NotSetUp
-            ? "remote compute is not set up, so the person sees the setup steps rather than the box"
-            : null);
+        return Capture(true, _configured
+            ? null
+            : "remote compute is not set up, so the person sees the setup steps rather than the box");
     }
 
     // ── Plumbing ────────────────────────────────────────────────────────────────────────────────

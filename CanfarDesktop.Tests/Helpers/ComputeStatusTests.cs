@@ -13,8 +13,23 @@ namespace CanfarDesktop.Tests.Helpers;
 public class ComputeStatusTests
 {
     [Fact]
-    public void WithNoImageItIsNotSetUpWhateverThePlatformSays()
-        => Assert.Equal(ComputeState.NotSetUp, ComputeStatus.From(configured: false, "Running"));
+    public void WithNoImageAndNoSessionItIsNotSetUp()
+    {
+        Assert.Equal(ComputeState.NotSetUp, ComputeStatus.From(configured: false, null));
+        Assert.Equal(ComputeState.NotSetUp, ComputeStatus.From(configured: false, ""));
+    }
+
+    /// <summary>
+    /// A session on the account is what it is, whether or not this install has an image set. It used
+    /// to read "not set up" — after a reinstall, with a session still running from before, the
+    /// person could neither see it nor stop it from the Remote Compute screen.
+    /// </summary>
+    [Theory]
+    [InlineData("Running", ComputeState.Running)]
+    [InlineData("Pending", ComputeState.Starting)]
+    [InlineData("Failed", ComputeState.Failed)]
+    public void ASessionIsShownEvenWhereNothingIsSetUp(string status, ComputeState expected)
+        => Assert.Equal(expected, ComputeStatus.From(configured: false, status));
 
     [Theory]
     [InlineData(null, ComputeState.Stopped)]
@@ -39,9 +54,24 @@ public class ComputeStatusTests
     [InlineData(ComputeState.Failed, true, true, true)]
     public void EachStateOffersWhatMakesSenseInIt(ComputeState state, bool start, bool stop, bool run)
     {
-        Assert.Equal(start, ComputeStatus.CanStart(state));
+        Assert.Equal(start, ComputeStatus.CanStart(state, configured: true));
         Assert.Equal(stop, ComputeStatus.CanStop(state));
-        Assert.Equal(run, ComputeStatus.CanRun(state));
+        Assert.Equal(run, ComputeStatus.CanRun(state, configured: true));
+    }
+
+    /// <summary>
+    /// Starting a session or running code needs the image the person chose — setting it is their
+    /// consent. Stopping needs nothing but the session: a session nobody can stop is the problem.
+    /// </summary>
+    [Theory]
+    [InlineData(ComputeState.Running)]
+    [InlineData(ComputeState.Starting)]
+    [InlineData(ComputeState.Failed)]
+    public void WithoutAnImageASessionCanOnlyBeStopped(ComputeState state)
+    {
+        Assert.False(ComputeStatus.CanStart(state, configured: false));
+        Assert.False(ComputeStatus.CanRun(state, configured: false));
+        Assert.True(ComputeStatus.CanStop(state));
     }
 
     [Fact]

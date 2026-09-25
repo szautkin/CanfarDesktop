@@ -6,9 +6,6 @@ using CanfarDesktop.Models.AICompute;
 
 namespace CanfarDesktop.Services.AICompute;
 
-/// <summary>Where remote compute stands: its state, its session if there is one, and what it launches.</summary>
-public sealed record ComputeSnapshot(ComputeState State, Session? Session, string Image, int Cores, int Ram);
-
 /// <summary>
 /// Runs agent-authored code on remote compute via the file-drop RPC the external <c>verbinal-execution</c>
 /// watcher consumes: reuse (or lazily launch, without waiting for Running) one <c>contributed</c> session
@@ -74,15 +71,17 @@ public sealed class AIComputeService
 
     /// <summary>
     /// Where remote compute stands — the one answer the Remote Compute screen and get_compute_state
-    /// both give. Signed out, there is no session to look for, so it reads as stopped.
+    /// both give. The session is looked for whether or not an image is set here: one left from another
+    /// install is still the person's, and still holding their cores. Signed out, there is no session
+    /// to look for.
     /// </summary>
     public async Task<ComputeSnapshot> SnapshotAsync(CancellationToken ct = default)
     {
         var (cores, ram) = Size;
-        if (!IsConfigured) return new(ComputeState.NotSetUp, null, string.Empty, cores, ram);
-
+        var configured = IsConfigured;
         var session = IsSignedIn ? await CurrentSessionAsync(ct) : null;
-        return new(ComputeStatus.From(true, session?.Status), session, Image, cores, ram);
+        return new(ComputeStatus.From(configured, session?.Status), session,
+            configured ? Image : string.Empty, cores, ram, configured);
     }
 
     /// <summary>Reuse the warm verbinal-compute session, or launch one at the configured size. Does NOT

@@ -52,8 +52,7 @@ public static class RunCodeContract
     /// Compute screen went out as one long line of carriage returns — which bash reads as commands
     /// ending in a stray <c>\r</c>. An agent on Windows may send <c>\r\n</c>. Both become <c>\n</c>.</para>
     /// </summary>
-    public static string NormalizeNewlines(string code)
-        => code.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+    public static string NormalizeNewlines(string code) => CanfarDesktop.Helpers.LineEndings.ToLf(code);
 
     /// <summary>Replace filesystem-unsafe characters in an execution id so it is a valid file name.</summary>
     public static string SanitizeId(string id)

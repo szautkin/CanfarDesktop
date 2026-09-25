@@ -158,7 +158,30 @@ public sealed class StopComputeTool : JsonWriteTool<StopComputeTool.Args>
 /// <summary>What <c>get_compute_state</c> answers: the compute as the Remote Compute screen shows it.</summary>
 public sealed record ComputeStateView(
     string State, bool Configured, string? Image, int Cores, int Ram,
-    string? SessionId, string? SessionStatus, string? StartedAt, int? UptimeMinutes, string? Note);
+    string? SessionId, string? SessionStatus, string? StartedAt, int? UptimeMinutes, string? Note)
+{
+    /// <summary>The snapshot as get_compute_state reports it: state names in camelCase, as on the wire.</summary>
+    public static ComputeStateView From(ComputeSnapshot s, DateTimeOffset now)
+    {
+        var up = ComputeStatus.Uptime(s.Session?.StartedTime, now);
+        return new ComputeStateView(
+            ComputeStatus.Name(s.State), s.Configured, s.Configured ? s.Image : null, s.Cores, s.Ram,
+            s.Session?.Id, s.Session?.Status, s.Session?.StartedTime,
+            up is { } u ? (int)u.TotalMinutes : null,
+            NoteFor(s));
+    }
+
+    private static string? NoteFor(ComputeSnapshot s) => (s.Configured, s.Session) switch
+    {
+        (true, _) => null,
+        (false, null) => "Not set up: the Remote Compute screen (navigate_to remoteCompute) explains how.",
+        (false, _) =>
+            "Not set up in this app, but a compute session is on the person's account — left from another " +
+            "install or from before a reinstall, and still holding their cores. They can stop it on the Remote " +
+            "Compute screen, or you can propose stop_compute. Running code needs a compute image in Settings " +
+            "▸ AI compute first.",
+    };
+}
 
 /// <summary>
 /// <c>get_compute_state</c> — whether remote compute is set up, and whether its session is running.

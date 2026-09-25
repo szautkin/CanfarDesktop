@@ -2368,6 +2368,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Wizard_ComputeLinkReady" xml:space="preserve">
     <value>Ouvrir le calcul distant</value>
   </data>
+  <data name="Compute_SessionWithoutSetup" xml:space="preserve">
+    <value>Une session de calcul s’exécute sur votre compte, mais le calcul distant n’est pas configuré dans cette application — elle date peut-être d’avant une réinstallation. Arrêtez-la pour libérer ses cœurs, ou configurez le calcul pour l’utiliser.</value>
+  </data>
   <data name="Launch_TypeTip.Title" xml:space="preserve">
     <value>Type de session</value>
   </data>
