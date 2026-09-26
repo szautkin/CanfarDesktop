@@ -1,0 +1,60 @@
+# Build and test on Windows, the platform the app ships on.
+#
+# The build is the full one: the XAML compiler and MakePri run in it, which is where "a name both a
+# string and a scope" (PRI278) fails — something no Linux build or unit test can catch. The tests run
+# natively here too, including the ones that need Windows paths and COM.
+name: CI
+
+on:
+  push:
+    branches: [main, 'dev_*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v4
+
+      # The SDK builds; the tests run on the net8.0 runtime they target.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Build the app (XAML compiler and MakePri included)
+        run: dotnet build CanfarDesktop.csproj -c Release -p:Platform=x64
+
+      - name: Build the MCP bridge
+        run: dotnet build CanfarDesktop.McpBridge/CanfarDesktop.McpBridge.csproj -c Release -r win-x64
+
+      - name: Test
+        run: >
+          dotnet test CanfarDesktop.Tests/CanfarDesktop.Tests.csproj -c Release
+          --logger "trx;LogFileName=tests.trx" --results-directory TestResults
+
+      - name: Keep the test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults

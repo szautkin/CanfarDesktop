@@ -86,7 +86,13 @@ Or open `CanfarDesktop.slnx` in Visual Studio 2022 and run.
 dotnet test CanfarDesktop.Tests
 ```
 
-1,500+ tests covering: FITS parser and RICE decompression, WCS coordinate transforms, viewport math, blink alignment, notebook parser, dirty tracking, autosave, recovery, ADQL builder, data train, VOTable parsing, VOSpace, MCP tool routing, and more.
+3,400+ tests covering: FITS parser and RICE decompression, WCS coordinate transforms, local cutouts, viewport math, blink alignment, notebook parser, dirty tracking, autosave, recovery, ADQL builder, data train, VOTable and DataLink parsing, VOSpace, the MCP bridge and tool routing, and more. GitHub Actions builds the app and runs them on Windows for every push and pull request, with CodeQL and Dependabot beside it.
+
+Against the running app, `scripts/mcp-smoke.ps1` checks the AI-agent surface end to end through the MCP bridge, as an assistant would (`-FitsPath` adds the FITS viewer):
+
+```powershell
+.\scripts\mcp-smoke.ps1 -FitsPath C:\Data\image.fits
+```
 
 ## Architecture
 
