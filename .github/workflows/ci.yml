@@ -41,8 +41,10 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
+      # With its runtime named, as a release build has it: Release precompiles (ReadyToRun), whose
+      # runtime pack is only restored for a runtime identifier the restore itself can see.
       - name: Build the app (XAML compiler and MakePri included)
-        run: dotnet build CanfarDesktop.csproj -c Release -p:Platform=x64
+        run: dotnet build CanfarDesktop.csproj -c Release -p:Platform=x64 -r win-x64
 
       - name: Build the MCP bridge
         run: dotnet build CanfarDesktop.McpBridge/CanfarDesktop.McpBridge.csproj -c Release -r win-x64
