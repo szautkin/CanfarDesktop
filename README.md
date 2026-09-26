@@ -4,6 +4,15 @@
 
 This is the Windows counterpart of [Verbinal for macOS](https://github.com/szautkin/canfar-macos) (SwiftUI), [Verbinal for Linux](https://github.com/szautkin/CanfarDesktopUbuntu) (Rust/GTK 4), and [Verbinal for Android](https://github.com/szautkin/canfar-android) (Kotlin/Jetpack Compose).
 
+[![CI](https://github.com/szautkin/CanfarDesktop/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/szautkin/CanfarDesktop/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/szautkin/CanfarDesktop/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/szautkin/CanfarDesktop/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/szautkin/CanfarDesktop?label=release)](https://github.com/szautkin/CanfarDesktop/releases/latest)
+[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-install-0078D4)](https://apps.microsoft.com/detail/9p8jqvk4pjch?ocid=webpdpshare)
+[![Platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4)](#installation)
+[![Architectures: x64 | x86 | ARM64](https://img.shields.io/badge/arch-x64%20%7C%20x86%20%7C%20ARM64-555)](#installation)
+[![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![WinUI 3](https://img.shields.io/badge/WinUI%203-Windows%20App%20SDK%202.2-0078D4)](https://learn.microsoft.com/windows/apps/windows-app-sdk/)
+[![MCP: 170+ tools](https://img.shields.io/badge/MCP-170%2B%20tools-8A2BE2)](AGENTS.md)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 ## Screenshots
@@ -78,7 +87,7 @@ Or open `CanfarDesktop.slnx` in Visual Studio 2022 and run.
 ### Build
 - Visual Studio 2022 17.8+ with **.NET desktop development** and **Windows application development** workloads
 - .NET 8 SDK
-- Windows App SDK 1.8+
+- Windows App SDK 2.2 (restored from NuGet with the project)
 
 ## Running Tests
 

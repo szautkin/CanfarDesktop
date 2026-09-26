@@ -185,6 +185,9 @@ publish/
 # Note: Comment the next line if you want to checkin your web deploy settings,
 # but database connection strings (with potential passwords) will be unencrypted
 *.pubxml
+# ...except the app's own: the csproj names win-$(Platform).pubxml as its PublishProfile, and a
+# Release build takes its RuntimeIdentifier from it. Without them it fails with NETSDK1094.
+!Properties/PublishProfiles/win-*.pubxml
 *.publishproj
 
 # Microsoft Azure Web App publish settings. Comment the next line if you want to
