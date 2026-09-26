@@ -185,6 +185,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetTabNavigationActions(CloseTabByIndexActionAsync);
         _viewState.SetSearchHost(ResolveSearchBridgeAsync);
         _viewState.SetCutoutEditorHost(ShowCutoutEditorForAgentAsync);
+        _viewState.SetResearchHost(ShowResearchObservationForAgentAsync);
+        _viewState.SetClipboardHost((text, what) => UiDispatch.OnUi(DispatcherQueue, () => ClipboardText.Copy(text, what), false));
         _viewState.SetAnnotationHost(this);
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
         _viewState.SetAnnotationExportAction(ExportAnnotationsActionAsync);
@@ -1103,6 +1105,33 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         var shown = await ShowCutoutEditorForAgentAsync(args);
         if (!shown.Shown) await OpenObservationDetailAsync(args.PublisherId!);
     }
+
+    /// <summary>
+    /// show_research_observation: a record in Research, as a click shows it — or, for a cutout asked for
+    /// its original, what its Original observation button does: the complete record in Research when it
+    /// is kept, otherwise Search finding it.
+    /// </summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.ResearchShown> ShowResearchObservationForAgentAsync(string id, bool original)
+        => UiDispatch.OnUi(DispatcherQueue, () =>
+        {
+            var store = App.Services.GetRequiredService<ObservationStore>();
+            if (store.Find(id) is not { } record)
+                return CanfarDesktop.Mcp.Tools.Write.ResearchShown.Refused($"'{id}' is not in Research — list_downloaded_observations shows what is");
+
+            EnsureResearchPage();
+            NavigateTo(AppMode.Research);
+            if (!original || !record.IsCutout)
+            {
+                _researchPage!.Select(record);
+                return new CanfarDesktop.Mcp.Tools.Write.ResearchShown(true, "research", record.Id,
+                    Message: original ? "it is the complete observation already" : null);
+            }
+
+            return _researchPage!.ShowOriginal(record) is { } whole
+                ? new CanfarDesktop.Mcp.Tools.Write.ResearchShown(true, "research", whole.Id)
+                : new CanfarDesktop.Mcp.Tools.Write.ResearchShown(true, "search", null, ResearchRecords.ObservationIdOf(record),
+                    "Research does not keep it; Search is finding it, and highlights the cutout's row when the results come — get_search_results reads them");
+        }, CanfarDesktop.Mcp.Tools.Write.ResearchShown.Refused("Research could not be reached"));
 
     /// <summary>
     /// show_cutout_editor: the observation's detail, its Files tab, and the editor for the file the agent

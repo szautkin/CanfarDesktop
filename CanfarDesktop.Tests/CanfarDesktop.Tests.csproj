@@ -259,6 +259,7 @@
     <!-- Search page steering: contracts first — AppViewStateService forwards to ISearchUiBridge. -->
     <Compile Include="..\Mcp\Tools\Write\SearchUiContracts.cs" Link="Linked\Mcp\SearchUiContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\SearchUiTools.cs" Link="Linked\Mcp\SearchUiTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\ResearchUiTools.cs" Link="Linked\Mcp\ResearchUiTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\SavedQueryWriteTools.cs" Link="Linked\Mcp\SavedQueryWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\RecentSearchWriteTools.cs" Link="Linked\Mcp\RecentSearchWriteTools.cs" />
     <Compile Include="..\Mcp\Agents\AgentActivity.cs" Link="Linked\Mcp\AgentActivity.cs" />

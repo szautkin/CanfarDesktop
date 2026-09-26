@@ -342,6 +342,24 @@ public sealed class AppViewStateService : IAnnotationHost
         => _cutoutEditorHost?.Invoke(args)
            ?? Task.FromResult(Tools.Write.CutoutEditorShown.Refused("the observation view is not available"));
 
+    // ── Research and the clipboard (the host owns both) ─────────────────────────────────────────
+
+    private volatile Func<string, bool, Task<Tools.Write.ResearchShown>>? _researchHost;
+    private volatile Func<string, string?, Task<bool>>? _clipboardHost;
+
+    /// <summary>The host registers how to show a Research record — or a cutout's original — on the person's screen.</summary>
+    public void SetResearchHost(Func<string, bool, Task<Tools.Write.ResearchShown>> show) => _researchHost = show;
+
+    /// <summary>The host registers how to put text on the clipboard: on the UI thread, saying so in the status bar.</summary>
+    public void SetClipboardHost(Func<string, string?, Task<bool>> copy) => _clipboardHost = copy;
+
+    public Task<Tools.Write.ResearchShown> ShowResearchObservationAsync(string id, bool original)
+        => _researchHost?.Invoke(id, original)
+           ?? Task.FromResult(Tools.Write.ResearchShown.Refused("Research is not available"));
+
+    public Task<bool> CopyToClipboardAsync(string text, string? what)
+        => _clipboardHost?.Invoke(text, what) ?? Task.FromResult(false);
+
     // ── Search page (resolved lazily: the page is built the first time anyone asks for it) ───────
 
     private volatile Func<Task<ISearchUiBridge?>>? _searchHost;
@@ -400,6 +418,9 @@ public sealed class AppViewStateService : IAnnotationHost
 
     public async Task<SearchRecentRemoved> RemoveRecentSearchAsync(string match)
         => await ResolveSearchAsync() is { } b ? await b.RemoveRecentSearchAsync(match) : SearchRecentRemoved.Unavailable(SearchUnavailable);
+
+    public async Task<SearchCancelOutcome> CancelSearchAsync()
+        => await ResolveSearchAsync() is { } b ? await b.CancelSearchAsync() : SearchCancelOutcome.Unavailable(SearchUnavailable);
 
     public async Task<SearchFormApplied> ResetSearchFormAsync()
         => await ResolveSearchAsync() is { } b ? await b.ResetFormAsync() : SearchFormApplied.Unavailable(SearchUnavailable);

@@ -815,6 +815,15 @@ public sealed partial class SearchPage : ISearchUiBridge
             return new SearchFormApplied(true, known, Array.Empty<string>(), known, CaptureForm());
         }, SearchFormApplied.Unavailable("the Search page could not be reached"));
 
+    /// <summary>The Cancel button beside the spinner: stop the search running now, keeping what was shown before it.</summary>
+    Task<SearchCancelOutcome> ISearchUiBridge.CancelSearchAsync()
+        => UiDispatch.OnUi(DispatcherQueue, () =>
+        {
+            if (!ViewModel.IsSearching) return new SearchCancelOutcome(false, "no search is running");
+            ViewModel.CancelSearch();
+            return new SearchCancelOutcome(true, "stopped; the results shown before it stay");
+        }, SearchCancelOutcome.Unavailable("the Search page could not be reached"));
+
     /// <summary>Empty the recent-searches rail. Saved queries are a different list and are untouched.</summary>
     Task<SearchRecentRemoved> ISearchUiBridge.ClearRecentSearchesAsync()
         => UiDispatch.OnUi(DispatcherQueue, () =>

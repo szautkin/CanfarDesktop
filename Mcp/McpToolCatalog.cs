@@ -235,6 +235,12 @@ public static class McpToolCatalog
             new ShowSearchRowDetailTool(row => viewState.ShowSearchRowDetailAsync(row)),
             new ShowObservationDetailTool(id => viewState.ShowObservationDetailAsync(id)),
             new ShowCutoutEditorTool(args => viewState.ShowCutoutEditorAsync(args)),
+            new CancelSearchTool(() => viewState.CancelSearchAsync()),
+
+            // Research on screen — a record as a click shows it, a cutout's Original observation — and
+            // the clipboard every Copy in the app writes to.
+            new ShowResearchObservationTool((id, original) => viewState.ShowResearchObservationAsync(id, original)),
+            new CopyToClipboardTool(observations.Find, (text, what) => viewState.CopyToClipboardAsync(text, what)),
 
             // The Remote Compute screen and Storage-at-a-folder: what a person can do there, an agent
             // can show them — a run, code ready to run, the exec folder. Showing asks a signed-out person

@@ -563,6 +563,30 @@ public sealed class ResetSearchFormTool : JsonReadTool<EmptyArgs, SearchFormAppl
 }
 
 /// <summary>
+/// <c>cancel_search</c> — the Cancel button beside the spinner: stop the search running now. What was
+/// shown before it stays, and it is not kept as a recent search.
+/// </summary>
+public sealed class CancelSearchTool : JsonReadTool<EmptyArgs, SearchCancelOutcome>
+{
+    private readonly Func<Task<SearchCancelOutcome>> _cancel;
+
+    public CancelSearchTool(Func<Task<SearchCancelOutcome>> cancel) => _cancel = cancel;
+
+    public override McpVerbClass VerbClass => McpVerbClass.ViewState;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "cancel_search",
+        "Stop the search running on the Search page — the Cancel button beside its spinner, on the form or " +
+        "in the ADQL editor: the query CADC is working on, or the wait for its target's position. The " +
+        "results shown before it stay, and it is not kept as a recent search; run_search then reports it " +
+        "as cancelled. Says so when no search is running.",
+        """{"type":"object","properties":{},"additionalProperties":false}""");
+
+    protected override Task<SearchCancelOutcome> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
+        => _cancel();
+}
+
+/// <summary>
 /// <c>load_recent_search</c> — put one of the recent searches back in the form.
 ///
 /// The rail could be read and its entries deleted, but not USED, which is the one thing the rail is

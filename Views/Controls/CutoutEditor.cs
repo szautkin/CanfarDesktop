@@ -233,7 +233,7 @@ public sealed class CutoutEditor : UserControl
         foreach (var way in _ways)
         {
             var words = Words(way.Method);
-            _way.Items.Add(new RadioButton { Content = words.Choice, IsEnabled = way.Unavailable is null });
+            _way.Items.Add(new RadioButton { Name = $"CutoutWay{way.Method}", Content = words.Choice, IsEnabled = way.Unavailable is null });
             if (way.Unavailable is { } why) reasons.Add(Loc.F("Cutout_WayUnavailable", words.Choice, why));
         }
         _way.SelectedIndex = 0;
@@ -288,7 +288,7 @@ public sealed class CutoutEditor : UserControl
         _extensions.Children.Add(new TextBlock { Text = Loc.T("Cutout_Extensions"), Style = Sty("BodyStrongTextBlockStyle") });
         foreach (var name in file.Extensions)
         {
-            var box = new CheckBox { Tag = name, Content = $"[{name}]", MinWidth = 0 };
+            var box = new CheckBox { Name = $"CutoutImage[{name}]", Tag = name, Content = $"[{name}]", MinWidth = 0 };
             AutomationProperties.SetName(box, name);
             box.Checked += (_, _) => FromExtensions();
             box.Unchecked += (_, _) => FromExtensions();
@@ -344,7 +344,11 @@ public sealed class CutoutEditor : UserControl
         _companions.Children.Add(new TextBlock { Text = Loc.T("Cutout_Companions"), Style = Sty("BodyStrongTextBlockStyle") });
         foreach (var companion in file.Companions)
         {
-            var box = new CheckBox { Tag = companion.ArtifactId, Content = companion.FileName, MinWidth = 0, IsEnabled = companion.Unavailable is null };
+            var box = new CheckBox
+            {
+                Name = $"CutoutAlsoCut[{companion.FileName}]", Tag = companion.ArtifactId, Content = companion.FileName,
+                MinWidth = 0, IsEnabled = companion.Unavailable is null,
+            };
             AutomationProperties.SetName(box, companion.FileName);
             box.Checked += (_, _) => FromCompanions();
             box.Unchecked += (_, _) => FromCompanions();

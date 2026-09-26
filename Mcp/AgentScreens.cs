@@ -22,7 +22,7 @@ public static class AgentScreens
             or "reset_search_form" or "run_search" or "set_adql_query" or "execute_adql_query"
             or "get_search_results" or "set_search_results_view" or "export_search_results"
             or "load_recent_search" or "run_saved_query"
-            or "remove_recent_search" or "clear_recent_searches" => "search",
+            or "remove_recent_search" or "clear_recent_searches" or "cancel_search" => "search",
         "list_downloaded_observations" or "get_downloaded_observation" or "get_observation_notes"
             or "get_observation_caom2" or "get_data_links" or "update_observation_note"
             or "bulk_update_observation_notes" or "download_observation" or "delete_downloaded_observation"

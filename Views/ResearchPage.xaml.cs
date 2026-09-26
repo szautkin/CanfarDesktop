@@ -68,7 +68,7 @@ public sealed partial class ResearchPage : UserControl
         if (obs.IsCutout)
         {
             var original = new MenuFlyoutItem { Text = Loc.T("Research_Original"), Icon = new FontIcon { Glyph = OriginalGlyph } };
-            original.Click += (_, _) => ShowOriginal(obs);
+            original.Click += (_, _) => _ = ShowOriginal(obs);
             menu.Items.Add(original);
         }
         menu.ShowAt((FrameworkElement)e.OriginalSource, e.GetPosition((FrameworkElement)e.OriginalSource));
@@ -92,12 +92,17 @@ public sealed partial class ResearchPage : UserControl
     /// <summary>
     /// The complete observation a cutout was cut from: here, selected, when Research has it — with its
     /// file or without — and otherwise found in Search. Research first, since what is here is what the
-    /// person has already kept, with their notes.
+    /// person has already kept, with their notes. Returns the record shown here; null when Search was asked.
     /// </summary>
-    private void ShowOriginal(DownloadedObservation cutout)
+    public DownloadedObservation? ShowOriginal(DownloadedObservation cutout)
     {
-        if (ViewModel.OriginalOf(cutout) is { } whole) Select(whole);
-        else FindInSearchRequested?.Invoke(ResearchRecords.ObservationIdOf(cutout), cutout.PublisherID);
+        if (ViewModel.OriginalOf(cutout) is { } whole)
+        {
+            Select(whole);
+            return whole;
+        }
+        FindInSearchRequested?.Invoke(ResearchRecords.ObservationIdOf(cutout), cutout.PublisherID);
+        return null;
     }
 
     /// <summary>Select a record in the list and show it — clearing the filter first when it hides it.</summary>
@@ -460,7 +465,7 @@ public sealed partial class ResearchPage : UserControl
         {
             // A local cutout is made again from the file it was cut from, rather than downloaded.
             var fetch = obs.Cutout?.CutBy == Models.Cutouts.CutoutMethod.Local ? Loc.T("Research_CutAgain") : Loc.T("Research_DownloadFits");
-            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", fetch, async (_, _) =>
+            var download = UIFactory.CreateIconButton("\uE896", fetch, async (_, _) =>
             {
                 try
                 {
@@ -489,14 +494,16 @@ public sealed partial class ResearchPage : UserControl
                 {
                     System.Diagnostics.Debug.WriteLine($"Research download error: {ex.Message}");
                 }
-            }));
+            });
+            download.Name = "ResearchDownloadButton";
+            btnPanel.Children.Add(download);
         }
 
         btnPanel.Children.Add(CutoutButton(obs));
 
         if (obs.IsCutout)
         {
-            var original = UIFactory.CreateIconButton(OriginalGlyph, Loc.T("Research_Original"), (_, _) => ShowOriginal(obs));
+            var original = UIFactory.CreateIconButton(OriginalGlyph, Loc.T("Research_Original"), (_, _) => _ = ShowOriginal(obs));
             original.Name = "ResearchOriginalButton";
             ToolTipService.SetToolTip(original, Loc.T(ViewModel.OriginalOf(obs) is null ? "Research_OriginalSearchTip" : "Research_OriginalHereTip"));
             btnPanel.Children.Add(original);

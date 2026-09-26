@@ -503,7 +503,7 @@ public sealed partial class ObservationDetailPage : UserControl
         {
             var ways = CutoutSources.For(CutoutSourcesOfObservation, art.Uri, _current);
             var usable = ways.Where(w => w.Unavailable is null).Select(w => w.Method).ToHashSet();
-            var cut = new Button { Content = Loc.T("Cutout_Button") };
+            var cut = new Button { Name = $"FileCutoutButton[{Caom2Format.ArtifactFileName(art.Uri)}]", Content = Loc.T("Cutout_Button") };
             AutomationProperties.SetName(cut, Loc.F("Cutout_ButtonName", Caom2Format.ArtifactFileName(art.Uri)));
             if (usable.Count > 0)
             {

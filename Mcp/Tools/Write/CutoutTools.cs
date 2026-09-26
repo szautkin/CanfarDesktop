@@ -295,7 +295,8 @@ public sealed class ShowCutoutEditorTool : JsonReadTool<CutoutArgs, CutoutEditor
         "set to cut it the way you name (cutBy), or the best available. " +
         "The reply says what the editor shows and anything wrong with it. Nothing is downloaded: the person " +
         "adjusts and downloads it themselves, or you follow with download_cutout. Point at its controls with " +
-        "point_at_ui (CutoutWayChoice, CutoutSky, CutoutDownloadButton …).",
+        "point_at_ui (CutoutWayChoice — its CutoutWayLocal and CutoutWaySoda —, CutoutSky, CutoutImage[SCI,1] for one " +
+        "image of a multi-extension file, CutoutAlsoCut[<file name>] for a weight map, CutoutDownloadButton …).",
         "{\"type\":\"object\",\"properties\":{" + CutoutArgs.SchemaProperties + "},\"required\":[\"publisherId\"],\"additionalProperties\":false}");
 
     protected override async Task<CutoutEditorShown> HandleAsync(CutoutArgs args, McpToolContext context, CancellationToken ct)

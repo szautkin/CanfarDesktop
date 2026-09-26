@@ -36,6 +36,7 @@ public interface ISearchUiBridge
     Task<SearchFormApplied> ResetFormAsync();
     Task<SearchFormApplied> LoadRecentSearchAsync(string match);
     Task<SearchRecentRemoved> ClearRecentSearchesAsync();
+    Task<SearchCancelOutcome> CancelSearchAsync();
 }
 
 // ── Form ────────────────────────────────────────────────────────────────────────────────────────
@@ -251,4 +252,10 @@ public sealed record SearchRowDetailOutcome(bool Opened, int? Row, string? Publi
 public sealed record SearchRecentRemoved(bool Removed, string? Summary, int Remaining, string? Message = null)
 {
     public static SearchRecentRemoved Unavailable(string message) => new(false, null, 0, message);
+}
+
+/// <summary>What cancel_search did: stopped the search running, or found none to stop.</summary>
+public sealed record SearchCancelOutcome(bool Cancelled, string? Message = null)
+{
+    public static SearchCancelOutcome Unavailable(string message) => new(false, message);
 }

@@ -94,6 +94,7 @@ public static class AiGuideCatalog
         ["get_search_constraints"] = "search",
         ["set_search_constraints"] = "search",
         ["reset_search_form"] = "search",
+        ["cancel_search"] = "search",
         ["run_search"] = "search",
         ["set_adql_query"] = "search",
         ["execute_adql_query"] = "search",
@@ -117,6 +118,8 @@ public static class AiGuideCatalog
         // Research & Notes
         ["list_downloaded_observations"] = "research",
         ["get_downloaded_observation"] = "research",
+        ["show_research_observation"] = "research",
+        ["copy_to_clipboard"] = "research",
         ["get_observation_notes"] = "research",
         ["update_observation_note"] = "research",
         ["bulk_update_observation_notes"] = "research",
