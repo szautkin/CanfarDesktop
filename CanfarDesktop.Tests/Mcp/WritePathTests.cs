@@ -4,6 +4,8 @@ using CanfarDesktop.Mcp;
 using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Proposals;
 using CanfarDesktop.Mcp.Wire;
+using CanfarDesktop.Services.AiGuide;
+using CanfarDesktop.Tests.Helpers;
 
 namespace CanfarDesktop.Tests.Mcp;
 
@@ -22,11 +24,17 @@ public class WritePathTests
     private sealed class FakeWriteTool : JsonWriteTool<FakeWriteTool.Args>
     {
         private readonly McpVerbClass _verb;
-        public FakeWriteTool(McpVerbClass verb) => _verb = verb;
+
+        public FakeWriteTool(McpVerbClass verb, string name = "fake_write")
+        {
+            _verb = verb;
+            Descriptor = ToolDescriptor.WithStaticSchema(
+                name, "fake",
+                """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"],"additionalProperties":false}""");
+        }
+
         public override McpVerbClass VerbClass => _verb;
-        public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
-            "fake_write", "fake",
-            """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"],"additionalProperties":false}""");
+        public override ToolDescriptor Descriptor { get; }
 
         protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
         {
@@ -132,5 +140,115 @@ public class WritePathTests
         Assert.IsType<ProposedResult>(first);
         Assert.IsType<PerTurnProposalCapExceeded>(Assert.IsType<FailedResult>(second).Reason);
         Assert.Single(store.List()); // the rejected proposal was withdrawn
+    }
+
+    // ── When a change applies, as the agent is told (QA D9) ───────────────────
+
+    /// <summary>The host's hook, deciding by the real policy.</summary>
+    private static AutoApplyHook PolicyHook(bool autoApplyOn, InMemoryProposalStore store, List<Guid> applied) => new(
+        (verb, _) => Task.FromResult(AutoApplyPolicy.ShouldAutoApply(autoApplyOn, verb)),
+        id => { applied.Add(id); store.MarkApplied(id); return Task.CompletedTask; });
+
+    [Theory]
+    [InlineData(McpVerbClass.SemanticWrite, true, true)]
+    [InlineData(McpVerbClass.SemanticWrite, false, false)]
+    [InlineData(McpVerbClass.Destructive, true, false)] // D9: it was applied at once
+    [InlineData(McpVerbClass.Destructive, false, false)]
+    public async Task Router_AppliesAtOnce_OnlyWhatThePolicyLets(McpVerbClass verb, bool autoApplyOn, bool appliesAtOnce)
+    {
+        var (ctx, store, _) = Context();
+        var applied = new List<Guid>();
+        var router = new McpToolRouter(new[] { new FakeWriteTool(verb) }, autoApplyHook: PolicyHook(autoApplyOn, store, applied));
+
+        var result = await router.DispatchAsync("fake_write", Args("""{"name":"x"}"""), ctx, default);
+
+        if (appliesAtOnce)
+        {
+            Assert.IsType<DataResult>(result);
+            Assert.Single(applied);
+        }
+        else
+        {
+            Assert.IsType<ProposedResult>(result);
+            Assert.Empty(applied);
+            Assert.Single(store.List()); // waiting in Pending
+        }
+    }
+
+    /// <summary>A destructive tool that acts at once rather than proposing, as removing a mark does.</summary>
+    private sealed class ActsAtOnce : IMcpTool
+    {
+        public McpVerbClass VerbClass => McpVerbClass.Destructive;
+        public bool AgentSafe => true;
+        public ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema("acts_at_once", "gone.", """{"type":"object"}""");
+
+        public Task<ToolResult> InvokeAsync(JsonValue arguments, McpToolContext context, CancellationToken cancellationToken)
+            => Task.FromResult(ToolResult.Ok("{}"u8.ToArray()));
+    }
+
+    [Fact]
+    public void Manifest_SaysWhenEachToolsChangesApply()
+    {
+        var write = new FakeWriteTool(McpVerbClass.SemanticWrite, "write");
+        var router = new McpToolRouter(new IMcpTool[]
+        {
+            write,
+            new FakeWriteTool(McpVerbClass.Destructive, "delete"),
+            new ActsAtOnce(),
+            new AliasedTool("write_alias", "fake", write),
+            new SignedInTool(new FakeWriteTool(McpVerbClass.SemanticWrite, "signed_write"), () => false, "sign in"),
+        });
+        string DescriptionOf(string name) => router.ExternalManifest.Single(d => d.Name == name).Description;
+
+        Assert.Equal($"fake {AutoApplyPolicy.Note(McpVerbClass.SemanticWrite)}", DescriptionOf("write"));
+        Assert.Equal($"fake {AutoApplyPolicy.Note(McpVerbClass.Destructive)}", DescriptionOf("delete"));
+        Assert.Equal("gone.", DescriptionOf("acts_at_once")); // it does not wait for anyone, so it does not say so
+        Assert.Equal(DescriptionOf("write"), DescriptionOf("write_alias"));
+        Assert.Equal(DescriptionOf("write"), DescriptionOf("signed_write"));
+    }
+
+    [Fact]
+    public void Note_OnlyForChanges()
+    {
+        Assert.Null(AutoApplyPolicy.Note(McpVerbClass.Read));
+        Assert.Contains("\"Auto-apply agent writes\" on", AutoApplyPolicy.Note(McpVerbClass.SemanticWrite));
+        Assert.Contains("always waits", AutoApplyPolicy.Note(McpVerbClass.Destructive));
+    }
+
+    [Fact]
+    public async Task ToolsList_KeepsTheNote_UnderTheDescriptionThePersonWrote()
+    {
+        var router = new McpToolRouter(new IMcpTool[] { new FakeWriteTool(McpVerbClass.Destructive, "delete") });
+        var guide = new AiGuideSnapshot(new Dictionary<string, string> { ["delete"] = "Mine." }, []);
+        var server = new McpServerService(router, new ServerIdentity("verbinal-canfar", "1"), aiGuide: () => guide);
+
+        await server.HandleFrameAsync(System.Text.Encoding.UTF8.GetBytes(
+            """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","clientInfo":{"name":"t","version":"1"}}}"""));
+        var answer = await server.HandleFrameAsync(System.Text.Encoding.UTF8.GetBytes("""{"jsonrpc":"2.0","id":2,"method":"tools/list"}"""));
+
+        var tool = ((JsonArray)JsonValue.Parse(System.Text.Encoding.UTF8.GetString(answer!))["result"]!["tools"]!).Items.Single();
+        Assert.Equal($"Mine. {AutoApplyPolicy.Note(McpVerbClass.Destructive)}", ((JsonString)tool["description"]!).Value);
+    }
+
+    /// <summary>
+    /// No tool says in its own words when its change applies: that is the policy's to say, and tools
+    /// saying it by hand said it wrong (QA D9) — "queues for the user to apply" with auto-apply on,
+    /// "unless auto-apply is on" for a change auto-apply never touches.
+    /// </summary>
+    [Fact]
+    public void NoToolDescription_SaysForItselfWhenItsChangeApplies()
+    {
+        var claim = new System.Text.RegularExpressions.Regex(
+            @"Queues for the user|[Aa]uto-applies|[Aa]lways waits for the user|queues for (their |the user's )?approval|unless auto-apply");
+        var tools = RepoFiles.PathTo(Path.Combine("Mcp", "Tools")) + Path.DirectorySeparatorChar;
+
+        var offenders = McpToolSources.AppSources()
+            .Where(f => f.StartsWith(tools, StringComparison.OrdinalIgnoreCase))
+            .SelectMany(f => File.ReadLines(f).Select((line, i) => (f, i, line)))
+            .Where(x => !x.line.TrimStart().StartsWith("//") && claim.IsMatch(x.line))
+            .Select(x => $"{Path.GetFileName(x.f)}:{x.i + 1}")
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "Say it with AutoApplyPolicy.Note instead: " + string.Join(", ", offenders));
     }
 }

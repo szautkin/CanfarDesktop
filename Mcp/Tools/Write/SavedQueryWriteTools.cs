@@ -25,7 +25,7 @@ public sealed class SaveQueryTool : JsonWriteTool<SaveQueryTool.Args>
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "save_query",
         "Propose saving a named ADQL query to the user's saved queries (overwrites an existing query with " +
-        "the same name). Queues for the user to apply.",
+        "the same name).",
         """{"type":"object","properties":{"name":{"type":"string"},"adql":{"type":"string"}},"required":["name","adql"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -52,7 +52,7 @@ public sealed class DeleteSavedQueryTool : JsonWriteTool<DeleteSavedQueryTool.Ar
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "delete_saved_query",
-        "Propose deleting a saved query by name. Queues for the user to apply (a destructive change).",
+        "Propose deleting a saved query by name.",
         """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)

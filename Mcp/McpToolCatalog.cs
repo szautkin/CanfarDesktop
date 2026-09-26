@@ -429,8 +429,8 @@ public static class McpToolCatalog
         // the list rather than a copy of it, so a tool added above this line is one they can find; a
         // snapshot taken here would go stale the moment anything else was appended.
         tools.Add(new ListAppsTool(() => tools.Select(t => t.Descriptor.Name).ToList()));
-        tools.Add(new SearchToolsTool(() => tools.Select(t => t.Descriptor).ToList()));
-        tools.Add(new ManTool(() => tools.Select(t => t.Descriptor).ToList()));
+        tools.Add(new SearchToolsTool(() => tools.Select(t => t.Advertised()).ToList()));
+        tools.Add(new ManTool(() => tools.Select(t => t.Advertised()).ToList()));
 
         return tools;
     }

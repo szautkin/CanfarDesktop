@@ -92,9 +92,7 @@ public sealed record CutoutArgs
     /// </summary>
     public ICutoutSource PickSource(IReadOnlyList<ICutoutSource> sources)
     {
-        if (sources.Count == 0)
-            throw new McpToolException(new InvalidArgument(
-                "none of this observation's files can be cut out: CADC offers no cutout service for them, and none is on this computer; download_observation fetches the whole file, which can then be cut locally"));
+        if (sources.Count == 0) throw new McpToolException(new InvalidArgument(CutoutOptions.NoneCanBeCut));
 
         var named = (ArtifactId ?? string.Empty).Trim();
         var files = sources.Select(NameOf).Distinct().ToList();
@@ -154,6 +152,11 @@ public sealed record CutoutFileOption(
 /// <summary>What get_cutout_options answers.</summary>
 public sealed record CutoutOptions(string PublisherId, IReadOnlyList<CutoutFileOption> Files, string? Note)
 {
+    /// <summary>Why nothing of an observation can be cut, and what to do instead.</summary>
+    public const string NoneCanBeCut =
+        "none of this observation's files can be cut out: CADC offers no cutout service for them, and none is on "
+        + "this computer; download_observation fetches the whole file, which can then be cut locally";
+
     /// <summary>
     /// Each file's options, each way it can be cut, with the cutout the editor would open on — from the
     /// last search when it looked at this file. Pure, so it is tested without a network or a screen.
@@ -169,9 +172,7 @@ public sealed record CutoutOptions(string PublisherId, IReadOnlyList<CutoutFileO
                 suggested, suggested.Summary, source.EstimateBytes(suggested));
         }).ToList();
 
-        var note = options.Count == 0
-            ? "none of this observation's files can be cut out: CADC offers no cutout service for them, and none is on this computer; download_observation fetches the whole file, which can then be cut locally"
-            : null;
+        var note = options.Count == 0 ? NoneCanBeCut : null;
         return new CutoutOptions(publisherId, options, note);
     }
 }
@@ -233,8 +234,7 @@ public sealed class DownloadCutoutTool : JsonWriteTool<CutoutArgs>
         "or polygon, degrees) and, for a cube, optionally bandMin/bandMax in metres; a local cut can also take its " +
         "companions (a weight map) with the same pixel box. It is checked against the " +
         "file before it is queued: a region off the file is refused with the reason. Use get_cutout_options " +
-        "first for the file's limits and a suggestion. Queues for the user under their auto-apply setting; " +
-        "progress shows in the status bar.",
+        "first for the file's limits and a suggestion. Its progress shows in the status bar.",
         "{\"type\":\"object\",\"properties\":{" + CutoutArgs.SchemaProperties + "},\"required\":[\"publisherId\"],\"additionalProperties\":false}");
 
     protected override async Task<ProposalPlan> PlanAsync(CutoutArgs args, McpToolContext context, CancellationToken ct)

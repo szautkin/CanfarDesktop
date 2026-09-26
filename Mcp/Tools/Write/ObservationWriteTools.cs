@@ -30,7 +30,7 @@ public sealed class SaveObservationTool : JsonWriteTool<SaveObservationTool.Args
         "save_observation_to_research",
         "Propose keeping an observation in the Research module WITHOUT downloading its file — its details " +
         "from CAOM2 and a place for notes; the person (or download_observation) fetches the file later. " +
-        "An observation already in Research is left as it is. Queues for the user under their auto-apply setting.",
+        "An observation already in Research is left as it is.",
         """{"type":"object","properties":{"publisherId":{"type":"string"}},"required":["publisherId"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -58,7 +58,7 @@ public sealed class RemoveDownloadedFileTool : JsonWriteTool<RemoveDownloadedFil
         "Propose deleting a downloaded observation's FILE from this computer while keeping the observation " +
         "in Research — its details, notes, and for a cutout its region, so Download fetches it again as it " +
         "was. By local id (from list_downloaded_observations) or publisher id. To remove the observation " +
-        "itself, use delete_downloaded_observation. Always waits for the user's approval (a destructive change).",
+        "itself, use delete_downloaded_observation.",
         """{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -107,8 +107,7 @@ public sealed class DownloadObservationTool : JsonWriteTool<DownloadObservationT
         "(from search_observations). Optional `artifactIndex` (from list_observation_artifacts) picks a " +
         "SPECIFIC product — e.g. the science cube, a moment map, or the integrated spectrum — instead of " +
         "the default first/primary artifact. Proprietary/embargoed collections require the user to be " +
-        "signed in to CADC. Queues for the user to apply; after it applies it appears in " +
-        "list_downloaded_observations.",
+        "signed in to CADC. Once it has applied, it is in list_downloaded_observations.",
         """{"type":"object","properties":{"publisherId":{"type":"string"},"artifactIndex":{"type":"integer","minimum":0}},"required":["publisherId"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -173,7 +172,7 @@ public sealed class DeleteDownloadedObservationTool : JsonWriteTool<DeleteDownlo
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "delete_downloaded_observation",
         "Propose removing a downloaded observation from Research by its local id (from " +
-        "list_downloaded_observations) or its publisher id. Queues for the user to apply (a destructive change).",
+        "list_downloaded_observations) or its publisher id.",
         """{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -198,7 +197,7 @@ public sealed class ClearResearchArchiveTool : JsonWriteTool<EmptyArgs>
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "clear_research_archive",
         "Remove ALL downloaded-observation records from Research — their metadata, their notes, and " +
-        "their local files (file deletion is best-effort). Queues for the user to apply (a destructive change).",
+        "their local files (file deletion is best-effort).",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)

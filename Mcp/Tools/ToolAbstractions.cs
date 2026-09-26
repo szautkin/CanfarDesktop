@@ -66,7 +66,25 @@ public interface IMcpTool
 
     ToolDescriptor Descriptor { get; }
 
+    /// <summary>
+    /// Whether a call proposes its change rather than making it — goes through Pending, under the
+    /// person's auto-apply setting (<see cref="Proposals.AutoApplyPolicy"/>). A destructive tool that
+    /// acts at once, such as removing a mark, does not.
+    /// </summary>
+    bool Proposes => false;
+
     Task<ToolResult> InvokeAsync(JsonValue arguments, McpToolContext context, CancellationToken cancellationToken);
+}
+
+public static class McpToolExtensions
+{
+    /// <summary>The tool's descriptor as agents are shown it: its description ends with when its changes apply.</summary>
+    public static ToolDescriptor Advertised(this IMcpTool tool)
+        => tool.Descriptor with { Description = tool.Described(tool.Descriptor.Description) };
+
+    /// <summary><paramref name="description"/>, for this tool, ending with when its changes apply if it proposes them.</summary>
+    public static string Described(this IMcpTool tool, string description)
+        => tool.Proposes ? Proposals.AutoApplyPolicy.Described(description, tool.VerbClass) : description;
 }
 
 /// <summary>Shared JSON options for tool argument/output (camelCase, lenient read, omit nulls).</summary>

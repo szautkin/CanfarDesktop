@@ -32,8 +32,7 @@ public sealed class RunCodeTool : JsonWriteTool<RunCodeTool.Args>
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "run_code",
         "Run a short Python or Bash snippet on a warm remote CANFAR compute session (launched/reused " +
-        "automatically on the user's account). Auto-applies when the user has auto-apply on; otherwise " +
-        "queues for their approval. Returns immediately with an execution_id; fetch the result with " +
+        "automatically on the user's account). Returns immediately with an execution_id; fetch the result with " +
         "run_code_output(execution_id). Requires an AI compute image set in Settings.",
         """{"type":"object","properties":{"code":{"type":"string","minLength":1,"description":"The snippet to run"},"language":{"type":"string","enum":["python","bash"],"description":"Default python"},"timeoutSeconds":{"type":"integer","minimum":1,"maximum":900,"description":"Per-run timeout (default 60)"}},"required":["code"],"additionalProperties":false}""");
 
@@ -116,7 +115,7 @@ public sealed class StartComputeTool : JsonWriteTool<StartComputeTool.Args>
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "start_compute",
         "Pre-warm the remote compute session (at the size configured in Settings ▸ AI compute) so the next " +
-        "run_code starts faster. Auto-applies when the user has auto-apply on; otherwise queues for approval. " +
+        "run_code starts faster. " +
         "Reusing an already-running session is a no-op. Requires an AI compute image set in Settings.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
@@ -144,7 +143,7 @@ public sealed class StopComputeTool : JsonWriteTool<StopComputeTool.Args>
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "stop_compute",
-        "Propose stopping the warm remote compute session to free its cores. Queues for the user's approval. " +
+        "Propose stopping the warm remote compute session to free its cores. " +
         "Idempotent — a no-op if nothing is running. NOTE: this is not a cancel; a request already submitted " +
         "may re-run when compute is next started.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
