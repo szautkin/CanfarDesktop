@@ -4739,6 +4739,24 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Cutout_NoneForObservation" xml:space="preserve">
     <value>Le CADC ne peut découper aucun des fichiers de cette observation, et aucun n'est sur cet ordinateur.</value>
   </data>
+  <data name="Cutout_CheckNoExtensions" xml:space="preserve">
+    <value>Cette façon de découper ne peut pas choisir parmi les images du fichier ; elle garde toutes celles sur lesquelles tombe la zone.</value>
+  </data>
+  <data name="Cutout_CheckExtensionUnknown" xml:space="preserve">
+    <value>Ce fichier n'a pas d'image {0} ; il a {1}.</value>
+  </data>
+  <data name="Cutout_LocalOnNoChosenImage" xml:space="preserve">
+    <value>Cette zone ne tombe sur aucune des images choisies.</value>
+  </data>
+  <data name="Cutout_Extensions" xml:space="preserve">
+    <value>Images</value>
+  </data>
+  <data name="Cutout_ExtensionsHint" xml:space="preserve">
+    <value>Décochez une image pour la laisser de côté. Cochée, une image est découpée si la zone tombe dessus.</value>
+  </data>
+  <data name="Cutout_ExtensionMissed" xml:space="preserve">
+    <value>[{0}] — la zone n'est pas dessus</value>
+  </data>
   <data name="Cutout_NoneForFileLocal" xml:space="preserve">
     <value>Le CADC ne peut pas découper ce fichier, et la copie sur cet ordinateur ne peut pas l'être : {0}</value>
   </data>

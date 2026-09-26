@@ -44,6 +44,13 @@ public interface ICutoutFile
     /// HST image — when there is more than one; empty otherwise. The footprint is their outline together.
     /// </summary>
     IReadOnlyList<SkyRegion> Parts => [];
+
+    /// <summary>
+    /// The images a cut can choose among, by name ("SCI,1"), in the order of <see cref="Parts"/>; empty
+    /// when there is no choice to make — one image, or a way of cutting that keeps every image the region
+    /// falls on, as CADC's does.
+    /// </summary>
+    IReadOnlyList<string> Extensions => [];
 }
 
 /// <summary>What follows from what a file can be cut by.</summary>

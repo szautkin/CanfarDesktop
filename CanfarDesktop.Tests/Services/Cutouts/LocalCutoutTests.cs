@@ -318,6 +318,51 @@ public class LocalCutoutTests : IDisposable
         Assert.NotNull(parsed[1].ImageData);
     }
 
+    /// <summary>The images to keep, chosen: only those are cut; the rest are named as left out.</summary>
+    [Fact]
+    public void ChosenImages_AreTheOnlyOnesCut()
+    {
+        var source = Source(HstLike(gapPixels: 20));
+        Assert.Equal(new[] { "SCI,1", "ERR,1", "SCI,2", "ERR,2" }, source.File.Extensions);
+
+        var spec = CircleAt(source, 25, 20, 5) with { Extensions = ["SCI,1"] };
+        Assert.True(source.Check(spec).IsValid);
+        var (cut, _) = Cut(source, spec);
+
+        var hdus = Layout(cut);
+        Assert.Equal(2, hdus.Count);
+        Assert.Equal("SCI,1", hdus[1].Id);
+        Assert.Equal(1, hdus[0].Header.GetInt("NEXTEND"));
+        Assert.Contains("[ERR,1]", string.Concat(hdus[0].RawCards));
+    }
+
+    [Fact]
+    public void AnImageTheFileDoesNotHave_IsRefusedWithTheOnesItHas()
+    {
+        var source = Source(HstLike(gapPixels: 20));
+        var error = Assert.Single(source.Check(CircleAt(source, 25, 20, 5) with { Extensions = ["DQ,1"] }).Errors);
+        Assert.Contains("no image DQ,1", error);
+        Assert.Contains("SCI,1, ERR,1, SCI,2, ERR,2", error);
+    }
+
+    /// <summary>A region on chip 1 with only chip 2 chosen is on none of the chosen — said so, not "on none of the file's".</summary>
+    [Fact]
+    public void ARegionOnNoneOfTheChosenImages_SaysSo()
+    {
+        var source = Source(HstLike(gapPixels: 20));
+        Assert.Contains("none of the images chosen",
+            Assert.Single(source.Check(CircleAt(source, 25, 20, 5) with { Extensions = ["SCI,2", "ERR,2"] }).Errors));
+    }
+
+    /// <summary>A single image offers no choice; CADC's cut offers none either — asking for one is refused, not ignored.</summary>
+    [Fact]
+    public void AChoiceWhereThereIsNone_IsRefused()
+    {
+        var single = Source(SingleImage(-32, 60, 40));
+        Assert.Empty(single.File.Extensions);
+        Assert.Contains("cannot choose", Assert.Single(single.Check(CircleAt(single, 30, 20, 4) with { Extensions = ["0"] }).Errors));
+    }
+
     /// <summary>A primary image with a table after it: the image is cut, and its header no longer counts the table.</summary>
     [Fact]
     public void APrimaryImageCut_CountsOnlyTheExtensionsCutWithIt()

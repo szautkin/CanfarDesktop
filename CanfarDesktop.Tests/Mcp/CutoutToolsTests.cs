@@ -177,6 +177,17 @@ public class CutoutToolsTests
         Assert.Contains("no cutout service", Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason).Description);
     }
 
+    /// <summary>CADC's cut cannot choose images; asked to, the agent is told so rather than sent everything.</summary>
+    [Fact]
+    public async Task ChoosingImages_OfACadcCut_IsRefused()
+    {
+        var (ctx, _) = Context();
+        var result = await Tool(MegaPipe()).InvokeAsync(Args(
+            """{"publisherId":"ivo://cadc/MP","circle":{"ra":10.68,"dec":41.27,"radius":0.05},"extensions":["1"]}"""), ctx, default);
+
+        Assert.Contains("cannot choose", Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason).Description);
+    }
+
     [Fact]
     public async Task ALocalCut_IsProposedAsOne()
     {

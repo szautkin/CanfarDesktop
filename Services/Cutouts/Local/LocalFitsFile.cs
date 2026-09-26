@@ -42,6 +42,7 @@ public sealed class LocalFitsFile : ICutoutFile
             : bands.Count > 0 ? new HashSet<string> { "CIRCLE", "POLYGON", "BAND" }
             : new HashSet<string> { "CIRCLE", "POLYGON" };
         Parts = images.Count > 1 ? images.Select(i => i.Footprint).ToList() : [];
+        Extensions = images.Count > 1 ? images.Select(i => i.Hdu.Id).ToList() : [];
         Footprint = images.Count switch
         {
             0 => null,
@@ -80,6 +81,7 @@ public sealed class LocalFitsFile : ICutoutFile
     public IReadOnlyList<string> PolStates => [];
     public IReadOnlySet<string> Parameters { get; }
     public IReadOnlyList<SkyRegion> Parts { get; }
+    public IReadOnlyList<string> Extensions { get; }
 
     /// <summary>
     /// Read a file's headers — through the same unwrapping the FITS viewer uses, so a .fits.gz or a tar

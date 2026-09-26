@@ -70,6 +70,16 @@ public static class CutoutRules
                     unknown, string.Join(", ", file.PolStates)));
         }
 
+        if (spec.Extensions.Count > 0)
+        {
+            if (file.Extensions.Count == 0)
+                errors.Add(T("Cutout_CheckNoExtensions",
+                    "This way of cutting cannot choose among the file's images; it keeps every image the region falls on."));
+            else if (spec.Extensions.FirstOrDefault(e => !file.Extensions.Contains(e)) is { } unknown)
+                errors.Add(string.Format(T("Cutout_CheckExtensionUnknown", "This file has no image {0}; it has {1}."),
+                    unknown, string.Join(", ", file.Extensions)));
+        }
+
         return new CutoutCheck(errors, warnings);
     }
 

@@ -48,6 +48,7 @@ public sealed class LocalCutPlan
         var cuts = new List<ImageCut>();
         foreach (var image in file.Images)
         {
+            if (spec.Extensions.Count > 0 && !spec.Extensions.Contains(image.Hdu.Id)) continue; // not chosen
             if (BoxOn(image, spec.Region) is not { } box) continue;
             (long Start, long Count)? planes = null;
             if (banded && (planes = image.Spectral?.PlanesWithin(spec.BandMin, spec.BandMax)) is null) continue;
@@ -68,7 +69,7 @@ public sealed class LocalCutPlan
             var left = file.Hdus.Skip(1).Where(h => !cutIndices.Contains(h.Index)).Select(h => h.Label).ToList();
             var dataless = file.Hdus.Count > 0 && file.Hdus[0].DataBytes == 0 ? file.Hdus[0] : null;
             var history = new List<string> { $"Cut out by Verbinal on {when} from {file.FileName}: {cuts.Count} of its images." };
-            if (left.Count > 0) history.Add($"Left out (not images, or the region is not on them): {string.Join(" ", left)}");
+            if (left.Count > 0) history.Add($"Left out (not images, not chosen, or the region is not on them): {string.Join(" ", left)}");
             history.Add(region);
             hdus.Add(new CutoutHdu(CutoutHeader.ForPrimary(dataless, cuts.Count, history), null));
         }

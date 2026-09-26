@@ -4739,6 +4739,24 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Cutout_NoneForObservation" xml:space="preserve">
     <value>CADC cannot cut any of this observation's files, and none of them is on this computer.</value>
   </data>
+  <data name="Cutout_CheckNoExtensions" xml:space="preserve">
+    <value>This way of cutting cannot choose among the file's images; it keeps every image the region falls on.</value>
+  </data>
+  <data name="Cutout_CheckExtensionUnknown" xml:space="preserve">
+    <value>This file has no image {0}; it has {1}.</value>
+  </data>
+  <data name="Cutout_LocalOnNoChosenImage" xml:space="preserve">
+    <value>That region falls on none of the images chosen.</value>
+  </data>
+  <data name="Cutout_Extensions" xml:space="preserve">
+    <value>Images</value>
+  </data>
+  <data name="Cutout_ExtensionsHint" xml:space="preserve">
+    <value>Untick an image to leave it out. Ticked, an image is cut when the region falls on it.</value>
+  </data>
+  <data name="Cutout_ExtensionMissed" xml:space="preserve">
+    <value>[{0}] — the region is not on it</value>
+  </data>
   <data name="Cutout_NoneForFileLocal" xml:space="preserve">
     <value>CADC cannot cut this file, and the copy on this computer cannot be cut: {0}</value>
   </data>

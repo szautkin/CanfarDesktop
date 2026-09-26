@@ -29,6 +29,9 @@ public sealed record CutoutArgs
     /// <summary>Who cuts it: Soda (on CADC's side) or Local (from the file on this computer); the best available when left out.</summary>
     public CutoutMethod? CutBy { get; init; }
 
+    /// <summary>Which images of a multi-extension file to keep ("SCI,1"); every image the region falls on when left out.</summary>
+    public IReadOnlyList<string>? Extensions { get; init; }
+
     public sealed record CircleArg { public double Ra { get; init; } public double Dec { get; init; } public double Radius { get; init; } }
     public sealed record BoxArg { public double Ra { get; init; } public double Dec { get; init; } public double Width { get; init; } public double Height { get; init; } }
 
@@ -42,6 +45,7 @@ public sealed record CutoutArgs
         "polygon":{"type":"array","description":"Corners as [ra, dec] pairs in degrees, at least three.","items":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2}},
         "bandMin":{"type":"number","description":"Shortest wavelength to keep, METRES (5e-7 is 500 nm). Only for files that can be cut by wavelength."},
         "bandMax":{"type":"number","description":"Longest wavelength to keep, metres."},
+        "extensions":{"type":"array","items":{"type":"string"},"description":"Which images of a multi-extension file to keep, by the names get_cutout_options lists (e.g. \"SCI,1\", \"ERR,1\"); left out, every image the region falls on. Only a local cut can choose."},
         "cutBy":{"type":"string","enum":["soda","local"],"description":"Who cuts it: 'soda' on CADC's side (only the part is downloaded), or 'local' from the observation's file already on this computer (instant, offline; the only way for files CADC will not cut, such as its HST mirror's). Left out: local when the file is here and can be cut, else soda."}
         """;
 
@@ -63,7 +67,7 @@ public sealed record CutoutArgs
 
     /// <summary>The cutout these arguments ask of <paramref name="source"/>: its file, cut its way.</summary>
     public CutoutSpec ToSpec(ICutoutSource source)
-        => source.Bind(new CutoutSpec { Region = Region(), BandMin = BandMin, BandMax = BandMax });
+        => source.Bind(new CutoutSpec { Region = Region(), BandMin = BandMin, BandMax = BandMax, Extensions = Extensions ?? [] });
 
     /// <summary>
     /// The file meant, and the way of cutting it: the file named, or the only one that can be cut; the
@@ -111,6 +115,7 @@ public sealed record CutoutFileOption(
     CutoutMethod CutBy,
     string? Unavailable,
     IReadOnlyList<string> Parameters,
+    IReadOnlyList<string> Extensions,
     SkyRegion? Footprint,
     SkyRegion? BoundingCircle,
     double? BandMinMetres,
@@ -133,7 +138,7 @@ public sealed record CutoutOptions(string PublisherId, IReadOnlyList<CutoutFileO
         {
             var f = source.File;
             var suggested = source.Suggest(hints);
-            return new CutoutFileOption(f.ArtifactId, f.FileName, source.Method, source.Unavailable, f.Parameters.Order().ToList(),
+            return new CutoutFileOption(f.ArtifactId, f.FileName, source.Method, source.Unavailable, f.Parameters.Order().ToList(), f.Extensions,
                 f.Footprint, f.BoundingCircle, f.BandMin, f.BandMax, source.WholeFileBytes,
                 suggested, suggested.Summary, source.EstimateBytes(suggested));
         }).ToList();
@@ -159,7 +164,7 @@ public sealed class GetCutoutOptionsTool : JsonReadTool<GetCutoutOptionsTool.Arg
         "file already on this computer: instant, offline, repeatable, and the only way for files CADC will not " +
         "cut, such as its HST mirror's. For each: the parameters it takes (CIRCLE, POLYGON, BAND …), the " +
         "file's footprint and wavelength range, its full size, why it cannot be cut this way when it cannot " +
-        "(unavailable), and the cutout the editor would suggest, from the last search's target and wavelengths " +
+        "(unavailable), the images of a multi-extension file a local cut can choose among (extensions), and the cutout the editor would suggest, from the last search's target and wavelengths " +
         "when they fall on the file, with its size (estimated for Soda, exact for Local). Read this before download_cutout.",
         """{"type":"object","properties":{"publisherId":{"type":"string"}},"required":["publisherId"],"additionalProperties":false}""");
 

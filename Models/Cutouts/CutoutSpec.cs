@@ -30,6 +30,13 @@ public sealed record CutoutSpec
     public IReadOnlyList<string> Pol { get; init; } = [];
 
     /// <summary>
+    /// Which of a multi-extension file's images to keep, by name ("SCI,1", "ccd07", or an index when
+    /// they have none); empty for every image the region falls on — what a cut did before there was a
+    /// choice, and what CADC's cut does.
+    /// </summary>
+    public IReadOnlyList<string> Extensions { get; init; } = [];
+
+    /// <summary>
     /// Who cuts it: CADC's SODA service (the default, and what every record saved before there was a
     /// choice was), or this computer, from the complete file already downloaded.
     /// </summary>
@@ -60,6 +67,7 @@ public sealed record CutoutSpec
                 Num(BandMin), Num(BandMax), Num(TimeMin), Num(TimeMax),
                 string.Join(',', Pol));
             if (CutBy != CutoutMethod.Soda) canonical += "|" + CutBy.ToString().ToLowerInvariant();
+            if (Extensions.Count > 0) canonical += "|ext:" + string.Join(';', Extensions);
             var hash = SHA256.HashData(Encoding.UTF8.GetBytes(canonical));
             return Convert.ToHexString(hash, 0, 4).ToLowerInvariant();
         }
@@ -80,6 +88,7 @@ public sealed record CutoutSpec
             if (TimeMin is not null || TimeMax is not null)
                 parts.Add($"{Caom2Format.MjdToDate(TimeMin)} – {Caom2Format.MjdToDate(TimeMax)}");
             if (Pol.Count > 0) parts.Add(string.Join(", ", Pol));
+            if (Extensions.Count > 0) parts.Add(string.Join(" ", Extensions.Select(e => $"[{e}]")));
             return string.Join(" · ", parts);
         }
     }

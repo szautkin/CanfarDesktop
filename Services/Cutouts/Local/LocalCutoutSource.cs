@@ -28,10 +28,12 @@ public sealed class LocalCutoutSource(LocalFitsFile file) : ICutoutSource
         var check = CutoutRules.Check(file, spec);
         if (!check.IsValid) return check;
 
-        // The outline of a mosaic's CCDs holds its gaps too: a region can be inside it and on no CCD.
-        return LocalCutPlan.For(file, spec).IsEmpty
-            ? check.With([CutoutRules.T("Cutout_LocalOnNoImage", "That region falls on none of this file's images.")], [])
-            : check;
+        // The outline of a mosaic's CCDs holds its gaps too: a region can be inside it and on no CCD —
+        // or on some, just not the ones chosen.
+        if (!LocalCutPlan.For(file, spec).IsEmpty) return check;
+        return check.With([spec.Extensions.Count > 0 && !LocalCutPlan.For(file, spec with { Extensions = [] }).IsEmpty
+            ? CutoutRules.T("Cutout_LocalOnNoChosenImage", "That region falls on none of the images chosen.")
+            : CutoutRules.T("Cutout_LocalOnNoImage", "That region falls on none of this file's images.")], []);
     }
 
     /// <summary>Exact, not estimated: the plan knows every byte it will write.</summary>

@@ -11,16 +11,19 @@ namespace CanfarDesktop.Services.Fits;
 /// <param name="DataBytes">The data's length before the padding to a whole block.</param>
 public sealed record FitsHduLayout(int Index, FitsHeader Header, IReadOnlyList<string> RawCards, long DataStart, long DataBytes)
 {
-    /// <summary>"[SCI,1]", "[2]" — how the FITS world names an extension; "[0]" for the primary.</summary>
-    public string Label
+    /// <summary>"SCI,1", "ccd07", "2" — how the FITS world names an extension: EXTNAME and EXTVER, or its index.</summary>
+    public string Id
     {
         get
         {
-            var name = Header.GetString("EXTNAME");
-            if (string.IsNullOrWhiteSpace(name)) return $"[{Index}]";
-            return Header.Contains("EXTVER") ? $"[{name},{Header.GetInt("EXTVER")}]" : $"[{name}]";
+            var name = Header.GetString("EXTNAME")?.Trim();
+            if (string.IsNullOrEmpty(name)) return Index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return Header.Contains("EXTVER") ? $"{name},{Header.GetInt("EXTVER")}" : name;
         }
     }
+
+    /// <summary>"[SCI,1]", "[2]" — the name in brackets, as a file name with an extension is written; "[0]" for the primary.</summary>
+    public string Label => $"[{Id}]";
 }
 
 /// <summary>

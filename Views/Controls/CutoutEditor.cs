@@ -55,6 +55,7 @@ public sealed class CutoutEditor : UserControl
     private readonly TextBox? _bandMax;
     private readonly ComboBox? _bandUnit;
     private readonly StackPanel? _band;
+    private readonly StackPanel _extensions = new() { Name = "CutoutExtensions", Spacing = 2 };
     private readonly FootprintCanvas _sky = new() { Name = "CutoutSky", IsEditable = true, Height = 220, MinWidth = 240 };
     private readonly TextBlock _errors = Caption("SystemFillColorCriticalBrush");
     private readonly TextBlock _warnings = Caption("SystemFillColorCautionBrush");
@@ -112,6 +113,7 @@ public sealed class CutoutEditor : UserControl
             _band.Children.Add(Caption("TextFillColorTertiaryBrush", Loc.T("Cutout_BandHint")));
             fields.Children.Add(_band);
         }
+        fields.Children.Add(_extensions);
 
         _sky.Target = target;
         _sky.DrawShape = _shape.SelectedIndex == 1 ? SkyShape.Box : SkyShape.Circle;
@@ -264,7 +266,65 @@ public sealed class CutoutEditor : UserControl
 
         var next = spec ?? _spec;
         if (!file.Supports("BAND")) next = next with { BandMin = null, BandMax = null };
+        if (file.Extensions.Count == 0) next = next with { Extensions = [] };
+        BuildExtensions(file);
         Apply(next, fromDrawing: false);
+    }
+
+    /// <summary>
+    /// "Images": a box for each of a multi-extension file's images, ticked to keep it — all of them at
+    /// first, which keeps every image the region falls on. Nothing when there is no choice to make.
+    /// </summary>
+    private void BuildExtensions(ICutoutFile file)
+    {
+        _extensions.Children.Clear();
+        _extensions.Visibility = file.Extensions.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        if (file.Extensions.Count <= 1) return;
+
+        _extensions.Children.Add(new TextBlock { Text = Loc.T("Cutout_Extensions"), Style = Sty("BodyStrongTextBlockStyle") });
+        foreach (var name in file.Extensions)
+        {
+            var box = new CheckBox { Tag = name, Content = $"[{name}]", MinWidth = 0 };
+            AutomationProperties.SetName(box, name);
+            box.Checked += (_, _) => FromExtensions();
+            box.Unchecked += (_, _) => FromExtensions();
+            _extensions.Children.Add(box);
+        }
+        _extensions.Children.Add(Caption("TextFillColorTertiaryBrush", Loc.T("Cutout_ExtensionsHint")));
+    }
+
+    private IEnumerable<CheckBox> ExtensionBoxes => _extensions.Children.OfType<CheckBox>();
+
+    /// <summary>The boxes as ticked, into the spec: none left out is every image, as if nothing were chosen.</summary>
+    private void FromExtensions()
+    {
+        if (_syncing) return;
+        var chosen = ExtensionBoxes.Where(b => b.IsChecked == true).Select(b => (string)b.Tag).ToList();
+        Apply(_spec with { Extensions = chosen.Count == _source.File.Extensions.Count ? [] : chosen }, fromDrawing: false);
+    }
+
+    /// <summary>The boxes as the spec has them, each saying when the region is not on its image.</summary>
+    private void ShowExtensions()
+    {
+        var file = _source.File;
+        var outline = _spec.Region is { } region && region.Problem() is null ? region.Outline() : null;
+        _syncing = true;
+        try
+        {
+            foreach (var box in ExtensionBoxes)
+            {
+                var name = (string)box.Tag;
+                box.IsChecked = _spec.Extensions.Count == 0 || _spec.Extensions.Contains(name);
+                var index = file.Extensions.ToList().IndexOf(name);
+                var missed = outline is not null && index >= 0 && index < file.Parts.Count
+                             && SkyGeometry.Overlap(outline, file.Parts[index].Outline()) == SkyOverlap.Outside;
+                box.Content = missed ? Loc.F("Cutout_ExtensionMissed", name) : $"[{name}]";
+            }
+        }
+        finally
+        {
+            _syncing = false;
+        }
     }
 
     private void Apply(CutoutSpec spec, bool fromDrawing)
@@ -272,6 +332,7 @@ public sealed class CutoutEditor : UserControl
         _spec = _source.Bind(spec);
         if (!fromDrawing) _sky.Region = _spec.Region;
         WriteFields(_spec);
+        ShowExtensions();
         Evaluate(fieldError: null);
     }
 
@@ -366,6 +427,7 @@ public sealed class CutoutEditor : UserControl
         _spec = _spec with { Region = region, BandMin = bandMin, BandMax = bandMax };
         _written = FieldText();
         _sky.Region = region;
+        ShowExtensions();
         Evaluate(fieldError: null);
     }
 

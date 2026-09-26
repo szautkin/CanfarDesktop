@@ -110,6 +110,17 @@ public class CutoutModelTests
         Assert.Equal(Spec().Summary, local.Summary); // the same region, said the same way
     }
 
+    /// <summary>Choosing images makes another product, and says which; choosing none is every image, as before.</summary>
+    [Fact]
+    public void ChosenImages_AreACutoutOfTheirOwn()
+    {
+        var chosen = Spec() with { CutBy = CutoutMethod.Local, Extensions = ["SCI,1", "ERR,1"] };
+
+        Assert.NotEqual((Spec() with { CutBy = CutoutMethod.Local }).Key, chosen.Key);
+        Assert.Equal("d63c8c7a", (Spec() with { Extensions = [] }).Key);
+        Assert.EndsWith(" · [SCI,1] [ERR,1]", chosen.Summary);
+    }
+
     /// <summary>
     /// Who cut it is saved by name, and a record saved before there was a choice reads as CADC's —
     /// which is what every one of them was.
