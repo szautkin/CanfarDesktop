@@ -93,6 +93,54 @@ public class XamlResourceTests
             "these x:Uids are shared by different kinds of element: " + string.Join("; ", mixed));
     }
 
+    /// <summary>
+    /// No name is both a string and a scope. A key "A.B" puts B inside a scope A, and MakePri refuses
+    /// the whole build when A is also a string of its own — "PRI278: 'Resources/A' or one of its parents
+    /// is defined as both resource and scope". Search_CancelButton, a dialog's button text read in code,
+    /// met Search_CancelButton.Content, a button's x:Uid. Only a Windows build runs MakePri; this catches
+    /// it wherever the tests run.
+    /// </summary>
+    [Fact]
+    public void NoNameIsBothAStringAndAScope()
+    {
+        var clashes = Directory.EnumerateFiles(RepoFiles.PathTo("Strings"), "Resources.resw", SearchOption.AllDirectories)
+            .SelectMany(resw =>
+            {
+                var names = XDocument.Load(resw).Descendants("data")
+                    .Select(d => (string?)d.Attribute("name") ?? "").ToHashSet(StringComparer.OrdinalIgnoreCase);
+                return names.SelectMany(Scopes).Where(names.Contains).Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Select(name => $"{name} in {Path.GetFileName(Path.GetDirectoryName(resw))}");
+            })
+            .ToList();
+
+        Assert.True(clashes.Count == 0,
+            "these names are both a string and the scope of other keys, which fails the Windows build " +
+            "(PRI278) — give the x:Uid a name of its own: " + string.Join("; ", clashes));
+    }
+
+    /// <summary>No name is defined twice in one language: MakePri fails the Windows build on that too.</summary>
+    [Fact]
+    public void NoNameIsDefinedTwice()
+    {
+        var twice = Directory.EnumerateFiles(RepoFiles.PathTo("Strings"), "Resources.resw", SearchOption.AllDirectories)
+            .SelectMany(resw => XDocument.Load(resw).Descendants("data")
+                .GroupBy(d => (string?)d.Attribute("name") ?? "", StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => $"{g.Key} in {Path.GetFileName(Path.GetDirectoryName(resw))}"))
+            .ToList();
+
+        Assert.True(twice.Count == 0, "defined twice: " + string.Join("; ", twice));
+    }
+
+    /// <summary>The scopes a key sits in: "A.B.C" is in A and in A.B. An attached property's "[using:…]" part is one step.</summary>
+    private static IEnumerable<string> Scopes(string name)
+    {
+        var bracket = name.IndexOf('[');
+        var plain = bracket >= 0 ? name[..bracket] : name;
+        for (var dot = plain.IndexOf('.'); dot > 0; dot = plain.IndexOf('.', dot + 1))
+            yield return plain[..dot];
+    }
+
     /// <summary>The guards above would pass by accident if the sweep found nothing to look at.</summary>
     [Fact]
     public void TheSweepReachesThePagesAndTheirTranslations()
