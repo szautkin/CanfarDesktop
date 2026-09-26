@@ -74,15 +74,8 @@ public partial class ResearchViewModel : ObservableObject
     {
         if (SelectedObservation is null) return;
 
-        try
-        {
-            if (SelectedObservation.FileExists)
-                File.Delete(SelectedObservation.LocalPath);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Delete file error: {ex.Message}");
-        }
+        if (ResearchRecords.DeleteLocalFiles(SelectedObservation) is { } why)
+            System.Diagnostics.Debug.WriteLine($"Delete file error: {why}");
 
         _store.Remove(SelectedObservation);
         SelectedObservation = null;

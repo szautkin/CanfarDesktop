@@ -45,12 +45,37 @@ public static class AtomicFile
     /// Write through a stream, atomically, on the calling thread — for a long synchronous writer (a
     /// FITS cutout, streamed row by row) that its caller already runs off the UI.
     /// </summary>
-    public static void WriteStream(string path, Action<Stream> write)
-        => Write(path, tmp =>
+    public static void WriteStream(string path, Action<Stream> write) => WriteStreams([(path, write)]);
+
+    /// <summary>
+    /// Write several files as one: each built beside its target, and none put in place until every one
+    /// is built — so a failure part-way leaves every target as it was, and every temp file gone. For a
+    /// cutout and the companions cut with it.
+    /// </summary>
+    public static void WriteStreams(IReadOnlyList<(string Path, Action<Stream> Write)> files)
+    {
+        var sameName = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        if (files.Select(f => Path.GetFullPath(f.Path)).Distinct(sameName).Count() != files.Count)
+            throw new ArgumentException("Each file is written once.", nameof(files));
+
+        var built = new List<string>();
+        try
         {
-            using var stream = File.Create(tmp);
-            write(stream);
-        });
+            foreach (var (path, write) in files)
+            {
+                var tmp = TempFor(path);
+                built.Add(tmp);
+                using var stream = File.Create(tmp);
+                write(stream);
+            }
+            for (var i = 0; i < files.Count; i++) Commit(built[i], files[i].Path);
+        }
+        catch
+        {
+            foreach (var tmp in built) Cleanup(tmp);
+            throw;
+        }
+    }
 
     /// <summary>The shared shape: build the temp file, put it over the target, clean up on failure.</summary>
     private static void Write(string path, Action<string> build)

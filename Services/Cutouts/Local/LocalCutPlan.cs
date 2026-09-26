@@ -27,6 +27,10 @@ public sealed record CutoutHdu(FitsHeaderCards Header, ImageCut? Data);
 /// touches — the SCI, ERR and DQ of the HST chips it falls on, the MegaPrime CCDs it covers — each with
 /// its own box, from its own sky coordinates. Tables, and images the region misses, are left out and
 /// named in the primary header's HISTORY.</para>
+///
+/// <para>A companion taken along — a weight map on the same pixels — is cut with this plan's boxes,
+/// not ones found again from the region on its own coordinates, so the two cutouts are pixel for
+/// pixel one.</para>
 /// </summary>
 public sealed class LocalCutPlan
 {
@@ -54,6 +58,28 @@ public sealed class LocalCutPlan
             if (banded && (planes = image.Spectral?.PlanesWithin(spec.BandMin, spec.BandMax)) is null) continue;
             cuts.Add(new ImageCut(image, box, AxesOf(image, box, planes)));
         }
+        return Of(file, cuts, spec, now, sameAs: null);
+    }
+
+    /// <summary>
+    /// What a companion taken along writes: this plan's boxes and planes — not ones found again from the
+    /// region on its own coordinates — on its images that lie on the same pixels.
+    /// </summary>
+    public LocalCutPlan ForCompanion(LocalCompanion companion, LocalFitsFile file, CutoutSpec spec, DateTime? now = null)
+        => Of(companion.File, Cuts.Select(c => c with { Image = companion.Images[c.Image.Hdu.Index] }).ToList(), spec, now,
+              sameAs: file.FileName);
+
+    /// <summary>Each companion the cutout takes along that can be cut, with what it writes.</summary>
+    public IReadOnlyList<(LocalCompanion Companion, LocalCutPlan Plan)> CompanionsOf(LocalFitsFile file, CutoutSpec spec, DateTime? now = null)
+        => spec.Companions.Distinct()
+               .Select(id => file.CompanionFiles.FirstOrDefault(c => c.ArtifactId == id && c.Unavailable is null))
+               .OfType<LocalCompanion>()
+               .Select(c => (c, ForCompanion(c, file, spec, now)))
+               .ToList();
+
+    /// <summary>The file's HDUs for these cuts; <paramref name="sameAs"/> names the file whose cutout's pixels a companion's are.</summary>
+    private static LocalCutPlan Of(LocalFitsFile file, IReadOnlyList<ImageCut> cuts, CutoutSpec spec, DateTime? now, string? sameAs)
+    {
         if (cuts.Count == 0) return new LocalCutPlan([]);
 
         var when = (now ?? DateTime.UtcNow).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -70,17 +96,17 @@ public sealed class LocalCutPlan
             var dataless = file.Hdus.Count > 0 && file.Hdus[0].DataBytes == 0 ? file.Hdus[0] : null;
             var history = new List<string> { $"Cut out by Verbinal on {when} from {file.FileName}: {cuts.Count} of its images." };
             if (left.Count > 0) history.Add($"Left out (not images, not chosen, or the region is not on them): {string.Join(" ", left)}");
+            if (sameAs is not null) history.Add($"The same pixels as the cutout of {sameAs}, cut with it.");
             history.Add(region);
             hdus.Add(new CutoutHdu(CutoutHeader.ForPrimary(dataless, cuts.Count, history), null));
         }
 
         foreach (var cut in cuts)
         {
-            var header = CutoutHeader.ForCut(cut.Image.Encoding.ImageCards(cut.Image.Hdu), cut.Axes,
-            [
-                $"Cut out by Verbinal on {when} from {file.FileName}{cut.Image.Hdu.Label}, pixels {cut.Box}{PlanesOf(cut)}.",
-                region,
-            ]);
+            List<string> history = [$"Cut out by Verbinal on {when} from {file.FileName}{cut.Image.Hdu.Label}, pixels {cut.Box}{PlanesOf(cut)}."];
+            if (sameAs is not null) history.Add($"The same pixels as the cutout of {sameAs}, cut with it.");
+            history.Add(region);
+            var header = CutoutHeader.ForCut(cut.Image.Encoding.ImageCards(cut.Image.Hdu), cut.Axes, history);
             if (cut == primaryCut)
             {
                 // Its extensions are now only the ones cut with it.

@@ -32,6 +32,9 @@ public sealed record CutoutArgs
     /// <summary>Which images of a multi-extension file to keep ("SCI,1"); every image the region falls on when left out.</summary>
     public IReadOnlyList<string>? Extensions { get; init; }
 
+    /// <summary>The observation's other files to cut with it, box for box — a weight map — by artifact id or file name.</summary>
+    public IReadOnlyList<string>? Companions { get; init; }
+
     public sealed record CircleArg { public double Ra { get; init; } public double Dec { get; init; } public double Radius { get; init; } }
     public sealed record BoxArg { public double Ra { get; init; } public double Dec { get; init; } public double Width { get; init; } public double Height { get; init; } }
 
@@ -46,6 +49,7 @@ public sealed record CutoutArgs
         "bandMin":{"type":"number","description":"Shortest wavelength to keep, METRES (5e-7 is 500 nm). Only for files that can be cut by wavelength."},
         "bandMax":{"type":"number","description":"Longest wavelength to keep, metres."},
         "extensions":{"type":"array","items":{"type":"string"},"description":"Which images of a multi-extension file to keep, by the names get_cutout_options lists (e.g. \"SCI,1\", \"ERR,1\"); left out, every image the region falls on. Only a local cut can choose."},
+        "companions":{"type":"array","items":{"type":"string"},"description":"The observation's other files to cut WITH it, with the same pixel box — a MegaPipe tile's weight map — by the artifact ids or file names get_cutout_options lists under companions. Only a local cut can take them, and only files beside the cut file on this computer, on the same pixels. Each is written beside the cutout, named by the same key."},
         "cutBy":{"type":"string","enum":["soda","local"],"description":"Who cuts it: 'soda' on CADC's side (only the part is downloaded), or 'local' from the observation's file already on this computer (instant, offline; the only way for files CADC will not cut, such as its HST mirror's). Left out: local when the file is here and can be cut, else soda."}
         """;
 
@@ -67,7 +71,18 @@ public sealed record CutoutArgs
 
     /// <summary>The cutout these arguments ask of <paramref name="source"/>: its file, cut its way.</summary>
     public CutoutSpec ToSpec(ICutoutSource source)
-        => source.Bind(new CutoutSpec { Region = Region(), BandMin = BandMin, BandMax = BandMax, Extensions = Extensions ?? [] });
+        => source.Bind(new CutoutSpec
+        {
+            Region = Region(), BandMin = BandMin, BandMax = BandMax, Extensions = Extensions ?? [],
+            // A file name is as good as its artifact id; one the file does not offer is kept, for the check to refuse by name.
+            Companions = (Companions ?? []).Select(c => source.File.Companions.FirstOrDefault(o => o.ArtifactId == c || o.FileName == c)?.ArtifactId ?? c)
+                                           .Distinct().ToList(),
+        });
+
+    /// <summary>Whether these arguments ask for anything of the cutout — else the editor opens on its own suggestion.</summary>
+    public bool AsksAnything
+        => Region() is not null || BandMin is not null || BandMax is not null
+           || Extensions is { Count: > 0 } || Companions is { Count: > 0 };
 
     /// <summary>
     /// The file meant, and the way of cutting it: the file named, or the only one that can be cut; the
@@ -116,6 +131,7 @@ public sealed record CutoutFileOption(
     string? Unavailable,
     IReadOnlyList<string> Parameters,
     IReadOnlyList<string> Extensions,
+    IReadOnlyList<CutoutCompanion> Companions,
     SkyRegion? Footprint,
     SkyRegion? BoundingCircle,
     double? BandMinMetres,
@@ -138,7 +154,7 @@ public sealed record CutoutOptions(string PublisherId, IReadOnlyList<CutoutFileO
         {
             var f = source.File;
             var suggested = source.Suggest(hints);
-            return new CutoutFileOption(f.ArtifactId, f.FileName, source.Method, source.Unavailable, f.Parameters.Order().ToList(), f.Extensions,
+            return new CutoutFileOption(f.ArtifactId, f.FileName, source.Method, source.Unavailable, f.Parameters.Order().ToList(), f.Extensions, f.Companions,
                 f.Footprint, f.BoundingCircle, f.BandMin, f.BandMax, source.WholeFileBytes,
                 suggested, suggested.Summary, source.EstimateBytes(suggested));
         }).ToList();
@@ -164,7 +180,9 @@ public sealed class GetCutoutOptionsTool : JsonReadTool<GetCutoutOptionsTool.Arg
         "file already on this computer: instant, offline, repeatable, and the only way for files CADC will not " +
         "cut, such as its HST mirror's. For each: the parameters it takes (CIRCLE, POLYGON, BAND …), the " +
         "file's footprint and wavelength range, its full size, why it cannot be cut this way when it cannot " +
-        "(unavailable), the images of a multi-extension file a local cut can choose among (extensions), and the cutout the editor would suggest, from the last search's target and wavelengths " +
+        "(unavailable), the images of a multi-extension file a local cut can choose among (extensions), the observation's " +
+        "other files beside it on the same pixels that a local cut can take along — a weight map — each with why not when it " +
+        "cannot (companions), and the cutout the editor would suggest, from the last search's target and wavelengths " +
         "when they fall on the file, with its size (estimated for Soda, exact for Local). Read this before download_cutout.",
         """{"type":"object","properties":{"publisherId":{"type":"string"}},"required":["publisherId"],"additionalProperties":false}""");
 
@@ -202,7 +220,8 @@ public sealed class DownloadCutoutTool : JsonWriteTool<CutoutArgs>
         "cutout of the observation, never as the whole of it: cut on CADC's side by its SODA service " +
         "(cutBy 'soda'), or on this computer from the observation's file already downloaded (cutBy 'local'); " +
         "left out, locally when that file is here and can be cut, else by CADC. Give one region (circle, box " +
-        "or polygon, degrees) and, for a cube, optionally bandMin/bandMax in metres. It is checked against the " +
+        "or polygon, degrees) and, for a cube, optionally bandMin/bandMax in metres; a local cut can also take its " +
+        "companions (a weight map) with the same pixel box. It is checked against the " +
         "file before it is queued: a region off the file is refused with the reason. Use get_cutout_options " +
         "first for the file's limits and a suggestion. Queues for the user under their auto-apply setting; " +
         "progress shows in the status bar.",

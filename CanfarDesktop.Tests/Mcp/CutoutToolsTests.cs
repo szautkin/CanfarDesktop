@@ -198,6 +198,51 @@ public class CutoutToolsTests
         Assert.StartsWith("Cut out locally of ivo://cadc/MP: r ", Assert.IsType<ProposedResult>(result).Proposal.Summary);
     }
 
+    /// <summary>CADC cuts one file at a time: asked to take a weight map along, it says none can be.</summary>
+    [Fact]
+    public async Task CadcsCut_CannotTakeCompanions()
+    {
+        var (ctx, _) = Context();
+        var result = await Tool(MegaPipe()).InvokeAsync(Args(
+            """{"publisherId":"ivo://cadc/MP","circle":{"ra":10.68,"dec":41.27,"radius":0.05},"companions":["x.weight.fits.fz"]}"""), ctx, default);
+
+        Assert.Contains("None of the observation's other files can be cut with this one",
+            Assert.IsType<InvalidArgument>(Assert.IsType<FailedResult>(result).Reason).Description);
+    }
+
+    /// <summary>A companion named by its file name is the one the file offers, and is saved by its artifact id.</summary>
+    [Fact]
+    public async Task ALocalCut_TakesACompanion_NamedByItsFileName()
+    {
+        var weight = new CutoutCompanion("cadc:CFHTSG/tile.weight.fits.fz", "tile.weight.fits.fz");
+        var local = new OnThisComputer(new WithCompanion(MegaPipe(), weight));
+        var (ctx, _) = Context();
+        var result = await ToolOver(local).InvokeAsync(Args(
+            """{"publisherId":"ivo://cadc/MP","circle":{"ra":10.68,"dec":41.27,"radius":0.05},"companions":["tile.weight.fits.fz"]}"""), ctx, default);
+
+        var proposal = Assert.IsType<ProposedResult>(result).Proposal;
+        var payload = JsonSerializer.Deserialize<DownloadCutoutPayload>(proposal.Payload, McpJson.Options)!;
+        Assert.Equal(new[] { weight.ArtifactId }, payload.Spec.Companions);
+        Assert.EndsWith("+ tile.weight.fits.fz", proposal.Summary);
+        Assert.Equal(new[] { weight }, CutoutOptions.From("ivo://cadc/MP", [local], null).Files[0].Companions);
+    }
+
+    /// <summary>A file as it is, with a companion beside it.</summary>
+    private sealed class WithCompanion(ICutoutFile file, CutoutCompanion companion) : ICutoutFile
+    {
+        public string ArtifactId => file.ArtifactId;
+        public string FileName => file.FileName;
+        public SkyRegion? Footprint => file.Footprint;
+        public SkyRegion? BoundingCircle => file.BoundingCircle;
+        public double? BandMin => file.BandMin;
+        public double? BandMax => file.BandMax;
+        public double? TimeMin => file.TimeMin;
+        public double? TimeMax => file.TimeMax;
+        public IReadOnlyList<string> PolStates => file.PolStates;
+        public IReadOnlySet<string> Parameters => file.Parameters;
+        public IReadOnlyList<CutoutCompanion> Companions => [companion];
+    }
+
     /// <summary>The options list each way a file can be cut, and why one cannot.</summary>
     [Fact]
     public void TheOptions_ListEachWay_AndWhyOneCannot()

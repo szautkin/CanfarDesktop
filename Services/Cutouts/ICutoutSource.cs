@@ -33,7 +33,7 @@ public interface ICutoutSource
     /// </summary>
     CutoutCheck Check(CutoutSpec spec);
 
-    /// <summary>About how many bytes the cutout will be; null when there is nothing to go on.</summary>
+    /// <summary>About how many bytes the cutout will be, with the companions it takes along; null when there is nothing to go on.</summary>
     long? EstimateBytes(CutoutSpec spec);
 }
 

@@ -51,6 +51,13 @@ public interface ICutoutFile
     /// falls on, as CADC's does.
     /// </summary>
     IReadOnlyList<string> Extensions => [];
+
+    /// <summary>
+    /// The observation's other files a cut can take along with the same box — a weight map on the same
+    /// pixels, beside the file — each with why it cannot be, when it cannot; empty when there are none,
+    /// or when a way of cutting cannot take any, as CADC's cannot.
+    /// </summary>
+    IReadOnlyList<CutoutCompanion> Companions => [];
 }
 
 /// <summary>What follows from what a file can be cut by.</summary>

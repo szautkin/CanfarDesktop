@@ -137,6 +137,7 @@
     <Compile Include="..\Services\Cutouts\CutoutCandidates.cs" Link="Linked\Cutouts\CutoutCandidates.cs" />
     <Compile Include="..\Models\Cutouts\CutoutMethod.cs" Link="Linked\Cutouts\CutoutMethod.cs" />
     <Compile Include="..\Models\Cutouts\ICutoutFile.cs" Link="Linked\Cutouts\ICutoutFile.cs" />
+    <Compile Include="..\Models\Cutouts\CutoutCompanion.cs" Link="Linked\Cutouts\CutoutCompanion.cs" />
     <Compile Include="..\Services\Cutouts\CutoutRules.cs" Link="Linked\Cutouts\CutoutRules.cs" />
     <Compile Include="..\Services\Cutouts\ICutoutSource.cs" Link="Linked\Cutouts\ICutoutSource.cs" />
     <Compile Include="..\Services\Cutouts\ICutoutMaker.cs" Link="Linked\Cutouts\ICutoutMaker.cs" />
@@ -149,6 +150,7 @@
     <Compile Include="..\Services\Cutouts\Local\LocalFitsFile.cs" Link="Linked\Cutouts\LocalFitsFile.cs" />
     <Compile Include="..\Services\Cutouts\Local\CutoutHeader.cs" Link="Linked\Cutouts\CutoutHeader.cs" />
     <Compile Include="..\Services\Cutouts\Local\LocalCutPlan.cs" Link="Linked\Cutouts\LocalCutPlan.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalCompanions.cs" Link="Linked\Cutouts\LocalCompanions.cs" />
     <Compile Include="..\Services\Cutouts\Local\FitsCutter.cs" Link="Linked\Cutouts\FitsCutter.cs" />
     <Compile Include="..\Services\Cutouts\Local\LocalCutoutSource.cs" Link="Linked\Cutouts\LocalCutoutSource.cs" />
     <Compile Include="..\Services\Cutouts\Local\LocalCopies.cs" Link="Linked\Cutouts\LocalCopies.cs" />

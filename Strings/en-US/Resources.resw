@@ -4805,6 +4805,30 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Cutout_ExtensionMissed" xml:space="preserve">
     <value>[{0}] — the region is not on it</value>
   </data>
+  <data name="Cutout_Companions" xml:space="preserve">
+    <value>Also cut</value>
+  </data>
+  <data name="Cutout_CompanionsHint" xml:space="preserve">
+    <value>The observation's other files beside this one, on the same pixels: each is cut with the same pixel box, into a file beside the cutout named by the same key.</value>
+  </data>
+  <data name="Cutout_EstimateCompanions" xml:space="preserve">
+    <value>Its companions: {0} more.</value>
+  </data>
+  <data name="Cutout_CheckNoCompanions" xml:space="preserve">
+    <value>None of the observation's other files can be cut with this one: a cut on this computer takes those beside the file, on the same pixels.</value>
+  </data>
+  <data name="Cutout_CheckCompanionUnknown" xml:space="preserve">
+    <value>{0} is not beside this file on this computer, so it cannot be cut with it.</value>
+  </data>
+  <data name="Cutout_CheckCompanionUnavailable" xml:space="preserve">
+    <value>{0} cannot be cut with this file: {1}</value>
+  </data>
+  <data name="Cutout_CompanionNoImage" xml:space="preserve">
+    <value>It has no image {0}, as the file cut has.</value>
+  </data>
+  <data name="Cutout_CompanionOtherGrid" xml:space="preserve">
+    <value>Its image {0} is not on the same pixels as the file cut, so the same box would not be the same sky.</value>
+  </data>
   <data name="Cutout_NoneForFileLocal" xml:space="preserve">
     <value>CADC cannot cut this file, and the copy on this computer cannot be cut: {0}</value>
   </data>

@@ -21,13 +21,15 @@ public static class CutoutSources
 
     /// <summary>
     /// The observation's file on this computer, as a way of cutting — tied to whichever of
-    /// <paramref name="artifactIds"/> it is — or null when Research has none of it here. Reads the
-    /// file's headers: run it off the UI.
+    /// <paramref name="artifactIds"/> it is, with those of the rest beside it that can be cut with it —
+    /// or null when Research has none of it here. Reads the files' headers: run it off the UI.
     /// </summary>
     public static LocalCutoutSource? Local(IEnumerable<DownloadedObservation> records, string publisherId, IEnumerable<string> artifactIds)
-        => LocalCopies.CompleteFile(records, publisherId) is { } record
-            ? new LocalCutoutSource(LocalFitsFile.Inspect(record.LocalPath, LocalCopies.ArtifactOf(record, artifactIds)))
-            : null;
+    {
+        if (LocalCopies.CompleteFile(records, publisherId) is not { } record) return null;
+        var ids = artifactIds.ToList();
+        return new LocalCutoutSource(LocalFitsFile.Inspect(record.LocalPath, LocalCopies.ArtifactOf(record, ids), ids));
+    }
 
     /// <summary>Every archive file an observation has, by its CAOM2 URI.</summary>
     public static IEnumerable<string> ArtifactIds(CAOM2Observation? observation)

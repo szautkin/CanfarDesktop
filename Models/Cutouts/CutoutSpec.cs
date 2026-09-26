@@ -37,6 +37,14 @@ public sealed record CutoutSpec
     public IReadOnlyList<string> Extensions { get; init; } = [];
 
     /// <summary>
+    /// The observation's other files cut with it, box for box, by artifact id — the weight map of a
+    /// MegaPipe tile. Not part of <see cref="Key"/>: the cutout is the same cutout with its weight map or
+    /// without, and each companion's own cutout is named by the same key
+    /// (<see cref="CompanionPath"/>), so the pair can be told as a pair.
+    /// </summary>
+    public IReadOnlyList<string> Companions { get; init; } = [];
+
+    /// <summary>
     /// Who cuts it: CADC's SODA service (the default, and what every record saved before there was a
     /// choice was), or this computer, from the complete file already downloaded.
     /// </summary>
@@ -89,6 +97,7 @@ public sealed record CutoutSpec
                 parts.Add($"{Caom2Format.MjdToDate(TimeMin)} – {Caom2Format.MjdToDate(TimeMax)}");
             if (Pol.Count > 0) parts.Add(string.Join(", ", Pol));
             if (Extensions.Count > 0) parts.Add(string.Join(" ", Extensions.Select(e => $"[{e}]")));
+            if (Companions.Count > 0) parts.Add("+ " + string.Join(", ", Companions.Select(Caom2Format.ArtifactFileName)));
             return string.Join(" · ", parts);
         }
     }
@@ -109,6 +118,19 @@ public sealed record CutoutSpec
         if (stem.EndsWith(".fits", StringComparison.OrdinalIgnoreCase)) stem = stem[..^".fits".Length];
         return stem.Length == 0 ? $"cutout-{Key}.fits" : $"{stem}.cutout-{Key}.fits";
     }
+
+    /// <summary>
+    /// Where a companion's cutout goes: beside the cutout, named from the companion's own file and this
+    /// cutout's key — "….R.weight.cutout-1a2b3c4d.fits" beside "….R.cutout-1a2b3c4d.fits" — so a record
+    /// finds its companions' files again from itself alone.
+    /// </summary>
+    public string CompanionPath(string cutoutPath, string companionArtifactId)
+        => Path.Combine(Path.GetDirectoryName(cutoutPath) ?? string.Empty,
+                        FileNameFor(Caom2Format.ArtifactFileName(companionArtifactId)));
+
+    /// <summary>Where every companion's cutout goes, beside the cutout at <paramref name="cutoutPath"/>.</summary>
+    public IEnumerable<string> CompanionPaths(string cutoutPath)
+        => Companions.Distinct().Select(id => CompanionPath(cutoutPath, id));
 
     private static string Num(double? v) => v?.ToString("R", CultureInfo.InvariantCulture) ?? "";
 }

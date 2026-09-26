@@ -4805,6 +4805,30 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Cutout_ExtensionMissed" xml:space="preserve">
     <value>[{0}] — la zone n'est pas dessus</value>
   </data>
+  <data name="Cutout_Companions" xml:space="preserve">
+    <value>Découper aussi</value>
+  </data>
+  <data name="Cutout_CompanionsHint" xml:space="preserve">
+    <value>Les autres fichiers de l'observation à côté de celui-ci, sur les mêmes pixels : chacun est découpé avec la même boîte de pixels, dans un fichier à côté de la découpe, nommé par la même clé.</value>
+  </data>
+  <data name="Cutout_EstimateCompanions" xml:space="preserve">
+    <value>Ses compagnons : {0} de plus.</value>
+  </data>
+  <data name="Cutout_CheckNoCompanions" xml:space="preserve">
+    <value>Aucun des autres fichiers de l'observation ne peut être découpé avec celui-ci : une découpe sur cet ordinateur prend ceux qui sont à côté du fichier, sur les mêmes pixels.</value>
+  </data>
+  <data name="Cutout_CheckCompanionUnknown" xml:space="preserve">
+    <value>{0} n'est pas à côté de ce fichier sur cet ordinateur ; il ne peut donc pas être découpé avec lui.</value>
+  </data>
+  <data name="Cutout_CheckCompanionUnavailable" xml:space="preserve">
+    <value>{0} ne peut pas être découpé avec ce fichier : {1}</value>
+  </data>
+  <data name="Cutout_CompanionNoImage" xml:space="preserve">
+    <value>Il n'a pas d'image {0}, comme en a le fichier découpé.</value>
+  </data>
+  <data name="Cutout_CompanionOtherGrid" xml:space="preserve">
+    <value>Son image {0} n'est pas sur les mêmes pixels que le fichier découpé : la même boîte ne serait pas le même ciel.</value>
+  </data>
   <data name="Cutout_NoneForFileLocal" xml:space="preserve">
     <value>Le CADC ne peut pas découper ce fichier, et la copie sur cet ordinateur ne peut pas l'être : {0}</value>
   </data>

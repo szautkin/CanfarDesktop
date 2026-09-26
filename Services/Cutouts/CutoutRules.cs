@@ -80,6 +80,9 @@ public static class CutoutRules
                     unknown, string.Join(", ", file.Extensions)));
         }
 
+        if (spec.Companions.Count > 0)
+            CheckCompanions(file, spec.Companions, errors);
+
         return new CutoutCheck(errors, warnings);
     }
 
@@ -117,6 +120,25 @@ public static class CutoutRules
             case SkyOverlap.Partial:
                 warnings.Add(T("Cutout_CheckPartial", "Part of that region is outside the footprint; the cutout will be trimmed to it."));
                 break;
+        }
+    }
+
+    private static void CheckCompanions(ICutoutFile file, IReadOnlyList<string> companions, List<string> errors)
+    {
+        if (file.Companions.Count == 0)
+        {
+            errors.Add(T("Cutout_CheckNoCompanions",
+                "None of the observation's other files can be cut with this one: a cut on this computer takes those beside the file, on the same pixels."));
+            return;
+        }
+        foreach (var id in companions.Distinct())
+        {
+            if (file.Companions.FirstOrDefault(c => c.ArtifactId == id) is not { } companion)
+                errors.Add(string.Format(T("Cutout_CheckCompanionUnknown",
+                    "{0} is not beside this file on this computer, so it cannot be cut with it."), Caom2Format.ArtifactFileName(id)));
+            else if (companion.Unavailable is { } why)
+                errors.Add(string.Format(T("Cutout_CheckCompanionUnavailable", "{0} cannot be cut with this file: {1}"),
+                    companion.FileName, why));
         }
     }
 

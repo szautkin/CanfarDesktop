@@ -56,6 +56,7 @@ public sealed class CutoutEditor : UserControl
     private readonly ComboBox? _bandUnit;
     private readonly StackPanel? _band;
     private readonly StackPanel _extensions = new() { Name = "CutoutExtensions", Spacing = 2 };
+    private readonly StackPanel _companions = new() { Name = "CutoutCompanions", Spacing = 2 };
     private readonly FootprintCanvas _sky = new() { Name = "CutoutSky", IsEditable = true, Height = 220, MinWidth = 240 };
     private readonly TextBlock _errors = Caption("SystemFillColorCriticalBrush");
     private readonly TextBlock _warnings = Caption("SystemFillColorCautionBrush");
@@ -114,6 +115,7 @@ public sealed class CutoutEditor : UserControl
             fields.Children.Add(_band);
         }
         fields.Children.Add(_extensions);
+        fields.Children.Add(_companions);
 
         _sky.Target = target;
         _sky.DrawShape = _shape.SelectedIndex == 1 ? SkyShape.Box : SkyShape.Circle;
@@ -267,7 +269,9 @@ public sealed class CutoutEditor : UserControl
         var next = spec ?? _spec;
         if (!file.Supports("BAND")) next = next with { BandMin = null, BandMax = null };
         if (file.Extensions.Count == 0) next = next with { Extensions = [] };
+        if (file.Companions.Count == 0) next = next with { Companions = [] };
         BuildExtensions(file);
+        BuildCompanions(file);
         Apply(next, fromDrawing: false);
     }
 
@@ -327,12 +331,58 @@ public sealed class CutoutEditor : UserControl
         }
     }
 
+    /// <summary>
+    /// "Also cut": a box for each of the observation's other files beside this one — a weight map —
+    /// to cut with the same pixel box; one that cannot be, greyed, with why. Nothing when there are none.
+    /// </summary>
+    private void BuildCompanions(ICutoutFile file)
+    {
+        _companions.Children.Clear();
+        _companions.Visibility = file.Companions.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (file.Companions.Count == 0) return;
+
+        _companions.Children.Add(new TextBlock { Text = Loc.T("Cutout_Companions"), Style = Sty("BodyStrongTextBlockStyle") });
+        foreach (var companion in file.Companions)
+        {
+            var box = new CheckBox { Tag = companion.ArtifactId, Content = companion.FileName, MinWidth = 0, IsEnabled = companion.Unavailable is null };
+            AutomationProperties.SetName(box, companion.FileName);
+            box.Checked += (_, _) => FromCompanions();
+            box.Unchecked += (_, _) => FromCompanions();
+            _companions.Children.Add(box);
+            if (companion.Unavailable is { } why) _companions.Children.Add(Caption("TextFillColorTertiaryBrush", why));
+        }
+        _companions.Children.Add(Caption("TextFillColorTertiaryBrush", Loc.T("Cutout_CompanionsHint")));
+    }
+
+    private IEnumerable<CheckBox> CompanionBoxes => _companions.Children.OfType<CheckBox>();
+
+    private void FromCompanions()
+    {
+        if (_syncing) return;
+        Apply(_spec with { Companions = CompanionBoxes.Where(b => b.IsChecked == true).Select(b => (string)b.Tag).ToList() },
+              fromDrawing: false);
+    }
+
+    private void ShowCompanions()
+    {
+        _syncing = true;
+        try
+        {
+            foreach (var box in CompanionBoxes) box.IsChecked = _spec.Companions.Contains((string)box.Tag);
+        }
+        finally
+        {
+            _syncing = false;
+        }
+    }
+
     private void Apply(CutoutSpec spec, bool fromDrawing)
     {
         _spec = _source.Bind(spec);
         if (!fromDrawing) _sky.Region = _spec.Region;
         WriteFields(_spec);
         ShowExtensions();
+        ShowCompanions();
         Evaluate(fieldError: null);
     }
 
@@ -441,9 +491,12 @@ public sealed class CutoutEditor : UserControl
         _warnings.Text = fieldError is null ? string.Join("\n", check.Warnings) : string.Empty;
         _warnings.Visibility = _warnings.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 
+        // What the cutout is, against the file it is cut from; its companions' share, when it takes any, after.
         var estimate = fieldError is null ? _source.EstimateBytes(_spec) : null;
-        _estimate.Text = estimate is { } bytes && _source.WholeFileBytes is { } whole
+        var alone = estimate is not null && _spec.Companions.Count > 0 ? _source.EstimateBytes(_spec with { Companions = [] }) : estimate;
+        _estimate.Text = alone is { } bytes && _source.WholeFileBytes is { } whole
             ? Loc.F(Words(_source.Method).EstimateKey, Caom2Format.Bytes(bytes), Caom2Format.Bytes(whole))
+              + (estimate > alone ? " " + Loc.F("Cutout_EstimateCompanions", Caom2Format.Bytes(estimate.Value - bytes)) : string.Empty)
             : string.Empty;
         _estimate.Visibility = _estimate.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 

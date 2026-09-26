@@ -62,6 +62,16 @@ public class DownloadedObservation
     public string? ProductKey => Cutout?.Key;
 
     public bool FileExists => !string.IsNullOrWhiteSpace(LocalPath) && File.Exists(LocalPath);
+
+    /// <summary>
+    /// Every file on this computer that is this record's: its own, and for a cutout cut with its
+    /// companions — a weight map — theirs beside it. What removing the record's file removes.
+    /// </summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> LocalFiles
+        => string.IsNullOrWhiteSpace(LocalPath) ? []
+            : [LocalPath, .. Cutout?.CompanionPaths(LocalPath) ?? []];
+
     public string Filename => string.IsNullOrEmpty(LocalPath) ? "" : Path.GetFileName(LocalPath);
 
     public string FormattedSize => FileSize switch

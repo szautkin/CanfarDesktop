@@ -34,28 +34,41 @@ public static class ResearchRecords
     }
 
     /// <summary>
-    /// Delete a record's file from this computer and keep the record — its metadata, its notes, and
-    /// for a cutout its region, so it can be fetched again exactly as it was. Null when done, otherwise
-    /// why not; a file already gone is not a failure, only a record to tidy.
+    /// Delete a record's file from this computer — with a cutout's companions cut with it — and keep the
+    /// record: its metadata, its notes, and for a cutout its region, so it can be fetched again exactly as
+    /// it was. Null when done, otherwise why not; a file already gone is not a failure, only a record to tidy.
     /// </summary>
     public static string? RemoveLocalFile(ObservationStore store, DownloadedObservation record)
     {
-        if (!string.IsNullOrWhiteSpace(record.LocalPath))
-        {
-            try
-            {
-                if (File.Exists(record.LocalPath)) File.Delete(record.LocalPath);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                return ex.Message; // open elsewhere, or not ours to delete: the record keeps pointing at it
-            }
-        }
+        if (DeleteLocalFiles(record) is { } why) return why; // open elsewhere, or not ours to delete: the record keeps pointing at it
 
         record.LocalPath = string.Empty;
         record.FileSize = null;
         store.Save(record);
         return null;
+    }
+
+    /// <summary>
+    /// Delete every file on this computer that is the record's (<see cref="DownloadedObservation.LocalFiles"/>):
+    /// its own first — and when that cannot be, none — then its companions'. Null when done, otherwise
+    /// why the first that could not be deleted was not.
+    /// </summary>
+    public static string? DeleteLocalFiles(DownloadedObservation record)
+    {
+        string? why = null;
+        foreach (var path in record.LocalFiles)
+        {
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                if (path == record.LocalPath) return ex.Message;
+                why ??= ex.Message;
+            }
+        }
+        return why;
     }
 
     /// <summary>

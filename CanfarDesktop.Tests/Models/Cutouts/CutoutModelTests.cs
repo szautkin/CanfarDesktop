@@ -122,6 +122,37 @@ public class CutoutModelTests
     }
 
     /// <summary>
+    /// A cutout with its weight map is the same cutout: the same key, the same file; each companion's
+    /// file is named by that key, beside it, so a record finds them again from itself.
+    /// </summary>
+    [Fact]
+    public void Companions_KeepTheCutoutsKey_AndAreNamedByIt()
+    {
+        var alone = Spec() with { CutBy = CutoutMethod.Local };
+        var paired = alone with { Companions = ["cadc:CFHTSG/x.weight.fits.fz", "cadc:CFHTSG/x.weight.fits.fz"] };
+        var cutout = Path.Combine("data", "m31.fits");
+
+        Assert.Equal(alone.Key, paired.Key);
+        Assert.Equal(Path.Combine("data", $"x.weight.cutout-{alone.Key}.fits"), paired.CompanionPath(cutout, "cadc:CFHTSG/x.weight.fits.fz"));
+        Assert.Single(paired.CompanionPaths(cutout)); // once, however often it was named
+        Assert.EndsWith(" · + x.weight.fits.fz, x.weight.fits.fz", paired.Summary);
+        Assert.Empty(alone.CompanionPaths(cutout));
+    }
+
+    /// <summary>A record's files: its own, and its companions' when it is a cutout that took some; none when it has no file.</summary>
+    [Fact]
+    public void ARecordsFiles_AreItsOwnAndItsCompanions()
+    {
+        var spec = Spec() with { CutBy = CutoutMethod.Local, Companions = ["cadc:CFHTSG/x.weight.fits"] };
+        var cutout = Path.Combine("data", "m31.fits");
+
+        Assert.Equal(new[] { cutout, Path.Combine("data", $"x.weight.cutout-{spec.Key}.fits") },
+            new DownloadedObservation { LocalPath = cutout, Cutout = spec }.LocalFiles);
+        Assert.Equal(new[] { cutout }, new DownloadedObservation { LocalPath = cutout }.LocalFiles);
+        Assert.Empty(new DownloadedObservation { Cutout = spec }.LocalFiles);
+    }
+
+    /// <summary>
     /// Who cut it is saved by name, and a record saved before there was a choice reads as CADC's —
     /// which is what every one of them was.
     /// </summary>
@@ -138,6 +169,10 @@ public class CutoutModelTests
             """{"ArtifactId":"cadc:CFHTSG/x.fits","Region":{"Shape":0,"Ra":10.68,"Dec":41.27,"Radius":0.05}}""", options)!;
         Assert.Equal(CutoutMethod.Soda, before.CutBy);
         Assert.Equal(Spec().Key, before.Key);
+        Assert.Empty(before.Companions);
+
+        var paired = Spec() with { CutBy = CutoutMethod.Local, Companions = ["cadc:CFHTSG/x.weight.fits"] };
+        Assert.Equal(paired.Companions, JsonSerializer.Deserialize<CutoutSpec>(JsonSerializer.Serialize(paired, options), options)!.Companions);
     }
 
     /// <summary>Saved and read back as Research saves it, it is still the same cutout.</summary>

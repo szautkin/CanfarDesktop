@@ -36,9 +36,9 @@ public sealed class LocalCutoutSource(LocalFitsFile file) : ICutoutSource
             : CutoutRules.T("Cutout_LocalOnNoImage", "That region falls on none of this file's images.")], []);
     }
 
-    /// <summary>Exact, not estimated: the plan knows every byte it will write.</summary>
+    /// <summary>Exact, not estimated: the plans know every byte they will write — the cutout's, and its companions'.</summary>
     public long? EstimateBytes(CutoutSpec spec)
         => file.Problem is null && CutoutRules.Check(file, spec).IsValid && LocalCutPlan.For(file, spec) is { IsEmpty: false } plan
-            ? plan.Bytes
+            ? plan.Bytes + plan.CompanionsOf(file, spec).Sum(c => c.Plan.Bytes)
             : null;
 }

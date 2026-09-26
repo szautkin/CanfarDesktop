@@ -83,12 +83,27 @@ public sealed class LocalFitsFile : ICutoutFile
     public IReadOnlyList<SkyRegion> Parts { get; }
     public IReadOnlyList<string> Extensions { get; }
 
+    /// <summary>The observation's other files beside it, as <see cref="Inspect"/> found them, each matched to it.</summary>
+    public IReadOnlyList<LocalCompanion> CompanionFiles { get; private set; } = [];
+
+    public IReadOnlyList<CutoutCompanion> Companions { get; private set; } = [];
+
     /// <summary>
     /// Read a file's headers — through the same unwrapping the FITS viewer uses, so a .fits.gz or a tar
-    /// package opens as it does there. Never throws: a file that cannot be read says why in its
-    /// <see cref="Problem"/>.
+    /// package opens as it does there — and, of the observation's <paramref name="otherFiles"/>, those
+    /// beside it that could be cut with it (<see cref="LocalCompanions"/>). Never throws: a file that
+    /// cannot be read says why in its <see cref="Problem"/>.
     /// </summary>
-    public static LocalFitsFile Inspect(string path, string artifactId)
+    public static LocalFitsFile Inspect(string path, string artifactId, IEnumerable<string>? otherFiles = null)
+    {
+        var file = Read(path, artifactId);
+        if (otherFiles is null) return file;
+        file.CompanionFiles = LocalCompanions.Beside(file, otherFiles);
+        file.Companions = file.CompanionFiles.Select(c => c.Offer).ToList();
+        return file;
+    }
+
+    private static LocalFitsFile Read(string path, string artifactId)
     {
         try
         {

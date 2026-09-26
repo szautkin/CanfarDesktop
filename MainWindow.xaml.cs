@@ -1120,8 +1120,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             {
                 var sources = page.CutoutSourcesOfObservation;
                 var source = args.PickSource(sources);
-                var proposed = args.Region() is null && args.BandMin is null && args.BandMax is null && args.Extensions is not { Count: > 0 }
-                    ? null : args.ToSpec(source);
+                var proposed = args.AsksAnything ? args.ToSpec(source) : null;
                 var editor = page.ShowCutoutEditor(
                     CanfarDesktop.Services.Cutouts.CutoutSources.For(sources, source.File.ArtifactId), proposed, source.Method);
                 var check = editor.Source.Check(editor.Spec);

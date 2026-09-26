@@ -933,24 +933,30 @@ public sealed partial class ObservationDetailPage : UserControl
     {
         var publisherId = _publisherID;
         var record = LocalCopies.CompleteFile(_store.Observations, publisherId);
-        var key = record is null ? null : LocalKey(record);
+        var artifacts = CutoutSources.ArtifactIds(obs).ToList();
+        var key = record is null ? null : LocalKey(record, artifacts);
         if (key == _localKey) return;
 
-        var artifacts = CutoutSources.ArtifactIds(obs).ToList();
-        var local = record is null ? null
-            : await Task.Run(() => new LocalCutoutSource(LocalFitsFile.Inspect(record.LocalPath, LocalCopies.ArtifactOf(record, artifacts))));
+        var local = record is null ? null : await Task.Run(() => CutoutSources.Local([record], publisherId, artifacts));
 
         if (_publisherID != publisherId || !ReferenceEquals(_current, obs)) return;
         (_localSource, _localKey) = (local, key);
         if (rebuild && _links is not null) BuildFiles(obs);
     }
 
-    private static string? LocalKey(DownloadedObservation record)
+    /// <summary>
+    /// What the file on this computer, and the observation's other files beside it, are now — changed,
+    /// when one is downloaded, replaced or removed, so it is read again.
+    /// </summary>
+    private static string? LocalKey(DownloadedObservation record, IEnumerable<string> artifacts)
     {
         try
         {
             var file = new FileInfo(record.LocalPath);
-            return $"{file.FullName}|{file.Length}|{file.LastWriteTimeUtc.Ticks}|{record.ArtifactId}";
+            var beside = artifacts.Select(id => new FileInfo(System.IO.Path.Combine(file.DirectoryName ?? "", Caom2Format.ArtifactFileName(id))))
+                                  .Where(f => f.Exists)
+                                  .Select(f => $"{f.Name}|{f.Length}|{f.LastWriteTimeUtc.Ticks}");
+            return string.Join('/', [$"{file.FullName}|{file.Length}|{file.LastWriteTimeUtc.Ticks}|{record.ArtifactId}", .. beside]);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
