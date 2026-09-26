@@ -48,7 +48,25 @@ public sealed partial class ResearchPage : UserControl
         // Downloads finish in the background, on the downloader's thread and in their own time.
         ViewModel.ObservationsChanged += () => DispatcherQueue.TryEnqueue(OnObservationsChanged);
 
+        // An observation in the list copies from its right-click menu, as a result row does in Search.
+        FileList.RightTapped += OnListRightTapped;
+
         RefreshList();
+    }
+
+    /// <summary>Copy the observation's details — the same summary Search and the observation view copy.</summary>
+    private static void CopyDetails(DownloadedObservation obs)
+        => ClipboardText.Copy(ObservationSummary.Text(obs), Loc.T("Search_ObservationCopied"));
+
+    private void OnListRightTapped(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
+    {
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is not DownloadedObservation obs) return;
+        var item = new MenuFlyoutItem { Text = Loc.T("Research_CopyDetails"), Icon = new FontIcon { Glyph = "\uE8C8" } };
+        item.Click += (_, _) => CopyDetails(obs);
+        var menu = new MenuFlyout();
+        menu.Items.Add(item);
+        menu.ShowAt((FrameworkElement)e.OriginalSource, e.GetPosition((FrameworkElement)e.OriginalSource));
+        e.Handled = true;
     }
 
     /// <summary>
@@ -437,6 +455,11 @@ public sealed partial class ResearchPage : UserControl
         }
 
         btnPanel.Children.Add(CutoutButton(obs));
+
+        var copyDetails = UIFactory.CreateIconButton("\uE8C8", Loc.T("Research_CopyDetails"), (_, _) => CopyDetails(obs));
+        copyDetails.Name = "ResearchCopyDetailsButton";
+        ToolTipService.SetToolTip(copyDetails, Loc.T("Research_CopyDetailsTip"));
+        btnPanel.Children.Add(copyDetails);
 
         var deleteBtn = UIFactory.CreateIconButton("\uE74D", Loc.T("Research_Delete"), (_, _) =>
         {

@@ -87,6 +87,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         InitViewStateTracking();
         InitProposalsEntryPoint();
         InitNetworkMonitor();
+        // Every copy, from any screen, says so here — and one the clipboard refused is not claimed.
+        ClipboardText.Copied += what => DispatcherQueue.TryEnqueue(() => SetStatus(Loc.F("Clipboard_Copied", what)));
 
         ShowTermsGateIfNeeded();
         _ = ShowWelcomeIfNeededAsync(); // no-op while the terms gate is up (re-fired by OnTermsAccept)

@@ -348,10 +348,7 @@ public sealed partial class FitsViewerPage : UserControl
     {
         if (ViewModel.CrosshairPosition is null) return null;
         var text = ViewModel.CrosshairPosition.Display;
-        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
-        package.SetText(text);
-        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-        ViewModel.StatusMessage = Loc.T("Fits_CoordsCopied");
+        if (ClipboardText.Copy(text)) ViewModel.StatusMessage = Loc.T("Fits_CoordsCopied");
         return text;
     }
 

@@ -154,10 +154,10 @@ public sealed partial class McpServerSettingsPanel : UserControl
         // never see it) — be honest: hand the user the merged JSON and the path instead.
         if (_repair.RequiresManualEdit)
         {
-            var data = new DataPackage();
-            data.SetText(_repair.Preview(_bridgeCommand));
-            Clipboard.SetContent(data);
-            ShowResult(InfoBarSeverity.Warning, Helpers.Loc.F("Mcp_ManualConfigCopied", _repair.ConfigPath));
+            if (Helpers.ClipboardText.Copy(_repair.Preview(_bridgeCommand)))
+                ShowResult(InfoBarSeverity.Warning, Helpers.Loc.F("Mcp_ManualConfigCopied", _repair.ConfigPath));
+            else
+                ShowResult(InfoBarSeverity.Error, Helpers.Loc.T("Clipboard_Failed"));
             return;
         }
 
@@ -186,10 +186,10 @@ public sealed partial class McpServerSettingsPanel : UserControl
 
     private void OnCopyCommandClick(object sender, RoutedEventArgs e)
     {
-        var data = new DataPackage();
-        data.SetText(ClaudeCodeBox.Text);
-        Clipboard.SetContent(data);
-        ShowResult(InfoBarSeverity.Informational, Helpers.Loc.T("Mcp_CommandCopied"));
+        if (Helpers.ClipboardText.Copy(ClaudeCodeBox.Text))
+            ShowResult(InfoBarSeverity.Informational, Helpers.Loc.T("Mcp_CommandCopied"));
+        else
+            ShowResult(InfoBarSeverity.Error, Helpers.Loc.T("Clipboard_Failed"));
     }
 
     private void OnRequireApprovalToggled(object sender, RoutedEventArgs e)

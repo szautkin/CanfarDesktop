@@ -387,25 +387,18 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private void OnCopyRuntimeInfo(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            var package = new DataPackage();
-            package.SetText(RuntimeText.Text);
-            Clipboard.SetContent(package);
+        // The clipboard can be held by another process: then nothing is claimed, and the text is
+        // selectable either way.
+        if (!ClipboardText.Copy(RuntimeText.Text)) return;
 
-            // Says it worked, and goes back on its own. A dialog for a copy would be worse than silence.
-            CopyRuntimeButton.Content = Loc.T("Settings_CopiedLabel");
-            var back = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-            back.Tick += (_, _) =>
-            {
-                back.Stop();
-                CopyRuntimeButton.Content = Loc.T("Settings_CopyLabel");
-            };
-            back.Start();
-        }
-        catch
+        // Says it worked, and goes back on its own. A dialog for a copy would be worse than silence.
+        CopyRuntimeButton.Content = Loc.T("Settings_CopiedLabel");
+        var back = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        back.Tick += (_, _) =>
         {
-            // The clipboard can be held by another process. The text is selectable either way.
-        }
+            back.Stop();
+            CopyRuntimeButton.Content = Loc.T("Settings_CopyLabel");
+        };
+        back.Start();
     }
 }

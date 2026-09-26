@@ -253,9 +253,7 @@ public sealed partial class RemoteComputePage : UserControl
 
     private void OnCopyCodeClick(object sender, RoutedEventArgs e)
     {
-        var package = new DataPackage();
-        package.SetText(CodeView.Text);
-        Clipboard.SetContent(package);
+        ClipboardText.Copy(CodeView.Text, Loc.T("RemoteCompute_CodeCopied"));
     }
 
     private async void OnRunAgainClick(object sender, RoutedEventArgs e)

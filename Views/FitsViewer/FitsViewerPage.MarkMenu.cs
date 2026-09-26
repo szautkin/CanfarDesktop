@@ -175,17 +175,8 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
             ? MarkClipboard.Sky(sky.Ra, sky.Dec)
             : MarkClipboard.ImagePixel(mark.Anchor.X, mark.Anchor.Y);
 
-        try
-        {
-            var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
-            package.SetText(text);
-            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-            ViewModel.StatusMessage = Loc.T("Marks_CopiedCoordinates");
-        }
-        catch
-        {
-            // A clipboard that refuses is not worth interrupting anyone over.
-        }
+        // A clipboard that refuses is not worth interrupting anyone over; it is just not claimed.
+        if (ClipboardText.Copy(text)) ViewModel.StatusMessage = Loc.T("Marks_CopiedCoordinates");
     }
 
     /// <summary>Write these marks out, through the same call <c>export_annotations</c> makes.</summary>

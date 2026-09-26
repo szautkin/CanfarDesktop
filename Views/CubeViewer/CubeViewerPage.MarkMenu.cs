@@ -71,17 +71,8 @@ public sealed partial class CubeViewerPage : IMarkCommandHost
     {
         var text = MarkClipboard.Voxel(mark.Anchor.X, mark.Anchor.Y, mark.Anchor.Z);
 
-        try
-        {
-            var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
-            package.SetText(text);
-            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-            ShowStatus(Loc.T("Marks_CopiedCoordinates"));
-        }
-        catch
-        {
-            // A clipboard that refuses is not worth interrupting anyone over.
-        }
+        // A clipboard that refuses is not worth interrupting anyone over; it is just not claimed.
+        if (ClipboardText.Copy(text)) ShowStatus(Loc.T("Marks_CopiedCoordinates"));
     }
 
     /// <summary>Write these marks out, through the same call <c>export_annotations</c> makes.</summary>

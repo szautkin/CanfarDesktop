@@ -43,6 +43,20 @@ public sealed partial class SearchPage : Page
         accelerator.Invoked += (_, e) => { OnSearchClick(this, new RoutedEventArgs()); e.Handled = true; };
         KeyboardAccelerators.Add(accelerator);
 
+        // Ctrl+C copies the chosen result rows — unless the person is typing, when it is the field's.
+        var copy = new KeyboardAccelerator
+        {
+            Key = Windows.System.VirtualKey.C,
+            Modifiers = Windows.System.VirtualKeyModifiers.Control,
+        };
+        copy.Invoked += (_, e) =>
+        {
+            if (_selection.Count == 0 || Controls.TypingFocus.IsTyping(XamlRoot)) return;
+            CopyRows(_selection.Selected);
+            e.Handled = true;
+        };
+        KeyboardAccelerators.Add(copy);
+
         // The facet lists' XAML MaxHeight (180) is a floor for small windows; on tall displays
         // (1440p/4K full screen) they grow with the viewport so Additional Constraints uses the
         // available space instead of leaving the lower third of the screen empty.
@@ -729,10 +743,12 @@ public sealed partial class SearchPage : Page
                     VerticalAlignment = VerticalAlignment.Center
                 };
 
-                // Identity columns can narrow the results to their value (client-side filter +
-                // Apply-to-ADQL) — from a right-click menu. A left click on them opens the observation,
-                // as it does anywhere else on the row: these five were silent filter links, so clicking
-                // a row's target name, the likeliest place to click, narrowed the table instead.
+                // Every cell copies — what it shows, its observation, the rows chosen — from its right-click
+                // menu. Identity columns can also narrow the results to their value (client-side filter +
+                // Apply-to-ADQL) there. A left click opens the observation, as it does anywhere else on
+                // the row: these five were silent filter links, so clicking a row's target name, the
+                // likeliest place to click, narrowed the table instead.
+                var menu = CellMenu(tb.Text, row, rowIndex);
                 if (IsNarrowable(key) && !string.IsNullOrEmpty(rawValue))
                 {
                     var ck = key;
@@ -746,10 +762,10 @@ public sealed partial class SearchPage : Page
                         RenderResultsPage(rebuildHeader: false);
                         UpdateApplyFiltersButton();
                     };
-                    var menu = new MenuFlyout();
+                    menu.Items.Add(new MenuFlyoutSeparator());
                     menu.Items.Add(narrow);
-                    tb.ContextFlyout = menu;
                 }
+                tb.ContextFlyout = menu;
 
                 sp.Children.Add(tb);
             }
@@ -763,6 +779,47 @@ public sealed partial class SearchPage : Page
             border.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
 
         return border;
+    }
+
+    // ── Copying results ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A result cell's copy menu: what the cell shows; the observation, as the same summary Research and
+    /// the observation view copy; and the row — or every chosen row, when this one is among them — as
+    /// tab-separated text with the visible columns' names, ready for a spreadsheet.
+    /// </summary>
+    private MenuFlyout CellMenu(string shown, SearchResultRow? row, int rowIndex)
+    {
+        var menu = new MenuFlyout();
+        if (shown.Length > 0) menu.Items.Add(CopyItem(Loc.T("Search_CopyValue"), () => ClipboardText.Copy(shown)));
+        if (row is not null)
+        {
+            var captured = row;
+            menu.Items.Add(CopyItem(Loc.T("Search_CopyObservation"), () => ClipboardText.Copy(
+                ObservationSummary.Text(DownloadedObservation.FromSearchResult(captured, null, null, k => ViewModel.GetColumnHeader(k))),
+                Loc.T("Search_ObservationCopied"))));
+        }
+        menu.Items.Add(CopyItem(Loc.T("Search_CopyRows"), () =>
+            CopyRows(_selection.Contains(rowIndex) && _selection.Count > 1 ? _selection.Selected : [rowIndex])));
+        return menu;
+    }
+
+    private static MenuFlyoutItem CopyItem(string text, Action copy)
+    {
+        var item = new MenuFlyoutItem { Text = text, Icon = new FontIcon { Glyph = "\uE8C8" } };
+        item.Click += (_, _) => copy();
+        return item;
+    }
+
+    /// <summary>These rows of the page, as the table shows them: its visible columns, their names first.</summary>
+    private void CopyRows(IReadOnlyList<int> indices)
+    {
+        var page = ViewModel.GetCurrentPageRows();
+        var keys = ViewModel.GetVisibleColumnKeys();
+        var rows = indices.Where(i => i >= 0 && i < page.Count).Select(i =>
+            (IReadOnlyList<string>)keys.Select(k => ViewModel.FormatCell(k, page[i].Get(ViewModel.GetColumnHeader(k)) ?? "")).ToList()).ToList();
+        if (rows.Count == 0) return;
+        ClipboardText.Copy(TabularText.Of(keys.Select(ViewModel.GetColumnLabel).ToList(), rows), Loc.F("Search_RowsCopied", rows.Count));
     }
 
     // Identity columns whose cell values can be clicked to "narrow to this value".

@@ -4739,6 +4739,54 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Cutout_NoneForObservation" xml:space="preserve">
     <value>Le CADC ne peut découper aucun des fichiers de cette observation, et aucun n'est sur cet ordinateur.</value>
   </data>
+  <data name="Clipboard_Copied" xml:space="preserve">
+    <value>Copié : {0}</value>
+  </data>
+  <data name="Clipboard_Failed" xml:space="preserve">
+    <value>Le presse-papiers est utilisé par une autre application ; réessayez.</value>
+  </data>
+  <data name="Search_CopyValue" xml:space="preserve">
+    <value>Copier la valeur</value>
+  </data>
+  <data name="Search_CopyObservation" xml:space="preserve">
+    <value>Copier les détails de l'observation</value>
+  </data>
+  <data name="Search_CopyRows" xml:space="preserve">
+    <value>Copier la ligne (les lignes choisies, s'il y en a plusieurs)</value>
+  </data>
+  <data name="Search_RowsCopied" xml:space="preserve">
+    <value>{0} lignes de résultats, séparées par des tabulations</value>
+  </data>
+  <data name="Search_ObservationCopied" xml:space="preserve">
+    <value>détails de l'observation</value>
+  </data>
+  <data name="Research_CopyDetails" xml:space="preserve">
+    <value>Copier les détails</value>
+  </data>
+  <data name="Research_CopyDetailsTip" xml:space="preserve">
+    <value>Copier l'identifiant, la position, l'instrument, le filtre, le programme et le fichier de l'observation en texte</value>
+  </data>
+  <data name="RemoteCompute_CodeCopied" xml:space="preserve">
+    <value>le code</value>
+  </data>
+  <data name="Summary_PublisherId" xml:space="preserve">
+    <value>Identifiant de publication</value>
+  </data>
+  <data name="Summary_Position" xml:space="preserve">
+    <value>Position</value>
+  </data>
+  <data name="Summary_Proposal" xml:space="preserve">
+    <value>Programme</value>
+  </data>
+  <data name="Summary_Released" xml:space="preserve">
+    <value>Publiée</value>
+  </data>
+  <data name="Summary_Cutout" xml:space="preserve">
+    <value>Découpe</value>
+  </data>
+  <data name="Summary_CutLocally" xml:space="preserve">
+    <value>découpée sur cet ordinateur</value>
+  </data>
   <data name="Cutout_CheckNoExtensions" xml:space="preserve">
     <value>Cette façon de découper ne peut pas choisir parmi les images du fichier ; elle garde toutes celles sur lesquelles tombe la zone.</value>
   </data>

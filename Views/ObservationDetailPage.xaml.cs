@@ -66,6 +66,7 @@ public sealed partial class ObservationDetailPage : UserControl
 
         SaveToResearchButton.Content = Loc.T("ObsDetail_SaveToResearch");
         UpdateSaveToResearch();
+        AddCopyDetailsButton();
         // A cached page for the app's life, so it may listen for the app's life: a download landing
         // elsewhere puts this observation in Research, and the button should say so.
         _store.Changed += () => DispatcherQueue.TryEnqueue(() =>
@@ -87,6 +88,26 @@ public sealed partial class ObservationDetailPage : UserControl
         UIFactory.Enable(SaveToResearchButton, loaded && !inResearch,
             inResearch ? Loc.T("ObsDetail_AlreadyInResearch") : Loc.T("ObsDetail_SaveToResearchLoading"));
         if (loaded && !inResearch) ToolTipService.SetToolTip(SaveToResearchButton, Loc.T("ObsDetail_SaveToResearchTip"));
+    }
+
+    /// <summary>
+    /// "Copy details", beside Save to Research: the observation as the same summary Search and Research
+    /// copy — built from the same Research record this page would save.
+    /// </summary>
+    private void AddCopyDetailsButton()
+    {
+        // The button sits in a wrapper that carries its greyed reason; the copy goes after the wrapper.
+        if (SaveToResearchButton.Parent is not FrameworkElement { Parent: Panel row } wrapper) return;
+        var copy = new Button { Name = "ObsDetailCopyDetailsButton", Content = Loc.T("Research_CopyDetails") };
+        ToolTipService.SetToolTip(copy, Loc.T("Research_CopyDetailsTip"));
+        AutomationProperties.SetName(copy, Loc.T("Research_CopyDetails"));
+        copy.Click += (_, _) =>
+        {
+            if (_current is null || string.IsNullOrEmpty(_publisherID)) return;
+            var ctx = new DownloadContext(_publisherID, _collection, _observationID, _current, _links, IsScience: true);
+            ClipboardText.Copy(ObservationSummary.Text(ResearchRecordFor(ctx)), Loc.T("Search_ObservationCopied"));
+        };
+        row.Children.Insert(row.Children.IndexOf(wrapper) + 1, copy);
     }
 
     private void OnSaveToResearch(object sender, RoutedEventArgs e)

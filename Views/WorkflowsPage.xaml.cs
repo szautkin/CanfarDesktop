@@ -315,9 +315,7 @@ public sealed partial class WorkflowsPage : UserControl
     private void OnToolChipClick(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement fe || fe.Tag is not string tool) return;
-        var package = new DataPackage();
-        package.SetText(tool);
-        Clipboard.SetContent(package);
+        Helpers.ClipboardText.Copy(tool);
     }
 
     private void OnViewLinkClick(object sender, RoutedEventArgs e)
@@ -452,13 +450,12 @@ public sealed partial class WorkflowsPage : UserControl
     {
         var info = _selectedId is null ? null : _store.Get(_selectedId);
         if (info is null) return;
-        var package = new DataPackage();
-        package.SetText(
+        var copied = Helpers.ClipboardText.Copy(
             $"Follow my workflow \"{info.Doc.Title}\" in Verbinal: call get_workflow(id: \"{info.Id}\") to read the steps, " +
             "work through them in order using the tools each step names, mark each finished step with " +
-            $"set_workflow_step(id: \"{info.Id}\", index, done: true), and stop to ask me at any judgment call.");
-        Clipboard.SetContent(package);
-        VosHint.Text = Helpers.Loc.T("Wf_PromptCopied");
+            $"set_workflow_step(id: \"{info.Id}\", index, done: true), and stop to ask me at any judgment call.",
+            Helpers.Loc.T("Wf_PromptCopied"));
+        VosHint.Text = copied ? Helpers.Loc.T("Wf_PromptCopied") : Helpers.Loc.T("Clipboard_Failed");
     }
 
     // ── VOSpace listing ───────────────────────────────────────────────────────

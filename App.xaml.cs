@@ -61,6 +61,13 @@ public partial class App : Application
             return value == key ? null : value;
         };
 
+        // What "Copy details" puts on the clipboard, in the app's language.
+        CanfarDesktop.Services.ObservationSummary.Translate = key =>
+        {
+            var value = Helpers.Loc.T(key);
+            return value == key ? null : value;
+        };
+
         // A cutout's checks, shown in the editor — the same route again (an agent is told them in English).
         CanfarDesktop.Services.Cutouts.CutoutRules.Translate = key =>
         {

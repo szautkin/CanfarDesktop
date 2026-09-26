@@ -154,6 +154,8 @@
     <Compile Include="..\Services\Cutouts\Local\LocalCopies.cs" Link="Linked\Cutouts\LocalCopies.cs" />
     <Compile Include="..\Services\Cutouts\Local\LocalCutoutMaker.cs" Link="Linked\Cutouts\LocalCutoutMaker.cs" />
     <Compile Include="..\Services\ResearchRecords.cs" Link="Linked\ResearchRecords.cs" />
+    <Compile Include="..\Services\ObservationSummary.cs" Link="Linked\ObservationSummary.cs" />
+    <Compile Include="..\Helpers\TabularText.cs" Link="Linked\TabularText.cs" />
     <Compile Include="..\Helpers\HttpFailure.cs" Link="Linked\HttpFailure.cs" />
     <Compile Include="..\Helpers\DataLinkArtifactSelector.cs" Link="Linked\DataLinkArtifactSelector.cs" />
     <Compile Include="..\Helpers\CellFormatter.cs" Link="Linked\CellFormatter.cs" />

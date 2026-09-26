@@ -4739,6 +4739,54 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Cutout_NoneForObservation" xml:space="preserve">
     <value>CADC cannot cut any of this observation's files, and none of them is on this computer.</value>
   </data>
+  <data name="Clipboard_Copied" xml:space="preserve">
+    <value>Copied: {0}</value>
+  </data>
+  <data name="Clipboard_Failed" xml:space="preserve">
+    <value>The clipboard is in use by another application; try again.</value>
+  </data>
+  <data name="Search_CopyValue" xml:space="preserve">
+    <value>Copy value</value>
+  </data>
+  <data name="Search_CopyObservation" xml:space="preserve">
+    <value>Copy observation details</value>
+  </data>
+  <data name="Search_CopyRows" xml:space="preserve">
+    <value>Copy row (chosen rows, when several are)</value>
+  </data>
+  <data name="Search_RowsCopied" xml:space="preserve">
+    <value>{0} result rows, tab-separated</value>
+  </data>
+  <data name="Search_ObservationCopied" xml:space="preserve">
+    <value>observation details</value>
+  </data>
+  <data name="Research_CopyDetails" xml:space="preserve">
+    <value>Copy details</value>
+  </data>
+  <data name="Research_CopyDetailsTip" xml:space="preserve">
+    <value>Copy the observation's ID, position, instrument, filter, proposal and file as text</value>
+  </data>
+  <data name="RemoteCompute_CodeCopied" xml:space="preserve">
+    <value>the code</value>
+  </data>
+  <data name="Summary_PublisherId" xml:space="preserve">
+    <value>Publisher ID</value>
+  </data>
+  <data name="Summary_Position" xml:space="preserve">
+    <value>Position</value>
+  </data>
+  <data name="Summary_Proposal" xml:space="preserve">
+    <value>Proposal</value>
+  </data>
+  <data name="Summary_Released" xml:space="preserve">
+    <value>Released</value>
+  </data>
+  <data name="Summary_Cutout" xml:space="preserve">
+    <value>Cutout</value>
+  </data>
+  <data name="Summary_CutLocally" xml:space="preserve">
+    <value>cut on this computer</value>
+  </data>
   <data name="Cutout_CheckNoExtensions" xml:space="preserve">
     <value>This way of cutting cannot choose among the file's images; it keeps every image the region falls on.</value>
   </data>
