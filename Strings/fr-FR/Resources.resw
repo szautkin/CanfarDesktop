@@ -2032,7 +2032,10 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Launch_FlexibleResources" xml:space="preserve">
     <value>Ressources flexibles</value>
   </data>
-  <data name="Launch_FormHeader.Text" xml:space="preserve">
+  <data name="LaunchFormDialog.CloseButtonText" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="LaunchFormDialog.Title" xml:space="preserve">
     <value>Lancer une session</value>
   </data>
   <data name="Launch_GenerateNameBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -3754,6 +3757,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Sessions_Header.Text" xml:space="preserve">
     <value>Sessions actives</value>
+  </data>
+  <data name="Sessions_LaunchSession.Text" xml:space="preserve">
+    <value>Lancer une session</value>
   </data>
   <data name="Sessions_NotAvailable" xml:space="preserve">
     <value>n/d</value>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="CanfarDesktop.Views.Dialogs.LaunchFormDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Uid="LaunchFormDialog"
+    Title="Launch a session"
+    CloseButtonText="Close"
+    DefaultButton="None">
+
+    <ContentDialog.Resources>
+        <!-- Wider than a dialog's default 548: the form's fields sit side by side with their help buttons,
+             and the Advanced tab's registry row is three controls across. -->
+        <x:Double x:Key="ContentDialogMaxWidth">860</x:Double>
+    </ContentDialog.Resources>
+
+    <!-- The form is the Portal's own LaunchFormControl, the one agents and "Use this image" fill; the Grid
+         also carries AgentPointerHost, so an agent's hints about its fields live in the dialog. -->
+    <Grid MinWidth="640">
+        <ContentPresenter x:Name="FormHost" />
+        <Grid x:Name="AgentPointerHost" />
+    </Grid>
+</ContentDialog>

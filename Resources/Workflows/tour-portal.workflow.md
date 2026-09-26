@@ -12,26 +12,28 @@ Time: ~15 min
       Tool: list_events, point_at_ui
 - [ ] **Your sessions** — Open the Portal. On a running session, point at `OpenButton`,
       `RenewButton` (sessions expire; this extends one), `EventsButton` and `DeleteButton`. With no
-      sessions, say where they will appear and move on.
+      sessions, say where they will appear and move on. Point at `LaunchSessionButton`: the one
+      accented button there, where every launch starts.
       Tool: navigate_to, list_sessions, get_session, list_ui_targets, point_at_ui
       View: portal
-- [ ] **Launch, the usual way** — Point at `LaunchModes` (Standard, Advanced, Headless), then
-      `TypeCombo`, `StdRegistryCombo`, `ProjectCombo`, `ImageCombo`, `StdNameBox`,
-      `StdResTypeButtons` and `LaunchButton`. Each field has a help button beside it, such as
-      `StdTypeHelpBtn`.
-      Tool: list_session_types, list_session_images, point_at_ui
+- [ ] **Launch, the usual way** — Open the launch form with show_launch_form, as that button does.
+      Point at `LaunchModes` (Standard, Advanced, Headless), then `TypeCombo`, `StdRegistryCombo`,
+      `ProjectCombo`, `ImageCombo`, `StdNameBox`, `StdResTypeButtons` and `LaunchButton`. Each field
+      has a help button beside it, such as `StdTypeHelpBtn`.
+      Tool: show_launch_form, list_session_types, list_session_images, point_at_ui
       View: portal
       Note: Launching uses their allocation. Point at Launch; press it only when they ask.
-- [ ] **Launch, your own image** — Ask them to open the Advanced tab, then point at
+- [ ] **Launch, your own image** — Show the Advanced tab (show_launch_form with tab advanced), then point at
       `AdvTypeCombo`, `RegistryHostCombo`, `CustomImageBox`, `RepoUsernameBox`, `AdvNameBox`,
       `AdvResTypeButtons` and `AdvancedLaunchButton`: a private image from any registry.
-      Tool: list_ui_targets, point_at_ui
+      Tool: show_launch_form, list_ui_targets, point_at_ui
       View: portal
       Note: Never type a registry secret for them — point at the field and let them.
-- [ ] **Batch jobs** — Ask them to open the Headless tab, then point at `JobNameBox`,
+- [ ] **Batch jobs** — Show the Headless tab (show_launch_form with tab headless), then point at `JobNameBox`,
       `JobProjectCombo`, `JobImageCombo`, `JobCommandBox`, `JobArgsBox`, `JobReplicasBox`,
       `JobResTypeButtons` and `HeadlessLaunchButton`: the same container, no screen, many copies.
-      Tool: launch_headless_job, point_at_ui
+      Close the form after (show_launch_form with close) — nothing behind a dialog can be pointed at.
+      Tool: show_launch_form, launch_headless_job, point_at_ui
       View: portal
 - [ ] **Jobs you have run** — Point at `PendingButton`, `RunningButton`, `CompletedButton` and
       `FailedButton`; each opens the jobs in that state, with their logs and events.

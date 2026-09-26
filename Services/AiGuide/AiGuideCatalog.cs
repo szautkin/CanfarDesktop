@@ -217,6 +217,7 @@ public static class AiGuideCatalog
         ["list_session_images"] = "sessions",
         ["list_recent_launches"] = "sessions",
         ["launch_session"] = "sessions",
+        ["show_launch_form"] = "sessions",
         ["delete_session"] = "sessions",
         ["delete_sessions_bulk"] = "sessions",
         ["renew_session"] = "sessions",

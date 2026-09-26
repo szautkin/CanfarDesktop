@@ -516,6 +516,15 @@ public sealed class AppViewStateService : IAnnotationHost
     public Task<SettingsShown> CloseSettingsAsync()
         => _closeSettings?.Invoke() ?? Task.FromResult(new SettingsShown(false, null, "the window is not available"));
 
+    // ── The Portal's launch form, opened to show the person ─────────────────────────────────────
+
+    private volatile Func<LaunchFormRequest, Task<LaunchFormShown>>? _showLaunchForm;
+
+    public void SetLaunchFormAction(Func<LaunchFormRequest, Task<LaunchFormShown>> show) => _showLaunchForm = show;
+
+    public Task<LaunchFormShown> ShowLaunchFormAsync(LaunchFormRequest request)
+        => _showLaunchForm?.Invoke(request) ?? Task.FromResult(LaunchFormShown.Unavailable("the window is not available"));
+
     // ── Pointing the person at a control ────────────────────────────────────────────────────────
 
     private volatile Func<UiPointRequest, Task<UiPointOutcome>>? _pointAtUi;

@@ -31,7 +31,8 @@ public static class AgentScreens
         "list_sessions" or "get_session" or "list_session_types" or "list_headless_jobs"
             or "get_headless_job_logs" or "get_headless_job_events" or "list_session_images"
             or "list_recent_launches" or "find_images_with_packages" or "get_platform_load"
-            or "launch_session" or "launch_headless_job" or "delete_session" or "renew_session" => "portal",
+            or "launch_session" or "launch_headless_job" or "delete_session" or "renew_session"
+            or "show_launch_form" => "portal",
         "get_storage_quota" or "list_vospace_path" or "read_vospace_file"
             or "upload_text_to_vospace" or "create_vospace_folder" or "delete_vospace_node" => "storage",
         // Workflow tools double as proposal kinds — one mapping covers the "Agent is working in

@@ -264,6 +264,7 @@
     <Compile Include="..\Mcp\Tools\Write\SearchUiContracts.cs" Link="Linked\Mcp\SearchUiContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\SearchUiTools.cs" Link="Linked\Mcp\SearchUiTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ResearchUiTools.cs" Link="Linked\Mcp\ResearchUiTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\PortalUiTools.cs" Link="Linked\Mcp\PortalUiTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\SavedQueryWriteTools.cs" Link="Linked\Mcp\SavedQueryWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\RecentSearchWriteTools.cs" Link="Linked\Mcp\RecentSearchWriteTools.cs" />
     <Compile Include="..\Mcp\Agents\AgentActivity.cs" Link="Linked\Mcp\AgentActivity.cs" />
@@ -388,6 +389,7 @@
     <Compile Include="..\Helpers\UiPointer.cs" Link="Linked\UiPointer.cs" />
     <Compile Include="..\Helpers\ToolbarOverflow.cs" Link="Linked\ToolbarOverflow.cs" />
     <Compile Include="..\Helpers\MarkTarget.cs" Link="Linked\MarkTarget.cs" />
+    <Compile Include="..\Helpers\PortalLayout.cs" Link="Linked\PortalLayout.cs" />
     <Compile Include="..\Services\Fits\AnnotationStore.cs" Link="Linked\Fits\AnnotationStore.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationContracts.cs" Link="Linked\Mcp\AnnotationContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />

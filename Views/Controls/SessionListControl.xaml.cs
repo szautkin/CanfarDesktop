@@ -14,6 +14,9 @@ public sealed partial class SessionListControl : UserControl
     public event EventHandler<string>? SessionRenewRequested;
     public event EventHandler<string>? SessionEventsRequested;
 
+    /// <summary>Launch session was pressed: the Portal opens its launch form.</summary>
+    public event EventHandler? LaunchSessionRequested;
+
     // Live cards keyed by session id: poll refreshes re-bind the existing card
     // instead of destroying and recreating it, so hover/focus and the strip's
     // horizontal scroll position survive every tick.
@@ -112,6 +115,8 @@ public sealed partial class SessionListControl : UserControl
             }
         }
     }
+
+    private void OnLaunchSessionClick(object sender, RoutedEventArgs e) => LaunchSessionRequested?.Invoke(this, EventArgs.Empty);
 
     private async void OnRefreshClick(object sender, RoutedEventArgs e)
     {

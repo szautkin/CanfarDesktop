@@ -280,6 +280,7 @@ public static class McpToolCatalog
             new ListUiTargetsTool((contains, collapsed) => viewState.ListUiTargetsAsync(contains, collapsed)),
             // Settings, opened at a section so the pointer can guide the person through it — never set.
             new OpenSettingsTool(section => viewState.OpenSettingsAsync(section)),
+            new ShowLaunchFormTool(viewState.ShowLaunchFormAsync),
             new CloseSettingsTool(() => viewState.CloseSettingsAsync()),
 
             // Looking at what the person is looking at, as opposed to writing a plate for a paper.

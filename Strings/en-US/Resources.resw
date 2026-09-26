@@ -2032,8 +2032,11 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Launch_FlexibleResources" xml:space="preserve">
     <value>Flexible resources</value>
   </data>
-  <data name="Launch_FormHeader.Text" xml:space="preserve">
-    <value>Launch Session</value>
+  <data name="LaunchFormDialog.CloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="LaunchFormDialog.Title" xml:space="preserve">
+    <value>Launch a session</value>
   </data>
   <data name="Launch_GenerateNameBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Generate Name</value>
@@ -3754,6 +3757,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="Sessions_Header.Text" xml:space="preserve">
     <value>Active Sessions</value>
+  </data>
+  <data name="Sessions_LaunchSession.Text" xml:space="preserve">
+    <value>Launch session</value>
   </data>
   <data name="Sessions_NotAvailable" xml:space="preserve">
     <value>n/a</value>

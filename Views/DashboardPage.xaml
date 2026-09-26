@@ -10,52 +10,25 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
     </Page.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid Padding="24" RowSpacing="16">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+    <!-- Three equal columns, the cards placed in them by PortalLayout: platform load, storage and batch
+         jobs across the top, active sessions the full width, then CANFAR images beside recent launches —
+         and one column below 1000 wide. The launch form is not a card: Launch session on Active sessions
+         opens it in a dialog. -->
+    <ScrollViewer x:Name="PortalScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                  SizeChanged="OnPortalSizeChanged">
+        <Grid x:Name="PortalGrid" Padding="24" RowSpacing="16" ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-            <!-- Top row: Sessions + Storage -->
-            <Grid Grid.Row="0" ColumnSpacing="16">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="4*" />
-                    <ColumnDefinition Width="*" MinWidth="220" />
-                </Grid.ColumnDefinitions>
-
-                <Border Grid.Column="0" x:Name="SessionListContainer" MinHeight="200" />
-                <Grid Grid.Column="1" RowSpacing="16">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" x:Name="StorageContainer" />
-                    <Border Grid.Row="1" x:Name="BatchJobsContainer" />
-                </Grid>
-            </Grid>
-
-            <!-- Bottom row: Launch Form + Platform Load -->
-            <Grid Grid.Row="1" ColumnSpacing="16">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*" />
-                    <ColumnDefinition Width="2*" MinWidth="250" />
-                </Grid.ColumnDefinitions>
-
-                <Border Grid.Column="0" x:Name="LaunchFormContainer" />
-                <Grid Grid.Column="1" RowSpacing="16">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" x:Name="RecentLaunchesContainer" />
-                    <Border Grid.Row="1" x:Name="PlatformLoadContainer" />
-                </Grid>
-            </Grid>
-
-            <!-- Canfar Images catalogue + discovery -->
-            <Border Grid.Row="2" x:Name="CanfarImagesContainer" />
+            <Border x:Name="PlatformLoadContainer" />
+            <Border x:Name="StorageContainer" />
+            <Border x:Name="BatchJobsContainer" />
+            <Border x:Name="SessionListContainer" MinHeight="200" />
+            <Border x:Name="CanfarImagesContainer" />
+            <Border x:Name="RecentLaunchesContainer" />
         </Grid>
     </ScrollViewer>
 </Page>

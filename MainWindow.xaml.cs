@@ -192,6 +192,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetAnnotationExportAction(ExportAnnotationsActionAsync);
         _viewState.SetUiPointerActions(PointAtUiActionAsync, ListUiTargetsActionAsync);
         _viewState.SetSettingsActions(OpenSettingsActionAsync, CloseSettingsActionAsync);
+        _viewState.SetLaunchFormAction(ShowLaunchFormActionAsync);
         _viewState.SetRemoteComputeActions(ShowComputeRunActionAsync, SetComputeSnippetActionAsync, GetComputeViewActionAsync);
         _viewState.SetStorageFolderAction(ShowStorageFolderActionAsync);
         Views.Controls.AgentPointer.AllClosed += _viewState.NotifyHintsDismissed;
@@ -2014,6 +2015,21 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         => Views.Controls.AgentPointer.OpenDialog(Content.XamlRoot) is { } dialog
             ? (dialog, dialog.FindName("AgentPointerHost") as Panel ?? AgentPointerHost, dialog.Title as string ?? "a dialog")
             : (Content, AgentPointerHost, null);
+
+    // ── The launch form, for an agent to show the person ──
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.LaunchFormShown> ShowLaunchFormActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.LaunchFormRequest request)
+        => OnUiAsync(async () =>
+        {
+            // The Portal is built when the person signs in; before that there is no form to show.
+            if (_dashboardPage is null)
+                return CanfarDesktop.Mcp.Tools.Write.LaunchFormShown.Unavailable(
+                    "the Portal is not open: the person signs in to CANFAR first (navigate_to portal asks them)");
+
+            if (!request.Close) NavigateTo(AppMode.Portal);
+            return await _dashboardPage.ShowLaunchFormForAgentAsync(request);
+        }, CanfarDesktop.Mcp.Tools.Write.LaunchFormShown.Unavailable("could not dispatch to UI"));
 
     // ── Settings, for an agent to show the person ──
 
