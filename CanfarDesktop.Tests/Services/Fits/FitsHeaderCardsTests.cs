@@ -42,6 +42,19 @@ public class FitsHeaderCardsTests
         Assert.Equal(Card("OBSERVER= 'O''Neil '"), cards.Cards[1]);
     }
 
+    /// <summary>
+    /// A string with a comment is written in fixed format, as astropy writes it — the card astropy builds
+    /// when it verifies a CHECKSUM, character for character.
+    /// </summary>
+    [Fact]
+    public void AStringWithAComment_IsInFixedFormat_AsAstropyWritesIt()
+    {
+        var cards = new FitsHeaderCards([]);
+        cards.SetString("CHECKSUM", "0000000000000000", "HDU checksum");
+
+        Assert.Equal(Card("CHECKSUM= '0000000000000000'   / HDU checksum"), cards.Cards[0]);
+    }
+
     /// <summary>Changing a value keeps the card where it was, and its comment.</summary>
     [Fact]
     public void ChangingAValue_KeepsItsPlaceAndItsComment()

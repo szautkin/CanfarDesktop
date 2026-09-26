@@ -59,8 +59,13 @@ public sealed class FitsHeaderCards
     public void Set(string keyword, bool value, string? comment = null)
         => Set(keyword, value ? "T" : "F", comment);
 
+    /// <summary>
+    /// A string value in fixed format: the quoted text padded to the value field's twenty columns, so a
+    /// comment starts where cfitsio and astropy start one. astropy re-writes a card in this form before it
+    /// checks a CHECKSUM, so a card written any other way — though a file's bytes still sum true — fails it.
+    /// </summary>
     public void SetString(string keyword, string value, string? comment = null)
-        => SetFormatted(keyword, FormatString(value), comment);
+        => SetFormatted(keyword, FormatString(value).PadRight(20), comment);
 
     /// <summary>
     /// Replace the card in place — keeping its comment unless given a new one — or, when there is none,

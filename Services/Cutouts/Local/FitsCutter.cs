@@ -6,6 +6,10 @@ namespace CanfarDesktop.Services.Cutouts.Local;
 /// Writes a <see cref="LocalCutPlan"/>: each HDU's header, then the rows of its box, read straight from
 /// where they lie in the file and written as they are. A 1.6 GB tile is never loaded — only a row of
 /// it at a time — and not a pixel is converted, so the cutout's pixels are the file's pixels.
+///
+/// <para>Each HDU's data is summed as it goes out, and its header — written first, with CHECKSUM and
+/// DATASUM reserved — is written again over itself, sealed, the same size. So the destination must be
+/// able to seek back, as a file can.</para>
 /// </summary>
 public static class FitsCutter
 {
@@ -14,28 +18,39 @@ public static class FitsCutter
     public static void Write(Stream file, LocalCutPlan plan, Stream destination,
                              IProgress<(long Done, long? Total)>? progress = null, CancellationToken ct = default)
     {
+        if (!destination.CanSeek) throw new ArgumentException("A cutout is written where its headers can be sealed after their data.", nameof(destination));
         var total = plan.Bytes;
         long done = 0;
 
         foreach (var hdu in plan.Hdus)
         {
+            var headerAt = destination.Position;
             var header = hdu.Header.ToBytes();
             destination.Write(header);
             done += header.Length;
 
+            var sum = new FitsChecksum();
             if (hdu.Data is { } cut)
             {
-                done += CopyBox(file, cut, destination, written =>
+                done += CopyBox(file, cut, destination, sum, written =>
                 {
                     ct.ThrowIfCancellationRequested();
                     progress?.Report((done + written, total));
                 });
 
-                // Data is padded to a whole block with zeros (§3.3.2).
+                // Data is padded to a whole block with zeros (§3.3.2), which add nothing to its sum.
                 var padding = FitsParser.AlignToBlock(cut.DataBytes) - cut.DataBytes;
                 destination.Write(new byte[padding]);
                 done += padding;
             }
+
+            var sealedHeader = FitsChecksum.Seal(new FitsHeaderCards(hdu.Header.Cards), sum.Value);
+            if (sealedHeader.Length != header.Length)
+                throw new InvalidOperationException("A sealed header must be the size of the one it replaces.");
+            var dataEnd = destination.Position;
+            destination.Position = headerAt;
+            destination.Write(sealedHeader);
+            destination.Position = dataEnd;
             progress?.Report((done, total));
         }
     }
@@ -44,7 +59,7 @@ public static class FitsCutter
     /// The box's rows, in FITS order — the first axis fastest — for every combination of the other
     /// axes' ranges. Returns the bytes written; tells <paramref name="rowDone"/> after each row.
     /// </summary>
-    private static long CopyBox(Stream file, ImageCut cut, Stream destination, Action<long> rowDone)
+    private static long CopyBox(Stream file, ImageCut cut, Stream destination, FitsChecksum sum, Action<long> rowDone)
     {
         using var pixels = cut.Image.Encoding.Open(file, cut.Image.Hdu);
         var axes = cut.Axes;
@@ -65,6 +80,7 @@ public static class FitsCutter
 
             pixels.ReadRow(rowIndex, axes[0].Start, row);
             destination.Write(row);
+            sum.Add(row);
             written += row.Length;
             rowDone(written);
 

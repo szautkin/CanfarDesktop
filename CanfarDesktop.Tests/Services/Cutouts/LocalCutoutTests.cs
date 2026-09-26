@@ -271,14 +271,54 @@ public class LocalCutoutTests : IDisposable
         Assert.Equal($"[{15 - dx}:{box.X1 - dx},1:{box.Height}]", header.GetString("DATASEC"));
         Assert.False(header.Contains("BIASSEC")); // the cut misses the overscan
         Assert.False(header.Contains("DETSEC"));
-        Assert.False(header.Contains("CHECKSUM"));
-        Assert.False(header.Contains("DATASUM"));
+        Assert.NotEqual("abcdefgh", header.GetString("CHECKSUM")); // the old data's sums, replaced by the new's
+        Assert.NotEqual("12345", header.GetString("DATASUM"));
         foreach (var card in kept) Assert.Contains(card, raw);
         var history = string.Join(" ", raw.Where(c => c.StartsWith("HISTORY ")).Select(c => c[8..].Trim()));
         Assert.Contains("Cut out by Verbinal on ", history);
         Assert.Contains("from img-32.fits[0], pixels [15:25,10:20].", history);
         Assert.Contains("Region (ICRS, degrees): CIRCLE ", history);
         Assert.All(raw, c => Assert.Equal(80, c.Length));
+    }
+
+    /// <summary>
+    /// A cut of a file that did not say where its pixels came from now does, as IRAF and DS9 read it:
+    /// the cut's pixel (1, 1) is, "physically", the file's pixel at the box's corner.
+    /// </summary>
+    [Fact]
+    public void TheCut_SaysWhereItSitsInTheFile_InThePhysicalPixelsDs9Shows()
+    {
+        var source = Source(SingleImage(-32, 60, 40));
+
+        var (cut, plan) = Cut(source, CircleAt(source, 20, 15, 5));
+
+        var box = plan.Cuts.Single().Box;
+        var header = Layout(cut)[0].Header;
+        double Physical(int axis, double image) => (image - header.GetDouble($"LTV{axis}")) / header.GetDouble($"LTM{axis}_{axis}");
+        Assert.Equal(box.X0, Physical(1, 1));
+        Assert.Equal(box.Y0, Physical(2, 1));
+        Assert.Equal(box.X1, Physical(1, box.Width));
+    }
+
+    /// <summary>Every HDU of a cut — a multi-extension one's primary header too — checks out as fitsverify would check it.</summary>
+    [Fact]
+    public void EveryHduOfACut_HasTrueChecksums()
+    {
+        var source = Source(HstLike(gapPixels: 20));
+        var (cut, _) = Cut(source, CircleAt(source, 25, 20, 5));
+
+        var bytes = File.ReadAllBytes(cut);
+        var hdus = Layout(cut);
+        Assert.Equal(3, hdus.Count);
+        long start = 0; // each HDU begins where the one before it ends
+        for (var i = 0; i < hdus.Count; i++)
+        {
+            var end = hdus[i].DataStart + FitsParser.AlignToBlock(hdus[i].DataBytes);
+            Assert.Equal(0xFFFFFFFFu, FitsChecksum.Sum(bytes.AsSpan((int)start, (int)(end - start))));
+            start = end;
+            var data = bytes.AsSpan((int)hdus[i].DataStart, (int)FitsParser.AlignToBlock(hdus[i].DataBytes));
+            Assert.Equal(FitsChecksum.Sum(data).ToString(), hdus[i].Header.GetString("DATASUM"));
+        }
     }
 
     // ── Multi-extension files ────────────────────────────────────────────────

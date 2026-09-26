@@ -143,6 +143,7 @@
     <Compile Include="..\Services\Cutouts\CutoutSources.cs" Link="Linked\Cutouts\CutoutSources.cs" />
     <Compile Include="..\Services\Fits\FitsLayout.cs" Link="Linked\Cutouts\FitsLayout.cs" />
     <Compile Include="..\Services\Fits\FitsHeaderCards.cs" Link="Linked\Cutouts\FitsHeaderCards.cs" />
+    <Compile Include="..\Services\Fits\FitsChecksum.cs" Link="Linked\Cutouts\FitsChecksum.cs" />
     <Compile Include="..\Services\Fits\FitsImageEncoding.cs" Link="Linked\Cutouts\FitsImageEncoding.cs" />
     <Compile Include="..\Services\Cutouts\Local\PixelBox.cs" Link="Linked\Cutouts\PixelBox.cs" />
     <Compile Include="..\Services\Cutouts\Local\LocalFitsFile.cs" Link="Linked\Cutouts\LocalFitsFile.cs" />

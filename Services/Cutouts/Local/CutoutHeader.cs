@@ -16,6 +16,11 @@ public readonly record struct AxisRange(long Start, long Length);
 /// detector header names, and the checksums the new data no longer matches. The WCS matrix, the SIP
 /// distortion (measured from the reference pixel, so still right once it moves) and BITPIX, BSCALE,
 /// BZERO and BLANK are left as they are — the pixels are copied, not converted.</para>
+///
+/// <para>Two things are added. Where the cut sits in the file it came from, as IRAF's LTV and LTM, when
+/// the file did not say already: DS9 and IRAF then show the file's own pixel numbers ("physical") on
+/// the cut — which is how a MegaPipe catalogue, in tile pixels, is matched to it. And a fresh CHECKSUM
+/// and DATASUM, reserved here and sealed by the cutter once the data is summed.</para>
 /// </summary>
 public static partial class CutoutHeader
 {
@@ -44,7 +49,7 @@ public static partial class CutoutHeader
         // Sections in the DETECTOR's pixels described the whole frame, and would now be wrong.
         (DetectorSection(), (cards, key, _, _, _) => cards.Remove(key)),
 
-        // A checksum of the old data is a false one for the new.
+        // A checksum of the old data is a false one for the new: dropped here, a fresh one sealed on writing.
         (Checksum(), (cards, key, _, _, _) => cards.Remove(key)),
     ];
 
@@ -65,8 +70,29 @@ public static partial class CutoutHeader
                 break;
             }
         }
+        AddPhysicalMapping(cards, before, axes);
         foreach (var line in history) cards.AddHistory(line);
+        FitsChecksum.Reserve(cards);
         return cards;
+    }
+
+    /// <summary>
+    /// Where the cut sits in the file it came from, when the file did not say: physical = (image − LTV) / LTM,
+    /// so a cut starting at the file's pixel 2731 has LTV1 = −2730. An LTV the file had is moved by
+    /// <see cref="Rules"/> instead, keeping whatever it measured from.
+    /// </summary>
+    private static void AddPhysicalMapping(FitsHeaderCards cards, FitsHeader before, IReadOnlyList<AxisRange> axes)
+    {
+        var added = false;
+        for (var n = 1; n <= Math.Min(2, axes.Count); n++)
+        {
+            if (before.Contains($"LTV{n}") || axes[n - 1].Start == 0) continue;
+            cards.Set($"LTV{n}", (double)-axes[n - 1].Start, "image = physical - offset: pixels of the file cut from");
+            added = true;
+        }
+        if (!added || new[] { "LTM1_1", "LTM1_2", "LTM2_1", "LTM2_2" }.Any(before.Contains)) return;
+        cards.Set("LTM1_1", 1.0, "physical to image scale");
+        cards.Set("LTM2_2", 1.0, "physical to image scale");
     }
 
     /// <summary>
@@ -80,7 +106,6 @@ public static partial class CutoutHeader
         {
             cards = new FitsHeaderCards(dataless.RawCards);
             if (cards.Contains("NEXTEND")) cards.Set("NEXTEND", extensions);
-            cards.RemoveWhere(k => Checksum().IsMatch(k));
         }
         else
         {
@@ -91,6 +116,7 @@ public static partial class CutoutHeader
             cards.Set("EXTEND", true);
         }
         foreach (var line in history) cards.AddHistory(line);
+        FitsChecksum.Reserve(cards);
         return cards;
     }
 
