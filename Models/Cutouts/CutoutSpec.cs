@@ -29,6 +29,12 @@ public sealed record CutoutSpec
 
     public IReadOnlyList<string> Pol { get; init; } = [];
 
+    /// <summary>
+    /// Who cuts it: CADC's SODA service (the default, and what every record saved before there was a
+    /// choice was), or this computer, from the complete file already downloaded.
+    /// </summary>
+    public CutoutMethod CutBy { get; init; } = CutoutMethod.Soda;
+
     /// <summary>Nothing to cut: the file would come back whole.</summary>
     [JsonIgnore]
     public bool IsEmpty => Region is null && BandMin is null && BandMax is null
@@ -37,6 +43,10 @@ public sealed record CutoutSpec
     /// <summary>
     /// Eight characters that are the same for the same cutout and differ for a different one — what
     /// tells two cutouts of one observation apart in Research, and names the file.
+    ///
+    /// <para>A local cut of a region is a different product from CADC's cut of it, so the method is part
+    /// of the key — but only when it is local: a SODA cutout's key is what it was before there was a
+    /// choice, so the records and files already saved under it keep their names.</para>
     /// </summary>
     [JsonIgnore]
     public string Key
@@ -49,6 +59,7 @@ public sealed record CutoutSpec
                 Region is null ? "" : Region.ToSoda(),
                 Num(BandMin), Num(BandMax), Num(TimeMin), Num(TimeMax),
                 string.Join(',', Pol));
+            if (CutBy != CutoutMethod.Soda) canonical += "|" + CutBy.ToString().ToLowerInvariant();
             var hash = SHA256.HashData(Encoding.UTF8.GetBytes(canonical));
             return Convert.ToHexString(hash, 0, 4).ToLowerInvariant();
         }
@@ -76,7 +87,7 @@ public sealed record CutoutSpec
     /// <summary>
     /// What to call the cutout's file: the file it was cut from, marked as a cutout and by which one —
     /// "G006.010.684+41.269.R.cutout-1a2b3c4d.fits". Always .fits: SODA sends the cut as plain FITS,
-    /// whatever compression the whole file had.
+    /// whatever compression the whole file had, and so does a local cut.
     /// </summary>
     [JsonIgnore]
     public string FileName => FileNameFor(Caom2Format.ArtifactFileName(ArtifactId));

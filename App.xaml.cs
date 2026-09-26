@@ -62,7 +62,7 @@ public partial class App : Application
         };
 
         // A cutout's checks, shown in the editor — the same route again (an agent is told them in English).
-        CanfarDesktop.Services.Cutouts.SodaRequest.Translate = key =>
+        CanfarDesktop.Services.Cutouts.CutoutRules.Translate = key =>
         {
             var value = Helpers.Loc.T(key);
             return value == key ? null : value;
@@ -285,8 +285,13 @@ public partial class App : Application
         services.AddTransient<ObservationDownloadService>(); // shared resolve-URL + atomic download core
         // Owns observation downloads for the app's life, so closing the screen that started one does
         // not end it; progress and outcome go to the status bar.
-        services.AddSingleton(sp => new ObservationDownloader(
-            () => sp.GetRequiredService<ObservationDownloadService>(), sp.GetRequiredService<ObservationStore>()));
+        // Every cutout is made through it too, by whoever cuts it: CADC's SODA service.
+        services.AddSingleton(sp =>
+        {
+            Func<ObservationDownloadService> downloads = () => sp.GetRequiredService<ObservationDownloadService>();
+            return new ObservationDownloader(downloads, sp.GetRequiredService<ObservationStore>(),
+                [new CanfarDesktop.Services.Cutouts.SodaCutoutMaker(downloads, ObservationDownloader.StallTimeout)]);
+        });
         // The last search's form, for the screens that follow from it (a cutout's starting region).
         services.AddSingleton<SearchContext>();
 

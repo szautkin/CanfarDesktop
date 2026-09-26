@@ -36,7 +36,7 @@ public class CutoutPrefillTests
         var spec = CutoutPrefill.Suggest(file);
 
         Assert.Equal(file.BoundingCircle!.Dec, spec.Region!.Dec, 9);
-        Assert.True(SodaRequest.Check(file, spec).IsValid);
+        Assert.True(CutoutRules.Check(file, spec).IsValid);
     }
 
     /// <summary>A pinpoint search radius still makes a cutout worth having.</summary>

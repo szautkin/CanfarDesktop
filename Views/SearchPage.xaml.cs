@@ -1018,7 +1018,7 @@ public sealed partial class SearchPage : Page
 
         var hints = Services.Cutouts.CutoutHints.From(ViewModel.BuildFormState());
         var spec = Services.Cutouts.CutoutPrefill.FromSearchFlags(file, hints, ViewModel.SpatialCutout, ViewModel.SpectralCutout);
-        return spec is not null && Services.Cutouts.SodaRequest.Check(file, spec).IsValid ? (file, spec) : null;
+        return spec is not null && Services.Cutouts.CutoutRules.Check(file, spec).IsValid ? (file, spec) : null;
     }
 
     private async Task DownloadFileAsync(string publisherID, SearchResultRow? sourceRow = null)

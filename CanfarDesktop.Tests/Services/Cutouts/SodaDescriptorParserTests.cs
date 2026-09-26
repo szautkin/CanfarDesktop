@@ -27,7 +27,7 @@ public class SodaDescriptorParserTests
         Assert.Equal("cadc:CFHTSG/G006.010.684+41.269.R.fits", file.ArtifactId);
         Assert.Equal("G006.010.684+41.269.R.fits", file.FileName);
         Assert.Equal(new[] { "CIRCLE", "ID", "POLYGON", "POS" }, file.Parameters.Order());
-        Assert.True(file.SupportsSky);
+        Assert.True(file.SupportsSky());
         Assert.False(file.Supports("BAND"));
     }
 

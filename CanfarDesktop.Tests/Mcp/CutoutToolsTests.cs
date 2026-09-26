@@ -26,7 +26,7 @@ public class CutoutToolsTests
     }
 
     private static DownloadCutoutTool Tool(params SodaDescriptor[] files)
-        => new((_, _) => Task.FromResult<IReadOnlyList<SodaDescriptor>>(files));
+        => new((_, _) => Task.FromResult<IReadOnlyList<ICutoutSource>>(files.Select(f => new SodaCutoutSource(f)).ToList()));
 
     [Fact]
     public async Task ACircleOnTheImage_IsProposed_WithTheCheckedCutout()
@@ -105,8 +105,8 @@ public class CutoutToolsTests
     [Fact]
     public void TheOptions_SuggestFromTheSearch_AndEstimateTheSize()
     {
-        var options = CutoutOptions.From("ivo://cadc/MP", [MegaPipe()],
-            new CutoutHints(Ra: 10.68, Dec: 41.27, RadiusDeg: 0.05), _ => 1_663_807_680);
+        var options = CutoutOptions.From("ivo://cadc/MP", [new SodaCutoutSource(MegaPipe(), 1_663_807_680)],
+            new CutoutHints(Ra: 10.68, Dec: 41.27, RadiusDeg: 0.05));
 
         var file = Assert.Single(options.Files);
         Assert.Equal(new[] { "CIRCLE", "ID", "POLYGON", "POS" }, file.Parameters);

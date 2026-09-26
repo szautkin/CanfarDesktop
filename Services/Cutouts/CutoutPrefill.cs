@@ -45,7 +45,7 @@ public static class CutoutPrefill
     /// <summary>Never smaller than this, so a pinpoint search radius still makes a cutout worth having.</summary>
     public const double MinRadius = 5.0 / 3600;
 
-    public static CutoutSpec Suggest(SodaDescriptor file, CutoutHints? hints = null)
+    public static CutoutSpec Suggest(ICutoutFile file, CutoutHints? hints = null)
     {
         var region = SuggestRegion(file, hints);
         var (bandMin, bandMax) = SuggestBand(file, hints);
@@ -58,10 +58,10 @@ public static class CutoutPrefill
     /// Null when they ask for nothing this file can give (neither ticked, the circle not on it, no
     /// band on it): then the whole file is what was asked for.
     /// </summary>
-    public static CutoutSpec? FromSearchFlags(SodaDescriptor file, CutoutHints? hints, bool spatial, bool spectral)
+    public static CutoutSpec? FromSearchFlags(ICutoutFile file, CutoutHints? hints, bool spatial, bool spectral)
     {
         SkyRegion? region = null;
-        if (spatial && file.SupportsSky && file.Footprint is { } footprint
+        if (spatial && file.SupportsSky() && file.Footprint is { } footprint
             && hints is { Ra: { } ra, Dec: { } dec, RadiusDeg: { } r } && r > 0
             && SkyGeometry.Overlap(SkyRegion.Circle(ra, dec, r).Outline(), footprint.Outline()) != SkyOverlap.Outside)
             region = Circle(file, ra, dec, Math.Max(r, MinRadius));
@@ -71,9 +71,9 @@ public static class CutoutPrefill
         return spec.IsEmpty ? null : spec;
     }
 
-    private static SkyRegion? SuggestRegion(SodaDescriptor file, CutoutHints? hints)
+    private static SkyRegion? SuggestRegion(ICutoutFile file, CutoutHints? hints)
     {
-        if (!file.SupportsSky || file.Footprint is not { } footprint) return null;
+        if (!file.SupportsSky() || file.Footprint is not { } footprint) return null;
 
         var outline = footprint.Outline();
         var reach = file.BoundingCircle?.Radius ?? footprint.Reach;
@@ -91,10 +91,10 @@ public static class CutoutPrefill
     }
 
     /// <summary>A circle when the file takes one; otherwise the box around it, which it can take as a polygon.</summary>
-    private static SkyRegion Circle(SodaDescriptor file, double ra, double dec, double radius)
+    private static SkyRegion Circle(ICutoutFile file, double ra, double dec, double radius)
         => file.Supports("CIRCLE") ? SkyRegion.Circle(ra, dec, radius) : SkyRegion.Box(ra, dec, 2 * radius, 2 * radius);
 
-    private static (double? Min, double? Max) SuggestBand(SodaDescriptor file, CutoutHints? hints)
+    private static (double? Min, double? Max) SuggestBand(ICutoutFile file, CutoutHints? hints)
     {
         if (!file.Supports("BAND") || hints is null || (hints.BandMin is null && hints.BandMax is null))
             return (null, null);

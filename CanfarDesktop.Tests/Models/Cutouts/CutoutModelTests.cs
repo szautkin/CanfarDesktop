@@ -87,6 +87,48 @@ public class CutoutModelTests
         Assert.Equal(8, Spec().Key.Length);
     }
 
+    /// <summary>
+    /// A SODA cutout's key is what it was before a cutout could be cut locally: records saved then, and
+    /// the files named after them, keep their names. Pinned against the hash of the canonical form.
+    /// </summary>
+    [Fact]
+    public void ASodaCutoutsKey_IsTheOneItAlwaysHad()
+    {
+        Assert.Equal(CutoutMethod.Soda, Spec().CutBy);
+        Assert.Equal("d63c8c7a", Spec().Key);
+        Assert.Equal("x.cutout-d63c8c7a.fits", Spec().FileName);
+    }
+
+    /// <summary>The same region cut locally is another product: it must not replace CADC's cut in Research, nor it that.</summary>
+    [Fact]
+    public void ALocalCut_IsADifferentProduct_FromCadcsCutOfTheSameRegion()
+    {
+        var local = Spec() with { CutBy = CutoutMethod.Local };
+
+        Assert.NotEqual(Spec().Key, local.Key);
+        Assert.Equal(8, local.Key.Length);
+        Assert.Equal(Spec().Summary, local.Summary); // the same region, said the same way
+    }
+
+    /// <summary>
+    /// Who cut it is saved by name, and a record saved before there was a choice reads as CADC's —
+    /// which is what every one of them was.
+    /// </summary>
+    [Fact]
+    public void WhoCutIt_IsSavedByName_AndDefaultsToCadc()
+    {
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var json = JsonSerializer.Serialize(Spec() with { CutBy = CutoutMethod.Local }, options);
+
+        Assert.Contains("\"CutBy\":\"Local\"", json);
+        Assert.Equal(CutoutMethod.Local, JsonSerializer.Deserialize<CutoutSpec>(json, options)!.CutBy);
+
+        var before = JsonSerializer.Deserialize<CutoutSpec>(
+            """{"ArtifactId":"cadc:CFHTSG/x.fits","Region":{"Shape":0,"Ra":10.68,"Dec":41.27,"Radius":0.05}}""", options)!;
+        Assert.Equal(CutoutMethod.Soda, before.CutBy);
+        Assert.Equal(Spec().Key, before.Key);
+    }
+
     /// <summary>Saved and read back as Research saves it, it is still the same cutout.</summary>
     [Fact]
     public void ACutout_SurvivesBeingSaved()

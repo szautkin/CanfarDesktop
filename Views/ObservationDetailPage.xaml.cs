@@ -139,7 +139,7 @@ public sealed partial class ObservationDetailPage : UserControl
             case Caom2Status.Success when result.Observation is not null:
                 Populate(result.Observation);
                 SetState(success: true);
-                await LoadCutoutServicesAsync(result.Observation);
+                await LoadCutoutSourcesAsync(result.Observation);
                 break;
             case Caom2Status.AuthRequired:
                 SetState(auth: true);
@@ -468,13 +468,13 @@ public sealed partial class ObservationDetailPage : UserControl
         // the reason where it does not.
         if (CutoutCandidates.IsFitsFile(art.ContentType, art.Uri, art.ProductType))
         {
-            var cutout = _links?.CutoutFor(art.Uri);
+            var cutout = CutoutSources.For(CutoutSourcesOfObservation, art.Uri).FirstOrDefault();
             var cut = new Button { Content = Loc.T("Cutout_Button") };
             AutomationProperties.SetName(cut, Loc.F("Cutout_ButtonName", Caom2Format.ArtifactFileName(art.Uri)));
             if (cutout is not null)
             {
                 ToolTipService.SetToolTip(cut, Loc.T("Cutout_ButtonTooltip"));
-                cut.Click += (_, _) => ShowCutoutEditor(cutout, art, spec: null);
+                cut.Click += (_, _) => ShowCutoutEditor(cutout, spec: null);
             }
             var cutWrapper = UIFactory.Explained(cut);
             UIFactory.Enable(cut, cutout is not null,
@@ -862,7 +862,7 @@ public sealed partial class ObservationDetailPage : UserControl
     /// tab with a Cutout button where there is one. After the observation shows, not before: it is a
     /// second request, and the observation is worth seeing without waiting for it.
     /// </summary>
-    private async Task LoadCutoutServicesAsync(CAOM2Observation obs)
+    private async Task LoadCutoutSourcesAsync(CAOM2Observation obs)
     {
         var publisherId = _publisherID;
         DataLinkResult links;
@@ -874,23 +874,23 @@ public sealed partial class ObservationDetailPage : UserControl
         BuildFiles(obs); // either way: the buttons go from "checking" to what the answer said
     }
 
-    /// <summary>The files of the open observation that can be cut out.</summary>
-    public IReadOnlyList<SodaDescriptor> CutoutServices => _links?.Cutouts ?? [];
+    /// <summary>The ways the open observation's files can be cut.</summary>
+    public IReadOnlyList<ICutoutSource> CutoutSourcesOfObservation
+        => _links is null ? [] : CutoutSources.Soda(_links, _current);
 
     /// <summary>
     /// Open the cutout editor for one file at the top of the Files tab, starting from the last search
     /// (its target and wavelengths) or, when given, from <paramref name="spec"/> — an agent's proposal.
     /// </summary>
-    public CutoutEditor ShowCutoutEditor(SodaDescriptor file, Caom2Artifact? art, CutoutSpec? spec)
+    public CutoutEditor ShowCutoutEditor(ICutoutSource source, CutoutSpec? spec)
     {
         CloseCutoutEditor();
 
         var hints = _search.CutoutHints;
         var target = hints is { Ra: { } ra, Dec: { } dec } ? new SkyPoint(ra, dec) : (SkyPoint?)null;
-        var size = art?.ContentLength ?? ArtifactFor(file)?.ContentLength;
-        var editor = new CutoutEditor(file, CutoutPrefill.Suggest(file, hints), size, target);
+        var editor = new CutoutEditor(source, source.Suggest(hints), target);
         if (spec is not null) editor.Load(spec);
-        editor.DownloadRequested += chosen => _ = OnDownloadCutoutAsync(file, chosen);
+        editor.DownloadRequested += chosen => _ = OnDownloadCutoutAsync(source, chosen);
         editor.CloseRequested += CloseCutoutEditor;
 
         FilesPanel.Children.Insert(0, editor);
@@ -906,25 +906,22 @@ public sealed partial class ObservationDetailPage : UserControl
         _cutoutEditor = null;
     }
 
-    private Caom2Artifact? ArtifactFor(SodaDescriptor file)
-        => _current?.Planes.SelectMany(p => p.Artifacts).FirstOrDefault(a => a.Uri == file.ArtifactId);
-
     /// <summary>
-    /// Download a cutout the editor has approved: checked once more, saved where the person says, and
-    /// handed to the app like any download — recorded in Research as a cutout of this observation.
+    /// Make a cutout the editor has approved: checked once more, saved where the person says, and handed
+    /// to the app like any download — which makes it the way its method says — recorded in Research as a
+    /// cutout of this observation.
     /// </summary>
-    private async Task OnDownloadCutoutAsync(SodaDescriptor file, CutoutSpec spec)
+    private async Task OnDownloadCutoutAsync(ICutoutSource source, CutoutSpec spec)
     {
-        string url;
-        try { url = SodaRequest.Url(file, spec); }
-        catch (InvalidOperationException ex) { ShowDownloadFailed(ex.Message); return; }
+        spec = source.Bind(spec);
+        if (source.Check(spec) is { IsValid: false } refused) { ShowDownloadFailed(refused.Errors[0]); return; }
 
-        var saveAs = await PickSaveFileAsync(spec.FileNameFor(file.FileName));
+        var saveAs = await PickSaveFileAsync(spec.FileNameFor(source.File.FileName));
         if (saveAs is null) return;
 
         var ctx = new DownloadContext(_publisherID, _collection, _observationID, _current, _links, IsScience: true);
         await DownloadAndOfferAsync(
-            new ObservationDownloadRequest(ctx.PublisherID, saveAs.Path, ResearchRecordFor(ctx, spec), Url: url),
+            new ObservationDownloadRequest(ctx.PublisherID, saveAs.Path, ResearchRecordFor(ctx, spec)),
             saveAs.Name, ctx.PublisherID, addedToResearch: true);
     }
 

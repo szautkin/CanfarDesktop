@@ -1,5 +1,7 @@
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
+using CanfarDesktop.Models.Cutouts;
+using CanfarDesktop.Services.Cutouts;
 
 namespace CanfarDesktop.Services;
 
@@ -41,16 +43,21 @@ public sealed class ObservationDownloader
 
     private readonly Func<ObservationDownloadService> _downloads;
     private readonly ObservationStore _store;
+    private readonly IReadOnlyDictionary<CutoutMethod, ICutoutMaker> _makers;
     private readonly object _gate = new();
     private readonly Dictionary<string, (string PublisherId, string? ProductKey, Task Work)> _running =
         new(StringComparer.OrdinalIgnoreCase);
 
     /// <param name="downloads">A factory rather than an instance: the download service sits on a typed
     /// HTTP client, and one held for the app's life would never see its handler renewed.</param>
-    public ObservationDownloader(Func<ObservationDownloadService> downloads, ObservationStore store)
+    /// <param name="makers">How each kind of cutout is made — one per <see cref="CutoutMethod"/>. Left
+    /// out, cutouts are cut on CADC's side only.</param>
+    public ObservationDownloader(Func<ObservationDownloadService> downloads, ObservationStore store,
+                                 IEnumerable<ICutoutMaker>? makers = null)
     {
         _downloads = downloads;
         _store = store;
+        _makers = (makers ?? [new SodaCutoutMaker(downloads, StallTimeout)]).ToDictionary(m => m.Method);
     }
 
     /// <summary>
@@ -112,23 +119,36 @@ public sealed class ObservationDownloader
 
     private async Task RunAsync(ObservationDownloadRequest request)
     {
-        using var task = TaskRegistry.Begin(TaskKind.Download, $"Download {Path.GetFileName(request.TargetPath)}");
+        // A cutout record is made as the cutout it is — never fetched as the whole file it was cut from —
+        // by whoever cuts it. A URL the caller already chose is fetched as it stands.
+        var cutout = request.Url is null ? request.Record?.Cutout : null;
+        var fileName = Path.GetFileName(request.TargetPath);
+        var label = cutout is not null && _makers.TryGetValue(cutout.CutBy, out var named)
+            ? named.TaskLabel(fileName)
+            : $"Download {fileName}";
+
+        using var task = TaskRegistry.Begin(TaskKind.Download, label);
         try
         {
-            var downloads = _downloads();
-            var url = request.Url;
-            if (url is null)
+            var progress = new StageProgress(task);
+            if (cutout is not null)
             {
-                // A cutout record is fetched as the cutout it is — never as the whole file it was cut from.
-                task.Stage("finding the file");
-                url = request.Record?.Cutout is { } cutout
-                    ? await downloads.ResolveCutoutUrlAsync(request.PublisherId, cutout)
-                    : await downloads.ResolveUrlAsync(request.PublisherId, request.ArtifactIndex);
+                await MakerFor(cutout.CutBy).MakeAsync(new CutoutJob(request.PublisherId, cutout, request.TargetPath),
+                    new StageText(task), progress);
             }
+            else
+            {
+                var downloads = _downloads();
+                var url = request.Url;
+                if (url is null)
+                {
+                    task.Stage("finding the file");
+                    url = await downloads.ResolveUrlAsync(request.PublisherId, request.ArtifactIndex);
+                }
 
-            task.Stage("connecting");
-            await downloads.DownloadToPathAsync(url, request.TargetPath,
-                progress: new StageProgress(task), stallTimeout: StallTimeout);
+                task.Stage("connecting");
+                await downloads.DownloadToPathAsync(url, request.TargetPath, progress: progress, stallTimeout: StallTimeout);
+            }
 
             long? size = new FileInfo(request.TargetPath) is { Exists: true } file ? file.Length : null;
             if (request.Record is { } record)
@@ -147,11 +167,23 @@ public sealed class ObservationDownloader
         }
     }
 
+    /// <summary>The maker for a method, or why there is none — a cutout nobody here can make is a failure with a reason.</summary>
+    private ICutoutMaker MakerFor(CutoutMethod method)
+        => _makers.TryGetValue(method, out var maker)
+            ? maker
+            : throw new InvalidOperationException($"This app cannot make a cutout cut by {method}.");
+
     /// <summary>What the status bar says while the bytes arrive.</summary>
     public static string Describe(long downloaded, long? total)
         => total is long t && t > 0
             ? $"{Caom2Format.Bytes(downloaded)} of {Caom2Format.Bytes(t)} · {(double)downloaded / t:P0}"
             : $"{Caom2Format.Bytes(downloaded)} so far"; // CADC sends no length for a package it builds on the fly
+
+    /// <summary>A maker's word for what it is doing, as the task's stage.</summary>
+    private sealed class StageText(TaskHandle task) : IProgress<string>
+    {
+        public void Report(string value) => task.Stage(value);
+    }
 
     /// <summary>Bytes so far as the task's stage, at most every <see cref="ProgressInterval"/>; the last always gets through.</summary>
     private sealed class StageProgress(TaskHandle task) : IProgress<(long Downloaded, long? Total)>

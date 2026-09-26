@@ -1116,11 +1116,11 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
 
             try
             {
-                var file = args.PickFile(page.CutoutServices);
-                var proposed = args.Region() is null && args.BandMin is null && args.BandMax is null ? null : args.ToSpec(file);
-                var editor = page.ShowCutoutEditor(file, null, proposed);
-                var check = CanfarDesktop.Services.Cutouts.SodaRequest.Check(file, editor.Spec);
-                return new CutoutEditorShown(true, file.ArtifactId, editor.Spec.Summary, check.Errors, check.Warnings);
+                var source = args.PickSource(page.CutoutSourcesOfObservation);
+                var proposed = args.Region() is null && args.BandMin is null && args.BandMax is null ? null : args.ToSpec(source);
+                var editor = page.ShowCutoutEditor(source, proposed);
+                var check = source.Check(editor.Spec);
+                return new CutoutEditorShown(true, source.File.ArtifactId, editor.Spec.Summary, check.Errors, check.Warnings);
             }
             catch (CanfarDesktop.Mcp.Tools.McpToolException ex)
             {

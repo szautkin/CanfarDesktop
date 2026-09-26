@@ -172,7 +172,8 @@ public static class McpToolCatalog
             new GetDataLinksTool((id, ct) => dataLink.GetLinksAsync(id, ct)),
             // What each file can be cut by, and the cutout the editor would open on — SODA's descriptors
             // from DataLink, the last search for the suggestion.
-            new GetCutoutOptionsTool((id, ct) => CutoutOptionsAsync(dataLink, caom2, searchContext, id, ct)),
+            new GetCutoutOptionsTool(async (id, ct) =>
+                CutoutOptions.From(id, await CutoutSourcesAsync(dataLink, caom2, id, ct), searchContext.CutoutHints)),
 
             // VOSpace/ARC storage (read) + local FITS introspection
             new ListVoSpacePathTool((req, ct) => storage.ListNodesAsync(req.Path, req.Limit, ct)),
@@ -362,7 +363,7 @@ public static class McpToolCatalog
             new DownloadObservationTool(),
             new DownloadObservationsBulkTool(),
             // Part of a file, cut on CADC's side — checked against the file's descriptor before it is queued.
-            new DownloadCutoutTool(async (id, ct) => (await dataLink.GetLinksAsync(id, ct)).Cutouts),
+            new DownloadCutoutTool((id, ct) => CutoutSourcesAsync(dataLink, caom2, id, ct)),
             new DeleteDownloadedObservationTool(),
             new ClearResearchArchiveTool(),
             // Keep an observation without its file; drop a file and keep its observation.
@@ -632,23 +633,24 @@ public static class McpToolCatalog
         await downloader.Start(new ObservationDownloadRequest(payload.PublisherId, localPath, record));
     }
 
-    /// <summary>get_cutout_options: the descriptors from DataLink, each file's size from CAOM2, the suggestion from the last search.</summary>
-    private static async Task<CutoutOptions> CutoutOptionsAsync(
-        DataLinkService dataLink, ICAOM2Service caom2, SearchContext search, string publisherId, CancellationToken ct)
+    /// <summary>
+    /// The ways an observation's files can be cut, for get_cutout_options and download_cutout alike:
+    /// CADC's from DataLink, each file's size from CAOM2.
+    /// </summary>
+    private static async Task<IReadOnlyList<Services.Cutouts.ICutoutSource>> CutoutSourcesAsync(
+        DataLinkService dataLink, ICAOM2Service caom2, string publisherId, CancellationToken ct)
     {
         var links = await dataLink.GetLinksAsync(publisherId, ct);
 
-        var sizes = new Dictionary<string, long?>(StringComparer.Ordinal);
+        CAOM2Observation? observation = null;
         try
         {
             var meta = await caom2.GetByPublisherIdAsync(publisherId, ct);
-            if (meta.IsSuccess && meta.Observation is { } obs)
-                foreach (var artifact in obs.Planes.SelectMany(p => p.Artifacts))
-                    if (!string.IsNullOrEmpty(artifact.Uri)) sizes.TryAdd(artifact.Uri, artifact.ContentLength);
+            if (meta.IsSuccess) observation = meta.Observation;
         }
         catch { /* the sizes are a help, not a requirement */ }
 
-        return CutoutOptions.From(publisherId, links.Cutouts, search.CutoutHints, id => sizes.GetValueOrDefault(id));
+        return Services.Cutouts.CutoutSources.Soda(links, observation);
     }
 
     /// <summary>

@@ -2,7 +2,9 @@ using System.Net;
 using Xunit;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
+using CanfarDesktop.Models.Cutouts;
 using CanfarDesktop.Services;
+using CanfarDesktop.Services.Cutouts;
 using CanfarDesktop.Tests.Helpers;
 
 namespace CanfarDesktop.Tests.Services;
@@ -128,6 +130,67 @@ public class ObservationDownloaderTests : IDisposable
         Assert.Contains(requested, u => u.StartsWith("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/sync?ID=")
                                         && u.Contains("CIRCLE=10.68"));
         Assert.True(Assert.Single(store.Observations).IsCutout);
+    }
+
+    /// <summary>
+    /// A cutout is made by whoever its method says cuts it, through the same downloader: the maker only
+    /// produces the file; the record, its path and size, and the status bar are the downloader's as for
+    /// any download.
+    /// </summary>
+    [Fact]
+    public async Task ACutout_IsMadeByTheMakerForItsMethod_AndRecordedLikeAnyDownload()
+    {
+        var store = new ObservationStore();
+        var maker = new FakeMaker(CutoutMethod.Local, bytes: 300);
+        var downloader = new ObservationDownloader(() => throw new InvalidOperationException("no network for a local cut"),
+            store, [maker]);
+        var record = new DownloadedObservation
+        {
+            PublisherID = "ivo://cadc/HST",
+            Cutout = new CutoutSpec { ArtifactId = "cadc:HST/x_flt.fits", Region = SkyRegion.Circle(1, 2, 0.01), CutBy = CutoutMethod.Local },
+        };
+
+        await downloader.Start(new ObservationDownloadRequest(record.PublisherID, PathFor("cut.fits"), record));
+
+        Assert.Equal(record.Cutout, Assert.Single(maker.Jobs).Spec);
+        var saved = Assert.Single(store.Observations);
+        Assert.Equal(PathFor("cut.fits"), saved.LocalPath);
+        Assert.Equal(300, saved.FileSize);
+        Assert.Equal("Cut x cut.fits", OnlyTask().Label);
+    }
+
+    /// <summary>A cutout nobody here can make fails in the status bar with the reason, and records nothing.</summary>
+    [Fact]
+    public async Task ACutoutWithNoMakerForItsMethod_FailsWithTheReason()
+    {
+        var (downloader, store) = Make(_ => Task.FromResult(File(16)));
+        var record = new DownloadedObservation
+        {
+            PublisherID = "ivo://cadc/HST",
+            Cutout = new CutoutSpec { ArtifactId = "cadc:HST/x_flt.fits", Region = SkyRegion.Circle(1, 2, 0.01), CutBy = CutoutMethod.Local },
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => downloader.Start(new ObservationDownloadRequest(record.PublisherID, PathFor("cut.fits"), record)));
+
+        Assert.Contains("Local", OnlyTask().Message);
+        Assert.Empty(store.Observations);
+    }
+
+    private sealed class FakeMaker(CutoutMethod method, int bytes) : ICutoutMaker
+    {
+        public List<CutoutJob> Jobs { get; } = [];
+        public CutoutMethod Method => method;
+        public string TaskLabel(string fileName) => $"Cut x {fileName}";
+
+        public Task MakeAsync(CutoutJob job, IProgress<string> stage, IProgress<(long Done, long? Total)> progress,
+                              CancellationToken ct = default)
+        {
+            Jobs.Add(job);
+            System.IO.File.WriteAllBytes(job.TargetPath, new byte[bytes]);
+            progress.Report((bytes, bytes));
+            return Task.CompletedTask;
+        }
     }
 
     // ── What the status bar sees ─────────────────────────────────────────────

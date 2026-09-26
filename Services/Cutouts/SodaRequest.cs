@@ -4,77 +4,23 @@ using CanfarDesktop.Models.Cutouts;
 
 namespace CanfarDesktop.Services.Cutouts;
 
-/// <summary>What is wrong with a cutout — errors stop it, warnings only say what will happen.</summary>
-public sealed record CutoutCheck(IReadOnlyList<string> Errors, IReadOnlyList<string> Warnings)
-{
-    public bool IsValid => Errors.Count == 0;
-}
-
 /// <summary>
-/// A cutout checked against its file's descriptor, and the SODA request made from it.
+/// The SODA request made from a cutout, and how large CADC's answer will be.
 ///
-/// <para>The one place a cutout is judged. The editor shows these messages as they are typed, an
-/// agent's download_cutout is refused with them before anything is queued, and the URL is only ever
-/// built from a cutout that passed — so no two surfaces can disagree about what is allowed.</para>
-///
-/// <para>Takes its translations through <see cref="Translate"/> rather than calling <c>Loc</c>, as
-/// <c>ActivitySummary</c> does: the resource loader needs a packaged app, and this is tested without
-/// one. Unset, it answers in English — which is also what an agent is told.</para>
+/// <para>The URL is only ever built from a cutout that passed <see cref="CutoutRules.Check"/> — the
+/// judgement the editor shows and an agent is refused with — so no two surfaces can disagree about what
+/// is allowed.</para>
 /// </summary>
 public static class SodaRequest
 {
-    /// <summary>Resolves a resource key, or null to fall back to the English written here.</summary>
-    public static Func<string, string?>? Translate { get; set; }
-
-    private static string T(string key, string english) => Translate?.Invoke(key) ?? english;
-
-    public static CutoutCheck Check(SodaDescriptor file, CutoutSpec spec)
-    {
-        var errors = new List<string>();
-        var warnings = new List<string>();
-
-        if (spec.IsEmpty)
-            errors.Add(T("Cutout_CheckNothing", "Choose a region (or a band) to cut; with neither, the whole file would come back."));
-
-        if (spec.Region is { } region)
-            CheckRegion(file, region, errors, warnings);
-
-        if (spec.BandMin is not null || spec.BandMax is not null)
-            CheckInterval(file.Supports("BAND"), spec.BandMin, spec.BandMax, file.BandMin, file.BandMax,
-                T("Cutout_CheckNoBand", "This file cannot be cut by wavelength."),
-                T("Cutout_CheckBandOrder", "The shortest wavelength has to be below the longest."),
-                T("Cutout_CheckBandOutside", "That wavelength range is outside this file's."),
-                T("Cutout_CheckBandPartial", "Part of that wavelength range is outside this file's; the cutout will be trimmed to it."),
-                errors, warnings);
-
-        if (spec.TimeMin is not null || spec.TimeMax is not null)
-            CheckInterval(file.Supports("TIME"), spec.TimeMin, spec.TimeMax, file.TimeMin, file.TimeMax,
-                T("Cutout_CheckNoTime", "This file cannot be cut by time."),
-                T("Cutout_CheckTimeOrder", "The start has to be before the end."),
-                T("Cutout_CheckTimeOutside", "That time range is outside this file's."),
-                T("Cutout_CheckTimePartial", "Part of that time range is outside this file's; the cutout will be trimmed to it."),
-                errors, warnings);
-
-        if (spec.Pol.Count > 0)
-        {
-            if (!file.Supports("POL"))
-                errors.Add(T("Cutout_CheckNoPol", "This file cannot be cut by polarization."));
-            else if (file.PolStates.Count > 0 && spec.Pol.FirstOrDefault(s => !file.PolStates.Contains(s)) is { } unknown)
-                errors.Add(string.Format(T("Cutout_CheckPolUnknown", "This file has no {0} polarization; it has {1}."),
-                    unknown, string.Join(", ", file.PolStates)));
-        }
-
-        return new CutoutCheck(errors, warnings);
-    }
-
     /// <summary>
-    /// The request for a cutout that passed <see cref="Check"/>: SODA's sync endpoint with the file's
-    /// ID and one value for each parameter the cutout sets. Throws for one that did not, with the
-    /// first reason — building a URL for a refused cutout is a bug, not a request.
+    /// The request for a cutout that passed <see cref="CutoutRules.Check"/>: SODA's sync endpoint with
+    /// the file's ID and one value for each parameter the cutout sets. Throws for one that did not, with
+    /// the first reason — building a URL for a refused cutout is a bug, not a request.
     /// </summary>
     public static string Url(SodaDescriptor file, CutoutSpec spec)
     {
-        var check = Check(file, spec);
+        var check = CutoutRules.Check(file, spec);
         if (!check.IsValid) throw new InvalidOperationException(check.Errors[0]);
 
         var query = new List<string> { Param("ID", file.ArtifactId) };
@@ -123,57 +69,6 @@ public static class SodaRequest
         var plane = region.Outline().Select(v => SkyGeometry.Project(centre, v)).OfType<(double X, double Y)>().ToList();
         return plane.Count == 0 ? 0
             : (plane.Max(p => p.X) - plane.Min(p => p.X)) * (plane.Max(p => p.Y) - plane.Min(p => p.Y));
-    }
-
-    /// <summary>The words for a region's own problem.</summary>
-    public static string Describe(RegionProblem problem) => problem switch
-    {
-        RegionProblem.NotANumber => T("Cutout_ProblemNumber", "The position and size have to be numbers."),
-        RegionProblem.DecOutOfRange => T("Cutout_ProblemDec", "Dec has to be between −90° and +90°."),
-        RegionProblem.SizeNotPositive => T("Cutout_ProblemSize", "The size has to be greater than zero."),
-        RegionProblem.TooLarge => T("Cutout_ProblemTooLarge", "That region is larger than any cutout can be."),
-        RegionProblem.TooFewVertices => T("Cutout_ProblemVertices", "A polygon needs at least three corners."),
-        _ => T("Cutout_ProblemDegenerate", "Those corners enclose no area."),
-    };
-
-    private static void CheckRegion(SodaDescriptor file, SkyRegion region, List<string> errors, List<string> warnings)
-    {
-        if (region.Problem() is { } problem)
-        {
-            errors.Add(Describe(problem));
-            return;
-        }
-
-        if (!file.Supports(region.SodaParameter))
-        {
-            errors.Add(T("Cutout_CheckNoRegion", "This file cannot be cut to that shape."));
-            return;
-        }
-
-        if (file.Footprint is not { } footprint) return;
-        switch (SkyGeometry.Overlap(region.Outline(), footprint.Outline()))
-        {
-            case SkyOverlap.Outside:
-                errors.Add(T("Cutout_CheckOutside", "That region is outside this file's footprint."));
-                break;
-            case SkyOverlap.Partial:
-                warnings.Add(T("Cutout_CheckPartial", "Part of that region is outside the footprint; the cutout will be trimmed to it."));
-                break;
-        }
-    }
-
-    private static void CheckInterval(bool supported, double? min, double? max, double? fileMin, double? fileMax,
-        string unsupported, string order, string outside, string partial, List<string> errors, List<string> warnings)
-    {
-        if (!supported) { errors.Add(unsupported); return; }
-        if (min is { } a && max is { } b && a >= b) { errors.Add(order); return; }
-
-        var lo = min ?? fileMin ?? double.NegativeInfinity;
-        var hi = max ?? fileMax ?? double.PositiveInfinity;
-        var fLo = fileMin ?? double.NegativeInfinity;
-        var fHi = fileMax ?? double.PositiveInfinity;
-        if (hi <= fLo || lo >= fHi) errors.Add(outside);
-        else if (lo < fLo || hi > fHi) warnings.Add(partial);
     }
 
     /// <summary>An open end is written as infinity, as SODA's interval syntax has it.</summary>

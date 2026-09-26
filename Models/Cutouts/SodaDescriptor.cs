@@ -8,7 +8,7 @@ namespace CanfarDesktop.Models.Cutouts;
 /// BAND as well. An editor built from this shows only the fields that file can use, and a request
 /// checked against it cannot ask for what the file does not have.</para>
 /// </summary>
-public sealed record SodaDescriptor
+public sealed record SodaDescriptor : ICutoutFile
 {
     /// <summary>The SODA sync endpoint — https only, as every DataLink URL the app follows.</summary>
     public required string AccessUrl { get; init; }
@@ -35,11 +35,6 @@ public sealed record SodaDescriptor
 
     /// <summary>POL's allowed states, when it lists them.</summary>
     public IReadOnlyList<string> PolStates { get; init; } = [];
-
-    public bool Supports(string parameter) => Parameters.Contains(parameter.ToUpperInvariant());
-
-    /// <summary>Whether it can be cut on the sky at all.</summary>
-    public bool SupportsSky => Supports("CIRCLE") || Supports("POLYGON");
 
     /// <summary>The file's own name — the last part of its ID, as the observation view names artifacts.</summary>
     public string FileName => Helpers.Caom2Format.ArtifactFileName(ArtifactId);

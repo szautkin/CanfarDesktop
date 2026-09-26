@@ -5,10 +5,11 @@ using CanfarDesktop.Services.Cutouts;
 namespace CanfarDesktop.Mcp.Tools.Write;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SODA cutouts for agents: what a file can be cut by (get_cutout_options), a cutout proposed as a
+// Cutouts for agents: what a file can be cut by (get_cutout_options), a cutout proposed as a
 // download (download_cutout), and the editor opened on the person's screen (show_cutout_editor).
 // Every one of them reads the same arguments into the same CutoutSpec and judges it with the same
-// SodaRequest.Check the editor shows — no second idea of what a valid cutout is.
+// ICutoutSource.Check the editor shows — no second idea of what a valid cutout is, and nothing here
+// that knows which way a file is cut.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// <summary>A cutout request as an agent writes it: a region (circle, box or polygon, degrees) and optionally a band (metres).</summary>
@@ -56,37 +57,42 @@ public sealed record CutoutArgs
         return null;
     }
 
-    /// <summary>The cutout these arguments ask of <paramref name="file"/>.</summary>
-    public CutoutSpec ToSpec(SodaDescriptor file)
-        => new() { ArtifactId = file.ArtifactId, Region = Region(), BandMin = BandMin, BandMax = BandMax };
+    /// <summary>The cutout these arguments ask of <paramref name="source"/>: its file, cut its way.</summary>
+    public CutoutSpec ToSpec(ICutoutSource source)
+        => source.Bind(new CutoutSpec { Region = Region(), BandMin = BandMin, BandMax = BandMax });
 
     /// <summary>
-    /// The file meant: the one named, or the only one that can be cut. A choice left to guess between
-    /// several is refused with their names, rather than guessed.
+    /// The file meant, and the way of cutting it: the file named, or the only one that can be cut. A
+    /// choice left to guess between several files is refused with their names, rather than guessed.
     /// </summary>
-    public SodaDescriptor PickFile(IReadOnlyList<SodaDescriptor> files)
+    public ICutoutSource PickSource(IReadOnlyList<ICutoutSource> sources)
     {
-        if (files.Count == 0)
+        if (sources.Count == 0)
             throw new McpToolException(new InvalidArgument(
                 "none of this observation's files can be cut out (its DataLink answer lists no SODA service); download_observation fetches the whole file"));
 
         var named = (ArtifactId ?? string.Empty).Trim();
-        if (named.Length > 0)
-            return files.FirstOrDefault(f => f.ArtifactId == named || f.FileName == named)
-                ?? throw new McpToolException(new InvalidArgument(
-                    $"no file '{named}' can be cut from this observation; the ones that can: {string.Join(", ", files.Select(f => f.ArtifactId))}"));
+        var files = sources.Select(s => s.File.ArtifactId).Distinct().ToList();
+        var candidates = named.Length == 0
+            ? sources
+            : sources.Where(s => s.File.ArtifactId == named || s.File.FileName == named).ToList();
 
-        return files.Count == 1
-            ? files[0]
-            : throw new McpToolException(new InvalidArgument(
-                $"this observation has {files.Count} files that can be cut; name one as artifactId: {string.Join(", ", files.Select(f => f.ArtifactId))}"));
+        if (candidates.Count == 0)
+            throw new McpToolException(new InvalidArgument(
+                $"no file '{named}' can be cut from this observation; the ones that can: {string.Join(", ", files)}"));
+        if (candidates.Select(s => s.File.ArtifactId).Distinct().Count() > 1)
+            throw new McpToolException(new InvalidArgument(
+                $"this observation has {files.Count} files that can be cut; name one as artifactId: {string.Join(", ", files)}"));
+
+        return candidates[0];
     }
 }
 
-/// <summary>One file an agent could cut, and what it can be cut by.</summary>
+/// <summary>One file an agent could cut, one way, and what it can be cut by.</summary>
 public sealed record CutoutFileOption(
     string ArtifactId,
     string FileName,
+    CutoutMethod CutBy,
     IReadOnlyList<string> Parameters,
     SkyRegion? Footprint,
     SkyRegion? BoundingCircle,
@@ -101,19 +107,18 @@ public sealed record CutoutFileOption(
 public sealed record CutoutOptions(string PublisherId, IReadOnlyList<CutoutFileOption> Files, string? Note)
 {
     /// <summary>
-    /// Each file's options, with the cutout the editor would open on — from the last search when it
-    /// looked at this file. Pure, so it is tested without a network or a screen.
+    /// Each file's options, each way it can be cut, with the cutout the editor would open on — from the
+    /// last search when it looked at this file. Pure, so it is tested without a network or a screen.
     /// </summary>
-    public static CutoutOptions From(string publisherId, IReadOnlyList<SodaDescriptor> files,
-                                     CutoutHints? hints, Func<string, long?> sizeOf)
+    public static CutoutOptions From(string publisherId, IReadOnlyList<ICutoutSource> sources, CutoutHints? hints)
     {
-        var options = files.Select(f =>
+        var options = sources.Select(source =>
         {
-            var suggested = CutoutPrefill.Suggest(f, hints);
-            var whole = sizeOf(f.ArtifactId);
-            return new CutoutFileOption(f.ArtifactId, f.FileName, f.Parameters.Order().ToList(),
-                f.Footprint, f.BoundingCircle, f.BandMin, f.BandMax, whole,
-                suggested, suggested.Summary, SodaRequest.EstimateBytes(f, suggested, whole));
+            var f = source.File;
+            var suggested = source.Suggest(hints);
+            return new CutoutFileOption(f.ArtifactId, f.FileName, source.Method, f.Parameters.Order().ToList(),
+                f.Footprint, f.BoundingCircle, f.BandMin, f.BandMax, source.WholeFileBytes,
+                suggested, suggested.Summary, source.EstimateBytes(suggested));
         }).ToList();
 
         var note = options.Count == 0
@@ -155,15 +160,15 @@ public sealed record DownloadCutoutPayload(string PublisherId, CutoutSpec Spec);
 /// <summary>
 /// <c>download_cutout</c> — propose downloading part of one file, cut on CADC's side. SemanticWrite.
 ///
-/// <para>Checked before it is proposed, against the file's own descriptor, by the same
-/// <see cref="SodaRequest.Check"/> the editor shows: a region off the image is refused now, with the
-/// reason, rather than queued to fail at apply time.</para>
+/// <para>Checked before it is proposed, against the file, by the same <see cref="ICutoutSource.Check"/>
+/// the editor shows: a region off the image is refused now, with the reason, rather than queued to fail
+/// at apply time.</para>
 /// </summary>
 public sealed class DownloadCutoutTool : JsonWriteTool<CutoutArgs>
 {
-    private readonly Func<string, CancellationToken, Task<IReadOnlyList<SodaDescriptor>>> _files;
+    private readonly Func<string, CancellationToken, Task<IReadOnlyList<ICutoutSource>>> _sources;
 
-    public DownloadCutoutTool(Func<string, CancellationToken, Task<IReadOnlyList<SodaDescriptor>>> files) => _files = files;
+    public DownloadCutoutTool(Func<string, CancellationToken, Task<IReadOnlyList<ICutoutSource>>> sources) => _sources = sources;
 
     public override McpVerbClass VerbClass => McpVerbClass.SemanticWrite;
 
@@ -182,9 +187,9 @@ public sealed class DownloadCutoutTool : JsonWriteTool<CutoutArgs>
         var pid = (args.PublisherId ?? string.Empty).Trim();
         if (pid.Length == 0) throw new McpToolException(new InvalidArgument("publisherId is required"));
 
-        var file = args.PickFile(await _files(pid, ct));
-        var spec = args.ToSpec(file);
-        var check = SodaRequest.Check(file, spec);
+        var source = args.PickSource(await _sources(pid, ct));
+        var spec = args.ToSpec(source);
+        var check = source.Check(spec);
         if (!check.IsValid) throw new McpToolException(new InvalidArgument(string.Join(" ", check.Errors)));
 
         return ProposalPlan.Encoding("download_cutout",

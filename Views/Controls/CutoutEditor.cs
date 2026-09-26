@@ -13,11 +13,11 @@ namespace CanfarDesktop.Views.Controls;
 /// Choose a cutout of one file: its region by numbers or by drawing, its band when the file has one,
 /// checked as it is typed, with an idea of its size.
 ///
-/// <para>Edits one <see cref="CutoutSpec"/>, the file's own <see cref="SodaDescriptor"/> deciding
-/// which fields there are. The fields and the drawing are two views of that one spec — editing either
-/// updates the other — and <see cref="SodaRequest.Check"/> judges it, the same judgement an agent's
-/// request meets. It does not download: it says <see cref="DownloadRequested"/>, and whoever placed it
-/// hands the cutout to the app.</para>
+/// <para>Edits one <see cref="CutoutSpec"/>, the file as its <see cref="ICutoutSource"/> describes it
+/// deciding which fields there are. The fields and the drawing are two views of that one spec — editing
+/// either updates the other — and the source's <see cref="ICutoutSource.Check"/> judges it, the same
+/// judgement an agent's request meets. It does not download: it says <see cref="DownloadRequested"/>,
+/// and whoever placed it hands the cutout to the app.</para>
 ///
 /// <para>Every control is named, so an agent can point at it.</para>
 /// </summary>
@@ -26,9 +26,8 @@ public sealed class CutoutEditor : UserControl
     private static readonly (string Label, double Degrees)[] AngleUnits = [("″", 1.0 / 3600), ("′", 1.0 / 60), ("°", 1.0)];
     private static readonly (string Label, double Metres)[] WaveUnits = [("nm", 1e-9), ("µm", 1e-6), ("mm", 1e-3)];
 
-    private readonly SodaDescriptor _file;
+    private readonly ICutoutSource _source;
     private readonly CutoutSpec _suggested;
-    private readonly long? _wholeBytes;
     private CutoutSpec _spec;
     private bool _syncing;
 
@@ -63,12 +62,12 @@ public sealed class CutoutEditor : UserControl
     /// <summary>The person closed the editor.</summary>
     public event Action? CloseRequested;
 
-    public CutoutEditor(SodaDescriptor file, CutoutSpec suggested, long? wholeFileBytes, SkyPoint? target)
+    public CutoutEditor(ICutoutSource source, CutoutSpec suggested, SkyPoint? target)
     {
-        _file = file;
-        _suggested = suggested;
-        _wholeBytes = wholeFileBytes;
-        _spec = suggested;
+        _source = source;
+        _suggested = source.Bind(suggested);
+        _spec = _suggested;
+        var file = source.File;
 
         _shape.Header = Loc.T("Cutout_Shape");
         _shape.Items.Add(Loc.T("Cutout_ShapeCircle"));
@@ -188,7 +187,7 @@ public sealed class CutoutEditor : UserControl
 
     private void Apply(CutoutSpec spec, bool fromDrawing)
     {
-        _spec = spec with { ArtifactId = _file.ArtifactId };
+        _spec = _source.Bind(spec);
         if (!fromDrawing) _sky.Region = _spec.Region;
         WriteFields(_spec);
         Evaluate(fieldError: null);
@@ -290,7 +289,7 @@ public sealed class CutoutEditor : UserControl
 
     private void Evaluate(string? fieldError)
     {
-        var check = SodaRequest.Check(_file, _spec);
+        var check = _source.Check(_spec);
         IReadOnlyList<string> errors = fieldError is null ? check.Errors : [fieldError];
 
         _errors.Text = string.Join("\n", errors);
@@ -298,8 +297,8 @@ public sealed class CutoutEditor : UserControl
         _warnings.Text = fieldError is null ? string.Join("\n", check.Warnings) : string.Empty;
         _warnings.Visibility = _warnings.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        var estimate = fieldError is null ? SodaRequest.EstimateBytes(_file, _spec, _wholeBytes) : null;
-        _estimate.Text = estimate is { } bytes && _wholeBytes is { } whole
+        var estimate = fieldError is null ? _source.EstimateBytes(_spec) : null;
+        _estimate.Text = estimate is { } bytes && _source.WholeFileBytes is { } whole
             ? Loc.F("Cutout_Estimate", Caom2Format.Bytes(bytes), Caom2Format.Bytes(whole))
             : string.Empty;
         _estimate.Visibility = _estimate.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;

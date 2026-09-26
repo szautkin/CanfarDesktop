@@ -20,7 +20,7 @@ public class SodaRequestTests
         var file = MegaPipe();
         var spec = Circle(file, 10.68, 41.27, 0.05);
 
-        Assert.True(SodaRequest.Check(file, spec).IsValid);
+        Assert.True(CutoutRules.Check(file, spec).IsValid);
         Assert.Equal(
             "https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/sync?ID=cadc%3ACFHTSG%2FG006.010.684%2B41.269.R.fits&CIRCLE=10.68%2041.27%200.05",
             SodaRequest.Url(file, spec));
@@ -39,7 +39,7 @@ public class SodaRequestTests
     public void ARegionOffTheImage_IsRefused()
     {
         var file = MegaPipe();
-        var check = SodaRequest.Check(file, Circle(file, 20, 41, 0.1));
+        var check = CutoutRules.Check(file, Circle(file, 20, 41, 0.1));
 
         Assert.False(check.IsValid);
         Assert.Contains("outside", Assert.Single(check.Errors));
@@ -51,7 +51,7 @@ public class SodaRequestTests
     public void ARegionOverTheEdge_Passes_WithAWarning()
     {
         var file = MegaPipe();
-        var check = SodaRequest.Check(file, Circle(file, 9.97, 41.8, 0.1));
+        var check = CutoutRules.Check(file, Circle(file, 9.97, 41.8, 0.1));
 
         Assert.True(check.IsValid);
         Assert.Contains("trimmed", Assert.Single(check.Warnings));
@@ -61,7 +61,7 @@ public class SodaRequestTests
     public void NothingToCut_IsRefused()
     {
         var file = MegaPipe();
-        Assert.False(SodaRequest.Check(file, new CutoutSpec { ArtifactId = file.ArtifactId }).IsValid);
+        Assert.False(CutoutRules.Check(file, new CutoutSpec { ArtifactId = file.ArtifactId }).IsValid);
     }
 
     /// <summary>An image has no spectral axis: asking it for a band is refused, not silently ignored.</summary>
@@ -71,7 +71,7 @@ public class SodaRequestTests
         var file = MegaPipe();
         var spec = Circle(file, 10.68, 41.27, 0.05) with { BandMin = 5e-7, BandMax = 6e-7 };
 
-        Assert.Contains("wavelength", Assert.Single(SodaRequest.Check(file, spec).Errors));
+        Assert.Contains("wavelength", Assert.Single(CutoutRules.Check(file, spec).Errors));
     }
 
     [Theory]
@@ -82,7 +82,7 @@ public class SodaRequestTests
     public void ABand_OnTheCube_IsJudgedAgainstItsRange(double min, double max, bool valid, bool warned)
     {
         var file = JcmtCube();
-        var check = SodaRequest.Check(file, new CutoutSpec { ArtifactId = file.ArtifactId, BandMin = min, BandMax = max });
+        var check = CutoutRules.Check(file, new CutoutSpec { ArtifactId = file.ArtifactId, BandMin = min, BandMax = max });
 
         Assert.Equal(valid, check.IsValid);
         Assert.Equal(warned, check.Warnings.Count > 0);
@@ -120,12 +120,12 @@ public class SodaRequestTests
         var file = MegaPipe();
         try
         {
-            SodaRequest.Translate = key => key == "Cutout_CheckOutside" ? "hors champ" : null;
-            Assert.Equal("hors champ", Assert.Single(SodaRequest.Check(file, Circle(file, 20, 41, 0.1)).Errors));
+            CutoutRules.Translate = key => key == "Cutout_CheckOutside" ? "hors champ" : null;
+            Assert.Equal("hors champ", Assert.Single(CutoutRules.Check(file, Circle(file, 20, 41, 0.1)).Errors));
         }
         finally
         {
-            SodaRequest.Translate = null;
+            CutoutRules.Translate = null;
         }
     }
 }
