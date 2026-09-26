@@ -18,8 +18,6 @@ namespace CanfarDesktop.Mcp;
 /// </summary>
 public sealed class McpHost : IAsyncDisposable
 {
-    private const string ServerName = "verbinal-canfar";
-
     private readonly IServiceProvider _services;
     private readonly McpSettingsService _settings;
     private readonly string _appVersion;
@@ -135,7 +133,7 @@ public sealed class McpHost : IAsyncDisposable
         if (_listener is not null) return;
 
         var tools = McpToolCatalog.Build(_services, _appVersion, EventLog);
-        var identity = new ServerIdentity(ServerName, _appVersion);
+        var identity = new ServerIdentity(McpConstants.ServerName, _appVersion);
 
         // Shared write-surface state across connections. Journalled, because a restart used to destroy
         // the review queue in silence — proposals awaiting a human vanished, and one already approved

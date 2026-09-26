@@ -5,6 +5,9 @@ public static class McpConstants
 {
     public const string ServerDisplayName = "Verbinal";
 
+    /// <summary>The server's name: in its initialize answer, and the key assistants' configs register it under.</summary>
+    public const string ServerName = "verbinal-canfar";
+
     /// <summary>Pipe names are namespaced + unguessable per launch so a stale pipe is never reused.</summary>
     public const string PipeNamePrefix = "verbinal-canfar-mcp-";
 

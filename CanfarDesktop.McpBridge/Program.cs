@@ -9,15 +9,22 @@ using CanfarDesktop.Mcp.Transport;
 // It computes the SAME deterministic per-user pipe name the running app uses (no sidecar /
 // AppData handoff — MSIX virtualizes those), dials that pipe, and relays whole JSON-RPC
 // documents both ways. It lives exactly as long as the client keeps stdio open: while the app
-// isn't running / MCP is off, every request gets a well-formed serviceUnavailable at once, and
-// the first request after the app comes back is relayed to it — see BridgeRelay.
+// isn't running / MCP is off, the bridge answers for it — the tools the app listed last time,
+// each answering that Verbinal is not running — and once the app is there the client is relayed
+// to it and told its tool list has changed. See BridgeRelay and BridgeStandIn.
 // ─────────────────────────────────────────────────────────────────────────────
 
 await using var stdio = OsTransports.ForStdio();
 
 var pipeName = McpPipeName.ForCurrentUser();
 
-await BridgeRelay.RunAsync(stdio, DialAsync);
+// What the app last said about itself, beside the bridge: the one folder that is the bridge's own.
+var options = new BridgeOptions
+{
+    Snapshot = new AppSnapshot(Path.Combine(AppContext.BaseDirectory, AppSnapshot.FileName)),
+};
+
+await BridgeRelay.RunAsync(stdio, DialAsync, options);
 
 async Task<IMcpTransport?> DialAsync(CancellationToken ct)
 {
