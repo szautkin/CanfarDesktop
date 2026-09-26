@@ -67,8 +67,11 @@ public class DataLinkService
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
         var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
-        response.EnsureSuccessStatusCode();
-        return response;
+        if (response.IsSuccessStatusCode) return response;
+
+        // With CADC's reason in it — "UsageFault: CIRCLE does not intersect the data" is what a person
+        // can act on, and what the status bar then shows; a bare 400 is not.
+        using (response) throw await HttpFailure.FromAsync(response, cts.Token);
     }
 
     /// <summary>
@@ -175,11 +178,15 @@ public class DataLinkService
                 });
         }
 
-        System.Diagnostics.Debug.WriteLine($"DataLink parsed: {result.Thumbnails.Count} thumbnails, {result.Previews.Count} previews");
+        // Each file's cutout service is described apart from the rows, in its own RESOURCE.
+        result.Cutouts.AddRange(Cutouts.SodaDescriptorParser.Parse(xml));
+
+        System.Diagnostics.Debug.WriteLine($"DataLink parsed: {result.Thumbnails.Count} thumbnails, {result.Previews.Count} previews, {result.Cutouts.Count} cutout services");
         return result;
     }
 
-    private static bool IsHttpsUrl(string url) =>
+    /// <summary>The one rule for every URL a DataLink answer hands the app — rows and service descriptors alike.</summary>
+    internal static bool IsHttpsUrl(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri)
         && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
 

@@ -14,6 +14,12 @@ public sealed partial class FitsTabHost : UserControl
 {
     public FitsTabHostViewModel ViewModel { get; }
     public event Action<double, double>? SearchAtPositionRequested;
+
+    /// <summary>A mark's region to cut out of its observation's file in the archive, from any tab.</summary>
+    public event Action<string, string?, Models.Cutouts.SkyRegion>? CutoutRequested;
+
+    private void OnPageCutoutRequested(string publisherId, string? artifactId, Models.Cutouts.SkyRegion region)
+        => CutoutRequested?.Invoke(publisherId, artifactId, region);
     public event Action? AllTabsClosed;
 
     private FitsViewerPage? _activePage;
@@ -143,6 +149,7 @@ public sealed partial class FitsTabHost : UserControl
         // The mode turns itself off after one region, and the button has to follow it rather than
         // keep claiming to be on.
         page.SelectingAreaChanged += OnPageSelectingAreaChanged;
+        page.CutoutRequested += OnPageCutoutRequested;
 
         var tab = new TabViewItem
         {
@@ -270,6 +277,7 @@ public sealed partial class FitsTabHost : UserControl
             {
                 page.SearchAtPositionRequested -= handlers.SearchHandler;
                 page.SelectingAreaChanged -= OnPageSelectingAreaChanged;
+                page.CutoutRequested -= OnPageCutoutRequested;
                 page.ZoomChanged -= handlers.ZoomHandler;
                 page.CleanupForClose();
             }

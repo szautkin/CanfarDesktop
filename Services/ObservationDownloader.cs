@@ -42,7 +42,7 @@ public sealed class ObservationDownloader
     private readonly Func<ObservationDownloadService> _downloads;
     private readonly ObservationStore _store;
     private readonly object _gate = new();
-    private readonly Dictionary<string, (string PublisherId, Task Work)> _running =
+    private readonly Dictionary<string, (string PublisherId, string? ProductKey, Task Work)> _running =
         new(StringComparer.OrdinalIgnoreCase);
 
     /// <param name="downloads">A factory rather than an instance: the download service sits on a typed
@@ -60,10 +60,15 @@ public sealed class ObservationDownloader
     /// </summary>
     public event Action? Changed;
 
-    /// <summary>Whether this observation is downloading right now — for a screen deciding what to offer.</summary>
-    public bool IsDownloading(string publisherId)
+    /// <summary>
+    /// Whether this product of an observation is downloading right now — the complete one when
+    /// <paramref name="productKey"/> is null, one cutout otherwise — for a screen deciding what to offer.
+    /// A cutout on its way says nothing about the full file, and the other way round.
+    /// </summary>
+    public bool IsDownloading(string publisherId, string? productKey = null)
     {
-        lock (_gate) return _running.Values.Any(r => r.PublisherId == publisherId && !r.Work.IsCompleted);
+        lock (_gate)
+            return _running.Values.Any(r => r.PublisherId == publisherId && r.ProductKey == productKey && !r.Work.IsCompleted);
     }
 
     /// <summary>
@@ -82,7 +87,7 @@ public sealed class ObservationDownloader
                 return already.Work;
 
             work = Task.Run(() => RunAsync(request));
-            _running[request.TargetPath] = (request.PublisherId, work);
+            _running[request.TargetPath] = (request.PublisherId, request.Record?.ProductKey, work);
         }
 
         RaiseChanged();

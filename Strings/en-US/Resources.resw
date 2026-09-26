@@ -3458,7 +3458,7 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Search_DownloadingFile" xml:space="preserve">
     <value>Downloading {0}...</value>
   </data>
-  <data name="Search_DownloadInStatusBar" xml:space="preserve">
+  <data name="Download_InStatusBar" xml:space="preserve">
     <value>Progress is in the status bar at the bottom of the window. It carries on if you leave this page.</value>
   </data>
   <data name="Search_ErrorBar.Title" xml:space="preserve">
@@ -4576,5 +4576,164 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="Fits_ImageCanvas.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Image canvas</value>
+  </data>
+  <data name="Cutout_Shape" xml:space="preserve">
+    <value>Shape</value>
+  </data>
+  <data name="Cutout_ShapeCircle" xml:space="preserve">
+    <value>Circle</value>
+  </data>
+  <data name="Cutout_ShapeBox" xml:space="preserve">
+    <value>Box</value>
+  </data>
+  <data name="Cutout_Ra" xml:space="preserve">
+    <value>RA (degrees or hh:mm:ss)</value>
+  </data>
+  <data name="Cutout_Dec" xml:space="preserve">
+    <value>Dec (degrees or ±dd:mm:ss)</value>
+  </data>
+  <data name="Cutout_Radius" xml:space="preserve">
+    <value>Radius</value>
+  </data>
+  <data name="Cutout_Width" xml:space="preserve">
+    <value>Width</value>
+  </data>
+  <data name="Cutout_Height" xml:space="preserve">
+    <value>Height</value>
+  </data>
+  <data name="Cutout_Unit" xml:space="preserve">
+    <value>Unit</value>
+  </data>
+  <data name="Cutout_Band" xml:space="preserve">
+    <value>Wavelength</value>
+  </data>
+  <data name="Cutout_BandFrom" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="Cutout_BandTo" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Cutout_BandHint" xml:space="preserve">
+    <value>Leave an end empty to keep the file's own limit.</value>
+  </data>
+  <data name="Cutout_SkyName" xml:space="preserve">
+    <value>The file's footprint and the cutout region</value>
+  </data>
+  <data name="Cutout_SkyHint" xml:space="preserve">
+    <value>Drag the region to move it, its dot to resize it, or anywhere else to draw a new one.</value>
+  </data>
+  <data name="Cutout_Download" xml:space="preserve">
+    <value>Download cutout</value>
+  </data>
+  <data name="Cutout_Reset" xml:space="preserve">
+    <value>Start again</value>
+  </data>
+  <data name="Cutout_Close" xml:space="preserve">
+    <value>Close the cutout editor</value>
+  </data>
+  <data name="Cutout_EditorTitle" xml:space="preserve">
+    <value>Cutout of {0}</value>
+  </data>
+  <data name="Cutout_EditorNote" xml:space="preserve">
+    <value>CADC cuts the region out on its side and sends only that part. It is kept in Research as a cutout of this observation — not the complete observation.</value>
+  </data>
+  <data name="Cutout_BadCoordinate" xml:space="preserve">
+    <value>“{0}” is not a coordinate: use degrees, or hh:mm:ss for RA and ±dd:mm:ss for Dec.</value>
+  </data>
+  <data name="Cutout_BadNumber" xml:space="preserve">
+    <value>“{0}” is not a number.</value>
+  </data>
+  <data name="Cutout_Estimate" xml:space="preserve">
+    <value>About {0} of the whole file's {1}.</value>
+  </data>
+  <data name="Cutout_Button" xml:space="preserve">
+    <value>Cutout…</value>
+  </data>
+  <data name="Cutout_ButtonTooltip" xml:space="preserve">
+    <value>Download only part of this file, cut out on CADC's side</value>
+  </data>
+  <data name="Cutout_ButtonName" xml:space="preserve">
+    <value>Cut out part of {0}</value>
+  </data>
+  <data name="Cutout_CheckNothing" xml:space="preserve">
+    <value>Choose a region (or a band) to cut; with neither, the whole file would come back.</value>
+  </data>
+  <data name="Cutout_CheckNoBand" xml:space="preserve">
+    <value>This file cannot be cut by wavelength.</value>
+  </data>
+  <data name="Cutout_CheckBandOrder" xml:space="preserve">
+    <value>The shortest wavelength has to be below the longest.</value>
+  </data>
+  <data name="Cutout_CheckBandOutside" xml:space="preserve">
+    <value>That wavelength range is outside this file's.</value>
+  </data>
+  <data name="Cutout_CheckBandPartial" xml:space="preserve">
+    <value>Part of that wavelength range is outside this file's; the cutout will be trimmed to it.</value>
+  </data>
+  <data name="Cutout_CheckNoTime" xml:space="preserve">
+    <value>This file cannot be cut by time.</value>
+  </data>
+  <data name="Cutout_CheckTimeOrder" xml:space="preserve">
+    <value>The start has to be before the end.</value>
+  </data>
+  <data name="Cutout_CheckTimeOutside" xml:space="preserve">
+    <value>That time range is outside this file's.</value>
+  </data>
+  <data name="Cutout_CheckTimePartial" xml:space="preserve">
+    <value>Part of that time range is outside this file's; the cutout will be trimmed to it.</value>
+  </data>
+  <data name="Cutout_CheckNoPol" xml:space="preserve">
+    <value>This file cannot be cut by polarization.</value>
+  </data>
+  <data name="Cutout_CheckPolUnknown" xml:space="preserve">
+    <value>This file has no {0} polarization; it has {1}.</value>
+  </data>
+  <data name="Cutout_CheckNoRegion" xml:space="preserve">
+    <value>This file cannot be cut to that shape.</value>
+  </data>
+  <data name="Cutout_CheckOutside" xml:space="preserve">
+    <value>That region is outside this file's footprint.</value>
+  </data>
+  <data name="Cutout_CheckPartial" xml:space="preserve">
+    <value>Part of that region is outside the footprint; the cutout will be trimmed to it.</value>
+  </data>
+  <data name="Cutout_ProblemNumber" xml:space="preserve">
+    <value>The position and size have to be numbers.</value>
+  </data>
+  <data name="Cutout_ProblemDec" xml:space="preserve">
+    <value>Dec has to be between −90° and +90°.</value>
+  </data>
+  <data name="Cutout_ProblemSize" xml:space="preserve">
+    <value>The size has to be greater than zero.</value>
+  </data>
+  <data name="Cutout_ProblemTooLarge" xml:space="preserve">
+    <value>That region is larger than any cutout can be.</value>
+  </data>
+  <data name="Cutout_ProblemVertices" xml:space="preserve">
+    <value>A polygon needs at least three corners.</value>
+  </data>
+  <data name="Cutout_ProblemDegenerate" xml:space="preserve">
+    <value>Those corners enclose no area.</value>
+  </data>
+  <data name="Research_CutoutBadge" xml:space="preserve">
+    <value>Cutout</value>
+  </data>
+  <data name="Research_CutoutBadgeTip" xml:space="preserve">
+    <value>A cutout of this observation: {0}</value>
+  </data>
+  <data name="Research_CutoutTitle" xml:space="preserve">
+    <value>Cutout — not the complete observation</value>
+  </data>
+  <data name="Research_CutoutNote" xml:space="preserve">
+    <value>This file is part of the observation, cut out on CADC's side: {0}. The details and notes here are the whole observation's.</value>
+  </data>
+  <data name="Marks_CmdCutOut" xml:space="preserve">
+    <value>Cut out from the archive…</value>
+  </data>
+  <data name="Marks_CmdCutOutNeedsObservation" xml:space="preserve">
+    <value>Open an archive observation from Research, with sky coordinates, to cut this region out of its full-resolution file.</value>
+  </data>
+  <data name="Search_DownloadingCutout" xml:space="preserve">
+    <value>Downloading a cutout of {0}…</value>
   </data>
 </root>

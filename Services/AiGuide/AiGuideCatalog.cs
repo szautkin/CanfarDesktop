@@ -35,7 +35,7 @@ public static class AiGuideCatalog
         new AiGuideCategory("search",       "Search & Archive", "", "Find observations in CADC, then fetch their metadata, links, and previews."),
         new AiGuideCategory("queries",      "Saved Queries",    "", "Save, recall, and edit reusable ADQL queries."),
         new AiGuideCategory("research",     "Research & Notes", "", "Inspect downloaded observations and notes; export a research bundle."),
-        new AiGuideCategory("downloads",    "Downloads",        "", "Pull observations into the local research archive."),
+        new AiGuideCategory("downloads",    "Downloads",        "", "Pull observations — or cutouts of them — into the local research archive."),
         new AiGuideCategory("fits",         "FITS Viewer",      "", "Read FITS headers/WCS, open files, steer the 2D viewer (HDUs, crosshair, blink comparison, tabs), bookmark coordinates."),
         new AiGuideCategory("cube",         "Cube Viewer",      "", "Open and steer the 3D spectral cube viewer; shape the opacity curve; probe or show spectra; manage tabs; export figures."),
         new AiGuideCategory("notebook",     "Notebook",         "", "Drive the native notebook editor: cells, kernel, and execution."),
@@ -126,6 +126,10 @@ public static class AiGuideCatalog
         ["download_observations_bulk"] = "downloads",
         ["delete_downloaded_observation"] = "downloads",
         ["clear_research_archive"] = "downloads",
+        // SODA cutouts: part of a file, cut on CADC's side
+        ["get_cutout_options"] = "downloads",
+        ["download_cutout"] = "downloads",
+        ["show_cutout_editor"] = "downloads",
         // FITS Viewer
         ["get_fits_header"] = "fits",
         ["get_fits_wcs"] = "fits",

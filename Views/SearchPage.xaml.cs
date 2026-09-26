@@ -1011,6 +1011,24 @@ public sealed partial class SearchPage : Page
         }
     }
 
+    /// <summary>
+    /// The cutout this search's cutout boxes ask of the chosen file, when there is one to be had: the
+    /// file must have a SODA service, and the search a circle or wavelengths that fall on it.
+    /// </summary>
+    private (Models.Cutouts.SodaDescriptor File, Models.Cutouts.CutoutSpec Spec)? CutoutFor(
+        DataLinkResult dataLink, string selectedFilename)
+    {
+        if (!ViewModel.SpatialCutout && !ViewModel.SpectralCutout) return null;
+
+        var file = dataLink.Cutouts.FirstOrDefault(c => c.FileName == selectedFilename)
+                   ?? (dataLink.Cutouts.Count == 1 ? dataLink.Cutouts[0] : null);
+        if (file is null) return null;
+
+        var hints = Services.Cutouts.CutoutHints.From(ViewModel.BuildFormState());
+        var spec = Services.Cutouts.CutoutPrefill.FromSearchFlags(file, hints, ViewModel.SpatialCutout, ViewModel.SpectralCutout);
+        return spec is not null && Services.Cutouts.SodaRequest.Check(file, spec).IsValid ? (file, spec) : null;
+    }
+
     private async Task DownloadFileAsync(string publisherID, SearchResultRow? sourceRow = null)
     {
         try
@@ -1044,6 +1062,16 @@ public sealed partial class SearchPage : Page
                 ? selectedFilename
                 : ExtractFilenameFromPublisherID(publisherID);
 
+            // "Spatial cutout" / "Spectral cutout", as on CADC's own search page: this row's file cut to
+            // the search's circle and wavelengths — when CADC can cut this file and the search gives it
+            // something to cut. Otherwise the whole file, as before.
+            var cutout = CutoutFor(dataLink, selectedFilename);
+            if (cutout is { } cut)
+            {
+                url = Services.Cutouts.SodaRequest.Url(cut.File, cut.Spec);
+                suggestedName = cut.Spec.FileNameFor(cut.File.FileName);
+            }
+
             // The picker appends the SELECTED file-type extension to SuggestedFileName. Handing it a
             // complete name AND offering only ".fits" therefore doubled the extension on everything
             // that is not literally a .fits — an fpack artifact came back as `x.fits.fz.fits`. Offer
@@ -1069,12 +1097,14 @@ public sealed partial class SearchPage : Page
             var record = sourceRow is null
                 ? null
                 : DownloadedObservation.FromSearchResult(sourceRow, null, dataLink, k => ViewModel.GetColumnHeader(k));
+            if (record is not null) record.Cutout = cutout?.Spec;
             _ = _downloader.Start(new ObservationDownloadRequest(publisherID, file.Path, record, Url: url));
 
             var seq = ++_downloadOpSeq;
             DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
-            DownloadInfoBar.Title = Loc.F("Search_DownloadingFile", Path.GetFileName(file.Path));
-            DownloadProgressText.Text = Loc.T("Search_DownloadInStatusBar");
+            DownloadInfoBar.Title = Loc.F(cutout is null ? "Search_DownloadingFile" : "Search_DownloadingCutout",
+                Path.GetFileName(file.Path));
+            DownloadProgressText.Text = Loc.T("Download_InStatusBar");
             DownloadInfoBar.IsOpen = true;
             ScheduleDownloadBarReset(seq, 5000);
         }

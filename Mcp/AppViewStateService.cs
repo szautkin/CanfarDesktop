@@ -330,6 +330,18 @@ public sealed class AppViewStateService : IAnnotationHost
         => _closeTabAt?.Invoke(kind, index)
            ?? Task.FromResult(new TabActionOutcome(false, kind, index, "viewer unavailable"));
 
+    // ── Cutout editor (in the observation view, which the host owns) ─────────────────────────────
+
+    private volatile Func<Tools.Write.CutoutArgs, Task<Tools.Write.CutoutEditorShown>>? _cutoutEditorHost;
+
+    /// <summary>The host registers how to open the observation view's cutout editor on the person's screen.</summary>
+    public void SetCutoutEditorHost(Func<Tools.Write.CutoutArgs, Task<Tools.Write.CutoutEditorShown>> show)
+        => _cutoutEditorHost = show;
+
+    public Task<Tools.Write.CutoutEditorShown> ShowCutoutEditorAsync(Tools.Write.CutoutArgs args)
+        => _cutoutEditorHost?.Invoke(args)
+           ?? Task.FromResult(Tools.Write.CutoutEditorShown.Refused("the observation view is not available"));
+
     // ── Search page (resolved lazily: the page is built the first time anyone asks for it) ───────
 
     private volatile Func<Task<ISearchUiBridge?>>? _searchHost;

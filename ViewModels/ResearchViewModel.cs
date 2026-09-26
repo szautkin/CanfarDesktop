@@ -110,7 +110,8 @@ public partial class ResearchViewModel : ObservableObject
     }
 
     /// <summary>Whether this observation's file is on its way right now.</summary>
-    public bool IsDownloading(DownloadedObservation observation) => _downloader.IsDownloading(observation.PublisherID);
+    public bool IsDownloading(DownloadedObservation observation)
+        => _downloader.IsDownloading(observation.PublisherID, observation.ProductKey);
 
     [RelayCommand]
     public void OpenFile()

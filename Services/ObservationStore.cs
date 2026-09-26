@@ -56,11 +56,16 @@ public class ObservationStore
         }
     }
 
+    /// <summary>
+    /// Save, replacing the record for the same PRODUCT — the same observation, and the same cutout of it
+    /// or likewise none. It used to replace by publisher id alone, which would have let a cutout
+    /// overwrite the complete download it was cut from.
+    /// </summary>
     public void Save(DownloadedObservation observation)
     {
         lock (_lock)
         {
-            _observations.RemoveAll(o => o.PublisherID == observation.PublisherID);
+            _observations.RemoveAll(o => o.PublisherID == observation.PublisherID && o.ProductKey == observation.ProductKey);
             _observations.Insert(0, observation);
             WriteToDisk();
         }
@@ -103,8 +108,12 @@ public class ObservationStore
         if (string.IsNullOrWhiteSpace(id)) return null;
         id = id.Trim();
 
-        var exact = all.FirstOrDefault(o => o.Id == id || o.PublisherID == id);
-        if (exact is not null) return exact;
+        if (all.FirstOrDefault(o => o.Id == id) is { } byId) return byId;
+
+        // A publisher id can hold the complete observation and cutouts of it; asked for the
+        // observation, the complete one is the answer. A local id names a cutout exactly.
+        var byPublisher = all.Where(o => o.PublisherID == id).ToList();
+        if (byPublisher.Count > 0) return byPublisher.FirstOrDefault(o => !o.IsCutout) ?? byPublisher[0];
 
         var byArchiveId = all.Where(o => string.Equals(o.ObservationID, id, StringComparison.OrdinalIgnoreCase))
                              .Take(2).ToList();

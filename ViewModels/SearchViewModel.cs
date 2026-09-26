@@ -12,6 +12,7 @@ public partial class SearchViewModel : ObservableObject
     private readonly ITAPService _tapService;
     private readonly ISearchStoreService _storeService;
     private readonly IColumnUnitStore _unitStore;
+    private readonly SearchContext? _context;
     private List<DataTrainRow> _allDataTrainRows = [];
     public IReadOnlyList<DataTrainRow> AllDataTrainRows => _allDataTrainRows;
     private CancellationTokenSource? _resolverCts;
@@ -132,11 +133,15 @@ public partial class SearchViewModel : ObservableObject
     // For ComboBox binding
     public string[] ResolverServices { get; } = ["ALL", "SIMBAD", "NED", "VIZIER", "NONE"];
 
-    public SearchViewModel(ITAPService tapService, ISearchStoreService storeService, IColumnUnitStore unitStore)
+    /// <param name="context">Where the form is left for the screens that follow a search — a cutout's
+    /// starting region comes from it. Optional, so the view model still stands alone in a test.</param>
+    public SearchViewModel(ITAPService tapService, ISearchStoreService storeService, IColumnUnitStore unitStore,
+                           SearchContext? context = null)
     {
         _tapService = tapService;
         _storeService = storeService;
         _unitStore = unitStore;
+        _context = context;
     }
 
     #region Data train
@@ -459,6 +464,7 @@ public partial class SearchViewModel : ObservableObject
         var state = BuildFormState();
         var adql = ADQLBuilder.Build(state);
         AdqlText = adql;
+        _context?.Searched(state);
         await ExecuteAdqlAsync(adql);
 
         if (Results is not null && Results.TotalRows > 0)

@@ -125,6 +125,22 @@ public class MarkCommandsTests
             Assert.False(string.IsNullOrWhiteSpace(i.Glyph));
         });
 
+    /// <summary>
+    /// Cutting a mark's region from the archive is offered where the viewer can: greyed, saying why,
+    /// for a file that is not an archive observation; live for one that is; absent from a cube's menu.
+    /// </summary>
+    [Fact]
+    public void CuttingTheRegionOut_IsOfferedWhereTheViewerCan()
+    {
+        Assert.DoesNotContain(MarkCommand.CutOut, Commands(Fits()));
+
+        var greyed = Assert.Single(MarkCommands.For(Fits() with { CanCutOut = false }), i => i.Command == MarkCommand.CutOut);
+        Assert.False(greyed.Enabled);
+        Assert.NotNull(greyed.DisabledReasonUid);
+
+        Assert.True(Assert.Single(MarkCommands.For(Fits() with { CanCutOut = true }), i => i.Command == MarkCommand.CutOut).Enabled);
+    }
+
     /// <summary>No command appears twice — a menu with two Deletes is a menu nobody trusts.</summary>
     [Fact]
     public void NoCommandIsOfferedTwice()

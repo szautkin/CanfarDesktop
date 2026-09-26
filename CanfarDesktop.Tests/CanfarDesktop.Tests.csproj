@@ -70,6 +70,8 @@
          real installed layout rather than a fixture that could drift from it. -->
     <Content Include="..\Assets\Sounds\*.wav" Link="Assets\Sounds\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest" />
+    <!-- Real service answers, saved as they came, so parsing is tested against CADC and not a guess. -->
+    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
     <!-- Image discovery backend (M4b) -->
     <Compile Include="..\Models\ImageDiscovery\ImageManifest.cs" Link="Linked\ImageDiscovery\ImageManifest.cs" />
     <Compile Include="..\Models\ImageDiscovery\PackageQuery.cs" Link="Linked\ImageDiscovery\PackageQuery.cs" />
@@ -123,6 +125,17 @@
     <Compile Include="..\Helpers\ApiEndpointDefaults.cs" Link="Linked\ApiEndpointDefaults.cs" />
     <Compile Include="..\Models\SearchModels.cs" Link="Linked\SearchModels.cs" />
     <Compile Include="..\Models\DataLinkResult.cs" Link="Linked\DataLinkResult.cs" />
+    <!-- SODA cutouts: the model, its geometry, the descriptor parser, the one validator. -->
+    <Compile Include="..\Helpers\SkyGeometry.cs" Link="Linked\Cutouts\SkyGeometry.cs" />
+    <Compile Include="..\Helpers\SkyCanvasProjection.cs" Link="Linked\Cutouts\SkyCanvasProjection.cs" />
+    <Compile Include="..\Models\Cutouts\SkyRegion.cs" Link="Linked\Cutouts\SkyRegion.cs" />
+    <Compile Include="..\Models\Cutouts\CutoutSpec.cs" Link="Linked\Cutouts\CutoutSpec.cs" />
+    <Compile Include="..\Models\Cutouts\SodaDescriptor.cs" Link="Linked\Cutouts\SodaDescriptor.cs" />
+    <Compile Include="..\Services\Cutouts\SodaDescriptorParser.cs" Link="Linked\Cutouts\SodaDescriptorParser.cs" />
+    <Compile Include="..\Services\Cutouts\SodaRequest.cs" Link="Linked\Cutouts\SodaRequest.cs" />
+    <Compile Include="..\Services\Cutouts\CutoutPrefill.cs" Link="Linked\Cutouts\CutoutPrefill.cs" />
+    <Compile Include="..\Services\ResearchRecords.cs" Link="Linked\ResearchRecords.cs" />
+    <Compile Include="..\Helpers\HttpFailure.cs" Link="Linked\HttpFailure.cs" />
     <Compile Include="..\Helpers\DataLinkArtifactSelector.cs" Link="Linked\DataLinkArtifactSelector.cs" />
     <Compile Include="..\Helpers\CellFormatter.cs" Link="Linked\CellFormatter.cs" />
     <Compile Include="..\Helpers\RegistryImageResolver.cs" Link="Linked\RegistryImageResolver.cs" />
@@ -227,6 +240,7 @@
     <Compile Include="..\Mcp\Tools\Write\ObservationNoteWriteTools.cs" Link="Linked\Mcp\ObservationNoteWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\SessionWriteTools.cs" Link="Linked\Mcp\SessionWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ObservationWriteTools.cs" Link="Linked\Mcp\ObservationWriteTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\CutoutTools.cs" Link="Linked\Mcp\CutoutTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\VoSpaceWriteTools.cs" Link="Linked\Mcp\VoSpaceWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ImageDiscoveryWriteTools.cs" Link="Linked\Mcp\ImageDiscoveryWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\AiGuideWriteTools.cs" Link="Linked\Mcp\AiGuideWriteTools.cs" />

@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using CanfarDesktop.Models.Cutouts;
+
 namespace CanfarDesktop.Models;
 
 /// <summary>
@@ -31,6 +34,24 @@ public class DownloadedObservation
 
     /// <summary>Provenance stamp when the download was initiated by an MCP agent; null = user-authored.</summary>
     public AgentAttribution? AgentAttribution { get; set; }
+
+    /// <summary>
+    /// Null for the complete observation. Set, this record is a CUTOUT of it — part of one file, cut on
+    /// CADC's side — and says which part. Still the observation's record (its metadata and notes are
+    /// the observation's), but never to be shown as, or mistaken for, the whole.
+    /// </summary>
+    public CutoutSpec? Cutout { get; set; }
+
+    [JsonIgnore]
+    public bool IsCutout => Cutout is not null;
+
+    /// <summary>
+    /// Which product of the observation this is: null for the complete one, the cutout's key otherwise.
+    /// With the publisher id, what makes a record the same record — so a cutout never replaces the
+    /// full download, nor one cutout another.
+    /// </summary>
+    [JsonIgnore]
+    public string? ProductKey => Cutout?.Key;
 
     public bool FileExists => !string.IsNullOrWhiteSpace(LocalPath) && File.Exists(LocalPath);
     public string Filename => string.IsNullOrEmpty(LocalPath) ? "" : Path.GetFileName(LocalPath);

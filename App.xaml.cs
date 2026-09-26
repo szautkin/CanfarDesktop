@@ -61,6 +61,13 @@ public partial class App : Application
             return value == key ? null : value;
         };
 
+        // A cutout's checks, shown in the editor — the same route again (an agent is told them in English).
+        CanfarDesktop.Services.Cutouts.SodaRequest.Translate = key =>
+        {
+            var value = Helpers.Loc.T(key);
+            return value == key ? null : value;
+        };
+
         // Localize the AI Guide category widgets (the catalog lives in Services and is test-linked,
         // so it takes translations via this hook instead of referencing Loc directly).
         CanfarDesktop.Services.AiGuide.AiGuideCatalog.Localize = key =>
@@ -269,12 +276,19 @@ public partial class App : Application
         // Singleton so the cache is a cache: the schema is ~400 columns over three queries, and built
         // per call it would be re-read from CADC on every describe_tap_schema and every ADQL check.
         services.AddSingleton<ITapSchemaService, TapSchemaService>();
-        services.AddHttpClient<DataLinkService>();
+        // Signed in like every other CADC client: without it, a proprietary observation's files — and
+        // cutouts of them — were refused even to the person who owns them. The token goes only to
+        // trusted CADC hosts (AuthTokenHandler), never to a partner archive a DataLink row points at.
+        services.AddHttpClient<DataLinkService>()
+            .AddHttpMessageHandler<TransientRetryHandler>()
+            .AddHttpMessageHandler<AuthTokenHandler>();
         services.AddTransient<ObservationDownloadService>(); // shared resolve-URL + atomic download core
         // Owns observation downloads for the app's life, so closing the screen that started one does
         // not end it; progress and outcome go to the status bar.
         services.AddSingleton(sp => new ObservationDownloader(
             () => sp.GetRequiredService<ObservationDownloadService>(), sp.GetRequiredService<ObservationStore>()));
+        // The last search's form, for the screens that follow from it (a cutout's starting region).
+        services.AddSingleton<SearchContext>();
 
         // Export bundle (Research + Search → Claude-friendly bundle)
         services.AddSingleton<CanfarDesktop.Services.Export.ExportService>();

@@ -3458,7 +3458,7 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Search_DownloadingFile" xml:space="preserve">
     <value>Téléchargement de {0}...</value>
   </data>
-  <data name="Search_DownloadInStatusBar" xml:space="preserve">
+  <data name="Download_InStatusBar" xml:space="preserve">
     <value>La progression s'affiche dans la barre d'état en bas de la fenêtre. Le téléchargement continue si vous quittez cette page.</value>
   </data>
   <data name="Search_ErrorBar.Title" xml:space="preserve">
@@ -4576,5 +4576,164 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Fits_ImageCanvas.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Canevas de l’image</value>
+  </data>
+  <data name="Cutout_Shape" xml:space="preserve">
+    <value>Forme</value>
+  </data>
+  <data name="Cutout_ShapeCircle" xml:space="preserve">
+    <value>Cercle</value>
+  </data>
+  <data name="Cutout_ShapeBox" xml:space="preserve">
+    <value>Rectangle</value>
+  </data>
+  <data name="Cutout_Ra" xml:space="preserve">
+    <value>AD (degrés ou hh:mm:ss)</value>
+  </data>
+  <data name="Cutout_Dec" xml:space="preserve">
+    <value>Déc (degrés ou ±dd:mm:ss)</value>
+  </data>
+  <data name="Cutout_Radius" xml:space="preserve">
+    <value>Rayon</value>
+  </data>
+  <data name="Cutout_Width" xml:space="preserve">
+    <value>Largeur</value>
+  </data>
+  <data name="Cutout_Height" xml:space="preserve">
+    <value>Hauteur</value>
+  </data>
+  <data name="Cutout_Unit" xml:space="preserve">
+    <value>Unité</value>
+  </data>
+  <data name="Cutout_Band" xml:space="preserve">
+    <value>Longueur d'onde</value>
+  </data>
+  <data name="Cutout_BandFrom" xml:space="preserve">
+    <value>De</value>
+  </data>
+  <data name="Cutout_BandTo" xml:space="preserve">
+    <value>À</value>
+  </data>
+  <data name="Cutout_BandHint" xml:space="preserve">
+    <value>Laissez une borne vide pour garder la limite du fichier.</value>
+  </data>
+  <data name="Cutout_SkyName" xml:space="preserve">
+    <value>L'empreinte du fichier et la zone découpée</value>
+  </data>
+  <data name="Cutout_SkyHint" xml:space="preserve">
+    <value>Faites glisser la zone pour la déplacer, son point pour la redimensionner, ou ailleurs pour en tracer une nouvelle.</value>
+  </data>
+  <data name="Cutout_Download" xml:space="preserve">
+    <value>Télécharger la découpe</value>
+  </data>
+  <data name="Cutout_Reset" xml:space="preserve">
+    <value>Recommencer</value>
+  </data>
+  <data name="Cutout_Close" xml:space="preserve">
+    <value>Fermer l'éditeur de découpe</value>
+  </data>
+  <data name="Cutout_EditorTitle" xml:space="preserve">
+    <value>Découpe de {0}</value>
+  </data>
+  <data name="Cutout_EditorNote" xml:space="preserve">
+    <value>Le CADC découpe la zone de son côté et n'envoie que cette partie. Elle est conservée dans Recherche comme une découpe de cette observation — pas l'observation complète.</value>
+  </data>
+  <data name="Cutout_BadCoordinate" xml:space="preserve">
+    <value>« {0} » n'est pas une coordonnée : utilisez des degrés, ou hh:mm:ss pour l'AD et ±dd:mm:ss pour la Déc.</value>
+  </data>
+  <data name="Cutout_BadNumber" xml:space="preserve">
+    <value>« {0} » n'est pas un nombre.</value>
+  </data>
+  <data name="Cutout_Estimate" xml:space="preserve">
+    <value>Environ {0} sur les {1} du fichier complet.</value>
+  </data>
+  <data name="Cutout_Button" xml:space="preserve">
+    <value>Découpe…</value>
+  </data>
+  <data name="Cutout_ButtonTooltip" xml:space="preserve">
+    <value>Télécharger seulement une partie de ce fichier, découpée par le CADC</value>
+  </data>
+  <data name="Cutout_ButtonName" xml:space="preserve">
+    <value>Découper une partie de {0}</value>
+  </data>
+  <data name="Cutout_CheckNothing" xml:space="preserve">
+    <value>Choisissez une zone (ou une bande) à découper ; sans l'une ni l'autre, le fichier entier serait renvoyé.</value>
+  </data>
+  <data name="Cutout_CheckNoBand" xml:space="preserve">
+    <value>Ce fichier ne peut pas être découpé en longueur d'onde.</value>
+  </data>
+  <data name="Cutout_CheckBandOrder" xml:space="preserve">
+    <value>La longueur d'onde la plus courte doit être inférieure à la plus longue.</value>
+  </data>
+  <data name="Cutout_CheckBandOutside" xml:space="preserve">
+    <value>Cette plage de longueurs d'onde est hors de celle du fichier.</value>
+  </data>
+  <data name="Cutout_CheckBandPartial" xml:space="preserve">
+    <value>Une partie de cette plage de longueurs d'onde est hors de celle du fichier ; la découpe sera réduite à celle-ci.</value>
+  </data>
+  <data name="Cutout_CheckNoTime" xml:space="preserve">
+    <value>Ce fichier ne peut pas être découpé dans le temps.</value>
+  </data>
+  <data name="Cutout_CheckTimeOrder" xml:space="preserve">
+    <value>Le début doit précéder la fin.</value>
+  </data>
+  <data name="Cutout_CheckTimeOutside" xml:space="preserve">
+    <value>Cette plage de temps est hors de celle du fichier.</value>
+  </data>
+  <data name="Cutout_CheckTimePartial" xml:space="preserve">
+    <value>Une partie de cette plage de temps est hors de celle du fichier ; la découpe sera réduite à celle-ci.</value>
+  </data>
+  <data name="Cutout_CheckNoPol" xml:space="preserve">
+    <value>Ce fichier ne peut pas être découpé par polarisation.</value>
+  </data>
+  <data name="Cutout_CheckPolUnknown" xml:space="preserve">
+    <value>Ce fichier n'a pas de polarisation {0} ; il a {1}.</value>
+  </data>
+  <data name="Cutout_CheckNoRegion" xml:space="preserve">
+    <value>Ce fichier ne peut pas être découpé selon cette forme.</value>
+  </data>
+  <data name="Cutout_CheckOutside" xml:space="preserve">
+    <value>Cette zone est hors de l'empreinte de ce fichier.</value>
+  </data>
+  <data name="Cutout_CheckPartial" xml:space="preserve">
+    <value>Une partie de cette zone est hors de l'empreinte ; la découpe sera réduite à celle-ci.</value>
+  </data>
+  <data name="Cutout_ProblemNumber" xml:space="preserve">
+    <value>La position et la taille doivent être des nombres.</value>
+  </data>
+  <data name="Cutout_ProblemDec" xml:space="preserve">
+    <value>La Déc doit être comprise entre −90° et +90°.</value>
+  </data>
+  <data name="Cutout_ProblemSize" xml:space="preserve">
+    <value>La taille doit être supérieure à zéro.</value>
+  </data>
+  <data name="Cutout_ProblemTooLarge" xml:space="preserve">
+    <value>Cette zone est plus grande qu'aucune découpe ne peut l'être.</value>
+  </data>
+  <data name="Cutout_ProblemVertices" xml:space="preserve">
+    <value>Un polygone a besoin d'au moins trois sommets.</value>
+  </data>
+  <data name="Cutout_ProblemDegenerate" xml:space="preserve">
+    <value>Ces sommets n'entourent aucune surface.</value>
+  </data>
+  <data name="Research_CutoutBadge" xml:space="preserve">
+    <value>Découpe</value>
+  </data>
+  <data name="Research_CutoutBadgeTip" xml:space="preserve">
+    <value>Une découpe de cette observation : {0}</value>
+  </data>
+  <data name="Research_CutoutTitle" xml:space="preserve">
+    <value>Découpe — pas l'observation complète</value>
+  </data>
+  <data name="Research_CutoutNote" xml:space="preserve">
+    <value>Ce fichier est une partie de l'observation, découpée par le CADC : {0}. Les informations et notes ci-dessous sont celles de l'observation complète.</value>
+  </data>
+  <data name="Marks_CmdCutOut" xml:space="preserve">
+    <value>Découper dans l'archive…</value>
+  </data>
+  <data name="Marks_CmdCutOutNeedsObservation" xml:space="preserve">
+    <value>Ouvrez une observation de l'archive depuis Recherche, avec des coordonnées célestes, pour découper cette zone dans son fichier en pleine résolution.</value>
+  </data>
+  <data name="Search_DownloadingCutout" xml:space="preserve">
+    <value>Téléchargement d'une découpe de {0}…</value>
   </data>
 </root>

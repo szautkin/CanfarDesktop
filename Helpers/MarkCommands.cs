@@ -18,6 +18,9 @@ public enum MarkCommand
     /// <summary>A publication figure framed on it.</summary>
     ExportFigure,
 
+    /// <summary>The same region cut out of the archive's file with SODA — at full resolution, only that part.</summary>
+    CutOut,
+
     /// <summary>Write the marks out as data — JSON with provenance, or a DS9 region file.</summary>
     ExportMarks,
 
@@ -64,7 +67,12 @@ public static class MarkCommands
     /// This viewer can frame a publication figure on one mark. True of the FITS viewer. Not a cube
     /// concept, so the command is left out of a cube's menu rather than shown greyed forever.
     /// </param>
-    public readonly record struct Context(bool CanLocateOnSky, bool CanExportFigure);
+    /// <param name="CanCutOut">
+    /// Null where the viewer does not offer cutouts at all. False where it does but not for this mark:
+    /// the file is not an archive observation in Research, or the mark has no sky position — greyed,
+    /// with the reason. True when the mark's region can be cut from the observation's file.
+    /// </param>
+    public readonly record struct Context(bool CanLocateOnSky, bool CanExportFigure, bool? CanCutOut = null);
 
     /// <summary>The menu, in order. The destructive command is last and marked as such.</summary>
     public static IReadOnlyList<MarkCommandItem> For(Context context)
@@ -81,6 +89,11 @@ public static class MarkCommands
 
         if (context.CanExportFigure)
             items.Add(new MarkCommandItem(MarkCommand.ExportFigure, "Marks_CmdExportFigure", ""));
+
+        // The mark's region, cut out of the observation's own file on CADC's side (show_cutout_editor).
+        if (context.CanCutOut is { } canCut)
+            items.Add(new MarkCommandItem(MarkCommand.CutOut, "Marks_CmdCutOut", "",
+                Enabled: canCut, DisabledReasonUid: canCut ? null : "Marks_CmdCutOutNeedsObservation"));
 
         // Writing the marks out belongs to every viewer that has marks, which is all of them.
         items.Add(new MarkCommandItem(MarkCommand.ExportMarks, "Marks_CmdExportMarks", ""));

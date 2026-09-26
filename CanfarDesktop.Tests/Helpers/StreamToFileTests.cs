@@ -147,12 +147,13 @@ public class StreamToFileTests : IDisposable
     {
         var path = Path_("slow-but-alive.bin");
 
-        // Ten chunks 50 ms apart: half a second in all, well past the 200 ms limit, none of it silent.
+        // Twenty chunks 60 ms apart: 1.2 s in all, past the 1 s limit, and no gap within a sixteenth of
+        // it — margin enough that a busy test run's thread pool cannot turn a gap into a stall.
         var written = await StreamToFile.WriteAsync(
-            new StallingStream(chunks: 10, gap: TimeSpan.FromMilliseconds(50), thenEnd: true), path,
-            stallTimeout: TimeSpan.FromMilliseconds(200));
+            new StallingStream(chunks: 20, gap: TimeSpan.FromMilliseconds(60), thenEnd: true), path,
+            stallTimeout: TimeSpan.FromSeconds(1));
 
-        Assert.Equal(10 * StallingStream.ChunkSize, written);
+        Assert.Equal(20 * StallingStream.ChunkSize, written);
     }
 
     /// <summary>The caller's cancel is still a cancel, not a stall.</summary>

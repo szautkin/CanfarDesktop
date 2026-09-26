@@ -80,7 +80,11 @@ public sealed partial class ResearchPage : UserControl
         // instance under the same PublisherID, and keeping the stale one would show
         // old fields and break Delete (which matches on the record's internal Id).
         var before = (FileList.ItemsSource as IEnumerable<DownloadedObservation>)?.ToList();
-        var selectedId = (FileList.SelectedItem as DownloadedObservation)?.PublisherID;
+        // The same PRODUCT, not just the same observation: a cutout and the complete download share a
+        // publisher id, and re-selecting by it alone jumped from one to the other.
+        var selected = FileList.SelectedItem as DownloadedObservation;
+        var selectedId = selected?.PublisherID;
+        var selectedProduct = selected?.ProductKey;
 
         ViewModel.Refresh();
         var fresh = ViewModel.FilteredObservations;
@@ -90,7 +94,7 @@ public sealed partial class ResearchPage : UserControl
         {
             FileList.ItemsSource = fresh;
             if (selectedId is not null)
-                FileList.SelectedItem = fresh.FirstOrDefault(o => o.PublisherID == selectedId);
+                FileList.SelectedItem = fresh.FirstOrDefault(o => o.PublisherID == selectedId && o.ProductKey == selectedProduct);
         }
         CountText.Text = $"({ViewModel.ObservationCount})";
     }
@@ -279,6 +283,21 @@ public sealed partial class ResearchPage : UserControl
             Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
             Opacity = 0.6
         });
+
+        // A cutout says so before anything else: its metadata and notes are the observation's, and
+        // nothing else on this page would tell a reader the file is only part of it.
+        if (obs.Cutout is { } cutout)
+        {
+            DetailContent.Children.Add(new InfoBar
+            {
+                Name = "CutoutNoteBar",
+                IsOpen = true,
+                IsClosable = false,
+                Severity = InfoBarSeverity.Warning,
+                Title = Loc.T("Research_CutoutTitle"),
+                Message = Loc.F("Research_CutoutNote", cutout.Summary),
+            });
+        }
 
         // Action buttons
         var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };

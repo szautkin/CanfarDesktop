@@ -182,6 +182,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetTabActions(CloseTabActionAsync, ListOpenTabsActionAsync);
         _viewState.SetTabNavigationActions(CloseTabByIndexActionAsync);
         _viewState.SetSearchHost(ResolveSearchBridgeAsync);
+        _viewState.SetCutoutEditorHost(ShowCutoutEditorForAgentAsync);
         _viewState.SetAnnotationHost(this);
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
         _viewState.SetAnnotationExportAction(ExportAnnotationsActionAsync);
@@ -1051,9 +1052,12 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _searchPage.LoadAsync();
     }
 
-    public void OpenObservationDetail(string publisherID)
+    public void OpenObservationDetail(string publisherID) => _ = OpenObservationDetailAsync(publisherID);
+
+    /// <summary>Show one observation's detail; the task ends once it — and which files can be cut — has loaded.</summary>
+    private Task OpenObservationDetailAsync(string publisherID)
     {
-        if (string.IsNullOrEmpty(publisherID)) return;
+        if (string.IsNullOrEmpty(publisherID)) return Task.CompletedTask;
         if (_obsDetailPage is null)
         {
             _obsDetailPage = App.Services.GetRequiredService<ObservationDetailPage>();
@@ -1065,8 +1069,55 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             ObsDetailContainer.Child = _obsDetailPage;
         }
         NavigateTo(AppMode.ObservationDetail);
-        _ = _obsDetailPage.LoadAsync(publisherID);
+        return _obsDetailPage.LoadAsync(publisherID);
     }
+
+    /// <summary>
+    /// A mark's "Cut out from the archive": the same route as show_cutout_editor, with the mark's
+    /// region. When the editor cannot choose the file itself — several can be cut and the mark's file
+    /// is not one of them — the observation opens on its Files tab so the person can.
+    /// </summary>
+    private async void OnFitsCutoutRequested(string publisherId, string? artifactId, Models.Cutouts.SkyRegion region)
+    {
+        var args = new CutoutArgs
+        {
+            PublisherId = publisherId,
+            ArtifactId = artifactId,
+            Circle = region.Shape == Models.Cutouts.SkyShape.Circle
+                ? new CutoutArgs.CircleArg { Ra = region.Ra, Dec = region.Dec, Radius = region.Radius } : null,
+            Box = region.Shape == Models.Cutouts.SkyShape.Box
+                ? new CutoutArgs.BoxArg { Ra = region.Ra, Dec = region.Dec, Width = region.Width, Height = region.Height } : null,
+        };
+
+        var shown = await ShowCutoutEditorForAgentAsync(args);
+        if (!shown.Shown) await OpenObservationDetailAsync(publisherId);
+    }
+
+    /// <summary>
+    /// show_cutout_editor: the observation's detail, its Files tab, and the editor for the file the agent
+    /// means — on the region it proposes, or the editor's own suggestion. The same editor, the same
+    /// check, as when the person opens it.
+    /// </summary>
+    private Task<CutoutEditorShown> ShowCutoutEditorForAgentAsync(CutoutArgs args)
+        => UiDispatch.OnUiAsync(DispatcherQueue, async () =>
+        {
+            var publisherId = args.PublisherId!.Trim();
+            await OpenObservationDetailAsync(publisherId);
+            if (_obsDetailPage is not { } page) return CutoutEditorShown.Refused("the observation view could not be opened");
+
+            try
+            {
+                var file = args.PickFile(page.CutoutServices);
+                var proposed = args.Region() is null && args.BandMin is null && args.BandMax is null ? null : args.ToSpec(file);
+                var editor = page.ShowCutoutEditor(file, null, proposed);
+                var check = CanfarDesktop.Services.Cutouts.SodaRequest.Check(file, editor.Spec);
+                return new CutoutEditorShown(true, file.ArtifactId, editor.Spec.Summary, check.Errors, check.Warnings);
+            }
+            catch (CanfarDesktop.Mcp.Tools.McpToolException ex)
+            {
+                return CutoutEditorShown.Refused(ex.Message);
+            }
+        }, CutoutEditorShown.Refused("the observation view could not be reached"));
 
     private async void OnObsDetailSignIn()
     {
@@ -1306,6 +1357,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             var hostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
             _fitsTabHost = new Views.FitsViewer.FitsTabHost(hostVm);
             _fitsTabHost.SearchAtPositionRequested += OnSearchAtFitsPosition;
+            _fitsTabHost.CutoutRequested += OnFitsCutoutRequested;
             // GoHome (not NavigateTo) so the empty host doesn't stay on the back stack.
             _fitsTabHost.AllTabsClosed += GoHome;
             FitsViewerContainer.Child = _fitsTabHost;

@@ -62,11 +62,11 @@
             </InfoBar>
             <InfoBar x:Name="DownloadBar" IsOpen="False" IsClosable="True">
                 <StackPanel Margin="0,4,0,8" Spacing="4" MinWidth="320">
-                    <ProgressBar x:Name="DownloadProgress" IsIndeterminate="True" />
+                    <!-- A download's PROGRESS is in the status bar, which outlives this page; this says it started. -->
                     <TextBlock x:Name="DownloadText" Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     <!-- Shown on completion: the file is tracked in Research (never swap InfoBar.Content —
-                         this panel IS the Content, and replacing it orphans the progress controls). -->
+                         this panel IS the Content, and replacing it orphans the controls in it). -->
                     <StackPanel x:Name="DownloadResearchRow" Orientation="Horizontal" Spacing="4" Visibility="Collapsed">
                         <TextBlock x:Name="DownloadResearchText" VerticalAlignment="Center"
                                    Style="{StaticResource CaptionTextBlockStyle}" />

@@ -28,7 +28,14 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
     /// a search, and the entry is greyed rather than hidden so that is visible.
     /// </summary>
     public MarkCommands.Context CommandContextFor(string id)
-        => new(CanLocateOnSky: SkyOf(Marks.ById(id)) is not null, CanExportFigure: true);
+        => new(CanLocateOnSky: SkyOf(Marks.ById(id)) is not null, CanExportFigure: true,
+               CanCutOut: CutoutSource() is not null && Marks.ById(id) is { } m && SkyRegionOf(m) is not null);
+
+    /// <summary>
+    /// A mark's region to cut from the archive: which observation (and, for a cutout, which of its
+    /// files) and the region on the sky. The host opens the cutout editor on it.
+    /// </summary>
+    public event Action<string, string?, Models.Cutouts.SkyRegion>? CutoutRequested;
 
     /// <summary>What each entry does here. Every one of them is also an MCP tool.</summary>
     public void InvokeMarkCommand(MarkCommand command, string id)
@@ -68,10 +75,65 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
                     DispatcherQueue.TryEnqueue(() => _ = ShowExportDialogAsync(region));
                 break;
 
+            case MarkCommand.CutOut:
+                if (CutoutSource() is { } source && SkyRegionOf(mark) is { } skyRegion)
+                    CutoutRequested?.Invoke(source.PublisherId, source.ArtifactId, skyRegion);
+                break;
+
             case MarkCommand.Delete:
                 Marks.Delete(id);
                 break;
         }
+    }
+
+    // ── Cutting a mark's region from the archive ────────────────────────────────────────────────
+
+    /// <summary>
+    /// The archive observation this file is, from its Research record — and, when the file is itself a
+    /// cutout, the file it was cut from, so a mark on a cutout cuts the same file again. Null for a file
+    /// Research does not know as an observation.
+    /// </summary>
+    private (string PublisherId, string? ArtifactId)? CutoutSource()
+    {
+        if (string.IsNullOrEmpty(ViewModel.FilePath)) return null;
+        try
+        {
+            var open = System.IO.Path.GetFullPath(ViewModel.FilePath);
+            var store = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetRequiredService<Services.ObservationStore>(App.Services);
+            var record = store.Observations.FirstOrDefault(o => !string.IsNullOrEmpty(o.LocalPath)
+                && string.Equals(System.IO.Path.GetFullPath(o.LocalPath), open, StringComparison.OrdinalIgnoreCase));
+            return record is null || string.IsNullOrEmpty(record.PublisherID)
+                ? null
+                : (record.PublisherID, record.Cutout?.ArtifactId);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The mark as a region on the sky: a box for a rectangle, a circle for anything else, its size
+    /// through the image's pixel scale. A rectangle on a rotated image becomes the box that is square
+    /// to RA and Dec — SODA cuts on the sky, not along the image's axes.
+    /// </summary>
+    private Models.Cutouts.SkyRegion? SkyRegionOf(Annotation mark)
+    {
+        if (SkyOf(mark) is not { } sky || ViewModel.ImageData is not { } image
+            || image.Wcs is not { IsValid: true } wcs || wcs.PixelScaleArcsec <= 0) return null;
+
+        var surface = new FitsExportSurface(FitsRegion.WholeImage(image.Width, image.Height),
+            image.Width, image.Height, wcs, image.Height);
+        var degreesPerPixel = wcs.PixelScaleArcsec / 3600;
+        var (halfW, halfH) = mark.Extent is { } extent
+            ? (extent.HalfWidth * surface.UnitsToPixels(mark.Anchor) * degreesPerPixel,
+               extent.HalfHeight * surface.UnitsToPixels(mark.Anchor) * degreesPerPixel)
+            : (20 * degreesPerPixel, 20 * degreesPerPixel); // a bare point: the same 20 px a figure frames it with
+
+        return mark.Kind == AnnotationKind.Rect
+            ? Models.Cutouts.SkyRegion.Box(sky.Ra, sky.Dec, 2 * halfW, 2 * halfH)
+            : Models.Cutouts.SkyRegion.Circle(sky.Ra, sky.Dec, Math.Max(halfW, halfH));
     }
 
     // ── Where a mark is ─────────────────────────────────────────────────────────────────────────

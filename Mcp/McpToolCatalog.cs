@@ -50,6 +50,7 @@ public static class McpToolCatalog
         var discovery = sp.GetRequiredService<ImageDiscoveryCoordinator>();
         var caom2 = sp.GetRequiredService<ICAOM2Service>();
         var dataLink = sp.GetRequiredService<DataLinkService>();
+        var searchContext = sp.GetRequiredService<SearchContext>();
         var storage = sp.GetRequiredService<IStorageService>();
         var platform = sp.GetRequiredService<IPlatformService>();
         var endpoints = sp.GetRequiredService<ApiEndpoints>();
@@ -169,6 +170,9 @@ public static class McpToolCatalog
             // CAOM2 metadata + DataLink (download/preview URLs)
             new GetObservationCaom2Tool((id, ct) => caom2.GetByPublisherIdAsync(id, ct)),
             new GetDataLinksTool((id, ct) => dataLink.GetLinksAsync(id, ct)),
+            // What each file can be cut by, and the cutout the editor would open on — SODA's descriptors
+            // from DataLink, the last search for the suggestion.
+            new GetCutoutOptionsTool((id, ct) => CutoutOptionsAsync(dataLink, caom2, searchContext, id, ct)),
 
             // VOSpace/ARC storage (read) + local FITS introspection
             new ListVoSpacePathTool((req, ct) => storage.ListNodesAsync(req.Path, req.Limit, ct)),
@@ -229,6 +233,7 @@ public static class McpToolCatalog
             new ExportSearchResultsTool((format, path) => viewState.ExportSearchResultsAsync(format, path)),
             new ShowSearchRowDetailTool(row => viewState.ShowSearchRowDetailAsync(row)),
             new ShowObservationDetailTool(id => viewState.ShowObservationDetailAsync(id)),
+            new ShowCutoutEditorTool(args => viewState.ShowCutoutEditorAsync(args)),
 
             // The Remote Compute screen and Storage-at-a-folder: what a person can do there, an agent
             // can show them — a run, code ready to run, the exec folder. Showing asks a signed-out person
@@ -356,6 +361,8 @@ public static class McpToolCatalog
             // Research: download / remove observations + export a Claude-friendly bundle
             new DownloadObservationTool(),
             new DownloadObservationsBulkTool(),
+            // Part of a file, cut on CADC's side — checked against the file's descriptor before it is queued.
+            new DownloadCutoutTool(async (id, ct) => (await dataLink.GetLinksAsync(id, ct)).Cutouts),
             new DeleteDownloadedObservationTool(),
             new ClearResearchArchiveTool(),
             new ExportResearchBundleTool((dest, notes, hist, files, upload, ct) =>
@@ -427,6 +434,7 @@ public static class McpToolCatalog
         var sessions = sp.GetRequiredService<ISessionService>();
         var observations = sp.GetRequiredService<ObservationStore>();
         var downloader = sp.GetRequiredService<ObservationDownloader>();
+        var dataLink = sp.GetRequiredService<DataLinkService>();
         var storage = sp.GetRequiredService<IStorageService>();
         var discovery = sp.GetRequiredService<ImageDiscoveryCoordinator>();
         var aiGuide = sp.GetRequiredService<AiGuideService>();
@@ -505,6 +513,7 @@ public static class McpToolCatalog
                 DownloadObservationAsync(downloader, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
             new DownloadObservationsBulkApplier((p, attribution) =>
                 DownloadObservationAsync(downloader, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
+            new DownloadCutoutApplier((p, attribution) => DownloadCutoutAsync(downloader, dataLink, caom2, p, attribution)),
             new DeleteDownloadedObservationApplier(p =>
             {
                 var match = observations.Find(p.Id);
@@ -580,72 +589,77 @@ public static class McpToolCatalog
         ObservationDownloader downloader, ICAOM2Service caom2,
         string publisherId, int? artifactIndex, AgentAttribution? attribution = null)
     {
-        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Verbinal");
-        Directory.CreateDirectory(dir);
-        var localPath = Path.Combine(dir, SafeFileName(publisherId) + ".fits");
-
-        var observation = new DownloadedObservation { PublisherID = publisherId, AgentAttribution = attribution };
-
-        // Populate research metadata from CAOM2 so an agent-downloaded record isn't bare (the UI fills
-        // these from the search row; the MCP path otherwise leaves collection/target/instrument empty).
-        // Best-effort + bounded, and done first so the record is whole before the download starts: a
-        // metadata failure (embargo/timeout/parse) must not stop the download.
-        try
-        {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            var meta = await caom2.GetByPublisherIdAsync(publisherId, cts.Token);
-            if (meta.IsSuccess) PopulateFromCaom2(observation, meta.Observation);
-        }
-        catch { /* download without the metadata rather than not at all */ }
-
+        var localPath = Path.Combine(AgentDownloadsFolder(), SafeFileName(publisherId) + ".fits");
+        var observation = await AgentRecordAsync(caom2, publisherId, attribution);
         await downloader.Start(new ObservationDownloadRequest(publisherId, localPath, observation, ArtifactIndex: artifactIndex));
     }
 
-    /// <summary>
-    /// Fill the research-record metadata fields from a CAOM2 document (RA/Dec from the plane footprint
-    /// centroid). Only EMPTY fields are written: a record saved from a search row already carries the
-    /// grid's own values, and this must top it up rather than overwrite it.
-    /// </summary>
-    private static void PopulateFromCaom2(DownloadedObservation obs, CAOM2Observation? caom2)
+    /// <summary>Where an agent's downloads land: ~/Downloads/Verbinal, made on first use.</summary>
+    private static string AgentDownloadsFolder()
     {
-        if (caom2 is null) return;
-        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Verbinal");
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
 
-        static void Fill(Func<string> read, Action<string> write, string? value)
+    /// <summary>
+    /// Apply download_cutout. The file's descriptor is fetched again — a proposal can wait a while —
+    /// the request is built from the spec that passed the check when it was proposed, and the download is
+    /// handed to the app like any other, recorded in Research as a CUTOUT of the observation.
+    /// </summary>
+    private static async Task DownloadCutoutAsync(
+        ObservationDownloader downloader, DataLinkService dataLink, ICAOM2Service caom2,
+        DownloadCutoutPayload payload, AgentAttribution? attribution)
+    {
+        var links = await dataLink.GetLinksAsync(payload.PublisherId);
+        var file = links.CutoutFor(payload.Spec.ArtifactId)
+            ?? throw new InvalidOperationException($"{payload.Spec.ArtifactId} can no longer be cut out of {payload.PublisherId}");
+
+        var url = Services.Cutouts.SodaRequest.Url(file, payload.Spec);
+        var localPath = Path.Combine(AgentDownloadsFolder(), SafeFileName(payload.Spec.FileNameFor(file.FileName)));
+        var record = await AgentRecordAsync(caom2, payload.PublisherId, attribution, links, payload.Spec);
+        await downloader.Start(new ObservationDownloadRequest(payload.PublisherId, localPath, record, Url: url));
+    }
+
+    /// <summary>get_cutout_options: the descriptors from DataLink, each file's size from CAOM2, the suggestion from the last search.</summary>
+    private static async Task<CutoutOptions> CutoutOptionsAsync(
+        DataLinkService dataLink, ICAOM2Service caom2, SearchContext search, string publisherId, CancellationToken ct)
+    {
+        var links = await dataLink.GetLinksAsync(publisherId, ct);
+
+        var sizes = new Dictionary<string, long?>(StringComparer.Ordinal);
+        try
         {
-            if (!string.IsNullOrWhiteSpace(read()) || string.IsNullOrWhiteSpace(value)) return;
-            write(value!);
+            var meta = await caom2.GetByPublisherIdAsync(publisherId, ct);
+            if (meta.IsSuccess && meta.Observation is { } obs)
+                foreach (var artifact in obs.Planes.SelectMany(p => p.Artifacts))
+                    if (!string.IsNullOrEmpty(artifact.Uri)) sizes.TryAdd(artifact.Uri, artifact.ContentLength);
         }
+        catch { /* the sizes are a help, not a requirement */ }
 
-        Fill(() => obs.Collection, v => obs.Collection = v, caom2.Collection);
-        Fill(() => obs.ObservationID, v => obs.ObservationID = v, caom2.ObservationID);
-        Fill(() => obs.TargetName, v => obs.TargetName = v, caom2.Target?.Name);
-        Fill(() => obs.Instrument, v => obs.Instrument = v, caom2.Instrument?.Name);
-        if (caom2.Proposal is { } prop)
+        return CutoutOptions.From(publisherId, links.Cutouts, search.CutoutHints, id => sizes.GetValueOrDefault(id));
+    }
+
+    /// <summary>
+    /// The Research record for something an agent fetches, with CAOM2's metadata so it is not bare (the
+    /// UI fills these from the search row; an agent has none). Best-effort and bounded, and done before
+    /// the download starts so the record is whole: a metadata failure (embargo, timeout, parse) must
+    /// not stop the download.
+    /// </summary>
+    private static async Task<DownloadedObservation> AgentRecordAsync(
+        ICAOM2Service caom2, string publisherId, AgentAttribution? attribution,
+        DataLinkResult? links = null, Models.Cutouts.CutoutSpec? cutout = null)
+    {
+        CAOM2Observation? meta = null;
+        try
         {
-            Fill(() => obs.ProposalId, v => obs.ProposalId = v, prop.Id);
-            Fill(() => obs.ProposalPi, v => obs.ProposalPi = v, prop.Pi);
-            Fill(() => obs.ProposalTitle, v => obs.ProposalTitle = v, prop.Title);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var result = await caom2.GetByPublisherIdAsync(publisherId, cts.Token);
+            if (result.IsSuccess) meta = result.Observation;
         }
+        catch { /* the record without the metadata rather than no download at all */ }
 
-        var plane = caom2.Planes.FirstOrDefault();
-        if (plane is null) return;
-        Fill(() => obs.CalLevel, v => obs.CalLevel = v,
-            plane.CalibrationLevel is int cl ? cl.ToString(inv) : null);
-        Fill(() => obs.DataRelease, v => obs.DataRelease = v,
-            plane.DataRelease is { } dr ? dr.ToString("yyyy-MM-dd", inv) : null);
-
-        // The two the record used to stay anonymous in even when CAOM2 had them: the bandpass IS the
-        // filter, and the temporal lower bound is the start of the observation.
-        Fill(() => obs.Filter, v => obs.Filter = v, plane.Energy?.BandpassName);
-        Fill(() => obs.StartDate, v => obs.StartDate = v,
-            plane.Time?.LowerMJD is { } mjd ? Caom2Format.MjdToDate(mjd) : null);
-
-        if (plane.Position?.Polygon is { Count: > 0 } poly && string.IsNullOrWhiteSpace(obs.RA))
-        {
-            obs.RA = poly.Average(v => v.Ra).ToString("F6", inv);
-            obs.Dec = poly.Average(v => v.Dec).ToString("F6", inv);
-        }
+        return ResearchRecords.ForObservation(publisherId, meta, links, cutout, attribution);
     }
 
     /// <summary>Assemble + zip a research bundle from the registered export modules; optionally upload it to VOSpace.</summary>

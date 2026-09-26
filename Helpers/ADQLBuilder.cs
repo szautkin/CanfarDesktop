@@ -107,38 +107,38 @@ public static class ADQLBuilder
 
     private static void AddSpatialClauses(SearchFormState s, List<string> c)
     {
+        // Precedence mirrors the macOS SpatialBuilder: a coordinate-range box, then a direct
+        // coordinate pair (decimal OR sexagesimal), then resolved name coords, then a plain
+        // target-name substring match.
         var target = s.Target?.Trim() ?? string.Empty;
-        if (target.Length > 0)
-        {
-            // Precedence mirrors the macOS SpatialBuilder: a coordinate-range box, then a
-            // direct coordinate pair (decimal OR sexagesimal), then resolved name coords,
-            // then a plain target-name substring match.
-            if (TryParseCoordRange(target, out var raLo, out var raHi, out var decLo, out var decHi))
-            {
-                c.Add($"INTERSECTS( RANGE_S2D({F(raLo)}, {F(raHi)}, {F(decLo)}, {F(decHi)}), Plane.position_bounds ) = 1");
-            }
-            else if (TryParseCoordinatePair(target, s.SearchRadius, out var ra, out var dec, out var radius))
-            {
-                c.Add($"INTERSECTS( CIRCLE('ICRS', {F(ra)}, {F(dec)}, {F(radius)}), Plane.position_bounds ) = 1");
-            }
-            else if (s.ResolvedRA is not null && s.ResolvedDec is not null)
-            {
-                c.Add($"INTERSECTS( CIRCLE('ICRS', {F(s.ResolvedRA.Value)}, {F(s.ResolvedDec.Value)}, {F(s.SearchRadius)}), Plane.position_bounds ) = 1");
-            }
-            else
-            {
-                c.Add($"lower(Observation.target_name) LIKE '%{EscapeLike(target.ToLower())}%'");
-            }
-        }
-        else if (s.ResolvedRA is not null && s.ResolvedDec is not null)
-        {
-            c.Add($"INTERSECTS( CIRCLE('ICRS', {F(s.ResolvedRA.Value)}, {F(s.ResolvedDec.Value)}, {F(s.SearchRadius)}), Plane.position_bounds ) = 1");
-        }
+        if (target.Length > 0 && TryParseCoordRange(target, out var raLo, out var raHi, out var decLo, out var decHi))
+            c.Add($"INTERSECTS( RANGE_S2D({F(raLo)}, {F(raHi)}, {F(decLo)}, {F(decHi)}), Plane.position_bounds ) = 1");
+        else if (SpatialCircle(s) is { } circle)
+            c.Add($"INTERSECTS( CIRCLE('ICRS', {F(circle.Ra)}, {F(circle.Dec)}, {F(circle.Radius)}), Plane.position_bounds ) = 1");
+        else if (target.Length > 0)
+            c.Add($"lower(Observation.target_name) LIKE '%{EscapeLike(target.ToLower())}%'");
 
         // Pixel scale
         if (RangeParser.TryParse(s.PixelScale, out var psRange))
             AddConvertedRangeClause("Plane.position_sampleSize", psRange, s.PixelScaleUnit, c,
                 (v, u) => UnitConverter.TryConvertToDegrees(v, u, out var d) ? d : (double?)null);
+    }
+
+    /// <summary>
+    /// The circle on the sky a search looks within — a typed coordinate pair, or the resolved target
+    /// at the search radius — or null for a range box, a bare name, or no position at all. What the
+    /// query searches, and so what a cutout of something it found starts from.
+    /// </summary>
+    internal static (double Ra, double Dec, double Radius)? SpatialCircle(SearchFormState s)
+    {
+        var target = s.Target?.Trim() ?? string.Empty;
+        if (target.Length > 0)
+        {
+            if (TryParseCoordRange(target, out _, out _, out _, out _)) return null;
+            if (TryParseCoordinatePair(target, s.SearchRadius, out var ra, out var dec, out var radius))
+                return (ra, dec, radius);
+        }
+        return s.ResolvedRA is { } r && s.ResolvedDec is { } d ? (r, d, s.SearchRadius) : null;
     }
 
     /// <summary>
@@ -183,18 +183,9 @@ public static class ADQLBuilder
         return true;
     }
 
-    /// <summary>Decimal degrees, or colon-delimited sexagesimal (RA in hours, Dec in degrees).</summary>
+    /// <summary>Decimal degrees, or colon-delimited sexagesimal (RA in hours, Dec in degrees) — <see cref="Sexagesimal.TryParseAngle"/>.</summary>
     private static bool TryParseAngle(string token, bool isRa, out double deg)
-    {
-        if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out deg))
-            return true; // decimal degrees
-        if (token.Contains(':'))
-        {
-            var v = isRa ? Sexagesimal.ParseRa(token) : Sexagesimal.ParseDec(token);
-            if (v is not null) { deg = v.Value; return true; }
-        }
-        return false;
-    }
+        => Sexagesimal.TryParseAngle(token, isRa, out deg);
 
     private static readonly Regex RadiusRegex =
         new(@"([0-9.eE+\-]+)\s*(arcmin|arcsec|deg)?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -333,7 +324,9 @@ public static class ADQLBuilder
     {
         // Spectral coverage (overlap semantics)
         if (RangeParser.TryParse(s.SpectralCoverage, out var covRange))
-            AddSpectralOverlapClause(covRange, s.SpectralCoverageUnit, c);
+        {
+            if (CoverageMetres(covRange, s.SpectralCoverageUnit) is { } band) c.Add(OverlapClause(band));
+        }
         // Legacy wavelength min/max fallback
         else
         {
@@ -365,7 +358,12 @@ public static class ADQLBuilder
             AddConvertedRangeClause("Plane.energy_restwav", reRange, s.RestFrameEnergyUnit, c, ConvertSpectral);
     }
 
-    private static void AddSpectralOverlapClause(ParsedRange range, string unit, List<string> c)
+    /// <summary>
+    /// A spectral-coverage range in metres, open where the range is: "400..600 nm" is both ends,
+    /// "&gt;500nm" the lower only, "=500nm" a single wavelength (both ends the same). Null when it cannot
+    /// be read. The one reading of it, for the query and for a cutout's band alike.
+    /// </summary>
+    internal static (double? Min, double? Max)? CoverageMetres(ParsedRange range, string unit)
     {
         if (range.Operand == RangeOperand.Between)
         {
@@ -374,33 +372,43 @@ public static class ADQLBuilder
             var effectiveUnit1 = u1 ?? unit;
             var effectiveUnit2 = u2 ?? u1 ?? unit; // inherit from first side
 
-            if (UnitConverter.TryConvertToMetres(num1, effectiveUnit1, out var m1) &&
-                UnitConverter.TryConvertToMetres(num2, effectiveUnit2, out var m2))
-            {
-                var lo = Math.Min(m1, m2);
-                var hi = Math.Max(m1, m2);
-                // Overlap: query interval overlaps with observation energy bounds
-                c.Add($"Plane.energy_bounds_lower <= {F(hi)} AND {F(lo)} <= Plane.energy_bounds_upper");
-            }
+            if (!UnitConverter.TryConvertToMetres(num1, effectiveUnit1, out var m1) ||
+                !UnitConverter.TryConvertToMetres(num2, effectiveUnit2, out var m2)) return null;
+            return (Math.Min(m1, m2), Math.Max(m1, m2));
         }
-        else
-        {
-            var (num, u) = UnitConverter.ExtractSpectralSuffix(range.Value1);
-            if (!UnitConverter.TryConvertToMetres(num, u ?? unit, out var m)) return;
 
-            switch (range.Operand)
-            {
-                case RangeOperand.GreaterThan or RangeOperand.GreaterThanOrEqual:
-                    c.Add($"{F(m)} <= Plane.energy_bounds_upper");
-                    break;
-                case RangeOperand.LessThan or RangeOperand.LessThanOrEqual:
-                    c.Add($"Plane.energy_bounds_lower <= {F(m)}");
-                    break;
-                case RangeOperand.Equals:
-                    c.Add($"Plane.energy_bounds_lower <= {F(m)} AND {F(m)} <= Plane.energy_bounds_upper");
-                    break;
-            }
-        }
+        var (num, u) = UnitConverter.ExtractSpectralSuffix(range.Value1);
+        if (!UnitConverter.TryConvertToMetres(num, u ?? unit, out var m)) return null;
+
+        return range.Operand switch
+        {
+            RangeOperand.GreaterThan or RangeOperand.GreaterThanOrEqual => (m, null),
+            RangeOperand.LessThan or RangeOperand.LessThanOrEqual => (null, m),
+            RangeOperand.Equals => (m, m),
+            _ => null,
+        };
+    }
+
+    /// <summary>Overlap: the query's interval meets the observation's energy bounds.</summary>
+    private static string OverlapClause((double? Min, double? Max) band) => band switch
+    {
+        ({ } lo, { } hi) => $"Plane.energy_bounds_lower <= {F(hi)} AND {F(lo)} <= Plane.energy_bounds_upper",
+        ({ } lo, null) => $"{F(lo)} <= Plane.energy_bounds_upper",
+        (null, { } hi) => $"Plane.energy_bounds_lower <= {F(hi)}",
+        _ => "1 = 1",
+    };
+
+    /// <summary>
+    /// What a search asked of wavelength, in metres — the coverage range, else the legacy min and max
+    /// (already metres) — or null when it asked nothing.
+    /// </summary>
+    internal static (double? Min, double? Max)? SpectralInterval(SearchFormState s)
+    {
+        if (RangeParser.TryParse(s.SpectralCoverage, out var range)) return CoverageMetres(range, s.SpectralCoverageUnit);
+
+        var hasMin = NumberInput.TryParseUser(s.WavelengthMin, out var wlMin) && wlMin > 0;
+        var hasMax = NumberInput.TryParseUser(s.WavelengthMax, out var wlMax) && wlMax > 0;
+        return hasMin || hasMax ? (hasMin ? wlMin : null, hasMax ? wlMax : null) : null;
     }
 
     private static double? ConvertSpectral(string value, string unit)
