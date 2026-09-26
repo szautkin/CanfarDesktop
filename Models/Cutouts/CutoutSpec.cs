@@ -98,7 +98,7 @@ public sealed record CutoutSpec
         foreach (var ext in new[] { ".fz", ".gz" })
             if (stem.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) stem = stem[..^ext.Length];
         if (stem.EndsWith(".fits", StringComparison.OrdinalIgnoreCase)) stem = stem[..^".fits".Length];
-        return $"{stem}.cutout-{Key}.fits";
+        return stem.Length == 0 ? $"cutout-{Key}.fits" : $"{stem}.cutout-{Key}.fits";
     }
 
     private static string Num(double? v) => v?.ToString("R", CultureInfo.InvariantCulture) ?? "";

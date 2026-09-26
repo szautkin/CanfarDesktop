@@ -1073,7 +1073,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
     }
 
     /// <summary>
-    /// A mark's "Cut out from the archive": the same route as show_cutout_editor, with the mark's
+    /// A mark's "Cut out…": the same route as show_cutout_editor, with the mark's
     /// region. When the editor cannot choose the file itself — several can be cut and the mark's file
     /// is not one of them — the observation opens on its Files tab so the person can.
     /// </summary>
@@ -1116,10 +1116,12 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
 
             try
             {
-                var source = args.PickSource(page.CutoutSourcesOfObservation);
+                var sources = page.CutoutSourcesOfObservation;
+                var source = args.PickSource(sources);
                 var proposed = args.Region() is null && args.BandMin is null && args.BandMax is null ? null : args.ToSpec(source);
-                var editor = page.ShowCutoutEditor(source, proposed);
-                var check = source.Check(editor.Spec);
+                var editor = page.ShowCutoutEditor(
+                    CanfarDesktop.Services.Cutouts.CutoutSources.For(sources, source.File.ArtifactId), proposed, source.Method);
+                var check = editor.Source.Check(editor.Spec);
                 return new CutoutEditorShown(true, source.File.ArtifactId, editor.Spec.Summary, check.Errors, check.Warnings);
             }
             catch (CanfarDesktop.Mcp.Tools.McpToolException ex)

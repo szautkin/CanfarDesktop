@@ -4722,10 +4722,10 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
     <value>Ce fichier est une partie de l'observation, découpée par le CADC : {0}. Les informations et notes ci-dessous sont celles de l'observation complète.</value>
   </data>
   <data name="Marks_CmdCutOut" xml:space="preserve">
-    <value>Découper dans l'archive…</value>
+    <value>Découper…</value>
   </data>
   <data name="Marks_CmdCutOutNeedsObservation" xml:space="preserve">
-    <value>Ouvrez une observation de l'archive depuis Recherche, avec des coordonnées célestes, pour découper cette zone dans son fichier en pleine résolution.</value>
+    <value>Ouvrez une observation de l'archive depuis Recherche, avec des coordonnées célestes, pour découper cette zone dans son fichier — par le CADC, ou dans la copie sur cet ordinateur.</value>
   </data>
   <data name="Search_DownloadingCutout" xml:space="preserve">
     <value>Téléchargement d'une découpe de {0}…</value>
@@ -4734,10 +4734,85 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
     <value>Vérification : le CADC peut-il découper ceci…</value>
   </data>
   <data name="Cutout_NoneForFile" xml:space="preserve">
-    <value>Le CADC ne peut pas découper ce fichier — seul le fichier complet peut être téléchargé.</value>
+    <value>Le CADC ne peut pas découper ce fichier, et il n'est pas sur cet ordinateur — téléchargez-le pour le découper ici.</value>
   </data>
   <data name="Cutout_NoneForObservation" xml:space="preserve">
-    <value>Le CADC ne peut découper aucun des fichiers de cette observation.</value>
+    <value>Le CADC ne peut découper aucun des fichiers de cette observation, et aucun n'est sur cet ordinateur.</value>
+  </data>
+  <data name="Cutout_NoneForFileLocal" xml:space="preserve">
+    <value>Le CADC ne peut pas découper ce fichier, et la copie sur cet ordinateur ne peut pas l'être : {0}</value>
+  </data>
+  <data name="Cutout_NoneForObservationLocal" xml:space="preserve">
+    <value>Le CADC ne peut découper aucun des fichiers de cette observation, et la copie sur cet ordinateur ne peut pas l'être : {0}</value>
+  </data>
+  <data name="Cutout_ButtonTooltipLocal" xml:space="preserve">
+    <value>Découper une partie de la copie de ce fichier sur cet ordinateur</value>
+  </data>
+  <data name="Cutout_ButtonTooltipBoth" xml:space="preserve">
+    <value>Découper une partie de ce fichier — par le CADC, ou dans la copie sur cet ordinateur</value>
+  </data>
+  <data name="Cutout_CutBy" xml:space="preserve">
+    <value>Découpé par</value>
+  </data>
+  <data name="Cutout_CutBySoda" xml:space="preserve">
+    <value>Le CADC — ne télécharger que cette partie</value>
+  </data>
+  <data name="Cutout_CutByLocal" xml:space="preserve">
+    <value>Cet ordinateur — dans le fichier téléchargé</value>
+  </data>
+  <data name="Cutout_WayUnavailable" xml:space="preserve">
+    <value>{0} : {1}</value>
+  </data>
+  <data name="Cutout_EditorNoteLocal" xml:space="preserve">
+    <value>Découpée sur cet ordinateur dans le fichier déjà téléchargé — aussitôt, hors ligne, autant de fois que vous le voulez — ses pixels copiés à l'identique. Elle est conservée dans Recherche comme une découpe de cette observation — pas l'observation complète.</value>
+  </data>
+  <data name="Cutout_CutLocal" xml:space="preserve">
+    <value>Découper</value>
+  </data>
+  <data name="Cutout_EstimateLocal" xml:space="preserve">
+    <value>{0}, découpés dans le fichier de {1} sur cet ordinateur.</value>
+  </data>
+  <data name="Cutout_LocalUnreadable" xml:space="preserve">
+    <value>Le fichier téléchargé ne peut pas être lu comme un FITS : {0}</value>
+  </data>
+  <data name="Cutout_LocalNoImage" xml:space="preserve">
+    <value>Le fichier téléchargé ne contient aucune image à découper.</value>
+  </data>
+  <data name="Cutout_LocalNoWcs" xml:space="preserve">
+    <value>L'image du fichier téléchargé n'a pas de coordonnées célestes : une zone du ciel ne peut pas y être placée.</value>
+  </data>
+  <data name="Cutout_LocalApproximateWcs" xml:space="preserve">
+    <value>Les coordonnées célestes du fichier téléchargé ne sont qu'approximatives — reconstruites à partir de ses mots-clés RA et DEC — trop grossières pour découper.</value>
+  </data>
+  <data name="Cutout_LocalNotRaDec" xml:space="preserve">
+    <value>L'image du fichier téléchargé est en {0} et {1}, pas en RA et Dec : une zone en RA et Dec ne peut pas y être placée.</value>
+  </data>
+  <data name="Cutout_LocalFk4" xml:space="preserve">
+    <value>Les coordonnées du fichier téléchargé sont en B1950 (FK4) ; la zone d'une découpe est en ICRS, et l'application ne convertit pas de l'un à l'autre.</value>
+  </data>
+  <data name="Cutout_LocalBadBitpix" xml:space="preserve">
+    <value>Les pixels du fichier téléchargé sont enregistrés d'une façon que FITS ne définit pas (BITPIX {0}).</value>
+  </data>
+  <data name="Cutout_LocalCompressed" xml:space="preserve">
+    <value>Le fichier téléchargé est compressé par tuiles ({0}), ce que l'application ne sait pas encore découper ; funpack en fait un .fits ordinaire qui peut l'être.</value>
+  </data>
+  <data name="Cutout_LocalTruncated" xml:space="preserve">
+    <value>Le fichier téléchargé s'arrête avant la fin de son image ; son téléchargement n'est peut-être pas terminé.</value>
+  </data>
+  <data name="Cutout_LocalOnNoImage" xml:space="preserve">
+    <value>Cette zone ne tombe sur aucune des images de ce fichier.</value>
+  </data>
+  <data name="Cutout_LocalSourceGone" xml:space="preserve">
+    <value>Le fichier dans lequel elle est découpée n'est plus sur cet ordinateur. Téléchargez le fichier de l'observation, puis réessayez.</value>
+  </data>
+  <data name="Cutout_LocalOverSource" xml:space="preserve">
+    <value>Une découpe ne peut pas être enregistrée à la place du fichier dans lequel elle est découpée.</value>
+  </data>
+  <data name="Research_CutoutNoteLocal" xml:space="preserve">
+    <value>Ce fichier est une partie de l'observation, découpée sur cet ordinateur dans son fichier téléchargé : {0}. Les informations et notes ci-dessous sont celles de l'observation complète.</value>
+  </data>
+  <data name="Research_CutAgain" xml:space="preserve">
+    <value>Découper à nouveau</value>
   </data>
   <data name="Research_RemoveFile" xml:space="preserve">
     <value>Supprimer le fichier</value>

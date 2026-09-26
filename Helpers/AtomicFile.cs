@@ -41,6 +41,17 @@ public static class AtomicFile
             await write(stream);
         });
 
+    /// <summary>
+    /// Write through a stream, atomically, on the calling thread — for a long synchronous writer (a
+    /// FITS cutout, streamed row by row) that its caller already runs off the UI.
+    /// </summary>
+    public static void WriteStream(string path, Action<Stream> write)
+        => Write(path, tmp =>
+        {
+            using var stream = File.Create(tmp);
+            write(stream);
+        });
+
     /// <summary>The shared shape: build the temp file, put it over the target, clean up on failure.</summary>
     private static void Write(string path, Action<string> build)
     {

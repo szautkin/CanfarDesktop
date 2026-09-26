@@ -58,24 +58,27 @@ public sealed partial class ResearchPage : UserControl
     public event Action<string, string?>? CutoutRequested;
 
     /// <summary>
-    /// "Cut out…", always there: greyed while DataLink is asked whether CADC can cut this observation's
-    /// files, then live, or greyed with the reason — so the person knows the app can do it, and whether
-    /// it can for THIS observation.
+    /// "Cut out…", always there: greyed while it is found out whether this observation's files can be
+    /// cut — by CADC, or from its file on this computer — then live, or greyed with the reason, so the
+    /// person knows the app can do it, and whether it can for THIS observation.
     /// </summary>
     private FrameworkElement CutoutButton(DownloadedObservation obs)
     {
         var button = UIFactory.CreateIconButton("", Loc.T("Cutout_Button"),
-            (_, _) => CutoutRequested?.Invoke(obs.PublisherID, obs.Cutout?.ArtifactId));
+            (_, _) => CutoutRequested?.Invoke(obs.PublisherID, obs.Cutout?.ArtifactId ?? obs.ArtifactId));
         button.Name = "ResearchCutoutButton";
         var wrapper = UIFactory.Explained(button);
         UIFactory.Enable(button, false, Loc.T("Cutout_Checking"));
 
         var ct = _previewCts?.Token ?? CancellationToken.None;
-        _ = Task.Run(() => ViewModel.CutoutFilesAsync(obs)).ContinueWith(t => DispatcherQueue.TryEnqueue(() =>
+        _ = Task.Run(() => ViewModel.CutoutSourcesAsync(obs)).ContinueWith(t => DispatcherQueue.TryEnqueue(() =>
         {
             if (ct.IsCancellationRequested) return;
-            IReadOnlyList<Models.Cutouts.SodaDescriptor> files = t.Status == TaskStatus.RanToCompletion ? t.Result : [];
-            UIFactory.Enable(button, files.Count > 0, Loc.T("Cutout_NoneForObservation"));
+            IReadOnlyList<Services.Cutouts.ICutoutSource> ways = t.Status == TaskStatus.RanToCompletion ? t.Result : [];
+            var why = ways.FirstOrDefault(w => w.Method == Models.Cutouts.CutoutMethod.Local)?.Unavailable is { } local
+                ? Loc.F("Cutout_NoneForObservationLocal", local)
+                : Loc.T("Cutout_NoneForObservation");
+            UIFactory.Enable(button, ways.Any(w => w.Unavailable is null), why);
         }), TaskScheduler.Default);
 
         return wrapper;
@@ -347,7 +350,8 @@ public sealed partial class ResearchPage : UserControl
                 IsClosable = false,
                 Severity = InfoBarSeverity.Warning,
                 Title = Loc.T("Research_CutoutTitle"),
-                Message = Loc.F("Research_CutoutNote", cutout.Summary),
+                Message = Loc.F(cutout.CutBy == Models.Cutouts.CutoutMethod.Local ? "Research_CutoutNoteLocal" : "Research_CutoutNote",
+                    cutout.Summary),
             });
         }
 
@@ -398,7 +402,9 @@ public sealed partial class ResearchPage : UserControl
         }
         else
         {
-            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", Loc.T("Research_DownloadFits"), async (_, _) =>
+            // A local cutout is made again from the file it was cut from, rather than downloaded.
+            var fetch = obs.Cutout?.CutBy == Models.Cutouts.CutoutMethod.Local ? Loc.T("Research_CutAgain") : Loc.T("Research_DownloadFits");
+            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", fetch, async (_, _) =>
             {
                 try
                 {

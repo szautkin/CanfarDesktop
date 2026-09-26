@@ -90,7 +90,8 @@ public static class MarkCommands
         if (context.CanExportFigure)
             items.Add(new MarkCommandItem(MarkCommand.ExportFigure, "Marks_CmdExportFigure", ""));
 
-        // The mark's region, cut out of the observation's own file on CADC's side (show_cutout_editor).
+        // The mark's region, cut out of the observation's own file — on CADC's side, or from its copy on
+        // this computer (show_cutout_editor).
         if (context.CanCutOut is { } canCut)
             items.Add(new MarkCommandItem(MarkCommand.CutOut, "Marks_CmdCutOut", "",
                 Enabled: canCut, DisabledReasonUid: canCut ? null : "Marks_CmdCutOutNeedsObservation"));

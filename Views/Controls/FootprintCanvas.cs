@@ -34,6 +34,7 @@ public sealed class FootprintCanvas : UserControl
     private readonly Canvas _canvas = new() { Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
     private SkyCanvasProjection? _projection;
     private IReadOnlyList<SkyPoint> _footprint = [];
+    private IReadOnlyList<IReadOnlyList<SkyPoint>> _parts = [];
     private SkyPoint? _target;
     private SkyRegion? _region;
 
@@ -79,6 +80,16 @@ public sealed class FootprintCanvas : UserControl
         set { _footprint = value; Refit(); }
     }
 
+    /// <summary>
+    /// The parts the footprint is made of — the chips of an HST frame, the CCDs of a mosaic — drawn
+    /// inside it, so a region in a gap between them is seen to be on none.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<SkyPoint>> Parts
+    {
+        get => _parts;
+        set { _parts = value; Redraw(); }
+    }
+
     /// <summary>Where the search looked, marked with a cross.</summary>
     public SkyPoint? Target
     {
@@ -118,8 +129,17 @@ public sealed class FootprintCanvas : UserControl
         {
             footprint.Stroke = Res("AccentFillColorDefaultBrush");
             footprint.StrokeThickness = 1.5;
-            footprint.Fill = Res("SubtleFillColorSecondaryBrush");
+            footprint.Fill = _parts.Count > 0 ? null : Res("SubtleFillColorSecondaryBrush");
             _canvas.Children.Add(footprint);
+        }
+
+        foreach (var part in _parts)
+        {
+            if (Outline(p, part) is not { } outline) continue;
+            outline.Stroke = Res("AccentFillColorDefaultBrush");
+            outline.StrokeThickness = 0.75;
+            outline.Fill = Res("SubtleFillColorSecondaryBrush");
+            _canvas.Children.Add(outline);
         }
 
         AddCompass();

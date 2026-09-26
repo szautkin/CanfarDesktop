@@ -22,6 +22,12 @@ public interface ICutoutSource
     long? WholeFileBytes { get; }
 
     /// <summary>
+    /// Why this way cannot cut this file at all, whatever the region — the downloaded copy has no sky
+    /// coordinates, say — or null when it can. Offered greyed with this reason, never hidden.
+    /// </summary>
+    string? Unavailable => null;
+
+    /// <summary>
     /// Whether this way can make this cutout: <see cref="CutoutRules.Check"/>, and whatever only this
     /// way knows. Never throws — the reasons are the answer.
     /// </summary>
@@ -29,12 +35,18 @@ public interface ICutoutSource
 
     /// <summary>About how many bytes the cutout will be; null when there is nothing to go on.</summary>
     long? EstimateBytes(CutoutSpec spec);
+}
 
+/// <summary>What follows from a way of cutting a file, whichever it is.</summary>
+public static class CutoutSourceExtensions
+{
     /// <summary>A cutout made this way: of this file, cut by this method, whatever it said before.</summary>
-    CutoutSpec Bind(CutoutSpec spec) => spec with { ArtifactId = File.ArtifactId, CutBy = Method };
+    public static CutoutSpec Bind(this ICutoutSource source, CutoutSpec spec)
+        => spec with { ArtifactId = source.File.ArtifactId, CutBy = source.Method };
 
     /// <summary>The cutout an editor opens on — from the search, when it looked at this file.</summary>
-    CutoutSpec Suggest(CutoutHints? hints) => Bind(CutoutPrefill.Suggest(File, hints));
+    public static CutoutSpec Suggest(this ICutoutSource source, CutoutHints? hints)
+        => source.Bind(CutoutPrefill.Suggest(source.File, hints));
 }
 
 /// <summary>A file CADC's SODA service can cut, as its DataLink answer describes it.</summary>

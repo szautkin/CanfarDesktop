@@ -26,6 +26,9 @@ public sealed record CutoutArgs
     public double? BandMin { get; init; }
     public double? BandMax { get; init; }
 
+    /// <summary>Who cuts it: Soda (on CADC's side) or Local (from the file on this computer); the best available when left out.</summary>
+    public CutoutMethod? CutBy { get; init; }
+
     public sealed record CircleArg { public double Ra { get; init; } public double Dec { get; init; } public double Radius { get; init; } }
     public sealed record BoxArg { public double Ra { get; init; } public double Dec { get; init; } public double Width { get; init; } public double Height { get; init; } }
 
@@ -38,7 +41,8 @@ public sealed record CutoutArgs
         "box":{"type":"object","description":"A rectangle on the sky about a point, width along RA and height along Dec. Degrees.","properties":{"ra":{"type":"number"},"dec":{"type":"number"},"width":{"type":"number","exclusiveMinimum":0},"height":{"type":"number","exclusiveMinimum":0}},"required":["ra","dec","width","height"],"additionalProperties":false},
         "polygon":{"type":"array","description":"Corners as [ra, dec] pairs in degrees, at least three.","items":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2}},
         "bandMin":{"type":"number","description":"Shortest wavelength to keep, METRES (5e-7 is 500 nm). Only for files that can be cut by wavelength."},
-        "bandMax":{"type":"number","description":"Longest wavelength to keep, metres."}
+        "bandMax":{"type":"number","description":"Longest wavelength to keep, metres."},
+        "cutBy":{"type":"string","enum":["soda","local"],"description":"Who cuts it: 'soda' on CADC's side (only the part is downloaded), or 'local' from the observation's file already on this computer (instant, offline; the only way for files CADC will not cut, such as its HST mirror's). Left out: local when the file is here and can be cut, else soda."}
         """;
 
     /// <summary>The region asked for, or null when none was; throws when more than one was.</summary>
@@ -62,14 +66,16 @@ public sealed record CutoutArgs
         => source.Bind(new CutoutSpec { Region = Region(), BandMin = BandMin, BandMax = BandMax });
 
     /// <summary>
-    /// The file meant, and the way of cutting it: the file named, or the only one that can be cut. A
-    /// choice left to guess between several files is refused with their names, rather than guessed.
+    /// The file meant, and the way of cutting it: the file named, or the only one that can be cut; the
+    /// way asked for, or the best that can cut it (<see cref="CutoutSources.Preferred"/>). A choice left
+    /// to guess between several files is refused with their names, and a way that cannot cut with its
+    /// reason, rather than guessed.
     /// </summary>
     public ICutoutSource PickSource(IReadOnlyList<ICutoutSource> sources)
     {
         if (sources.Count == 0)
             throw new McpToolException(new InvalidArgument(
-                "none of this observation's files can be cut out (its DataLink answer lists no SODA service); download_observation fetches the whole file"));
+                "none of this observation's files can be cut out: CADC offers no cutout service for them, and none is on this computer; download_observation fetches the whole file, which can then be cut locally"));
 
         var named = (ArtifactId ?? string.Empty).Trim();
         var files = sources.Select(s => s.File.ArtifactId).Distinct().ToList();
@@ -84,15 +90,26 @@ public sealed record CutoutArgs
             throw new McpToolException(new InvalidArgument(
                 $"this observation has {files.Count} files that can be cut; name one as artifactId: {string.Join(", ", files)}"));
 
-        return candidates[0];
+        var ways = CutoutSources.Preferred(candidates, CutBy);
+        var chosen = CutBy is { } asked ? ways.FirstOrDefault(w => w.Method == asked) : ways[0];
+        if (chosen is null)
+            throw new McpToolException(new InvalidArgument(CutBy == CutoutMethod.Local
+                ? "this file is not on this computer to cut locally; download_observation fetches it, or cut it with cutBy 'soda'"
+                : "CADC offers no cutout service for this file; cut it with cutBy 'local' once it is downloaded"));
+        if (chosen.Unavailable is { } why)
+            throw new McpToolException(new InvalidArgument($"this file cannot be cut {Say(chosen.Method)}: {why}"));
+        return chosen;
     }
+
+    private static string Say(CutoutMethod method) => method == CutoutMethod.Local ? "locally" : "on CADC's side";
 }
 
-/// <summary>One file an agent could cut, one way, and what it can be cut by.</summary>
+/// <summary>One file an agent could cut, one way, and what it can be cut by — or why this way cannot cut it.</summary>
 public sealed record CutoutFileOption(
     string ArtifactId,
     string FileName,
     CutoutMethod CutBy,
+    string? Unavailable,
     IReadOnlyList<string> Parameters,
     SkyRegion? Footprint,
     SkyRegion? BoundingCircle,
@@ -116,13 +133,13 @@ public sealed record CutoutOptions(string PublisherId, IReadOnlyList<CutoutFileO
         {
             var f = source.File;
             var suggested = source.Suggest(hints);
-            return new CutoutFileOption(f.ArtifactId, f.FileName, source.Method, f.Parameters.Order().ToList(),
+            return new CutoutFileOption(f.ArtifactId, f.FileName, source.Method, source.Unavailable, f.Parameters.Order().ToList(),
                 f.Footprint, f.BoundingCircle, f.BandMin, f.BandMax, source.WholeFileBytes,
                 suggested, suggested.Summary, source.EstimateBytes(suggested));
         }).ToList();
 
         var note = options.Count == 0
-            ? "none of this observation's files can be cut out; download_observation fetches the whole file"
+            ? "none of this observation's files can be cut out: CADC offers no cutout service for them, and none is on this computer; download_observation fetches the whole file, which can then be cut locally"
             : null;
         return new CutoutOptions(publisherId, options, note);
     }
@@ -137,11 +154,13 @@ public sealed class GetCutoutOptionsTool : JsonReadTool<GetCutoutOptionsTool.Arg
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_cutout_options",
-        "What an observation's files can be CUT by — the parameters CADC's SODA service takes for each " +
-        "(CIRCLE, POLYGON, BAND …), the file's footprint and wavelength range, its full size — and the " +
-        "cutout the editor would suggest, from the last search's target and wavelengths when they fall on " +
-        "the file, with its estimated size. A cutout downloads only part of a file, cut on CADC's side: " +
-        "a few MB of a 1.6 GB MegaPipe tile. Read this before download_cutout.",
+        "What an observation's files can be CUT by, each way it can be cut: cutBy 'Soda' — on CADC's side, " +
+        "only the part downloaded (a few MB of a 1.6 GB MegaPipe tile) — and 'Local' — from the observation's " +
+        "file already on this computer: instant, offline, repeatable, and the only way for files CADC will not " +
+        "cut, such as its HST mirror's. For each: the parameters it takes (CIRCLE, POLYGON, BAND …), the " +
+        "file's footprint and wavelength range, its full size, why it cannot be cut this way when it cannot " +
+        "(unavailable), and the cutout the editor would suggest, from the last search's target and wavelengths " +
+        "when they fall on the file, with its size (estimated for Soda, exact for Local). Read this before download_cutout.",
         """{"type":"object","properties":{"publisherId":{"type":"string"}},"required":["publisherId"],"additionalProperties":false}""");
 
     protected override async Task<CutoutOptions> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -174,12 +193,14 @@ public sealed class DownloadCutoutTool : JsonWriteTool<CutoutArgs>
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "download_cutout",
-        "Propose downloading a CUTOUT — part of one of an observation's files, cut on CADC's side by its " +
-        "SODA service — into Research, where it is kept as a cutout of the observation, never as the whole " +
-        "of it. Give one region (circle, box or polygon, degrees) and, for a cube, optionally bandMin/" +
-        "bandMax in metres. It is checked against the file before it is queued: a region off the file is " +
-        "refused with the reason. Use get_cutout_options first for the file's limits and a suggestion. " +
-        "Queues for the user under their auto-apply setting; progress shows in the status bar.",
+        "Propose making a CUTOUT — part of one of an observation's files — into Research, where it is kept as a " +
+        "cutout of the observation, never as the whole of it: cut on CADC's side by its SODA service " +
+        "(cutBy 'soda'), or on this computer from the observation's file already downloaded (cutBy 'local'); " +
+        "left out, locally when that file is here and can be cut, else by CADC. Give one region (circle, box " +
+        "or polygon, degrees) and, for a cube, optionally bandMin/bandMax in metres. It is checked against the " +
+        "file before it is queued: a region off the file is refused with the reason. Use get_cutout_options " +
+        "first for the file's limits and a suggestion. Queues for the user under their auto-apply setting; " +
+        "progress shows in the status bar.",
         "{\"type\":\"object\",\"properties\":{" + CutoutArgs.SchemaProperties + "},\"required\":[\"publisherId\"],\"additionalProperties\":false}");
 
     protected override async Task<ProposalPlan> PlanAsync(CutoutArgs args, McpToolContext context, CancellationToken ct)
@@ -192,8 +213,9 @@ public sealed class DownloadCutoutTool : JsonWriteTool<CutoutArgs>
         var check = source.Check(spec);
         if (!check.IsValid) throw new McpToolException(new InvalidArgument(string.Join(" ", check.Errors)));
 
+        var verb = spec.CutBy == CutoutMethod.Local ? "Cut out locally" : "Download cutout";
         return ProposalPlan.Encoding("download_cutout",
-            $"Download cutout of {pid}: {spec.Summary}", new DownloadCutoutPayload(pid, spec));
+            $"{verb} of {pid}: {spec.Summary}", new DownloadCutoutPayload(pid, spec));
     }
 }
 
@@ -235,10 +257,11 @@ public sealed class ShowCutoutEditorTool : JsonReadTool<CutoutArgs, CutoutEditor
         "show_cutout_editor",
         "Open the cutout editor on the person's screen: the observation's detail page, its Files tab, the " +
         "editor for one file with its footprint drawn and a region on it — the one you give (circle, box or " +
-        "polygon, degrees; bandMin/bandMax in metres), or the editor's own suggestion from the last search. " +
+        "polygon, degrees; bandMin/bandMax in metres), or the editor's own suggestion from the last search — " +
+        "set to cut it the way you name (cutBy), or the best available. " +
         "The reply says what the editor shows and anything wrong with it. Nothing is downloaded: the person " +
         "adjusts and downloads it themselves, or you follow with download_cutout. Point at its controls with " +
-        "point_at_ui (CutoutSky, CutoutDownloadButton …).",
+        "point_at_ui (CutoutWayChoice, CutoutSky, CutoutDownloadButton …).",
         "{\"type\":\"object\",\"properties\":{" + CutoutArgs.SchemaProperties + "},\"required\":[\"publisherId\"],\"additionalProperties\":false}");
 
     protected override async Task<CutoutEditorShown> HandleAsync(CutoutArgs args, McpToolContext context, CancellationToken ct)

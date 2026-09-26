@@ -285,12 +285,18 @@ public partial class App : Application
         services.AddTransient<ObservationDownloadService>(); // shared resolve-URL + atomic download core
         // Owns observation downloads for the app's life, so closing the screen that started one does
         // not end it; progress and outcome go to the status bar.
-        // Every cutout is made through it too, by whoever cuts it: CADC's SODA service.
+        // Every cutout is made through it too, by whoever cuts it: CADC's SODA service, or this computer
+        // from the observation's file already downloaded.
         services.AddSingleton(sp =>
         {
             Func<ObservationDownloadService> downloads = () => sp.GetRequiredService<ObservationDownloadService>();
-            return new ObservationDownloader(downloads, sp.GetRequiredService<ObservationStore>(),
-                [new CanfarDesktop.Services.Cutouts.SodaCutoutMaker(downloads, ObservationDownloader.StallTimeout)]);
+            var store = sp.GetRequiredService<ObservationStore>();
+            return new ObservationDownloader(downloads, store,
+            [
+                new CanfarDesktop.Services.Cutouts.SodaCutoutMaker(downloads, ObservationDownloader.StallTimeout),
+                new CanfarDesktop.Services.Cutouts.Local.LocalCutoutMaker((publisherId, artifactId) =>
+                    CanfarDesktop.Services.Cutouts.Local.LocalCopies.Find(store.Observations, publisherId, artifactId)?.LocalPath),
+            ]);
         });
         // The last search's form, for the screens that follow from it (a cutout's starting region).
         services.AddSingleton<SearchContext>();

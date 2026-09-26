@@ -173,7 +173,7 @@ public static class McpToolCatalog
             // What each file can be cut by, and the cutout the editor would open on — SODA's descriptors
             // from DataLink, the last search for the suggestion.
             new GetCutoutOptionsTool(async (id, ct) =>
-                CutoutOptions.From(id, await CutoutSourcesAsync(dataLink, caom2, id, ct), searchContext.CutoutHints)),
+                CutoutOptions.From(id, await CutoutSourcesAsync(dataLink, caom2, observations, id, ct), searchContext.CutoutHints)),
 
             // VOSpace/ARC storage (read) + local FITS introspection
             new ListVoSpacePathTool((req, ct) => storage.ListNodesAsync(req.Path, req.Limit, ct)),
@@ -363,7 +363,7 @@ public static class McpToolCatalog
             new DownloadObservationTool(),
             new DownloadObservationsBulkTool(),
             // Part of a file, cut on CADC's side — checked against the file's descriptor before it is queued.
-            new DownloadCutoutTool((id, ct) => CutoutSourcesAsync(dataLink, caom2, id, ct)),
+            new DownloadCutoutTool((id, ct) => CutoutSourcesAsync(dataLink, caom2, observations, id, ct)),
             new DeleteDownloadedObservationTool(),
             new ClearResearchArchiveTool(),
             // Keep an observation without its file; drop a file and keep its observation.
@@ -635,10 +635,10 @@ public static class McpToolCatalog
 
     /// <summary>
     /// The ways an observation's files can be cut, for get_cutout_options and download_cutout alike:
-    /// CADC's from DataLink, each file's size from CAOM2.
+    /// CADC's from DataLink, each file's size from CAOM2, and the observation's file on this computer.
     /// </summary>
     private static async Task<IReadOnlyList<Services.Cutouts.ICutoutSource>> CutoutSourcesAsync(
-        DataLinkService dataLink, ICAOM2Service caom2, string publisherId, CancellationToken ct)
+        DataLinkService dataLink, ICAOM2Service caom2, ObservationStore observations, string publisherId, CancellationToken ct)
     {
         var links = await dataLink.GetLinksAsync(publisherId, ct);
 
@@ -650,7 +650,9 @@ public static class McpToolCatalog
         }
         catch { /* the sizes are a help, not a requirement */ }
 
-        return Services.Cutouts.CutoutSources.Soda(links, observation);
+        var local = await Task.Run(() => Services.Cutouts.CutoutSources.Local(
+            observations.Observations, publisherId, Services.Cutouts.CutoutSources.ArtifactIds(observation)), ct);
+        return [.. Services.Cutouts.CutoutSources.Soda(links, observation), .. local is null ? [] : new[] { local }];
     }
 
     /// <summary>

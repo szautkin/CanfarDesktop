@@ -83,4 +83,26 @@ public class SkyGeometryTests
     [Fact]
     public void TheArea_IsOnTheSky_NotInRaAndDec()
         => Assert.InRange(SkyGeometry.Area(MegaPipeFootprint), 1.08, 1.14);
+
+    /// <summary>
+    /// Two chips side by side, with a point inside: the hull is the outline of both, and nothing else —
+    /// the corners they share, on its straight (great-circle) sides, are not corners of it.
+    /// </summary>
+    [Fact]
+    public void TheConvexHull_OfTwoChips_IsTheirOutline()
+    {
+        var centre = new SkyPoint(210.8, -47.3);
+        var points = new List<SkyPoint>();
+        foreach (var x in new[] { -0.01, 0, 0.01 })
+            foreach (var y in new[] { -0.005, 0.005 })
+                points.Add(SkyGeometry.Unproject(centre, x, y));
+        points.Add(SkyGeometry.Unproject(centre, 0.002, 0.001));
+
+        var hull = SkyGeometry.ConvexHull(points);
+
+        Assert.Equal(4, hull.Count);
+        Assert.True(SkyGeometry.SignedArea(hull) < 0); // wound as CADC winds
+        Assert.True(SkyGeometry.Contains(hull, SkyGeometry.Unproject(centre, 0.008, -0.004)));
+        Assert.Equal(0.02 * 0.01, SkyGeometry.Area(hull), 8);
+    }
 }

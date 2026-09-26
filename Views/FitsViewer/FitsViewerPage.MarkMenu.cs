@@ -89,9 +89,9 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
     // ── Cutting a mark's region from the archive ────────────────────────────────────────────────
 
     /// <summary>
-    /// The archive observation this file is, from its Research record — and, when the file is itself a
-    /// cutout, the file it was cut from, so a mark on a cutout cuts the same file again. Null for a file
-    /// Research does not know as an observation.
+    /// The archive observation this file is, from its Research record, and which of its files: the one
+    /// it was downloaded as, or — when the file is itself a cutout — the file it was cut from, so a mark
+    /// on a cutout cuts the same file again. Null for a file Research does not know as an observation.
     /// </summary>
     private (string PublisherId, string? ArtifactId)? CutoutSource()
     {
@@ -105,7 +105,7 @@ public sealed partial class FitsViewerPage : IMarkCommandHost
                 && string.Equals(System.IO.Path.GetFullPath(o.LocalPath), open, StringComparison.OrdinalIgnoreCase));
             return record is null || string.IsNullOrEmpty(record.PublisherID)
                 ? null
-                : (record.PublisherID, record.Cutout?.ArtifactId);
+                : (record.PublisherID, record.Cutout?.ArtifactId ?? record.ArtifactId);
         }
         catch
         {

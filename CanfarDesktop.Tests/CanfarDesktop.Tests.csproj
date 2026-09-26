@@ -141,6 +141,17 @@
     <Compile Include="..\Services\Cutouts\ICutoutSource.cs" Link="Linked\Cutouts\ICutoutSource.cs" />
     <Compile Include="..\Services\Cutouts\ICutoutMaker.cs" Link="Linked\Cutouts\ICutoutMaker.cs" />
     <Compile Include="..\Services\Cutouts\CutoutSources.cs" Link="Linked\Cutouts\CutoutSources.cs" />
+    <Compile Include="..\Services\Fits\FitsLayout.cs" Link="Linked\Cutouts\FitsLayout.cs" />
+    <Compile Include="..\Services\Fits\FitsHeaderCards.cs" Link="Linked\Cutouts\FitsHeaderCards.cs" />
+    <Compile Include="..\Services\Fits\FitsImageEncoding.cs" Link="Linked\Cutouts\FitsImageEncoding.cs" />
+    <Compile Include="..\Services\Cutouts\Local\PixelBox.cs" Link="Linked\Cutouts\PixelBox.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalFitsFile.cs" Link="Linked\Cutouts\LocalFitsFile.cs" />
+    <Compile Include="..\Services\Cutouts\Local\CutoutHeader.cs" Link="Linked\Cutouts\CutoutHeader.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalCutPlan.cs" Link="Linked\Cutouts\LocalCutPlan.cs" />
+    <Compile Include="..\Services\Cutouts\Local\FitsCutter.cs" Link="Linked\Cutouts\FitsCutter.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalCutoutSource.cs" Link="Linked\Cutouts\LocalCutoutSource.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalCopies.cs" Link="Linked\Cutouts\LocalCopies.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalCutoutMaker.cs" Link="Linked\Cutouts\LocalCutoutMaker.cs" />
     <Compile Include="..\Services\ResearchRecords.cs" Link="Linked\ResearchRecords.cs" />
     <Compile Include="..\Helpers\HttpFailure.cs" Link="Linked\HttpFailure.cs" />
     <Compile Include="..\Helpers\DataLinkArtifactSelector.cs" Link="Linked\DataLinkArtifactSelector.cs" />

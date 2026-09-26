@@ -28,6 +28,14 @@ public class DownloadedObservation
     public string ProposalTitle { get; set; } = string.Empty;
     public string LocalPath { get; set; } = string.Empty;
     public long? FileSize { get; set; }
+
+    /// <summary>
+    /// Which of the observation's archive files the local file is (e.g. cadc:HST/j8pu0y010_flt.fits),
+    /// when that is known: stamped when a particular file is downloaded, so Download fetches the same one
+    /// again and a local cutout knows what it cuts. Null for records from before, or when the app chose
+    /// the file itself.
+    /// </summary>
+    public string? ArtifactId { get; set; }
     public DateTime DownloadedAt { get; set; } = DateTime.UtcNow;
     public string? ThumbnailURL { get; set; }
     public string? PreviewURL { get; set; }

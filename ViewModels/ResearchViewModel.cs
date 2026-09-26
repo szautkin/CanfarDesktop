@@ -117,14 +117,22 @@ public partial class ResearchViewModel : ObservableObject
         => ResearchRecords.RemoveLocalFile(_store, observation);
 
     /// <summary>
-    /// The files of this observation CADC can cut out, from its DataLink answer — empty when there
-    /// are none, or the answer cannot be had.
+    /// The ways this observation's files can be cut: CADC's, from its DataLink answer (none when it
+    /// cannot be had), and the observation's file on this computer — for a cutout, the file it was cut
+    /// from. Reads that file's headers, off the caller's thread.
     /// </summary>
-    public async Task<IReadOnlyList<Models.Cutouts.SodaDescriptor>> CutoutFilesAsync(DownloadedObservation observation)
+    public async Task<IReadOnlyList<Services.Cutouts.ICutoutSource>> CutoutSourcesAsync(DownloadedObservation observation)
     {
         if (string.IsNullOrEmpty(observation.PublisherID)) return [];
-        try { return (await _dataLinkService.GetLinksAsync(observation.PublisherID)).Cutouts; }
-        catch { return []; }
+
+        IReadOnlyList<Services.Cutouts.ICutoutSource> soda;
+        try { soda = Services.Cutouts.CutoutSources.Soda(await _dataLinkService.GetLinksAsync(observation.PublisherID), null); }
+        catch { soda = []; }
+
+        string?[] named = [observation.Cutout?.ArtifactId, observation.ArtifactId];
+        var local = await Task.Run(() => Services.Cutouts.CutoutSources.Local(
+            _store.Observations, observation.PublisherID, named.OfType<string>().Where(a => a.Length > 0)));
+        return [.. soda, .. local is null ? [] : new Services.Cutouts.ICutoutSource[] { local }];
     }
 
     /// <summary>Whether this observation's file is on its way right now.</summary>

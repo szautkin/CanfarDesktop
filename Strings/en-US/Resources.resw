@@ -4722,10 +4722,10 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
     <value>This file is part of the observation, cut out on CADC's side: {0}. The details and notes here are the whole observation's.</value>
   </data>
   <data name="Marks_CmdCutOut" xml:space="preserve">
-    <value>Cut out from the archive…</value>
+    <value>Cut out…</value>
   </data>
   <data name="Marks_CmdCutOutNeedsObservation" xml:space="preserve">
-    <value>Open an archive observation from Research, with sky coordinates, to cut this region out of its full-resolution file.</value>
+    <value>Open an archive observation from Research, with sky coordinates, to cut this region out of its file — on CADC's side, or from the copy on this computer.</value>
   </data>
   <data name="Search_DownloadingCutout" xml:space="preserve">
     <value>Downloading a cutout of {0}…</value>
@@ -4734,10 +4734,85 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
     <value>Checking whether CADC can cut this…</value>
   </data>
   <data name="Cutout_NoneForFile" xml:space="preserve">
-    <value>CADC cannot cut this file — only the whole file can be downloaded.</value>
+    <value>CADC cannot cut this file, and it is not on this computer — download it to cut it here.</value>
   </data>
   <data name="Cutout_NoneForObservation" xml:space="preserve">
-    <value>CADC cannot cut any of this observation's files.</value>
+    <value>CADC cannot cut any of this observation's files, and none of them is on this computer.</value>
+  </data>
+  <data name="Cutout_NoneForFileLocal" xml:space="preserve">
+    <value>CADC cannot cut this file, and the copy on this computer cannot be cut: {0}</value>
+  </data>
+  <data name="Cutout_NoneForObservationLocal" xml:space="preserve">
+    <value>CADC cannot cut any of this observation's files, and the copy on this computer cannot be cut: {0}</value>
+  </data>
+  <data name="Cutout_ButtonTooltipLocal" xml:space="preserve">
+    <value>Cut out part of the copy of this file on this computer</value>
+  </data>
+  <data name="Cutout_ButtonTooltipBoth" xml:space="preserve">
+    <value>Cut out part of this file — on CADC's side, or from the copy on this computer</value>
+  </data>
+  <data name="Cutout_CutBy" xml:space="preserve">
+    <value>Cut by</value>
+  </data>
+  <data name="Cutout_CutBySoda" xml:space="preserve">
+    <value>CADC — download only this part</value>
+  </data>
+  <data name="Cutout_CutByLocal" xml:space="preserve">
+    <value>This computer — from the downloaded file</value>
+  </data>
+  <data name="Cutout_WayUnavailable" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Cutout_EditorNoteLocal" xml:space="preserve">
+    <value>Cut on this computer from the file already downloaded — at once, offline, as often as you like — its pixels copied exactly. It is kept in Research as a cutout of this observation — not the complete observation.</value>
+  </data>
+  <data name="Cutout_CutLocal" xml:space="preserve">
+    <value>Cut out</value>
+  </data>
+  <data name="Cutout_EstimateLocal" xml:space="preserve">
+    <value>{0}, cut from the {1} file on this computer.</value>
+  </data>
+  <data name="Cutout_LocalUnreadable" xml:space="preserve">
+    <value>The downloaded file cannot be read as FITS: {0}</value>
+  </data>
+  <data name="Cutout_LocalNoImage" xml:space="preserve">
+    <value>The downloaded file holds no image to cut.</value>
+  </data>
+  <data name="Cutout_LocalNoWcs" xml:space="preserve">
+    <value>The downloaded file's image has no sky coordinates, so a region on the sky cannot be placed on it.</value>
+  </data>
+  <data name="Cutout_LocalApproximateWcs" xml:space="preserve">
+    <value>The downloaded file's sky coordinates are only approximate — rebuilt from its RA and DEC keywords — too rough to cut by.</value>
+  </data>
+  <data name="Cutout_LocalNotRaDec" xml:space="preserve">
+    <value>The downloaded file's image is in {0} and {1}, not RA and Dec, so a region in RA and Dec cannot be placed on it.</value>
+  </data>
+  <data name="Cutout_LocalFk4" xml:space="preserve">
+    <value>The downloaded file's coordinates are B1950 (FK4); a cutout's region is ICRS, and the app does not convert between them.</value>
+  </data>
+  <data name="Cutout_LocalBadBitpix" xml:space="preserve">
+    <value>The downloaded file's pixels are stored in a way FITS does not define (BITPIX {0}).</value>
+  </data>
+  <data name="Cutout_LocalCompressed" xml:space="preserve">
+    <value>The downloaded file is tile-compressed ({0}), which the app cannot cut yet; funpack makes a plain .fits of it that can be.</value>
+  </data>
+  <data name="Cutout_LocalTruncated" xml:space="preserve">
+    <value>The downloaded file ends before its image does; it may not have finished downloading.</value>
+  </data>
+  <data name="Cutout_LocalOnNoImage" xml:space="preserve">
+    <value>That region falls on none of this file's images.</value>
+  </data>
+  <data name="Cutout_LocalSourceGone" xml:space="preserve">
+    <value>The file it is cut from is not on this computer any more. Download the observation's file, then try again.</value>
+  </data>
+  <data name="Cutout_LocalOverSource" xml:space="preserve">
+    <value>A cutout cannot be saved over the file it is cut from.</value>
+  </data>
+  <data name="Research_CutoutNoteLocal" xml:space="preserve">
+    <value>This file is part of the observation, cut on this computer from its downloaded file: {0}. The details and notes here are the whole observation's.</value>
+  </data>
+  <data name="Research_CutAgain" xml:space="preserve">
+    <value>Cut out again</value>
   </data>
   <data name="Research_RemoveFile" xml:space="preserve">
     <value>Remove file</value>

@@ -10,14 +10,14 @@ using CanfarDesktop.Services.Cutouts;
 namespace CanfarDesktop.Views.Controls;
 
 /// <summary>
-/// Choose a cutout of one file: its region by numbers or by drawing, its band when the file has one,
-/// checked as it is typed, with an idea of its size.
+/// Choose a cutout of one file: who cuts it, when it can be cut more than one way; its region by numbers
+/// or by drawing; its band when the file has one — checked as it is typed, with an idea of its size.
 ///
-/// <para>Edits one <see cref="CutoutSpec"/>, the file as its <see cref="ICutoutSource"/> describes it
-/// deciding which fields there are. The fields and the drawing are two views of that one spec — editing
-/// either updates the other — and the source's <see cref="ICutoutSource.Check"/> judges it, the same
-/// judgement an agent's request meets. It does not download: it says <see cref="DownloadRequested"/>,
-/// and whoever placed it hands the cutout to the app.</para>
+/// <para>Edits one <see cref="CutoutSpec"/>, the file as the chosen way (<see cref="ICutoutSource"/>)
+/// describes it deciding which fields there are. The fields and the drawing are two views of that one
+/// spec — editing either updates the other — and the way's <see cref="ICutoutSource.Check"/> judges it,
+/// the same judgement an agent's request meets. Changing the way keeps the region. It does not make the
+/// cutout: it says <see cref="DownloadRequested"/>, and whoever placed it hands the cutout to the app.</para>
 ///
 /// <para>Every control is named, so an agent can point at it.</para>
 /// </summary>
@@ -26,8 +26,9 @@ public sealed class CutoutEditor : UserControl
     private static readonly (string Label, double Degrees)[] AngleUnits = [("″", 1.0 / 3600), ("′", 1.0 / 60), ("°", 1.0)];
     private static readonly (string Label, double Metres)[] WaveUnits = [("nm", 1e-9), ("µm", 1e-6), ("mm", 1e-3)];
 
-    private readonly ICutoutSource _source;
-    private readonly CutoutSpec _suggested;
+    private readonly IReadOnlyList<ICutoutSource> _ways;
+    private readonly CutoutHints? _hints;
+    private ICutoutSource _source;
     private CutoutSpec _spec;
     private bool _syncing;
 
@@ -38,6 +39,9 @@ public sealed class CutoutEditor : UserControl
     /// </summary>
     private string _written = string.Empty;
 
+    private readonly RadioButtons _way = new() { Name = "CutoutWayChoice" };
+    private readonly TextBlock _title = new() { TextTrimming = TextTrimming.CharacterEllipsis };
+    private readonly TextBlock _note = Caption("TextFillColorSecondaryBrush");
     private readonly RadioButtons _shape = new() { Name = "CutoutShapeChoice", MaxColumns = 2 };
     private readonly TextBox _ra = Field("CutoutRaBox", "Cutout_Ra");
     private readonly TextBox _dec = Field("CutoutDecBox", "Cutout_Dec");
@@ -50,29 +54,34 @@ public sealed class CutoutEditor : UserControl
     private readonly TextBox? _bandMin;
     private readonly TextBox? _bandMax;
     private readonly ComboBox? _bandUnit;
+    private readonly StackPanel? _band;
     private readonly FootprintCanvas _sky = new() { Name = "CutoutSky", IsEditable = true, Height = 220, MinWidth = 240 };
     private readonly TextBlock _errors = Caption("SystemFillColorCriticalBrush");
     private readonly TextBlock _warnings = Caption("SystemFillColorCautionBrush");
     private readonly TextBlock _estimate = Caption("TextFillColorSecondaryBrush");
     private readonly Button _download = new() { Name = "CutoutDownloadButton", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
 
-    /// <summary>The person asked for this cutout.</summary>
-    public event Action<CutoutSpec>? DownloadRequested;
+    /// <summary>The person asked for this cutout, made this way.</summary>
+    public event Action<ICutoutSource, CutoutSpec>? DownloadRequested;
 
     /// <summary>The person closed the editor.</summary>
     public event Action? CloseRequested;
 
-    public CutoutEditor(ICutoutSource source, CutoutSpec suggested, SkyPoint? target)
+    /// <param name="ways">The ways this one file can be cut, the one to start on first (<see cref="CutoutSources.Preferred"/>).</param>
+    /// <param name="hints">The last search, for the cutout each way suggests.</param>
+    public CutoutEditor(IReadOnlyList<ICutoutSource> ways, CutoutHints? hints, SkyPoint? target)
     {
-        _source = source;
-        _suggested = source.Bind(suggested);
-        _spec = _suggested;
-        var file = source.File;
+        ArgumentOutOfRangeException.ThrowIfZero(ways.Count);
+        _ways = ways;
+        _hints = hints;
+        _source = ways[0];
+        _spec = _source.Suggest(hints);
+        var banded = ways.FirstOrDefault(w => w.File.Supports("BAND"))?.File;
 
         _shape.Header = Loc.T("Cutout_Shape");
         _shape.Items.Add(Loc.T("Cutout_ShapeCircle"));
         _shape.Items.Add(Loc.T("Cutout_ShapeBox"));
-        _shape.SelectedIndex = suggested.Region?.Shape == SkyShape.Box ? 1 : 0;
+        _shape.SelectedIndex = _spec.Region?.Shape == SkyShape.Box ? 1 : 0;
 
         foreach (var (label, _) in AngleUnits) _sizeUnit.Items.Add(label);
         _sizeUnit.SelectedIndex = 1; // arcminutes: what a cutout is usually measured in
@@ -83,27 +92,27 @@ public sealed class CutoutEditor : UserControl
         _boxSize.Children.Add(_height);
 
         var fields = new StackPanel { Spacing = 10, MinWidth = 280 };
+        if (ways.Count > 1) fields.Children.Add(WayChoice());
         fields.Children.Add(_shape);
         fields.Children.Add(Row(_ra, _dec));
         fields.Children.Add(Row(_circleSize, _boxSize, _sizeUnit));
 
-        if (file.Supports("BAND"))
+        if (banded is not null)
         {
             _bandMin = Field("CutoutBandMinBox", "Cutout_BandFrom");
             _bandMax = Field("CutoutBandMaxBox", "Cutout_BandTo");
             _bandUnit = new ComboBox { Name = "CutoutBandUnit", VerticalAlignment = VerticalAlignment.Bottom };
             foreach (var (label, _) in WaveUnits) _bandUnit.Items.Add(label);
-            _bandUnit.SelectedIndex = BandUnitFor(file.BandMax ?? file.BandMin);
+            _bandUnit.SelectedIndex = BandUnitFor(banded.BandMax ?? banded.BandMin);
             AutomationProperties.SetName(_bandUnit, Loc.T("Cutout_Unit"));
 
-            var band = new StackPanel { Spacing = 2 };
-            band.Children.Add(new TextBlock { Text = Loc.T("Cutout_Band"), Style = Sty("BodyStrongTextBlockStyle") });
-            band.Children.Add(Row(_bandMin, _bandMax, _bandUnit));
-            band.Children.Add(Caption("TextFillColorTertiaryBrush", Loc.T("Cutout_BandHint")));
-            fields.Children.Add(band);
+            _band = new StackPanel { Spacing = 2 };
+            _band.Children.Add(new TextBlock { Text = Loc.T("Cutout_Band"), Style = Sty("BodyStrongTextBlockStyle") });
+            _band.Children.Add(Row(_bandMin, _bandMax, _bandUnit));
+            _band.Children.Add(Caption("TextFillColorTertiaryBrush", Loc.T("Cutout_BandHint")));
+            fields.Children.Add(_band);
         }
 
-        _sky.Footprint = file.Footprint?.Outline() ?? [];
         _sky.Target = target;
         _sky.DrawShape = _shape.SelectedIndex == 1 ? SkyShape.Box : SkyShape.Circle;
         AutomationProperties.SetName(_sky, Loc.T("Cutout_SkyName"));
@@ -118,10 +127,9 @@ public sealed class CutoutEditor : UserControl
         body.Children.Add(fields);
         body.Children.Add(skyColumn);
 
-        _download.Content = Loc.T("Cutout_Download");
-        _download.Click += (_, _) => DownloadRequested?.Invoke(_spec);
+        _download.Click += (_, _) => DownloadRequested?.Invoke(_source, _spec);
         var reset = new Button { Name = "CutoutResetButton", Content = Loc.T("Cutout_Reset") };
-        reset.Click += (_, _) => Load(_suggested);
+        reset.Click += (_, _) => Load(_source.Suggest(_hints));
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         buttons.Children.Add(_download);
         buttons.Children.Add(reset);
@@ -141,18 +149,14 @@ public sealed class CutoutEditor : UserControl
         var header = new Grid();
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.Children.Add(new TextBlock
-        {
-            Text = Loc.F("Cutout_EditorTitle", file.FileName),
-            Style = Sty("SubtitleTextBlockStyle"),
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        });
+        _title.Style = Sty("SubtitleTextBlockStyle");
+        header.Children.Add(_title);
         Grid.SetColumn(close, 1);
         header.Children.Add(close);
 
         var stack = new StackPanel { Spacing = 10 };
         stack.Children.Add(header);
-        stack.Children.Add(Caption("TextFillColorSecondaryBrush", Loc.T("Cutout_EditorNote")));
+        stack.Children.Add(_note);
         stack.Children.Add(body);
         stack.Children.Add(_errors);
         stack.Children.Add(_warnings);
@@ -176,14 +180,92 @@ public sealed class CutoutEditor : UserControl
         _shape.SelectionChanged += (_, _) => OnShapeChanged();
         _sky.RegionChanged += region => Apply(_spec with { Region = region }, fromDrawing: true);
 
-        Load(suggested);
+        UseWay(_source);
     }
 
     /// <summary>The cutout as it stands.</summary>
     public CutoutSpec Spec => _spec;
 
-    /// <summary>Show this cutout — the suggestion, or one an agent proposes.</summary>
-    public void Load(CutoutSpec spec) => Apply(spec, fromDrawing: false);
+    /// <summary>The way it will be cut.</summary>
+    public ICutoutSource Source => _source;
+
+    /// <summary>
+    /// Show this cutout — the suggestion, or one an agent proposes — cut the way it says when this file
+    /// can be cut that way.
+    /// </summary>
+    public void Load(CutoutSpec spec)
+    {
+        var index = _ways.ToList().FindIndex(w => w.Method == spec.CutBy && w.Unavailable is null);
+        if (index >= 0 && _ways[index] != _source)
+        {
+            _source = _ways[index];
+            _syncing = true;
+            try { _way.SelectedIndex = index; }
+            finally { _syncing = false; }
+            UseWay(_source, spec);
+            return;
+        }
+        Apply(spec, fromDrawing: false);
+    }
+
+    /// <summary>
+    /// What the editor says for each way of cutting: the choice, the note under the title, the button, and
+    /// the estimate's wording. The one place a new way's words go.
+    /// </summary>
+    private static (string Choice, string Note, string Action, string EstimateKey) Words(CutoutMethod method) => method switch
+    {
+        CutoutMethod.Local => (Loc.T("Cutout_CutByLocal"), Loc.T("Cutout_EditorNoteLocal"), Loc.T("Cutout_CutLocal"), "Cutout_EstimateLocal"),
+        _ => (Loc.T("Cutout_CutBySoda"), Loc.T("Cutout_EditorNote"), Loc.T("Cutout_Download"), "Cutout_Estimate"),
+    };
+
+    /// <summary>
+    /// "Cut by": each way this file can be cut, one that cannot greyed — and why, underneath, since a
+    /// disabled choice shows no tooltip of its own.
+    /// </summary>
+    private FrameworkElement WayChoice()
+    {
+        _way.Header = Loc.T("Cutout_CutBy");
+        var reasons = new List<string>();
+        foreach (var way in _ways)
+        {
+            var words = Words(way.Method);
+            _way.Items.Add(new RadioButton { Content = words.Choice, IsEnabled = way.Unavailable is null });
+            if (way.Unavailable is { } why) reasons.Add(Loc.F("Cutout_WayUnavailable", words.Choice, why));
+        }
+        _way.SelectedIndex = 0;
+        _way.SelectionChanged += (_, _) =>
+        {
+            if (!_syncing && _way.SelectedIndex >= 0 && _ways[_way.SelectedIndex] != _source)
+                UseWay(_ways[_way.SelectedIndex]);
+        };
+
+        var panel = new StackPanel { Spacing = 2 };
+        panel.Children.Add(_way);
+        if (reasons.Count > 0) panel.Children.Add(Caption("TextFillColorTertiaryBrush", string.Join("\n", reasons)));
+        return panel;
+    }
+
+    /// <summary>
+    /// Cut this way: its file's name, footprint and fields, its words — the region kept as it is, a band
+    /// dropped when this way cannot cut by one.
+    /// </summary>
+    private void UseWay(ICutoutSource way, CutoutSpec? spec = null)
+    {
+        _source = way;
+        var file = way.File;
+        var words = Words(way.Method);
+        _title.Text = Loc.F("Cutout_EditorTitle", file.FileName);
+        _note.Text = words.Note;
+        _note.Visibility = Visibility.Visible;
+        _download.Content = words.Action;
+        if (_band is not null) _band.Visibility = file.Supports("BAND") ? Visibility.Visible : Visibility.Collapsed;
+        _sky.Parts = file.Parts.Select(p => p.Outline()).ToList();
+        _sky.Footprint = file.Footprint?.Outline() ?? [];
+
+        var next = spec ?? _spec;
+        if (!file.Supports("BAND")) next = next with { BandMin = null, BandMax = null };
+        Apply(next, fromDrawing: false);
+    }
 
     private void Apply(CutoutSpec spec, bool fromDrawing)
     {
@@ -299,7 +381,7 @@ public sealed class CutoutEditor : UserControl
 
         var estimate = fieldError is null ? _source.EstimateBytes(_spec) : null;
         _estimate.Text = estimate is { } bytes && _source.WholeFileBytes is { } whole
-            ? Loc.F("Cutout_Estimate", Caom2Format.Bytes(bytes), Caom2Format.Bytes(whole))
+            ? Loc.F(Words(_source.Method).EstimateKey, Caom2Format.Bytes(bytes), Caom2Format.Bytes(whole))
             : string.Empty;
         _estimate.Visibility = _estimate.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 

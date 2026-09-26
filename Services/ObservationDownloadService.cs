@@ -24,6 +24,17 @@ public sealed class ObservationDownloadService
     }
 
     /// <summary>
+    /// The address of one particular archive file of an observation, by its name among the files DataLink
+    /// lists — or null when DataLink lists none of that name.
+    /// </summary>
+    public async Task<string?> ResolveArtifactUrlAsync(string publisherId, string artifactId, CancellationToken ct = default)
+    {
+        var links = await _dataLink.GetLinksAsync(publisherId, ct);
+        var name = Caom2Format.ArtifactFileName(artifactId);
+        return links.DirectFiles.FirstOrDefault(f => string.Equals(f.Filename, name, StringComparison.OrdinalIgnoreCase))?.Url;
+    }
+
+    /// <summary>
     /// The SODA request for a cutout of an observation's file: the file's service from DataLink, the
     /// request from the spec. Throws when the file can no longer be cut, or the cutout no longer passes
     /// — a record kept for weeks meets today's descriptor, not the one it was cut from.

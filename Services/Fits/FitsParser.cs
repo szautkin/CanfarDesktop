@@ -23,8 +23,11 @@ public static class FitsParser
         catch { return 0; }
     }
 
-    private const int BlockSize = 2880;
-    private const int CardSize = 80;
+    /// <summary>A FITS file is read and written in blocks of this many bytes.</summary>
+    public const int BlockSize = 2880;
+
+    /// <summary>A header card is this many bytes.</summary>
+    public const int CardSize = 80;
 
     /// <summary>How much raw image data is read at a time: 4 MB, a whole number of pixels at any BITPIX.</summary>
     private const int ChunkBytes = 4 * 1024 * 1024;
@@ -55,7 +58,7 @@ public static class FitsParser
             if (header is null) break;
 
             FitsImageData? imageData = null;
-            var dataBytes = CalculateDataSize(header);
+            var dataBytes = DataSize(header);
 
             if (header.GetBool("ZIMAGE"))
             {
@@ -108,7 +111,7 @@ public static class FitsParser
                 // header and blow the max-header-size guard.
                 imageData = ReadImageData(stream, header, availableMemory);
                 hasReadableImage = true;
-                var hduDataBytes = AlignToBlock(CalculateDataSize(header));
+                var hduDataBytes = AlignToBlock(DataSize(header));
                 var consumed = stream.Position - dataStart;
                 if (hduDataBytes > consumed) SkipBytes(stream, hduDataBytes - consumed);
             }
@@ -157,7 +160,7 @@ public static class FitsParser
             if (header is null) break;
             headers.Add(header);
 
-            var dataBytes = CalculateDataSize(header);
+            var dataBytes = DataSize(header);
             if (dataBytes > 0)
                 SkipBytes(stream, AlignToBlock(dataBytes));
         }
@@ -168,7 +171,12 @@ public static class FitsParser
     /// Read a single FITS header from the current stream position.
     /// Returns null if the stream is at EOF or the block is not valid FITS.
     /// </summary>
-    public static FitsHeader? ReadHeader(Stream stream)
+    /// <param name="rawCards">
+    /// When given, receives every card before END exactly as the file has it, 80 characters each —
+    /// what a writer copies so that a card it does not change comes out byte for byte as it went in.
+    /// Blank padding cards are left out.
+    /// </param>
+    public static FitsHeader? ReadHeader(Stream stream, List<string>? rawCards = null)
     {
         var header = new FitsHeader();
         const int maxHeaderBlocks = 1000; // ~2.8 MB max header size
@@ -195,6 +203,12 @@ public static class FitsParser
 
                 if (!string.IsNullOrWhiteSpace(card.Keyword))
                     header.Add(card);
+
+                if (rawCards is not null)
+                {
+                    var raw = System.Text.Encoding.ASCII.GetString(buffer, i, CardSize);
+                    if (!string.IsNullOrWhiteSpace(raw)) rawCards.Add(raw);
+                }
             }
         }
 
@@ -335,7 +349,11 @@ public static class FitsParser
         };
     }
 
-    private static long CalculateDataSize(FitsHeader header)
+    /// <summary>
+    /// How many bytes of data follow this header, before the padding to a whole block — the FITS rule,
+    /// PCOUNT's heap included.
+    /// </summary>
+    public static long DataSize(FitsHeader header)
     {
         var naxis = header.NAxis;
         if (naxis is 0 or > 999) return 0; // FITS spec: NAXIS ≤ 999
@@ -353,7 +371,8 @@ public static class FitsParser
         return Math.Abs(header.BitPix) / 8 * gcount * (pcount + axes);
     }
 
-    private static long AlignToBlock(long size) =>
+    /// <summary>A size rounded up to whole blocks, as FITS stores every header and data unit.</summary>
+    public static long AlignToBlock(long size) =>
         size <= 0 ? 0 : ((size + BlockSize - 1) / BlockSize) * BlockSize;
 
     /// <summary>

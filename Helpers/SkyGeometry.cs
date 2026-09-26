@@ -174,6 +174,42 @@ public static class SkyGeometry
         return SkyOverlap.Outside;
     }
 
+    /// <summary>
+    /// The smallest convex polygon holding every point, wound as CADC winds its footprints — the one
+    /// outline of a mosaic's CCDs, or an HST image's chips. Built in the tangent plane about the
+    /// points' centre (Andrew's monotone chain), where the great-circle edges are straight lines.
+    /// </summary>
+    public static IReadOnlyList<SkyPoint> ConvexHull(IReadOnlyList<SkyPoint> points)
+    {
+        // Square degrees: a point 1e-13° off a side one arcsecond long is on it.
+        const double Collinear = 1e-15;
+        if (points.Count < 3) return points;
+        var centre = Centroid(points);
+        var plane = Plane(centre, points);
+        if (plane is null) return points;
+
+        var sorted = plane.Distinct().OrderBy(p => p.X).ThenBy(p => p.Y).ToList();
+        if (sorted.Count < 3) return points;
+
+        static double Turn((double X, double Y) o, (double X, double Y) a, (double X, double Y) b)
+            => (a.X - o.X) * (b.Y - o.Y) - (a.Y - o.Y) * (b.X - o.X);
+
+        var hull = new List<(double X, double Y)>();
+        foreach (var pass in new[] { sorted, Enumerable.Reverse(sorted).ToList() })
+        {
+            var start = hull.Count;
+            foreach (var p in pass)
+            {
+                // Points on a side, to within rounding, are not corners of it.
+                while (hull.Count >= start + 2 && Turn(hull[^2], hull[^1], p) <= Collinear) hull.RemoveAt(hull.Count - 1);
+                hull.Add(p);
+            }
+            hull.RemoveAt(hull.Count - 1); // each pass ends where the other begins
+        }
+
+        return SkyWise(hull.Select(p => Unproject(centre, p.X, p.Y)).ToList());
+    }
+
     /// <summary>A polygon's area, square degrees — for estimating what share of a file a cutout is.</summary>
     public static double Area(IReadOnlyList<SkyPoint> polygon) => Math.Abs(SignedArea(polygon));
 

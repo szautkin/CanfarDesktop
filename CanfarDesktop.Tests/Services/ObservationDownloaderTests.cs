@@ -5,6 +5,7 @@ using CanfarDesktop.Models;
 using CanfarDesktop.Models.Cutouts;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.Cutouts;
+using CanfarDesktop.Services.Cutouts.Local;
 using CanfarDesktop.Tests.Helpers;
 
 namespace CanfarDesktop.Tests.Services;
@@ -157,6 +158,83 @@ public class ObservationDownloaderTests : IDisposable
         Assert.Equal(PathFor("cut.fits"), saved.LocalPath);
         Assert.Equal(300, saved.FileSize);
         Assert.Equal("Cut x cut.fits", OnlyTask().Label);
+    }
+
+    /// <summary>
+    /// Download on a record that says which archive file it holds fetches that file again — not whatever
+    /// DataLink ranks first — and one DataLink no longer lists falls back to the observation's file, the
+    /// record then no longer claiming to know which it holds.
+    /// </summary>
+    [Theory]
+    [InlineData("cadc:HST/j8pu0y010_flt.fits", "https://archive.test/data/j8pu0y010_flt.fits", "cadc:HST/j8pu0y010_flt.fits")]
+    [InlineData("cadc:HST/gone_flt.fits", "https://archive.test/data/j8pu0y010_drz.fits", null)]
+    public async Task ARecordThatSaysWhichFile_GetsThatFileAgain(string artifactId, string fetched, string? kept)
+    {
+        var requested = new List<string>();
+        var (downloader, store) = Make(req =>
+        {
+            var uri = req.RequestUri!.ToString();
+            requested.Add(uri);
+            return Task.FromResult(uri.Contains("datalink", StringComparison.OrdinalIgnoreCase)
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(DataLink(
+                    "https://archive.test/data/j8pu0y010_drz.fits", "https://archive.test/data/j8pu0y010_flt.fits")) }
+                : File(32));
+        });
+        var record = new DownloadedObservation { PublisherID = "ivo://cadc.nrc.ca/HST?j8pu0y010/j8pu0y010", ArtifactId = artifactId };
+
+        await downloader.Start(new ObservationDownloadRequest(record.PublisherID, PathFor("x.fits"), record));
+
+        Assert.Contains(fetched, requested);
+        Assert.Equal(kept, Assert.Single(store.Observations).ArtifactId);
+    }
+
+    /// <summary>A DataLink answer listing these files as #this rows.</summary>
+    private static string DataLink(params string[] urls)
+    {
+        var rows = string.Concat(urls.Select(u =>
+            $"<TR><TD>ivo://x</TD><TD>{u}</TD><TD></TD><TD></TD><TD>#this</TD><TD></TD><TD></TD><TD>application/fits</TD><TD>100</TD></TR>"));
+        return $$"""
+            <?xml version="1.0"?><VOTABLE xmlns="http://www.ivoa.net/xml/VOTable/v1.3"><RESOURCE type="results"><TABLE>
+            <FIELD name="ID" datatype="char"/><FIELD name="access_url" datatype="char"/><FIELD name="service_def" datatype="char"/>
+            <FIELD name="error_message" datatype="char"/><FIELD name="semantics" datatype="char"/><FIELD name="description" datatype="char"/>
+            <FIELD name="content_qualifier" datatype="char"/><FIELD name="content_type" datatype="char"/><FIELD name="content_length" datatype="long"/>
+            <DATA><TABLEDATA>{{rows}}</TABLEDATA></DATA></TABLE></RESOURCE></VOTABLE>
+            """;
+    }
+
+    /// <summary>
+    /// The whole way through, as the app runs it: an HST frame downloaded, a local cutout of it made by
+    /// the downloader and kept in Research beside it — then its file removed, and Download making it
+    /// again from the frame, with no network at all.
+    /// </summary>
+    [Fact]
+    public async Task ALocalCutout_IsCutFromTheDownloadedFile_AndCutAgainOnceItsFileIsRemoved()
+    {
+        var store = new ObservationStore();
+        var cards = SyntheticFits.ImageCards(-32, primary: true, 60, 40);
+        cards.AddRange(SyntheticFits.TanWcs(30.5, 20.5, 150.0, 2.2, 1e-4));
+        var frame = SyntheticFits.Write(_dir, "j8pu0y010_flt.fits",
+            SyntheticFits.Hdu(cards, SyntheticFits.Pixels(-32, 60, 40, (x, y, _) => x + y)));
+        store.Save(new DownloadedObservation { PublisherID = "ivo://cadc/HST", LocalPath = frame, ArtifactId = "cadc:HST/j8pu0y010_flt.fits" });
+        var downloader = new ObservationDownloader(() => throw new InvalidOperationException("a local cut needs no network"), store,
+            [new LocalCutoutMaker((pid, artifact) => LocalCopies.Find(store.Observations, pid, artifact)?.LocalPath)]);
+
+        var local = CutoutSources.Local(store.Observations, "ivo://cadc/HST", ["cadc:HST/j8pu0y010_flt.fits"])!;
+        var spec = local.Bind(new CutoutSpec { Region = SkyRegion.Circle(150.0, 2.2, 5e-4) });
+        var record = new DownloadedObservation { PublisherID = "ivo://cadc/HST", Cutout = spec };
+        await downloader.Start(new ObservationDownloadRequest(record.PublisherID, PathFor("cut.fits"), record));
+
+        Assert.Equal(2, store.Observations.Count); // the frame, and its cutout beside it
+        var cutout = Assert.Single(store.Observations, o => o.IsCutout);
+        Assert.Equal(CutoutMethod.Local, cutout.Cutout!.CutBy);
+        var size = new FileInfo(PathFor("cut.fits")).Length;
+        Assert.Equal(local.EstimateBytes(spec), size);
+
+        Assert.Null(ResearchRecords.RemoveLocalFile(store, cutout));
+        await downloader.Start(new ObservationDownloadRequest(cutout.PublisherID, PathFor("again.fits"), cutout));
+
+        Assert.Equal(size, new FileInfo(PathFor("again.fits")).Length);
+        Assert.Equal(PathFor("again.fits"), Assert.Single(store.Observations, o => o.IsCutout).LocalPath);
     }
 
     /// <summary>A cutout nobody here can make fails in the status bar with the reason, and records nothing.</summary>

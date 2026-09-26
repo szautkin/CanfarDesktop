@@ -12,6 +12,7 @@ using CanfarDesktop.Models.Caom2;
 using CanfarDesktop.Models.Cutouts;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.Cutouts;
+using CanfarDesktop.Services.Cutouts.Local;
 using CanfarDesktop.Views.Controls;
 using Windows.Storage.Pickers;
 
@@ -41,6 +42,15 @@ public sealed partial class ObservationDetailPage : UserControl
     /// <summary>The cutout editor open in the Files tab, if one is.</summary>
     private CutoutEditor? _cutoutEditor;
 
+    /// <summary>
+    /// The observation's file on this computer as a way of cutting it, once its headers are read; null
+    /// when Research has none of it here.
+    /// </summary>
+    private LocalCutoutSource? _localSource;
+
+    /// <summary>Which file, at which size and time, <see cref="_localSource"/> was read from — so it is read again only when that changes.</summary>
+    private string? _localKey;
+
     /// <summary>Raised when the user presses "Sign in" on the auth-required state.</summary>
     public event Action? SignInRequested;
 
@@ -58,7 +68,12 @@ public sealed partial class ObservationDetailPage : UserControl
         UpdateSaveToResearch();
         // A cached page for the app's life, so it may listen for the app's life: a download landing
         // elsewhere puts this observation in Research, and the button should say so.
-        _store.Changed += () => DispatcherQueue.TryEnqueue(UpdateSaveToResearch);
+        _store.Changed += () => DispatcherQueue.TryEnqueue(() =>
+        {
+            UpdateSaveToResearch();
+            // A download landing, or a file removed, changes whether the observation can be cut here.
+            if (_current is { } shown) _ = RefreshLocalSourceAsync(shown);
+        });
     }
 
     /// <summary>
@@ -126,6 +141,8 @@ public sealed partial class ObservationDetailPage : UserControl
         // The previous observation's files and cutout editor go with it.
         _links = null;
         _cutoutEditor = null;
+        _localSource = null;
+        _localKey = null;
         _current = null;
         UpdateSaveToResearch();
     }
@@ -300,6 +317,9 @@ public sealed partial class ObservationDetailPage : UserControl
         var link = new HyperlinkButton { Content = Loc.T("ObsDetail_ViewAllFilesCadc"), Margin = new Thickness(0, 4, 0, 0) };
         link.Click += OnViewOnCadc;
         FilesPanel.Children.Add(link);
+
+        // Rebuilt under an open editor — a download landing while it is open — the editor stays.
+        if (_cutoutEditor is { } open) FilesPanel.Children.Insert(0, open);
     }
 
     private void BuildProvenance(CAOM2Observation obs)
@@ -463,22 +483,27 @@ public sealed partial class ObservationDetailPage : UserControl
         Grid.SetColumn(dl, 4);
         grid.Children.Add(dl);
 
-        // On every FITS file — the only kind SODA cuts; never on a preview, catalogue or package. Live
-        // where CADC says THIS file can be cut (its DataLink answer has a service for it), greyed with
-        // the reason where it does not.
+        // On every FITS file — the only kind that can be cut; never on a preview, catalogue or package.
+        // Live where it can be cut one way or another — CADC's (its DataLink answer has a service for
+        // it) or this computer's (its copy is here, with sky coordinates) — greyed with the reason where
+        // it cannot.
         if (CutoutCandidates.IsFitsFile(art.ContentType, art.Uri, art.ProductType))
         {
-            var cutout = CutoutSources.For(CutoutSourcesOfObservation, art.Uri).FirstOrDefault();
+            var ways = CutoutSources.For(CutoutSourcesOfObservation, art.Uri);
+            var usable = ways.Where(w => w.Unavailable is null).Select(w => w.Method).ToHashSet();
             var cut = new Button { Content = Loc.T("Cutout_Button") };
             AutomationProperties.SetName(cut, Loc.F("Cutout_ButtonName", Caom2Format.ArtifactFileName(art.Uri)));
-            if (cutout is not null)
+            if (usable.Count > 0)
             {
-                ToolTipService.SetToolTip(cut, Loc.T("Cutout_ButtonTooltip"));
-                cut.Click += (_, _) => ShowCutoutEditor(cutout, spec: null);
+                ToolTipService.SetToolTip(cut, Loc.T(usable.Count > 1 ? "Cutout_ButtonTooltipBoth"
+                    : usable.Contains(CutoutMethod.Local) ? "Cutout_ButtonTooltipLocal" : "Cutout_ButtonTooltip"));
+                cut.Click += (_, _) => ShowCutoutEditor(ways, spec: null);
             }
             var cutWrapper = UIFactory.Explained(cut);
-            UIFactory.Enable(cut, cutout is not null,
-                _links is null ? Loc.T("Cutout_Checking") : Loc.T("Cutout_NoneForFile"));
+            UIFactory.Enable(cut, usable.Count > 0,
+                _links is null ? Loc.T("Cutout_Checking")
+                : ways.FirstOrDefault(w => w.Method == CutoutMethod.Local)?.Unavailable is { } why ? Loc.F("Cutout_NoneForFileLocal", why)
+                : Loc.T("Cutout_NoneForFile"));
             Grid.SetColumn(cutWrapper, 3);
             grid.Children.Add(cutWrapper);
         }
@@ -659,7 +684,7 @@ public sealed partial class ObservationDetailPage : UserControl
             // fields at completion would stamp observation B's record with A's file.
             var ctx = new DownloadContext(
                 _publisherID, _collection, _observationID, _current, links,
-                IsScience: !isPreviewType && productType is null or "" or "science");
+                IsScience: !isPreviewType && productType is null or "" or "science", ArtifactId: art.Uri);
 
             await DownloadUrlToFileAsync(url, fileName, ctx);
         }
@@ -680,9 +705,10 @@ public sealed partial class ObservationDetailPage : UserControl
 
     /// <summary>Download state captured at START (the page is a cached singleton — live fields may
     /// describe a different observation by the time a long download completes).</summary>
+    /// <param name="ArtifactId">The archive file downloaded, when it is one particular file — what the record keeps, so Download fetches that one again.</param>
     private sealed record DownloadContext(
         string PublisherID, string Collection, string ObservationID,
-        CAOM2Observation? Observation, Models.DataLinkResult? Links, bool IsScience);
+        CAOM2Observation? Observation, Models.DataLinkResult? Links, bool IsScience, string? ArtifactId = null);
 
     /// <summary>Find a URL whose file name matches, tolerating URL-encoding ('+' → %2B) and
     /// query-embedded file IDs.</summary>
@@ -850,6 +876,7 @@ public sealed partial class ObservationDetailPage : UserControl
     private static DownloadedObservation ResearchRecordFor(DownloadContext ctx, CutoutSpec? cutout = null)
     {
         var record = ResearchRecords.ForObservation(ctx.PublisherID, ctx.Observation, ctx.Links, cutout);
+        if (cutout is null) record.ArtifactId = ctx.ArtifactId;
         if (string.IsNullOrEmpty(record.Collection)) record.Collection = ctx.Collection;
         if (string.IsNullOrEmpty(record.ObservationID)) record.ObservationID = ctx.ObservationID;
         return record;
@@ -858,39 +885,76 @@ public sealed partial class ObservationDetailPage : UserControl
     // ── Cutouts ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Learn which files can be cut out — DataLink describes a service for each — and rebuild the Files
-    /// tab with a Cutout button where there is one. After the observation shows, not before: it is a
-    /// second request, and the observation is worth seeing without waiting for it.
+    /// Learn which files can be cut out, and how — DataLink describes CADC's service for each, and the
+    /// observation's file on this computer describes itself — then rebuild the Files tab with a Cutout
+    /// button where there is a way. After the observation shows, not before: it is a second request, and
+    /// the observation is worth seeing without waiting for it.
     /// </summary>
     private async Task LoadCutoutSourcesAsync(CAOM2Observation obs)
     {
         var publisherId = _publisherID;
+        var local = RefreshLocalSourceAsync(obs, rebuild: false);
         DataLinkResult links;
         try { links = await _dataLink.GetLinksAsync(publisherId); }
-        catch { links = new DataLinkResult(); } // the observation still shows; its files say they cannot be cut
+        catch { links = new DataLinkResult(); } // the observation still shows; its files say CADC cannot cut them
+        await local;
 
         if (_publisherID != publisherId || !ReferenceEquals(_current, obs)) return;
         _links = links;
-        BuildFiles(obs); // either way: the buttons go from "checking" to what the answer said
+        BuildFiles(obs); // either way: the buttons go from "checking" to what the answers said
     }
 
-    /// <summary>The ways the open observation's files can be cut.</summary>
+    /// <summary>
+    /// Read the observation's file on this computer again when it is not the one read last — downloaded,
+    /// removed or replaced since — off the UI, since a packaged .fits.gz is unpacked to be read.
+    /// </summary>
+    private async Task RefreshLocalSourceAsync(CAOM2Observation obs, bool rebuild = true)
+    {
+        var publisherId = _publisherID;
+        var record = LocalCopies.CompleteFile(_store.Observations, publisherId);
+        var key = record is null ? null : LocalKey(record);
+        if (key == _localKey) return;
+
+        var artifacts = CutoutSources.ArtifactIds(obs).ToList();
+        var local = record is null ? null
+            : await Task.Run(() => new LocalCutoutSource(LocalFitsFile.Inspect(record.LocalPath, LocalCopies.ArtifactOf(record, artifacts))));
+
+        if (_publisherID != publisherId || !ReferenceEquals(_current, obs)) return;
+        (_localSource, _localKey) = (local, key);
+        if (rebuild && _links is not null) BuildFiles(obs);
+    }
+
+    private static string? LocalKey(DownloadedObservation record)
+    {
+        try
+        {
+            var file = new FileInfo(record.LocalPath);
+            return $"{file.FullName}|{file.Length}|{file.LastWriteTimeUtc.Ticks}|{record.ArtifactId}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The ways the open observation's files can be cut: CADC's, and the one on this computer.</summary>
     public IReadOnlyList<ICutoutSource> CutoutSourcesOfObservation
-        => _links is null ? [] : CutoutSources.Soda(_links, _current);
+        => _links is null ? [] : [.. CutoutSources.Soda(_links, _current), .. _localSource is { } local ? [local] : Array.Empty<ICutoutSource>()];
 
     /// <summary>
-    /// Open the cutout editor for one file at the top of the Files tab, starting from the last search
-    /// (its target and wavelengths) or, when given, from <paramref name="spec"/> — an agent's proposal.
+    /// Open the cutout editor for one file at the top of the Files tab — on each way it can be cut, the
+    /// one named by <paramref name="cutBy"/> first, else the best — starting from the last search (its
+    /// target and wavelengths) or, when given, from <paramref name="spec"/>: an agent's proposal.
     /// </summary>
-    public CutoutEditor ShowCutoutEditor(ICutoutSource source, CutoutSpec? spec)
+    public CutoutEditor ShowCutoutEditor(IReadOnlyList<ICutoutSource> ways, CutoutSpec? spec, CutoutMethod? cutBy = null)
     {
         CloseCutoutEditor();
 
         var hints = _search.CutoutHints;
         var target = hints is { Ra: { } ra, Dec: { } dec } ? new SkyPoint(ra, dec) : (SkyPoint?)null;
-        var editor = new CutoutEditor(source, source.Suggest(hints), target);
+        var editor = new CutoutEditor(CutoutSources.Preferred(ways, cutBy ?? spec?.CutBy), hints, target);
         if (spec is not null) editor.Load(spec);
-        editor.DownloadRequested += chosen => _ = OnDownloadCutoutAsync(source, chosen);
+        editor.DownloadRequested += (way, chosen) => _ = OnDownloadCutoutAsync(way, chosen);
         editor.CloseRequested += CloseCutoutEditor;
 
         FilesPanel.Children.Insert(0, editor);
