@@ -7,7 +7,9 @@ namespace CanfarDesktop.Services.Cutouts.Local;
 
 /// <summary>One image in a file on this computer that can be cut on the sky: where it lies, and how to read it.</summary>
 /// <param name="Header">Its header as a plain image has it — what its size and sky coordinates are read from.</param>
-public sealed record LocalImage(FitsHduLayout Hdu, IFitsImageEncoding Encoding, FitsHeader Header, WcsInfo Wcs, SkyRegion Footprint)
+/// <param name="Spectral">A cube's spectral axis, when it has one that can be read as wavelength.</param>
+public sealed record LocalImage(FitsHduLayout Hdu, IFitsImageEncoding Encoding, FitsHeader Header, WcsInfo Wcs, SkyRegion Footprint,
+                                SpectralAxis? Spectral = null)
 {
     public int Width => Header.NAxis1;
     public int Height => Header.NAxis2;
@@ -24,7 +26,6 @@ public sealed record LocalImage(FitsHduLayout Hdu, IFitsImageEncoding Encoding, 
 /// </summary>
 public sealed class LocalFitsFile : ICutoutFile
 {
-    private static readonly IReadOnlySet<string> SkyParameters = new HashSet<string> { "CIRCLE", "POLYGON" };
 
     private LocalFitsFile(string path, string artifactId, long fileBytes, IReadOnlyList<FitsHduLayout> hdus,
                           IReadOnlyList<LocalImage> images, string? problem)
@@ -35,7 +36,11 @@ public sealed class LocalFitsFile : ICutoutFile
         Hdus = hdus;
         Images = images;
         Problem = problem;
-        Parameters = images.Count > 0 ? SkyParameters : new HashSet<string>();
+        var bands = images.Select(i => i.Spectral?.Range).OfType<(double Min, double Max)>().ToList();
+        if (bands.Count > 0) (BandMin, BandMax) = (bands.Min(b => b.Min), bands.Max(b => b.Max));
+        Parameters = images.Count == 0 ? new HashSet<string>()
+            : bands.Count > 0 ? new HashSet<string> { "CIRCLE", "POLYGON", "BAND" }
+            : new HashSet<string> { "CIRCLE", "POLYGON" };
         Parts = images.Count > 1 ? images.Select(i => i.Footprint).ToList() : [];
         Footprint = images.Count switch
         {
@@ -67,8 +72,9 @@ public sealed class LocalFitsFile : ICutoutFile
 
     public SkyRegion? Footprint { get; }
     public SkyRegion? BoundingCircle => null;
-    public double? BandMin => null;
-    public double? BandMax => null;
+    /// <summary>The wavelengths its cubes cover, metres — the planes' outer edges.</summary>
+    public double? BandMin { get; }
+    public double? BandMax { get; }
     public double? TimeMin => null;
     public double? TimeMax => null;
     public IReadOnlyList<string> PolStates => [];
@@ -116,7 +122,8 @@ public sealed class LocalFitsFile : ICutoutFile
             if (SkyProblem(header) is { } problem) { reasons.Add(problem); continue; }
 
             var wcs = WcsInfo.FromHeader(header);
-            images.Add(new LocalImage(hdu, encoding, header, wcs, FootprintOf(wcs, header.NAxis1, header.NAxis2)));
+            images.Add(new LocalImage(hdu, encoding, header, wcs, FootprintOf(wcs, header.NAxis1, header.NAxis2),
+                SpectralAxis.Find(header)));
         }
 
         var why = images.Count > 0 ? null

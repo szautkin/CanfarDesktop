@@ -36,32 +36,17 @@ public static class FitsRice
             throw new NotSupportedException(
                 $"Unsupported FITS tile compression (ZCMPTYPE='{header.GetString("ZCMPTYPE")}', ZBITPIX={header.GetInt("ZBITPIX")}).");
 
-        var imageWidth = header.GetInt("ZNAXIS1");
-        var imageHeight = header.GetInt("ZNAXIS2");
-        if (imageWidth <= 0 || imageHeight <= 0)
-            throw new InvalidDataException($"Compressed FITS: bad image dimensions {imageWidth}×{imageHeight}.");
+        var tiles = RiceTiles.From(header);
+        var (imageWidth, imageHeight) = (tiles.ImageWidth, tiles.ImageHeight);
         var totalPixels = (long)imageWidth * imageHeight;
         if (totalPixels > MaxPixels)
             throw new NotSupportedException($"Compressed FITS: image too large ({totalPixels} px, cap {MaxPixels}).");
 
-        var tileWidth = Math.Max(1, header.GetInt("ZTILE1", imageWidth));
-        var tileHeight = Math.Max(1, header.GetInt("ZTILE2", 1));
-        var blockSize = Math.Max(1, header.GetInt("ZVAL1", 32));
-
-        var tableRowBytes = header.NAxis1;     // BINTABLE row width in bytes
-        var tableRows = header.NAxis2;         // rows = tiles
         var pcount = header.GetInt("PCOUNT");
-        long heapStart = (long)tableRowBytes * tableRows;
-        if (tableRowBytes < 8 || tableRows <= 0 || pcount < 0 || heapStart + pcount > tableAndHeap.Length)
+        var heapStart = tiles.HeapOffset;
+        if (pcount < 0 || heapStart + pcount > tableAndHeap.Length)
             throw new InvalidDataException("Compressed FITS: table/heap geometry does not fit the data area.");
-
-        var nTilesX = (imageWidth + tileWidth - 1) / tileWidth;
-        var nTilesY = (imageHeight + tileHeight - 1) / tileHeight;
-        var nTiles = nTilesX * nTilesY;
-        if (tableRows < nTiles)
-            // A silent partial decode (missing tiles as black) would poison the display stretch —
-            // throw so the caller degrades to the actionable funpack advice.
-            throw new InvalidDataException($"Compressed FITS: {tableRows} tiles in table, geometry needs {nTiles}.");
+        var nTiles = tiles.Count;
 
         // Physical values: BSCALE/BZERO from the bintable header apply to the ORIGINAL integers
         // (BZERO=32768 is the standard unsigned-uint16-as-int16 convention). Scatter straight into
@@ -73,31 +58,23 @@ public static class FitsRice
 
         for (var tileIdx = 0; tileIdx < nTiles; tileIdx++)
         {
-            var rowStart = (long)tileIdx * tableRowBytes;
-            var nelem = ReadBigEndianInt32(tableAndHeap, rowStart);
-            var offset = ReadBigEndianInt32(tableAndHeap, rowStart + 4);
-            if (nelem < 0 || offset < 0)
-                throw new InvalidDataException($"Compressed FITS: malformed descriptor in row {tileIdx}.");
-            if (nelem > MaxTileBytes)
-                throw new InvalidDataException($"Compressed FITS: tile {tileIdx} exceeds the {MaxTileBytes / (1024 * 1024)} MB cap.");
+            var rowStart = (long)tileIdx * tiles.RowBytes;
+            var (nelem, offset) = tiles.Checked(tileIdx,
+                ReadBigEndianInt32(tableAndHeap, rowStart), ReadBigEndianInt32(tableAndHeap, rowStart + 4), pcount);
             var tileStart = heapStart + offset;
-            if (nelem > pcount || tileStart + nelem > heapStart + pcount)
-                throw new InvalidDataException($"Compressed FITS: tile {tileIdx} extends beyond the heap.");
 
-            var tileCol = tileIdx % nTilesX;
-            var tileRow = tileIdx / nTilesX;
-            var tilePxWidth = Math.Min(tileWidth, imageWidth - tileCol * tileWidth);
-            var tilePxHeight = Math.Min(tileHeight, imageHeight - tileRow * tileHeight);
+            var (tilePxWidth, tilePxHeight) = tiles.SizeOf(tileIdx);
             if (tilePxWidth <= 0 || tilePxHeight <= 0) continue;
 
             var decoded = RiceDecode(
-                tableAndHeap, (int)tileStart, nelem, tilePxWidth * tilePxHeight, blockSize);
+                tableAndHeap, (int)tileStart, nelem, tilePxWidth * tilePxHeight, tiles.BlockSize);
 
-            var destRowStart = tileRow * tileHeight;
+            var (tileCol, tileRow) = (tileIdx % tiles.Across, tileIdx / tiles.Across);
+            var destRowStart = tileRow * tiles.TileHeight;
             for (var py = 0; py < tilePxHeight; py++)
             {
                 var srcBase = py * tilePxWidth;
-                var destBase = (long)(destRowStart + py) * imageWidth + tileCol * tileWidth;
+                var destBase = (long)(destRowStart + py) * imageWidth + tileCol * tiles.TileWidth;
                 for (var px = 0; px < tilePxWidth; px++)
                 {
                     var dest = destBase + px;
@@ -120,6 +97,63 @@ public static class FitsRice
             Wcs = WcsInfo.FromHeader(header),
             Unit = header.GetString("BUNIT"),
         };
+    }
+
+    // ── Where the tiles are ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// How an fpack HDU cuts its image into tiles, and where each tile's bytes are: one row of the
+    /// binary table per tile — a big-endian (length, offset) descriptor — the bytes themselves in the
+    /// heap after the table. What decoding the whole image and reading one tile of it both need, so the
+    /// two cannot disagree about which tile holds which pixels.
+    /// </summary>
+    public readonly record struct RiceTiles(
+        int ImageWidth, int ImageHeight, int TileWidth, int TileHeight, int BlockSize, int RowBytes, int Rows, long HeapOffset)
+    {
+        public int Across => (ImageWidth + TileWidth - 1) / TileWidth;
+        public int Down => (ImageHeight + TileHeight - 1) / TileHeight;
+        public int Count => Across * Down;
+
+        /// <summary>A tile's size in pixels — the last in a row or column is cut short by the image's edge.</summary>
+        public (int Width, int Height) SizeOf(int tile)
+            => (Math.Min(TileWidth, ImageWidth - tile % Across * TileWidth), Math.Min(TileHeight, ImageHeight - tile / Across * TileHeight));
+
+        /// <summary>The tile holding a pixel (0-based).</summary>
+        public int TileAt(long x, long y) => (int)(y / TileHeight * Across + x / TileWidth);
+
+        /// <summary>A tile's descriptor, checked against the heap; throws for one that cannot be right.</summary>
+        public (int Length, int Offset) Checked(int tile, int length, int offset, long heapBytes)
+        {
+            if (length < 0 || offset < 0)
+                throw new InvalidDataException($"Compressed FITS: malformed descriptor in row {tile}.");
+            if (length > MaxTileBytes)
+                throw new InvalidDataException($"Compressed FITS: tile {tile} exceeds the {MaxTileBytes / (1024 * 1024)} MB cap.");
+            if (length > heapBytes || (long)offset + length > heapBytes)
+                throw new InvalidDataException($"Compressed FITS: tile {tile} extends beyond the heap.");
+            return (length, offset);
+        }
+
+        public static RiceTiles From(FitsHeader header)
+        {
+            var width = header.GetInt("ZNAXIS1");
+            var height = header.GetInt("ZNAXIS2");
+            if (width <= 0 || height <= 0)
+                throw new InvalidDataException($"Compressed FITS: bad image dimensions {width}×{height}.");
+
+            var rowBytes = header.NAxis1; // BINTABLE row width in bytes
+            var rows = header.NAxis2;     // rows = tiles
+            var tiles = new RiceTiles(width, height,
+                Math.Max(1, header.GetInt("ZTILE1", width)), Math.Max(1, header.GetInt("ZTILE2", 1)),
+                Math.Max(1, header.GetInt("ZVAL1", 32)), rowBytes, rows,
+                header.Contains("THEAP") ? header.GetInt("THEAP") : (long)rowBytes * rows);
+            if (rowBytes < 8 || rows <= 0)
+                throw new InvalidDataException("Compressed FITS: table/heap geometry does not fit the data area.");
+            if (rows < tiles.Count)
+                // A silent partial decode (missing tiles as black) would poison the display stretch —
+                // throw so the caller degrades to the actionable funpack advice.
+                throw new InvalidDataException($"Compressed FITS: {rows} tiles in table, geometry needs {tiles.Count}.");
+            return tiles;
+        }
     }
 
     // ── RICE_1 decoder (cfitsio fits_rdecomp, BYTEPIX=2) ─────────────────────

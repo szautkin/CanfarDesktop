@@ -83,19 +83,106 @@ public sealed class PlainImage : IFitsImageEncoding
 }
 
 /// <summary>
-/// An image tile-compressed into a binary table, as fpack writes it (the ZIMAGE convention). Recognised
-/// so that a file of them is refused with the reason, rather than mistaken for a file with no image.
+/// An image tile-compressed into a binary table, as fpack writes it (the ZIMAGE convention). Read the way
+/// the viewer reads it — RICE_1 at 16 bits, a plain image (the CFHT norm: MegaPrime's raw frames) — but a
+/// tile at a time, and only the tiles a cut touches: a 36-CCD frame is not decompressed to cut one CCD's
+/// corner. Any other kind is recognised, and refused with the reason and what to do about it.
 /// </summary>
-public sealed class TileCompressedImage : IFitsImageEncoding
+public sealed partial class TileCompressedImage : IFitsImageEncoding
 {
     public bool Recognises(FitsHeader header) => header.IsTileCompressed;
 
     public string? Refusal(FitsHeader header)
-        => string.Format(Cutouts.CutoutRules.T("Cutout_LocalCompressed",
-            "The downloaded file is tile-compressed ({0}), which the app cannot cut yet; funpack makes a plain .fits of it that can be."),
-            header.GetString("ZCMPTYPE") ?? "?");
+    {
+        if (FitsRice.CanDecompress(header)) return null;
+        var kind = $"{header.GetString("ZCMPTYPE") ?? "?"}, {header.GetInt("ZBITPIX")}-bit, {header.GetInt("ZNAXIS")} axes";
+        return string.Format(Cutouts.CutoutRules.T("Cutout_LocalCompressed",
+            "The downloaded file is tile-compressed in a way the app cannot read ({0}); funpack makes a plain .fits of it that can be cut."),
+            kind);
+    }
 
-    public FitsHeaderCards ImageCards(FitsHduLayout hdu) => throw new NotSupportedException(Refusal(hdu.Header));
+    /// <summary>
+    /// The header the image had before it was compressed — cfitsio's rule: the Z keywords give back
+    /// BITPIX, NAXIS and NAXISn; the table's own keywords and the compression's go; everything else,
+    /// WCS, BSCALE and BZERO among it, is the image's and stays as it is.
+    /// </summary>
+    public FitsHeaderCards ImageCards(FitsHduLayout hdu)
+    {
+        var h = hdu.Header;
+        var cards = new FitsHeaderCards([]);
+        cards.SetString("XTENSION", "IMAGE", "image extension");
+        cards.Set("BITPIX", (long)h.GetInt("ZBITPIX"));
+        cards.Set("NAXIS", (long)h.GetInt("ZNAXIS"));
+        for (var n = 1; n <= h.GetInt("ZNAXIS"); n++) cards.Set($"NAXIS{n}", (long)h.GetInt($"ZNAXIS{n}"));
+        cards.Set("PCOUNT", 0L);
+        cards.Set("GCOUNT", 1L);
+        foreach (var card in hdu.RawCards)
+        {
+            var keyword = FitsHeaderCards.KeywordOf(card);
+            if (keyword == "ZBLANK") cards.Set("BLANK", (long)h.GetInt("ZBLANK"));
+            else if (!TableOrCompression().IsMatch(keyword)) cards.Add(card);
+        }
+        return cards;
+    }
 
-    public IHduPixels Open(Stream file, FitsHduLayout hdu) => throw new NotSupportedException(Refusal(hdu.Header));
+    public IHduPixels Open(Stream file, FitsHduLayout hdu) => new Tiles(file, hdu);
+
+    /// <summary>
+    /// The rows of the image, decoded from the tiles that hold them — each tile read once from where it
+    /// lies, and kept only while the rows being read are in it.
+    /// </summary>
+    private sealed class Tiles(Stream file, FitsHduLayout hdu) : IHduPixels
+    {
+        private readonly FitsRice.RiceTiles _tiles = FitsRice.RiceTiles.From(hdu.Header);
+        private readonly long _heapBytes = hdu.Header.GetInt("PCOUNT");
+        private readonly Dictionary<int, short[]> _decoded = [];
+        private int _tileRow = -1;
+
+        public int BytesPerPixel => 2;
+
+        public void ReadRow(long row, long x0, Span<byte> destination)
+        {
+            var count = destination.Length / 2;
+            if (row / _tiles.TileHeight != _tileRow)
+            {
+                _decoded.Clear(); // a new row of tiles: the last one's are done with
+                _tileRow = (int)(row / _tiles.TileHeight);
+            }
+
+            for (var i = 0; i < count; i++)
+            {
+                var x = x0 + i;
+                var tile = _tiles.TileAt(x, row);
+                if (!_decoded.TryGetValue(tile, out var pixels)) _decoded[tile] = pixels = Decode(tile);
+
+                var width = _tiles.SizeOf(tile).Width;
+                var inTile = (row - (long)(tile / _tiles.Across) * _tiles.TileHeight) * width + (x - (long)(tile % _tiles.Across) * _tiles.TileWidth);
+                System.Buffers.Binary.BinaryPrimitives.WriteInt16BigEndian(destination[(2 * i)..], pixels[inTile]);
+            }
+        }
+
+        private short[] Decode(int tile)
+        {
+            Span<byte> descriptor = stackalloc byte[8];
+            file.Position = hdu.DataStart + (long)tile * _tiles.RowBytes;
+            file.ReadExactly(descriptor);
+            var (length, offset) = _tiles.Checked(tile,
+                System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(descriptor),
+                System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(descriptor[4..]), _heapBytes);
+
+            var bytes = new byte[length];
+            file.Position = hdu.DataStart + _tiles.HeapOffset + offset;
+            file.ReadExactly(bytes);
+            var (width, height) = _tiles.SizeOf(tile);
+            return FitsRice.RiceDecode(bytes, 0, length, width * height, _tiles.BlockSize);
+        }
+
+        public void Dispose() => _decoded.Clear(); // the stream is the caller's
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(
+        @"^(XTENSION|BITPIX|NAXIS\d*|PCOUNT|GCOUNT|THEAP|TFIELDS|TTYPE\d+|TFORM\d+|TUNIT\d+|TSCAL\d+|TZERO\d+|TNULL\d+|TDIM\d+|TDISP\d+|" +
+        @"ZIMAGE|ZCMPTYPE|ZBITPIX|ZNAXIS\d*|ZTILE\d+|ZNAME\d+|ZVAL\d+|ZQUANTIZ|ZDITHER0|ZSIMPLE|ZTENSION|ZEXTEND|ZBLOCKED|" +
+        @"ZPCOUNT|ZGCOUNT|ZHECKSUM|ZDATASUM|CHECKSUM|DATASUM)$")]
+    private static partial System.Text.RegularExpressions.Regex TableOrCompression();
 }

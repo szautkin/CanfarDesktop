@@ -104,6 +104,48 @@ internal static class SyntheticFits
         return data;
     }
 
+    /// <summary>
+    /// A 16-bit image as fpack stores it: RICE_1 tiles of <paramref name="tileWidth"/> × <paramref name="tileHeight"/>
+    /// in a binary table's heap, one (length, offset) descriptor per row, the image's own cards after the
+    /// compression's — the layout of a MegaPrime raw CCD.
+    /// </summary>
+    public static byte[] RiceCompressed(IEnumerable<string> imageCards, short[] pixels, int width, int height, int tileWidth, int tileHeight)
+    {
+        var (across, down) = ((width + tileWidth - 1) / tileWidth, (height + tileHeight - 1) / tileHeight);
+        var heap = new List<byte>();
+        var descriptors = new List<byte>();
+        var longest = 0;
+        for (var t = 0; t < across * down; t++)
+        {
+            var (tx, ty) = (t % across * tileWidth, t / across * tileHeight);
+            var (w, h) = (Math.Min(tileWidth, width - tx), Math.Min(tileHeight, height - ty));
+            var tile = new short[w * h];
+            for (var y = 0; y < h; y++)
+                for (var x = 0; x < w; x++) tile[y * w + x] = pixels[(ty + y) * width + tx + x];
+
+            var coded = RiceEncoder.Encode(tile);
+            var descriptor = new byte[8];
+            BinaryPrimitives.WriteInt32BigEndian(descriptor, coded.Length);
+            BinaryPrimitives.WriteInt32BigEndian(descriptor.AsSpan(4), heap.Count);
+            descriptors.AddRange(descriptor);
+            heap.AddRange(coded);
+            longest = Math.Max(longest, coded.Length);
+        }
+
+        var cards = new List<string>
+        {
+            Text("XTENSION", "BINTABLE"), Card("BITPIX", 8L), Card("NAXIS", 2L), Card("NAXIS1", 8L),
+            Card("NAXIS2", (long)(across * down)), Card("PCOUNT", (long)heap.Count), Card("GCOUNT", 1L), Card("TFIELDS", 1L),
+            Text("TTYPE1", "COMPRESSED_DATA"), Text("TFORM1", $"1PB({longest})"),
+            Card("ZIMAGE", "T"), Card("ZTILE1", (long)tileWidth), Card("ZTILE2", (long)tileHeight), Text("ZCMPTYPE", "RICE_1"),
+            Text("ZNAME1", "BLOCKSIZE"), Card("ZVAL1", 32L), Text("ZNAME2", "BYTEPIX"), Card("ZVAL2", 2L),
+            Card("ZBITPIX", 16L), Card("ZNAXIS", 2L), Card("ZNAXIS1", (long)width), Card("ZNAXIS2", (long)height),
+            Card("ZPCOUNT", 0L), Card("ZGCOUNT", 1L), Text("EXTNAME", "ccd00"),
+        };
+        cards.AddRange(imageCards);
+        return Hdu(cards, [.. descriptors, .. heap]);
+    }
+
     /// <summary>Write the HDUs one after another as a file in <paramref name="directory"/>.</summary>
     public static string Write(string directory, string name, params byte[][] hdus)
     {

@@ -4794,7 +4794,7 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
     <value>The downloaded file's pixels are stored in a way FITS does not define (BITPIX {0}).</value>
   </data>
   <data name="Cutout_LocalCompressed" xml:space="preserve">
-    <value>The downloaded file is tile-compressed ({0}), which the app cannot cut yet; funpack makes a plain .fits of it that can be.</value>
+    <value>The downloaded file is tile-compressed in a way the app cannot read ({0}); funpack makes a plain .fits of it that can be cut.</value>
   </data>
   <data name="Cutout_LocalTruncated" xml:space="preserve">
     <value>The downloaded file ends before its image does; it may not have finished downloading.</value>

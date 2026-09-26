@@ -4794,7 +4794,7 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
     <value>Les pixels du fichier téléchargé sont enregistrés d'une façon que FITS ne définit pas (BITPIX {0}).</value>
   </data>
   <data name="Cutout_LocalCompressed" xml:space="preserve">
-    <value>Le fichier téléchargé est compressé par tuiles ({0}), ce que l'application ne sait pas encore découper ; funpack en fait un .fits ordinaire qui peut l'être.</value>
+    <value>Le fichier téléchargé est compressé par tuiles d'une façon que l'application ne sait pas lire ({0}) ; funpack en fait un .fits ordinaire qui peut être découpé.</value>
   </data>
   <data name="Cutout_LocalTruncated" xml:space="preserve">
     <value>Le fichier téléchargé s'arrête avant la fin de son image ; son téléchargement n'est peut-être pas terminé.</value>

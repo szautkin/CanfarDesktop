@@ -19,6 +19,9 @@ public sealed record CutoutHdu(FitsHeaderCards Header, ImageCut? Data);
 /// each, and every HDU of the new file with its header. Pure — a function of the file's headers and the
 /// cutout — so it is tested without writing anything, and its size is exact rather than estimated.
 ///
+/// <para>A cube is cut to the box on every plane, or with a band to the planes it reaches along its
+/// spectral axis; any other axis is kept whole. With a band, an image with no spectral axis is left out.</para>
+///
 /// <para>The new file keeps the old one's shape. A single image is cut into the primary HDU; a
 /// multi-extension file keeps its primary header and gets one extension for each image the region
 /// touches — the SCI, ERR and DQ of the HST chips it falls on, the MegaPrime CCDs it covers — each with
@@ -41,11 +44,15 @@ public sealed class LocalCutPlan
 
     public static LocalCutPlan For(LocalFitsFile file, CutoutSpec spec, DateTime? now = null)
     {
-        var cuts = file.Images
-            .Select(image => (Image: image, Box: BoxOn(image, spec.Region)))
-            .Where(c => c.Box is not null)
-            .Select(c => new ImageCut(c.Image, c.Box!.Value, AxesOf(c.Image, c.Box.Value)))
-            .ToList();
+        var banded = spec.BandMin is not null || spec.BandMax is not null;
+        var cuts = new List<ImageCut>();
+        foreach (var image in file.Images)
+        {
+            if (BoxOn(image, spec.Region) is not { } box) continue;
+            (long Start, long Count)? planes = null;
+            if (banded && (planes = image.Spectral?.PlanesWithin(spec.BandMin, spec.BandMax)) is null) continue;
+            cuts.Add(new ImageCut(image, box, AxesOf(image, box, planes)));
+        }
         if (cuts.Count == 0) return new LocalCutPlan([]);
 
         var when = (now ?? DateTime.UtcNow).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -70,7 +77,7 @@ public sealed class LocalCutPlan
         {
             var header = CutoutHeader.ForCut(cut.Image.Encoding.ImageCards(cut.Image.Hdu), cut.Axes,
             [
-                $"Cut out by Verbinal on {when} from {file.FileName}{cut.Image.Hdu.Label}, pixels {cut.Box}.",
+                $"Cut out by Verbinal on {when} from {file.FileName}{cut.Image.Hdu.Label}, pixels {cut.Box}{PlanesOf(cut)}.",
                 region,
             ]);
             if (cut == primaryCut)
@@ -90,11 +97,26 @@ public sealed class LocalCutPlan
             ? new PixelBox(1, 1, image.Width, image.Height)
             : PixelBox.Around(region, image.Wcs, image.Width, image.Height);
 
-    /// <summary>The box on the two sky axes; every further axis (a cube's planes, a Stokes axis) whole.</summary>
-    private static IReadOnlyList<AxisRange> AxesOf(LocalImage image, PixelBox box)
+    /// <summary>
+    /// The box on the two sky axes; the planes a band reaches on the spectral axis; every other axis (a
+    /// cube's planes when there is no band, a Stokes axis) whole.
+    /// </summary>
+    private static IReadOnlyList<AxisRange> AxesOf(LocalImage image, PixelBox box, (long Start, long Count)? planes)
     {
         var axes = new List<AxisRange> { new(box.X0 - 1, box.Width), new(box.Y0 - 1, box.Height) };
-        for (var n = 3; n <= image.Header.NAxis; n++) axes.Add(new AxisRange(0, image.Header.GetInt($"NAXIS{n}")));
+        for (var n = 3; n <= image.Header.NAxis; n++)
+            axes.Add(planes is { } p && image.Spectral?.Axis == n
+                ? new AxisRange(p.Start, p.Count)
+                : new AxisRange(0, image.Header.GetInt($"NAXIS{n}")));
         return axes;
+    }
+
+    /// <summary>", planes 12–40 of 128 (axis 3)" when a band cut the spectral axis; nothing otherwise.</summary>
+    private static string PlanesOf(ImageCut cut)
+    {
+        if (cut.Image.Spectral is not { } spectral) return "";
+        var range = cut.Axes[spectral.Axis - 1];
+        return range.Length == spectral.Length ? ""
+            : $", planes {range.Start + 1}-{range.Start + range.Length} of {spectral.Length} (axis {spectral.Axis})";
     }
 }

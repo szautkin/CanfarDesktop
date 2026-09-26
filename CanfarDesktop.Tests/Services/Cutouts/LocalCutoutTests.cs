@@ -368,6 +368,136 @@ public class LocalCutoutTests : IDisposable
         return Write(_dir, "hst_flt.fits", primary, Chip("SCI", 1), Chip("ERR", 1), Chip("SCI", 2), Chip("ERR", 2), table);
     }
 
+    // ── Cubes ────────────────────────────────────────────────────────────────
+
+    private const double C = 299_792_458.0;
+
+    /// <summary>A 30 × 20 × 60 cube on a frequency axis, 345.0 GHz up in 0.1 GHz channels; each voxel says where it is.</summary>
+    private LocalCutoutSource Cube(params string[] extra)
+    {
+        var cards = ImageCards(-32, primary: true, 30, 20, 60);
+        cards.AddRange(TanWcs(15.5, 10.5, 83.8, -5.4, Scale));
+        cards.AddRange([Text("CTYPE3", "FREQ"), Text("CUNIT3", "Hz"), Card("CRPIX3", 1.0), Card("CRVAL3", 345.0e9), Card("CDELT3", 1.0e8), .. extra]);
+        return Source(Write(_dir, "cube.fits", Hdu(cards, Pixels(-32, 30, 20, (x, y, z) => x + 100 * y + 10_000 * z, planes: 60))));
+    }
+
+    [Fact]
+    public void ACube_CanBeCutByWavelength_OverTheRangeItCovers()
+    {
+        var file = Cube().File;
+
+        Assert.True(file.Supports("BAND"));
+        Assert.Equal(C / (345.0e9 + 59.5e8), file.BandMin!.Value, 12);
+        Assert.Equal(C / (345.0e9 - 0.5e8), file.BandMax!.Value, 12);
+    }
+
+    /// <summary>
+    /// A box on the sky and a band: the planes the band reaches, the box on each — every voxel where it
+    /// was — and each plane still at its own frequency.
+    /// </summary>
+    [Fact]
+    public void ACubeCut_ByBoxAndBand_KeepsThosePlanes_AtTheirOwnFrequencies()
+    {
+        var source = Cube();
+        var spec = CircleAt(source, 15, 10, 4) with { BandMin = C / 348.95e9, BandMax = C / 347.95e9 }; // channels 31–40: 348.0–348.9 GHz
+
+        var (cut, plan) = Cut(source, spec);
+
+        var box = plan.Cuts.Single().Box;
+        var hdu = Layout(cut)[0];
+        Assert.Equal(10, hdu.Header.GetInt("NAXIS3"));
+        Assert.Equal(1.0 - 30, hdu.Header.GetDouble("CRPIX3"));
+        var after = CanfarDesktop.Models.Fits.SpectralAxis.Find(hdu.Header)!;
+        Assert.Equal(C / 348.0e9, after.WavelengthAt(1)!.Value, 15); // plane 1 of the cut is plane 31 of the cube
+        Assert.Contains("planes 31-40 of 60 (axis 3)", string.Join(" ", hdu.RawCards.Where(c => c.StartsWith("HISTORY")).Select(c => c[8..].Trim())));
+
+        var data = DataOf(cut, hdu);
+        float Voxel(int x, int y, int z) => System.Buffers.Binary.BinaryPrimitives.ReadSingleBigEndian(
+            data.AsSpan(((z * box.Height + y) * box.Width + x) * 4));
+        Assert.Equal(box.X0 - 1 + 100 * (box.Y0 - 1) + 10_000 * 30, Voxel(0, 0, 0));
+        Assert.Equal(box.X1 - 1 + 100 * (box.Y1 - 1) + 10_000 * 39, Voxel(box.Width - 1, box.Height - 1, 9));
+    }
+
+    [Fact]
+    public void ACubeCut_OnTheSkyAlone_KeepsEveryPlane()
+    {
+        var source = Cube();
+
+        var (cut, _) = Cut(source, CircleAt(source, 15, 10, 4));
+
+        Assert.Equal(60, Layout(cut)[0].Header.GetInt("NAXIS3"));
+        Assert.Equal(1.0, Layout(cut)[0].Header.GetDouble("CRPIX3"));
+    }
+
+    /// <summary>A band alone — no region — is the whole of each plane it reaches.</summary>
+    [Fact]
+    public void ABandAlone_CutsWholePlanes()
+    {
+        var source = Cube();
+        var spec = source.Bind(new CutoutSpec { BandMin = C / 345.25e9, BandMax = C / 344.95e9 }); // channels 1–3
+
+        Assert.True(source.Check(spec).IsValid);
+        var (cut, _) = Cut(source, spec);
+
+        var header = Layout(cut)[0].Header;
+        Assert.Equal((30, 20, 3), (header.NAxis1, header.NAxis2, header.GetInt("NAXIS3")));
+    }
+
+    [Fact]
+    public void ABandTheCubeDoesNotCover_IsRefused()
+    {
+        var source = Cube();
+        Assert.Contains("wavelength range is outside",
+            Assert.Single(source.Check(source.Bind(new CutoutSpec { BandMin = 1e-6, BandMax = 2e-6 })).Errors));
+    }
+
+    // ── Tile-compressed files ────────────────────────────────────────────────
+
+    /// <summary>
+    /// A MegaPrime-like .fz: a dataless primary, and a 16-bit CCD compressed in RICE_1 tiles that do not
+    /// divide the image evenly. Cut, it is a plain image whose every pixel is the one the viewer
+    /// decompresses — and whose header is the image's, not the table's.
+    /// </summary>
+    [Fact]
+    public void ARiceCompressedFile_IsCutToAPlainImage_OfTheSamePixels()
+    {
+        const int width = 40, height = 30;
+        var pixels = new short[width * height];
+        for (var y = 0; y < height; y++)
+            for (var x = 0; x < width; x++) pixels[y * width + x] = (short)(x * 17 + y * 5 - 300 + (x * y % 7));
+        var image = TanWcs(20.5, 15.5, 150.0, 2.2, Scale);
+        image.AddRange([Card("BZERO", 32768L), Card("BSCALE", 1L), Text("FILTER", "r.MP9602")]);
+        var path = Write(_dir, "1234567o.fits.fz",
+            Hdu([Card("SIMPLE", "T"), Card("BITPIX", 16L), Card("NAXIS", 0L), Card("EXTEND", "T"), Card("NEXTEND", 1L)]),
+            RiceCompressed(image, pixels, width, height, tileWidth: 16, tileHeight: 8));
+        var source = Source(path);
+        Assert.Null(source.Unavailable);
+
+        var (cut, plan) = Cut(source, CircleAt(source, 22, 14, 6));
+
+        var box = plan.Cuts.Single().Box;
+        var hdus = Layout(cut);
+        Assert.Equal(2, hdus.Count);
+        var header = hdus[1].Header;
+        Assert.Equal(("IMAGE", 16, 2, box.Width, box.Height), (header.GetString("XTENSION"), header.BitPix, header.NAxis, header.NAxis1, header.NAxis2));
+        Assert.Equal(32768, header.BZero);
+        Assert.Equal("r.MP9602", header.GetString("FILTER"));
+        Assert.Equal("ccd00", header.GetString("EXTNAME"));
+        Assert.DoesNotContain(hdus[1].RawCards, c => c.StartsWith("Z") || c.StartsWith("TFORM") || c.StartsWith("TTYPE") || c.StartsWith("TFIELDS"));
+        Assert.Equal(20.5 - (box.X0 - 1), header.GetDouble("CRPIX1"));
+
+        var data = DataOf(cut, hdus[1]);
+        for (var y = 0; y < box.Height; y++)
+            for (var x = 0; x < box.Width; x++)
+                Assert.Equal(pixels[(box.Y0 - 1 + y) * width + box.X0 - 1 + x],
+                    System.Buffers.Binary.BinaryPrimitives.ReadInt16BigEndian(data.AsSpan((y * box.Width + x) * 2)));
+
+        // And the viewer, decompressing the whole file its own way, sees the same pixels at the same place.
+        var viewed = FitsParser.Parse(File.OpenRead(path), availableMemory: long.MaxValue)[1].ImageData!;
+        var readBack = FitsParser.Parse(File.OpenRead(cut), availableMemory: long.MaxValue)[1].ImageData!;
+        Assert.Equal(viewed.Pixels[(box.Y0 - 1) * width + box.X0 - 1], readBack.Pixels[0]);
+    }
+
     // ── What cannot be cut, and why ──────────────────────────────────────────
 
     [Fact]
