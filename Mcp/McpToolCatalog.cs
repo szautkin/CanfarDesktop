@@ -266,6 +266,9 @@ public static class McpToolCatalog
             // Pointing a person at a control, and the vocabulary for doing it.
             new PointAtUiTool(request => viewState.PointAtUiAsync(request)),
             new ListUiTargetsTool((contains, collapsed) => viewState.ListUiTargetsAsync(contains, collapsed)),
+            // Settings, opened at a section so the pointer can guide the person through it — never set.
+            new OpenSettingsTool(section => viewState.OpenSettingsAsync(section)),
+            new CloseSettingsTool(() => viewState.CloseSettingsAsync()),
 
             // Looking at what the person is looking at, as opposed to writing a plate for a paper.
             new GetFitsImageTool(request => viewState.CaptureFitsAsync(request)),
@@ -423,7 +426,7 @@ public static class McpToolCatalog
         var noteStore = sp.GetRequiredService<ObservationNoteStore>();
         var sessions = sp.GetRequiredService<ISessionService>();
         var observations = sp.GetRequiredService<ObservationStore>();
-        var downloads = sp.GetRequiredService<ObservationDownloadService>();
+        var downloader = sp.GetRequiredService<ObservationDownloader>();
         var storage = sp.GetRequiredService<IStorageService>();
         var discovery = sp.GetRequiredService<ImageDiscoveryCoordinator>();
         var aiGuide = sp.GetRequiredService<AiGuideService>();
@@ -499,9 +502,9 @@ public static class McpToolCatalog
             new RenewSessionApplier(p => sessions.RenewSessionAsync(p.Id)),
 
             new DownloadObservationApplier((p, attribution) =>
-                DownloadObservationAsync(downloads, observations, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
+                DownloadObservationAsync(downloader, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
             new DownloadObservationsBulkApplier((p, attribution) =>
-                DownloadObservationAsync(downloads, observations, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
+                DownloadObservationAsync(downloader, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
             new DeleteDownloadedObservationApplier(p =>
             {
                 var match = observations.Find(p.Id);
@@ -564,39 +567,38 @@ public static class McpToolCatalog
         };
     }
 
-    /// <summary>Resolve an observation's FITS URL, stream it to ~/Downloads/Verbinal, and register it in Research.</summary>
+    /// <summary>
+    /// Download an observation to ~/Downloads/Verbinal and register it in Research — through the same
+    /// app-owned downloader a person's download uses, so an agent's shows in the status bar too.
+    ///
+    /// <para>Awaited, since the apply reports its outcome; not bounded by McpHost's apply backstop, and
+    /// deliberately so: a MegaPipe tile is 1.6 GB and takes minutes, which the backstop hands on to a
+    /// background job rather than calling a failure. A DEAD transfer is stopped by the downloader's
+    /// stall timeout instead.</para>
+    /// </summary>
     private static async Task DownloadObservationAsync(
-        ObservationDownloadService downloads, ObservationStore store, ICAOM2Service caom2,
+        ObservationDownloader downloader, ICAOM2Service caom2,
         string publisherId, int? artifactIndex, AgentAttribution? attribution = null)
     {
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Verbinal");
         Directory.CreateDirectory(dir);
         var localPath = Path.Combine(dir, SafeFileName(publisherId) + ".fits");
 
-        var url = await downloads.ResolveUrlAsync(publisherId, artifactIndex);
-        // Bounded below McpHost's apply backstop so a stuck download fails with its own error (and releases
-        // the apply gate) rather than tripping the generic apply timeout.
-        await downloads.DownloadToPathAsync(url, localPath, timeoutSeconds: 120);
-
-        var observation = new DownloadedObservation
-        {
-            PublisherID = publisherId, LocalPath = localPath, AgentAttribution = attribution,
-        };
-        var info = new FileInfo(localPath);
-        if (info.Exists) observation.FileSize = info.Length;
+        var observation = new DownloadedObservation { PublisherID = publisherId, AgentAttribution = attribution };
 
         // Populate research metadata from CAOM2 so an agent-downloaded record isn't bare (the UI fills
         // these from the search row; the MCP path otherwise leaves collection/target/instrument empty).
-        // Best-effort + bounded: a metadata failure (embargo/timeout/parse) must not lose the download.
+        // Best-effort + bounded, and done first so the record is whole before the download starts: a
+        // metadata failure (embargo/timeout/parse) must not stop the download.
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
             var meta = await caom2.GetByPublisherIdAsync(publisherId, cts.Token);
             if (meta.IsSuccess) PopulateFromCaom2(observation, meta.Observation);
         }
-        catch { /* keep the downloaded file even if metadata is unavailable */ }
+        catch { /* download without the metadata rather than not at all */ }
 
-        store.Save(observation);
+        await downloader.Start(new ObservationDownloadRequest(publisherId, localPath, observation, ArtifactIndex: artifactIndex));
     }
 
     /// <summary>

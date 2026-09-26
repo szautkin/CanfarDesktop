@@ -29,30 +29,34 @@ public sealed class NotebookSettingsPanel : UserControl
     {
         _loading = true;
 
-        _fontSizeBox = Combo("Font size", new object[] { 11, 12, 13, 14, 15, 16, 18, 20 }, 120);
+        // Every control is named, as x:Name would name it in XAML: a name is what an agent's
+        // point_at_ui finds a control by, and a header alone is not one. Unnamed, this whole
+        // section was invisible to list_ui_targets while every other Settings section was not.
+        _fontSizeBox = Combo("FontSizeCombo", "Font size", new object[] { 11, 12, 13, 14, 15, 16, 18, 20 }, 120);
         _fontSizeBox.SelectedItem = _settings.FontSize;
-        _tabSizeBox = Combo("Tab size (spaces)", new object[] { 2, 4, 8 }, 120);
+        _tabSizeBox = Combo("TabSizeCombo", "Tab size (spaces)", new object[] { 2, 4, 8 }, 120);
         _tabSizeBox.SelectedItem = _settings.TabSize;
 
-        _wordWrapToggle = new ToggleSwitch { Header = "Word wrap", IsOn = _settings.WordWrap };
+        _wordWrapToggle = new ToggleSwitch { Name = "WordWrapToggle", Header = "Word wrap", IsOn = _settings.WordWrap };
 
-        _autosaveToggle = new ToggleSwitch { Header = "Autosave enabled", IsOn = _settings.AutosaveEnabled };
-        _autosaveIntervalBox = Combo("Autosave interval", new object[] { "15 seconds", "30 seconds", "60 seconds", "120 seconds" }, 160);
+        _autosaveToggle = new ToggleSwitch { Name = "AutosaveToggle", Header = "Autosave enabled", IsOn = _settings.AutosaveEnabled };
+        _autosaveIntervalBox = Combo("AutosaveIntervalCombo", "Autosave interval", new object[] { "15 seconds", "30 seconds", "60 seconds", "120 seconds" }, 160);
         _autosaveIntervalBox.SelectedIndex = _settings.AutosaveIntervalSeconds switch { 15 => 0, 30 => 1, 60 => 2, 120 => 3, _ => 1 };
 
-        _timeoutBox = Combo("Execution timeout warning", new object[] { "30 seconds", "60 seconds", "120 seconds", "300 seconds", "Never" }, 160);
+        _timeoutBox = Combo("TimeoutCombo", "Execution timeout warning", new object[] { "30 seconds", "60 seconds", "120 seconds", "300 seconds", "Never" }, 160);
         _timeoutBox.SelectedIndex = _settings.ExecutionTimeoutSeconds switch { 30 => 0, 60 => 1, 120 => 2, 300 => 3, 0 => 4, _ => 1 };
         _pythonPathBox = new TextBox
         {
+            Name = "PythonPathBox",
             Header = "Python path (leave empty for auto-detect)",
             Text = _settings.PythonPath ?? string.Empty,
             PlaceholderText = "auto-detect",
             MinWidth = 300,
         };
 
-        _toolbarToggle = new ToggleSwitch { Header = "Show toolbar", IsOn = _settings.ShowToolbar };
+        _toolbarToggle = new ToggleSwitch { Name = "ToolbarToggle", Header = "Show toolbar", IsOn = _settings.ShowToolbar };
 
-        var logButton = new HyperlinkButton { Content = "Open log folder" };
+        var logButton = new HyperlinkButton { Name = "LogFolderLink", Content = "Open log folder" };
         logButton.Click += (_, _) => NotebookLogger.OpenLogFolder();
 
         var editorRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
@@ -104,9 +108,9 @@ public sealed class NotebookSettingsPanel : UserControl
         _settings.Save();
     }
 
-    private static ComboBox Combo(string header, object[] items, double minWidth)
+    private static ComboBox Combo(string name, string header, object[] items, double minWidth)
     {
-        var combo = new ComboBox { Header = header, MinWidth = minWidth };
+        var combo = new ComboBox { Name = name, Header = header, MinWidth = minWidth };
         foreach (var item in items) combo.Items.Add(item);
         return combo;
     }

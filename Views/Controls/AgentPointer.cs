@@ -230,6 +230,28 @@ public static class AgentPointer
     }
 
     /// <summary>The element behind an id, or null when it is no longer on screen.</summary>
+    /// <summary>
+    /// The dialog open over the window, if there is one. While it is, everything behind it is under its
+    /// smoke layer and cannot be clicked — so the dialog, not the window, is where a person can be
+    /// pointed.
+    /// </summary>
+    public static ContentDialog? OpenDialog(XamlRoot? root)
+        => root is null
+            ? null
+            : VisualTreeHelper.GetOpenPopupsForXamlRoot(root)
+                .Select(p => p.Child is ContentDialog d ? d : FirstDialog(p.Child, 0))
+                .FirstOrDefault(d => d is not null);
+
+    private static ContentDialog? FirstDialog(DependencyObject? node, int depth)
+    {
+        if (node is null || depth > 4) return null;
+        if (node is ContentDialog dialog) return dialog;
+        var children = VisualTreeHelper.GetChildrenCount(node);
+        for (var i = 0; i < children; i++)
+            if (FirstDialog(VisualTreeHelper.GetChild(node, i), depth + 1) is { } found) return found;
+        return null;
+    }
+
     public static FrameworkElement? Find(DependencyObject? root, string id)
     {
         if (root is null || string.IsNullOrWhiteSpace(id)) return null;

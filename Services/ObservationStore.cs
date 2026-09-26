@@ -27,6 +27,18 @@ public class ObservationStore
     public IReadOnlyList<DownloadedObservation> Observations { get { lock (_lock) return _observations.ToList(); } }
     public int Count { get { lock (_lock) return _observations.Count; } }
 
+    /// <summary>
+    /// Raised after every change, on whatever thread made it — often a download finishing in the
+    /// background, long after the screen that started it moved on. Subscribers marshal for themselves.
+    /// </summary>
+    public event Action? Changed;
+
+    private void RaiseChanged()
+    {
+        try { Changed?.Invoke(); }
+        catch { /* a broken subscriber must not undo the save it is being told about */ }
+    }
+
     public ObservationStore()
     {
         try
@@ -52,6 +64,7 @@ public class ObservationStore
             _observations.Insert(0, observation);
             WriteToDisk();
         }
+        RaiseChanged();
     }
 
     public void Remove(DownloadedObservation observation)
@@ -61,6 +74,7 @@ public class ObservationStore
             _observations.RemoveAll(o => o.Id == observation.Id);
             WriteToDisk();
         }
+        RaiseChanged();
     }
 
     public void Clear()
@@ -70,6 +84,7 @@ public class ObservationStore
             _observations.Clear();
             WriteToDisk();
         }
+        RaiseChanged();
     }
 
     /// <summary>A downloaded observation by any of the ids a caller is likely to hold.</summary>

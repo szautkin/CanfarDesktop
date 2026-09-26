@@ -13,7 +13,12 @@ public sealed record UiTarget(string Target, string Kind, string? Label);
 /// Sections that are folded shut, whose controls are not in <paramref name="Targets"/> unless the
 /// listing was asked to include them. Named so a listing never silently omits half a page.
 /// </param>
-public sealed record UiTargetListing(IReadOnlyList<UiTarget> Targets, IReadOnlyList<UiTarget> CollapsedSections);
+/// <param name="Dialog">
+/// The title of the dialog these controls are in, when one is open — Settings, say. The window behind
+/// an open dialog cannot be clicked, so its controls are not listed.
+/// </param>
+public sealed record UiTargetListing(
+    IReadOnlyList<UiTarget> Targets, IReadOnlyList<UiTarget> CollapsedSections, string? Dialog = null);
 
 /// <summary>What <c>point_at_ui</c> was asked for.</summary>
 /// <param name="UntilClosed">
@@ -133,7 +138,9 @@ public sealed class ListUiTargetsTool : JsonReadTool<ListUiTargetsTool.Args, Lis
         "changes as the app navigates — a control on a page that is not showing is not in the list, " +
         "because it is not somewhere a person can be sent. Sections that are folded shut are named " +
         "in collapsedSections and their controls left out; pass includeCollapsed to list those too " +
-        "(the sections open for a moment to be read and close again). Read-only.",
+        "(the sections open for a moment to be read and close again). While a dialog is open — Settings, " +
+        "opened with open_settings, say — the list is that dialog's controls and 'dialog' names it: the " +
+        "window behind a dialog cannot be clicked, so it is not where to point. Read-only.",
         """
         {"type":"object","properties":{
           "contains":{"type":"string","description":"Only targets whose name or words contain this."},
@@ -146,7 +153,7 @@ public sealed class ListUiTargetsTool : JsonReadTool<ListUiTargetsTool.Args, Lis
         var listing = await _list(
             string.IsNullOrWhiteSpace(args.Contains) ? null : args.Contains!.Trim(),
             args.IncludeCollapsed == true);
-        return new Result(listing.Targets.Count, listing.Targets, listing.CollapsedSections);
+        return new Result(listing.Targets.Count, listing.Targets, listing.CollapsedSections, listing.Dialog);
     }
 
     public sealed record Args
@@ -156,5 +163,5 @@ public sealed class ListUiTargetsTool : JsonReadTool<ListUiTargetsTool.Args, Lis
     }
 
     public sealed record Result(
-        int Count, IReadOnlyList<UiTarget> Targets, IReadOnlyList<UiTarget> CollapsedSections);
+        int Count, IReadOnlyList<UiTarget> Targets, IReadOnlyList<UiTarget> CollapsedSections, string? Dialog = null);
 }

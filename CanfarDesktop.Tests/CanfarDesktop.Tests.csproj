@@ -165,6 +165,7 @@
     <Compile Include="..\Services\CAOM2Service.cs" Link="Linked\CAOM2Service.cs" />
     <Compile Include="..\Models\DownloadedObservation.cs" Link="Linked\DownloadedObservation.cs" />
     <Compile Include="..\Services\ObservationStore.cs" Link="Linked\ObservationStore.cs" />
+    <Compile Include="..\Services\ObservationDownloader.cs" Link="Linked\ObservationDownloader.cs" />
     <Compile Include="..\Services\IStorageService.cs" Link="Linked\IStorageService.cs" />
     <Compile Include="..\Services\Export\IExportableModule.cs" Link="Linked\Export\IExportableModule.cs" />
     <Compile Include="..\Models\Export\ExportManifest.cs" Link="Linked\Export\ExportManifest.cs" />
@@ -204,6 +205,8 @@
     <Compile Include="..\Helpers\StorageFolder.cs" Link="Linked\StorageFolder.cs" />
     <Compile Include="..\Helpers\AccountScreens.cs" Link="Linked\AccountScreens.cs" />
     <Compile Include="..\Helpers\LineEndings.cs" Link="Linked\LineEndings.cs" />
+    <Compile Include="..\Helpers\SettingsSections.cs" Link="Linked\SettingsSections.cs" />
+    <Compile Include="..\Mcp\Tools\Write\SettingsViewTools.cs" Link="Linked\Mcp\SettingsViewTools.cs" />
     <Compile Include="..\Services\Fits\FitsGoto.cs" Link="Linked\Fits\FitsGoto.cs" />
     <Compile Include="..\Services\AICompute\ComputeSnapshot.cs" Link="Linked\AICompute\ComputeSnapshot.cs" />
     <Compile Include="..\Mcp\AgentScreens.cs" Link="Linked\Mcp\AgentScreens.cs" />
@@ -364,6 +367,8 @@
     <Compile Include="..\Services\Fits\ImageStretcher.cs" Link="Linked\Fits\ImageStretcher.cs" />
     <Compile Include="..\Services\Fits\ColormapProvider.cs" Link="Linked\Fits\ColormapProvider.cs" />
     <Compile Include="..\Services\Fits\FitsRenderer.cs" Link="Linked\Fits\FitsRenderer.cs" />
+    <Compile Include="..\Services\Fits\FitsDisplayRaster.cs" Link="Linked\Fits\FitsDisplayRaster.cs" />
+    <Compile Include="..\Services\Fits\FitsMemoryBudget.cs" Link="Linked\Fits\FitsMemoryBudget.cs" />
     <!-- Notebook execution services (Milestone 4) -->
     <Compile Include="..\Services\Notebook\KernelState.cs" Link="Linked\Notebook\KernelState.cs" />
     <Compile Include="..\Services\Notebook\IKernelService.cs" Link="Linked\Notebook\IKernelService.cs" />

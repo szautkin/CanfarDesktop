@@ -19,12 +19,16 @@ public sealed class StreamTransport : IMcpTransport, IAsyncDisposable
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _readLoop;
+    private readonly bool _ownsStreams;
 
-    public StreamTransport(Stream input, Stream output, FrameMode mode = FrameMode.Ndjson)
+    /// <param name="ownsStreams">Dispose the streams on close. For a connection that is replaced rather
+    /// than lasting the whole process — the bridge's pipe, redialled each time the app comes back.</param>
+    public StreamTransport(Stream input, Stream output, FrameMode mode = FrameMode.Ndjson, bool ownsStreams = false)
     {
         _input = input;
         _output = output;
         _mode = mode;
+        _ownsStreams = ownsStreams;
         _decoder = new FrameCodec.Decoder(mode);
         _readLoop = Task.Run(() => ReadLoopAsync(_cts.Token));
     }
@@ -53,7 +57,12 @@ public sealed class StreamTransport : IMcpTransport, IAsyncDisposable
         {
             while (!ct.IsCancellationRequested)
             {
-                var n = await _input.ReadAsync(buffer, ct);
+                // WaitAsync, because not every stream honours the token. Console stdin does not: its
+                // read blocks until the client writes or closes, so CloseAsync waited on it forever,
+                // and a bridge whose app had quit sat there holding its exe open until the client's
+                // next request woke it — which it then dropped unanswered. The abandoned read is
+                // harmless: this loop is its only reader, and it has stopped.
+                var n = await _input.ReadAsync(buffer, ct).AsTask().WaitAsync(ct);
                 if (n == 0) break; // EOF
                 _decoder.Append(buffer.AsSpan(0, n));
                 while (_decoder.TryReadFrame(out var frame))
@@ -75,6 +84,12 @@ public sealed class StreamTransport : IMcpTransport, IAsyncDisposable
         _cts.Cancel();
         _incoming.Writer.TryComplete();
         try { await _readLoop; } catch { /* shutting down */ }
+
+        if (_ownsStreams)
+        {
+            await _input.DisposeAsync();
+            if (!ReferenceEquals(_output, _input)) await _output.DisposeAsync();
+        }
     }
 
     public ValueTask DisposeAsync() => CloseAsync();

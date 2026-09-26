@@ -69,6 +69,32 @@ public sealed class McpHost : IAsyncDisposable
     private readonly HashSet<Guid> _applying = new();
     private readonly object _applyingGate = new();
 
+    /// <summary>Where an apply that outlives <see cref="ApplyTimeout"/> is reported from then on.</summary>
+    private JobRegistry? _jobs;
+
+    /// <summary>
+    /// Whether this proposal's write is running right now — including one that outlived the backstop
+    /// and carries on in the background. The proposal strip shows such a row as busy rather than
+    /// offering Apply on something already applying.
+    /// </summary>
+    public bool IsApplying(Guid proposalId)
+    {
+        lock (_applyingGate) return _applying.Contains(proposalId);
+    }
+
+    /// <summary>
+    /// What holds the apply gate, quoted, for the "queue busy" message — so it says which write is in
+    /// the way rather than that one is. Null when none is recorded.
+    /// </summary>
+    private string? Applying()
+    {
+        Guid[] ids;
+        lock (_applyingGate) ids = _applying.ToArray();
+        return ids.Select(id => _proposals?.Get(id)?.Summary).FirstOrDefault(s => s is not null) is { } summary
+            ? $"\"{summary}\""
+            : null;
+    }
+
     /// <summary>User-initiated reject from the proposal strip. Returns false when the proposal is no
     /// longer pending or its apply is already in flight (the write can't be stopped midway).</summary>
     public bool RejectProposal(Guid proposalId)
@@ -136,6 +162,7 @@ public sealed class McpHost : IAsyncDisposable
         // start_background_apply needs the store and the appliers, which are the host's rather than the
         // catalogue's — so it is added here, where both exist, rather than taking them through DI and
         // having two ideas of which store is the live one.
+        _jobs = _services.GetService<JobRegistry>();
         if (tools is List<IMcpTool> mutable)
         {
             var runner = new BackgroundApplyRunner(proposals, registry, _services.GetRequiredService<JobRegistry>());
@@ -200,9 +227,16 @@ public sealed class McpHost : IAsyncDisposable
         var applier = _registry?.ApplierFor(proposal.Kind)
             ?? throw ProposalApplyException.NoApplierForKind(proposal.Kind);
 
+        // Already applying means waiting for the gate is waiting for ITSELF. An Apply clicked on a
+        // download still running past the backstop sat on a spinner for the whole gate wait, then
+        // reported the queue busy — busy with that very download — and left the row looking refused.
+        if (IsApplying(proposalId))
+            throw ProposalApplyException.BackendError(
+                "it is already applying; it leaves this list by itself when it finishes");
+
         if (!await _applyGate.WaitAsync(ApplyGateWait))
             throw ProposalApplyException.BackendError(
-                "the apply queue is busy (another write is still applying); try again shortly");
+                $"the apply queue is busy ({Applying() ?? "another write"} is still applying); try again shortly");
 
         // Re-check under the gate: a user Apply click can queue behind an auto-apply of the SAME
         // proposal (or a reject) — running the applier again would duplicate the write.
@@ -212,6 +246,7 @@ public sealed class McpHost : IAsyncDisposable
             throw ProposalApplyException.BackendError("proposal no longer pending (already applied or rejected)");
         }
         lock (_applyingGate) _applying.Add(proposalId);
+        ProposalsChanged?.Invoke(); // the strip shows the row as applying, whoever started it
 
         var applyCts = new CancellationTokenSource(ApplyTimeout);
         var applyTask = applier.ApplyAsync(proposal, applyCts.Token);
@@ -223,17 +258,37 @@ public sealed class McpHost : IAsyncDisposable
             if (completed != applyTask)
             {
                 // The apply blew the backstop. Cancel it and hold the gate until it actually
-                // unwinds, so the next apply can't race the same store; report a typed timeout now.
+                // unwinds, so the next apply can't race the same store.
+                //
+                // An applier that honours the cancel stops. One that runs on — a large observation
+                // download, deliberately — is still doing the write it was asked for, so from here it
+                // is a background job: get_job_status follows it, and when it lands the proposal is
+                // marked applied. It used to stay Pending looking refused while the file sat in
+                // Research, inviting a second Apply that would fetch the whole thing again.
                 applyCts.Cancel();
+                var jobId = proposalId.ToString();
+                _jobs?.Start(jobId, proposal.Kind, proposal.Summary);
                 _ = applyTask.ContinueWith(
-                    _ =>
+                    t =>
                     {
                         applyCts.Dispose();
+
+                        // Marked before it leaves _applying, so a reject cannot slip in between.
+                        var landed = t.IsCompletedSuccessfully && proposals.MarkApplied(proposalId);
+                        _jobs?.Finish(jobId, t.IsCompletedSuccessfully,
+                            t.Exception?.GetBaseException().Message ?? (t.IsCanceled ? "cancelled" : null));
+
                         lock (_applyingGate) _applying.Remove(proposalId);
                         _applyGate.Release();
+
+                        // No FollowActivity: navigating the person minutes after the fact, away from
+                        // whatever they have moved on to, is not following the agent.
+                        if (landed) Activity.Append(AgentActivityEntry.Applied(proposal, autoApplied, DateTimeOffset.UtcNow));
+                        ProposalsChanged?.Invoke();
                     }, TaskScheduler.Default);
                 throw ProposalApplyException.BackendError(
-                    $"apply timed out after {ApplyTimeout.TotalSeconds:0}s");
+                    $"still applying after {ApplyTimeout.TotalSeconds:0}s. It carries on and is marked applied " +
+                    $"if it finishes — get_job_status with id {jobId} follows it. Do not apply it again.");
             }
         }
 
@@ -248,6 +303,7 @@ public sealed class McpHost : IAsyncDisposable
             applyCts.Dispose();
             lock (_applyingGate) _applying.Remove(proposalId);
             _applyGate.Release();
+            ProposalsChanged?.Invoke();
         }
 
         // MarkApplied returns false when the proposal resolved some other way while the applier

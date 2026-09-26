@@ -271,6 +271,10 @@ public partial class App : Application
         services.AddSingleton<ITapSchemaService, TapSchemaService>();
         services.AddHttpClient<DataLinkService>();
         services.AddTransient<ObservationDownloadService>(); // shared resolve-URL + atomic download core
+        // Owns observation downloads for the app's life, so closing the screen that started one does
+        // not end it; progress and outcome go to the status bar.
+        services.AddSingleton(sp => new ObservationDownloader(
+            () => sp.GetRequiredService<ObservationDownloadService>(), sp.GetRequiredService<ObservationStore>()));
 
         // Export bundle (Research + Search → Claude-friendly bundle)
         services.AddSingleton<CanfarDesktop.Services.Export.ExportService>();

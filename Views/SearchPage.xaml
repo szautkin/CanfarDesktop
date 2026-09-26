@@ -347,19 +347,18 @@
                                           SelectionChanged="OnRowsPerPageChanged" />
                             </StackPanel>
                         </StackPanel>
-                        <!-- Download progress — overlaid on the bottom of the results list so
-                             showing/hiding it never reflows the rows underneath. -->
+                        <!-- Short notices (a download started, a search loaded, an export failed) —
+                             overlaid on the bottom of the results list so showing/hiding it never
+                             reflows the rows underneath. A download's PROGRESS is in the status bar,
+                             which outlives this page. -->
                         <InfoBar x:Name="DownloadInfoBar" Grid.Row="2"
                                  VerticalAlignment="Bottom" Canvas.ZIndex="10"
                                  IsOpen="False" IsClosable="True"
                                  Severity="Informational" Title="Downloading..."
                                  Margin="0,4,0,0">
                             <InfoBar.Content>
-                                <StackPanel Spacing="4">
-                                    <ProgressBar x:Name="DownloadProgressBar" Minimum="0" Maximum="100" />
-                                    <TextBlock x:Name="DownloadProgressText"
-                                               Style="{StaticResource CaptionTextBlockStyle}" />
-                                </StackPanel>
+                                <TextBlock x:Name="DownloadProgressText"
+                                           Style="{StaticResource CaptionTextBlockStyle}" />
                             </InfoBar.Content>
                         </InfoBar>
                     </Grid>

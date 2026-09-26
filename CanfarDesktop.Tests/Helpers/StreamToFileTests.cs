@@ -118,6 +118,89 @@ public class StreamToFileTests : IDisposable
         Assert.Equal("before", File.ReadAllText(path));
     }
 
+    // ── Stalls ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A transfer that goes quiet fails, and fails as a stall. The observation download relied on a
+    /// "120 s" that only covered the response starting, so a dead body held the agent's apply gate —
+    /// and every other write behind it — for as long as the connection stayed open.
+    /// </summary>
+    [Fact]
+    public async Task AStalledTransfer_FailsAsATimeout_AndLeavesTheExistingFileIntact()
+    {
+        var path = Path_("stalled.bin");
+        File.WriteAllText(path, "before");
+
+        var ex = await Assert.ThrowsAsync<TimeoutException>(() =>
+            StreamToFile.WriteAsync(new StallingStream(chunks: 2), path, stallTimeout: TimeSpan.FromMilliseconds(200)));
+
+        Assert.Contains("stalled", ex.Message);
+        Assert.Equal("before", File.ReadAllText(path));
+    }
+
+    /// <summary>
+    /// The limit is on SILENCE, not on the transfer: one that keeps arriving runs as long as it needs.
+    /// A total would have to choose between cutting off a 1.6 GB tile and never catching a dead one.
+    /// </summary>
+    [Fact]
+    public async Task ATransferThatKeepsArriving_OutlastsTheStallTimeout()
+    {
+        var path = Path_("slow-but-alive.bin");
+
+        // Ten chunks 50 ms apart: half a second in all, well past the 200 ms limit, none of it silent.
+        var written = await StreamToFile.WriteAsync(
+            new StallingStream(chunks: 10, gap: TimeSpan.FromMilliseconds(50), thenEnd: true), path,
+            stallTimeout: TimeSpan.FromMilliseconds(200));
+
+        Assert.Equal(10 * StallingStream.ChunkSize, written);
+    }
+
+    /// <summary>The caller's cancel is still a cancel, not a stall.</summary>
+    [Fact]
+    public async Task CancellingDuringAStall_IsACancel()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            StreamToFile.WriteAsync(new StallingStream(chunks: 1), Path_("cancel.bin"),
+                ct: cts.Token, stallTimeout: TimeSpan.FromSeconds(30)));
+    }
+
+    /// <summary>
+    /// Hands out <c>chunks</c> chunks, <c>gap</c> apart, then either ends or goes silent until
+    /// cancelled — a connection that stops sending without closing.
+    /// </summary>
+    private sealed class StallingStream(int chunks, TimeSpan? gap = null, bool thenEnd = false) : Stream
+    {
+        public const int ChunkSize = 1024;
+        private int _sent;
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+        {
+            if (_sent >= chunks)
+            {
+                if (thenEnd) return 0;
+                await Task.Delay(Timeout.Infinite, ct);
+            }
+            if (gap is { } wait) await Task.Delay(wait, ct);
+            _sent++;
+            var n = Math.Min(ChunkSize, buffer.Length);
+            buffer.Span[..n].Fill((byte)'s');
+            return n;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => 0; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     // ── The caller's own policy ──────────────────────────────────────────────
 
     /// <summary>

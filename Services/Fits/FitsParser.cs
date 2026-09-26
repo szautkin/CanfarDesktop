@@ -26,6 +26,9 @@ public static class FitsParser
     private const int BlockSize = 2880;
     private const int CardSize = 80;
 
+    /// <summary>How much raw image data is read at a time: 4 MB, a whole number of pixels at any BITPIX.</summary>
+    private const int ChunkBytes = 4 * 1024 * 1024;
+
     /// <summary>
     /// Parse all HDUs from a FITS file stream. Only reads image data for HDUs with NAXIS >= 2.
     /// </summary>
@@ -34,7 +37,10 @@ public static class FitsParser
     /// of them and each is decompressed in turn; without this the whole read is one opaque call and
     /// the viewer can only spin.
     /// </param>
-    public static List<FitsHdu> Parse(Stream stream, IProgress<Helpers.FitsParseProgress>? progress = null)
+    /// <param name="availableMemory">Free memory to judge a large image against; null asks the
+    /// machine (<see cref="FitsMemoryBudget"/>). Given by tests, so the answer does not depend on them.</param>
+    public static List<FitsHdu> Parse(
+        Stream stream, IProgress<Helpers.FitsParseProgress>? progress = null, long? availableMemory = null)
     {
         ArgumentNullException.ThrowIfNull(stream);
         var hdus = new List<FitsHdu>();
@@ -60,15 +66,8 @@ public static class FitsParser
                 const long maxCompressedBytes = 512L * 1024 * 1024;
                 if (FitsRice.CanDecompress(header) && dataBytes > 0 && dataBytes <= maxCompressedBytes)
                 {
-                    var aligned = AlignToBlock(dataBytes);
-                    var buffer = new byte[aligned];
-                    var read = 0;
-                    while (read < aligned)
-                    {
-                        var n = stream.Read(buffer, read, (int)(aligned - read));
-                        if (n == 0) break;
-                        read += n;
-                    }
+                    var buffer = new byte[AlignToBlock(dataBytes)];
+                    var read = ReadFully(stream, buffer, buffer.Length);
                     if (read < dataBytes)
                     {
                         // Truncated compressed HDU: degrade like the old skip path (EOF-tolerant)
@@ -107,7 +106,7 @@ public static class FitsParser
                 // the cube viewer handles the rest. But the parser must still advance past ALL planes
                 // so the next HDU starts at the right offset — otherwise planes 2..N are misread as a
                 // header and blow the max-header-size guard.
-                imageData = ReadImageData(stream, header);
+                imageData = ReadImageData(stream, header, availableMemory);
                 hasReadableImage = true;
                 var hduDataBytes = AlignToBlock(CalculateDataSize(header));
                 var consumed = stream.Position - dataStart;
@@ -181,7 +180,7 @@ public static class FitsParser
         {
             if (++blockCount > maxHeaderBlocks)
                 throw new InvalidDataException("FITS header exceeds maximum allowed size.");
-            var bytesRead = stream.Read(buffer, 0, BlockSize);
+            var bytesRead = ReadFully(stream, buffer, BlockSize);
             if (bytesRead < BlockSize) return header.Cards.Count > 0 ? header : null;
 
             for (var i = 0; i < BlockSize; i += CardSize)
@@ -252,7 +251,8 @@ public static class FitsParser
     /// Read image data from the stream based on the header's BITPIX, NAXIS1, NAXIS2.
     /// Applies BSCALE/BZERO to produce physical float values.
     /// </summary>
-    public static FitsImageData ReadImageData(Stream stream, FitsHeader header)
+    /// <param name="availableMemory">See <see cref="Parse"/>.</param>
+    public static FitsImageData ReadImageData(Stream stream, FitsHeader header, long? availableMemory = null)
     {
         var width = header.NAxis1;
         var height = header.NAxis2;
@@ -262,46 +262,63 @@ public static class FitsParser
         var pixelCount = (long)width * height;
         if (pixelCount > int.MaxValue)
             throw new NotSupportedException($"Image too large: {width}x{height} ({pixelCount} pixels)");
+        if (bitpix is not (8 or 16 or 32 or -32 or -64))
+            throw new NotSupportedException($"Unsupported BITPIX: {bitpix}");
+
+        // Judged on what the pixels take in MEMORY — four bytes each, whatever the file stores — and
+        // before anything is allocated. Under the floor there is nothing to ask the machine.
+        var pixelBytes = pixelCount * sizeof(float);
+        if (pixelBytes > FitsMemoryBudget.Floor
+            && FitsMemoryBudget.Refusal(width, height, pixelBytes,
+                availableMemory ?? FitsMemoryBudget.AvailableBytes()) is { } refusal)
+            throw new NotSupportedException(refusal);
 
         var bytesPerPixel = Math.Abs(bitpix) / 8;
         var dataSize = pixelCount * bytesPerPixel;
-        const long maxDataBytes = 512L * 1024 * 1024; // 512 MB cap
-        if (dataSize > maxDataBytes)
-            throw new NotSupportedException($"Image data too large ({dataSize / (1024 * 1024)} MB, max {maxDataBytes / (1024 * 1024)} MB)");
-        var alignedSize = (int)AlignToBlock(dataSize);
-
-        var rawBuffer = new byte[alignedSize];
-        var bytesRead = stream.Read(rawBuffer, 0, alignedSize);
-        if (bytesRead < dataSize)
-            throw new InvalidDataException($"FITS data truncated: expected {dataSize} bytes, got {bytesRead}");
-
         var pixels = new float[(int)pixelCount];
         var min = float.MaxValue;
         var max = float.MinValue;
 
-        for (var i = 0; i < pixelCount; i++)
+        // Converted as it is read, a chunk at a time. Reading the raw bytes whole first doubled what a
+        // load needed — 3.3 GB at its peak for a 1.6 GB tile — for bytes that are dead as soon as they
+        // are converted. The block padding after the data is left for the caller, which skips to the
+        // next HDU by position.
+        var chunk = new byte[ChunkBytes];
+        var chunkPixels = ChunkBytes / bytesPerPixel;
+        for (long done = 0; done < pixelCount;)
         {
-            var offset = i * bytesPerPixel;
-            float raw = bitpix switch
-            {
-                8 => rawBuffer[offset],
-                16 => BinaryPrimitives.ReadInt16BigEndian(rawBuffer.AsSpan(offset)),
-                32 => BinaryPrimitives.ReadInt32BigEndian(rawBuffer.AsSpan(offset)),
-                -32 => BinaryPrimitives.ReadSingleBigEndian(rawBuffer.AsSpan(offset)),
-                -64 => (float)BinaryPrimitives.ReadDoubleBigEndian(rawBuffer.AsSpan(offset)),
-                _ => throw new NotSupportedException($"Unsupported BITPIX: {bitpix}")
-            };
+            var count = (int)Math.Min(chunkPixels, pixelCount - done);
+            var wanted = count * bytesPerPixel;
+            var got = ReadFully(stream, chunk, wanted);
+            if (got < wanted)
+                throw new InvalidDataException(
+                    $"FITS data truncated: expected {dataSize} bytes, got {done * bytesPerPixel + got}");
 
-            var physical = (float)(bzero + bscale * raw);
-
-            // Exclude NaN/Inf from min/max
-            if (float.IsFinite(physical))
+            for (var i = 0; i < count; i++)
             {
-                if (physical < min) min = physical;
-                if (physical > max) max = physical;
+                var offset = i * bytesPerPixel;
+                float raw = bitpix switch
+                {
+                    8 => chunk[offset],
+                    16 => BinaryPrimitives.ReadInt16BigEndian(chunk.AsSpan(offset)),
+                    32 => BinaryPrimitives.ReadInt32BigEndian(chunk.AsSpan(offset)),
+                    -32 => BinaryPrimitives.ReadSingleBigEndian(chunk.AsSpan(offset)),
+                    _ => (float)BinaryPrimitives.ReadDoubleBigEndian(chunk.AsSpan(offset)),
+                };
+
+                var physical = (float)(bzero + bscale * raw);
+
+                // Exclude NaN/Inf from min/max
+                if (float.IsFinite(physical))
+                {
+                    if (physical < min) min = physical;
+                    if (physical > max) max = physical;
+                }
+
+                pixels[done + i] = physical;
             }
 
-            pixels[i] = physical;
+            done += count;
         }
 
         if (min == float.MaxValue) { min = 0; max = 1; } // all NaN edge case
@@ -338,6 +355,23 @@ public static class FitsParser
 
     private static long AlignToBlock(long size) =>
         size <= 0 ? 0 : ((size + BlockSize - 1) / BlockSize) * BlockSize;
+
+    /// <summary>
+    /// Read <paramref name="count"/> bytes, or as many as there are before the end. One Read is not
+    /// that: a stream may return fewer bytes than asked while more are coming, and a decompressing
+    /// one routinely does — which the image path took for a truncated file.
+    /// </summary>
+    private static int ReadFully(Stream stream, byte[] buffer, int count)
+    {
+        var read = 0;
+        while (read < count)
+        {
+            var n = stream.Read(buffer, read, count - read);
+            if (n == 0) break;
+            read += n;
+        }
+        return read;
+    }
 
     private static void SkipBytes(Stream stream, long count)
     {

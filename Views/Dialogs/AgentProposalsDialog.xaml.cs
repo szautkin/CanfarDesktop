@@ -54,9 +54,13 @@ public sealed partial class AgentProposalsDialog : ContentDialog
         // Preserve rows that are mid-apply so their busy state survives the refresh.
         var existing = (PendingList.ItemsSource as IEnumerable<ProposalRow>)?.ToDictionary(r => r.Proposal.Id)
                        ?? new Dictionary<Guid, ProposalRow>();
-        PendingList.ItemsSource = pending
+        var rows = pending
             .Select(p => existing.TryGetValue(p.Id, out var row) ? row : new ProposalRow(p))
             .ToList();
+        // Applying whoever started it: an auto-apply, or one carried on past the host's backstop. The
+        // row shows the spinner then, not an Apply button that could only queue behind itself.
+        foreach (var row in rows) row.IsApplying = _host.IsApplying(row.Proposal.Id);
+        PendingList.ItemsSource = rows;
         PendingEmptyState.Visibility = pending.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         PendingTab.Header = pending.Count > 0
             ? Helpers.Loc.F("Proposals_PendingCountTab", pending.Count)
@@ -73,7 +77,7 @@ public sealed partial class AgentProposalsDialog : ContentDialog
 
     private async void OnApplyClick(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is not ProposalRow row || row.IsBusy) return;
+        if ((sender as FrameworkElement)?.DataContext is not ProposalRow row || row.IsBusy || row.IsApplying) return;
         row.IsBusy = true;
         row.Error = null;
         try
@@ -97,7 +101,7 @@ public sealed partial class AgentProposalsDialog : ContentDialog
 
     private void OnRejectClick(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is not ProposalRow row || row.IsBusy) return;
+        if ((sender as FrameworkElement)?.DataContext is not ProposalRow row || row.IsBusy || row.IsApplying) return;
         if (!_host.RejectProposal(row.Proposal.Id))
             row.Error = Helpers.Loc.T("Proposals_NoLongerPending");
     }
@@ -129,6 +133,22 @@ public sealed class ProposalRow : INotifyPropertyChanged
             if (_isBusy == value) return;
             _isBusy = value;
             Raise(nameof(IsBusy));
+            Raise(nameof(Spinning));
+            Raise(nameof(BusyVisibility));
+            Raise(nameof(ButtonsVisibility));
+        }
+    }
+
+    private bool _isApplying;
+    /// <summary>The host is applying it — not this row's click, so it survives closing the dialog.</summary>
+    public bool IsApplying
+    {
+        get => _isApplying;
+        set
+        {
+            if (_isApplying == value) return;
+            _isApplying = value;
+            Raise(nameof(Spinning));
             Raise(nameof(BusyVisibility));
             Raise(nameof(ButtonsVisibility));
         }
@@ -147,8 +167,9 @@ public sealed class ProposalRow : INotifyPropertyChanged
         }
     }
 
-    public Visibility BusyVisibility => IsBusy ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility ButtonsVisibility => IsBusy ? Visibility.Collapsed : Visibility.Visible;
+    public bool Spinning => IsBusy || IsApplying;
+    public Visibility BusyVisibility => Spinning ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ButtonsVisibility => IsBusy || IsApplying ? Visibility.Collapsed : Visibility.Visible;
     public Visibility ErrorVisibility => string.IsNullOrEmpty(Error) ? Visibility.Collapsed : Visibility.Visible;
 
     public event PropertyChangedEventHandler? PropertyChanged;

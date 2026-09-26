@@ -186,6 +186,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
         _viewState.SetAnnotationExportAction(ExportAnnotationsActionAsync);
         _viewState.SetUiPointerActions(PointAtUiActionAsync, ListUiTargetsActionAsync);
+        _viewState.SetSettingsActions(OpenSettingsActionAsync, CloseSettingsActionAsync);
         _viewState.SetRemoteComputeActions(ShowComputeRunActionAsync, SetComputeSnippetActionAsync, GetComputeViewActionAsync);
         _viewState.SetStorageFolderAction(ShowStorageFolderActionAsync);
         Views.Controls.AgentPointer.AllClosed += _viewState.NotifyHintsDismissed;
@@ -1838,23 +1839,24 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         CanfarDesktop.Mcp.Tools.Write.UiPointRequest request)
         => OnUi(() =>
         {
-            var targets = Views.Controls.AgentPointer.Targets(Content);
+            var (root, host, _) = PointerScope();
+            var targets = Views.Controls.AgentPointer.Targets(root);
 
             if (targets.Count == 0)
                 return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
                     false, request.Target, "nothing is on screen to point at yet");
 
             var id = Helpers.UiPointer.Best(targets, request.Target);
-            var element = id is null ? null : Views.Controls.AgentPointer.Find(Content, id);
+            var element = id is null ? null : Views.Controls.AgentPointer.Find(root, id);
 
             // Not among what is showing — but it may be on this page, folded inside a closed section.
             // Those are opened to look, and closed again if the name still lands on nothing.
-            element ??= Views.Controls.AgentPointer.WithCollapsedOpen(Content, () =>
+            element ??= Views.Controls.AgentPointer.WithCollapsedOpen(root, () =>
             {
-                var widened = Views.Controls.AgentPointer.Targets(Content);
+                var widened = Views.Controls.AgentPointer.Targets(root);
                 if (Helpers.UiPointer.Best(widened, request.Target) is not { } hidden) return null;
                 id = hidden;
-                return Views.Controls.AgentPointer.Find(Content, hidden);
+                return Views.Controls.AgentPointer.Find(root, hidden);
             });
 
             // Nothing, or two things equally: either way the caller gets the list rather than a guess.
@@ -1865,7 +1867,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                     Describe(Helpers.UiPointer.Suggest(targets, request.Target)));
 
             var showing = Views.Controls.AgentPointer.Show(
-                AgentPointerHost, element, request.Title, request.Message,
+                host, element, request.Title, request.Message,
                 request.UntilClosed ? null : Helpers.UiPointer.Seconds(request.Seconds));
 
             return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
@@ -1876,12 +1878,14 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         string? contains, bool includeCollapsed)
         => OnUi(() =>
         {
+            var (root, _, dialog) = PointerScope();
+
             // Read before anything is opened, so the listing reports the page as the person sees it.
-            var collapsed = Views.Controls.AgentPointer.CollapsedSections(Content);
+            var collapsed = Views.Controls.AgentPointer.CollapsedSections(root);
 
             var targets = includeCollapsed
-                ? Views.Controls.AgentPointer.TargetsIncludingCollapsed(Content)
-                : Views.Controls.AgentPointer.Targets(Content);
+                ? Views.Controls.AgentPointer.TargetsIncludingCollapsed(root)
+                : Views.Controls.AgentPointer.Targets(root);
 
             if (!string.IsNullOrWhiteSpace(contains))
             {
@@ -1892,8 +1896,49 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                     .ToList();
             }
 
-            return new CanfarDesktop.Mcp.Tools.Write.UiTargetListing(Describe(targets), Describe(collapsed));
+            return new CanfarDesktop.Mcp.Tools.Write.UiTargetListing(Describe(targets), Describe(collapsed), dialog);
         }, new CanfarDesktop.Mcp.Tools.Write.UiTargetListing([], []));
+
+    /// <summary>
+    /// Where the person can look and click right now: an open dialog when there is one — the window
+    /// behind it is under its smoke layer — otherwise the window. A hint about a control in a dialog is
+    /// hosted in the dialog when it has a host, so it sits above it and closes with it.
+    /// </summary>
+    private (DependencyObject Root, Panel Host, string? Dialog) PointerScope()
+        => Views.Controls.AgentPointer.OpenDialog(Content.XamlRoot) is { } dialog
+            ? (dialog, dialog.FindName("AgentPointerHost") as Panel ?? AgentPointerHost, dialog.Title as string ?? "a dialog")
+            : (Content, AgentPointerHost, null);
+
+    // ── Settings, for an agent to show the person ──
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.SettingsShown> OpenSettingsActionAsync(string? section)
+        => OnUiAsync(async () =>
+        {
+            if (Views.Dialogs.SettingsDialog.Current is { } open)
+            {
+                if (section is not null) open.ShowSection(section);
+                return new CanfarDesktop.Mcp.Tools.Write.SettingsShown(true, open.Section);
+            }
+
+            // One dialog at a time is WinUI's rule, and the one open is the person's business.
+            if (Views.Controls.AgentPointer.OpenDialog(Content.XamlRoot) is { } other)
+                return new CanfarDesktop.Mcp.Tools.Write.SettingsShown(false, null,
+                    $"another dialog is open (\"{other.Title as string ?? "a dialog"}\") — only one can be open " +
+                    "at a time, so the person needs to close it first");
+
+            var dialog = await Views.Dialogs.SettingsDialog.OpenAsync(Content.XamlRoot, ShowTermsViewerAsync, section ?? "general");
+            return new CanfarDesktop.Mcp.Tools.Write.SettingsShown(true, dialog.Section);
+        }, new CanfarDesktop.Mcp.Tools.Write.SettingsShown(false, section, "could not dispatch to UI"));
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.SettingsShown> CloseSettingsActionAsync()
+        => OnUi(() =>
+        {
+            if (Views.Dialogs.SettingsDialog.Current is not { } open)
+                return new CanfarDesktop.Mcp.Tools.Write.SettingsShown(false, null, "Settings was not open");
+
+            open.Hide();
+            return new CanfarDesktop.Mcp.Tools.Write.SettingsShown(false, null);
+        }, new CanfarDesktop.Mcp.Tools.Write.SettingsShown(false, null, "could not dispatch to UI"));
 
     private static IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.UiTarget> Describe(
         IReadOnlyList<Helpers.UiPointer.Target> targets)

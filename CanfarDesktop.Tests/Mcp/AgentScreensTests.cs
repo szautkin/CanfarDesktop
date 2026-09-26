@@ -32,6 +32,8 @@ public class AgentScreensTests
     [InlineData("show_compute_run")]
     [InlineData("set_compute_snippet")]
     [InlineData("show_storage_folder")]
+    [InlineData("open_settings")]
+    [InlineData("close_settings")]
     [InlineData("describe_app")]
     public void ToolsThatNavigateThemselvesOrConcernNoScreenMoveNothing(string tool)
         => Assert.Null(AgentScreens.For(tool));

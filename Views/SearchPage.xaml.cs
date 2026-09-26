@@ -15,7 +15,7 @@ public sealed partial class SearchPage : Page
     public SearchViewModel ViewModel { get; }
     private readonly DataLinkService _dataLinkService;
     private readonly ObservationStore _observationStore;
-    private readonly ObservationDownloadService _downloads;
+    private readonly ObservationDownloader _downloader;
     private readonly DataTrainManager _dataTrainMgr = new();
     private bool _dataTrainLoaded;
 
@@ -27,12 +27,12 @@ public sealed partial class SearchPage : Page
     public event Action<string>? ObservationDetailRequested;
 
     public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService, ObservationStore observationStore,
-                      ObservationDownloadService downloads, ITapSchemaService tapSchema)
+                      ObservationDownloader downloader, ITapSchemaService tapSchema)
     {
         ViewModel = viewModel;
         _dataLinkService = dataLinkService;
         _observationStore = observationStore;
-        _downloads = downloads;
+        _downloader = downloader;
         _tapSchema = tapSchema;
         InitializeComponent();
 
@@ -317,13 +317,9 @@ public sealed partial class SearchPage : Page
     /// <summary>Transient "we loaded your pick" confirmation in the shared info bar.</summary>
     private void ShowLoadedFeedback(string title)
     {
-        // Skipped while a download is streaming: bumping the shared sequence would hijack and
-        // auto-close the download's progress bar, eating its completion message.
-        if (DownloadInfoBar.IsOpen && DownloadProgressBar.Visibility == Visibility.Visible) return;
         var seq = ++_downloadOpSeq;
         DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
         DownloadInfoBar.Title = title;
-        DownloadProgressBar.Visibility = Visibility.Collapsed;
         DownloadProgressText.Text = string.Empty;
         DownloadInfoBar.IsOpen = true;
         ScheduleDownloadBarReset(seq, 4000);
@@ -963,7 +959,6 @@ public sealed partial class SearchPage : Page
         {
             if (seq != _downloadOpSeq) return;
             DownloadInfoBar.IsOpen = false;
-            DownloadProgressBar.Visibility = Visibility.Visible;
         }));
     }
 
@@ -972,7 +967,6 @@ public sealed partial class SearchPage : Page
         var seq = ++_downloadOpSeq;
         DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Error;
         DownloadInfoBar.Title = title;
-        DownloadProgressBar.Visibility = Visibility.Collapsed;
         DownloadProgressText.Text = message;
         DownloadInfoBar.IsOpen = true;
         ScheduleDownloadBarReset(seq, 8000);
@@ -1007,7 +1001,6 @@ public sealed partial class SearchPage : Page
             DownloadInfoBar.IsOpen = true;
             DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
             DownloadInfoBar.Title = Loc.T("Search_SavedToResearch");
-            DownloadProgressBar.Visibility = Visibility.Collapsed;
             DownloadProgressText.Text = obs.TargetName ?? publisherID;
             ScheduleDownloadBarReset(seq);
         }
@@ -1069,75 +1062,21 @@ public sealed partial class SearchPage : Page
             var file = await picker.PickSaveFileAsync();
             if (file is null) return;
 
-            // Download with progress tracking (the atomic .tmp-swap stream lives in ObservationDownloadService).
+            // Handed to the app rather than run here: it outlives this page and whatever the person
+            // does next, shows its progress — and any failure — in the status bar, and records itself
+            // in Research when it lands. The record is made NOW, from the row and the DataLink answer
+            // already in hand, so finishing needs nothing from this page.
+            var record = sourceRow is null
+                ? null
+                : DownloadedObservation.FromSearchResult(sourceRow, null, dataLink, k => ViewModel.GetColumnHeader(k));
+            _ = _downloader.Start(new ObservationDownloadRequest(publisherID, file.Path, record, Url: url));
+
             var seq = ++_downloadOpSeq;
-            try
-            {
-                DownloadInfoBar.IsOpen = true;
-                DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
-                DownloadInfoBar.Title = Loc.F("Search_DownloadingFile", Path.GetFileName(file.Path));
-                DownloadProgressBar.Visibility = Visibility.Visible;
-                DownloadProgressBar.IsIndeterminate = true;
-                DownloadProgressText.Text = "";
-
-                // Reported once per 80 KB chunk, which for a 46 MB artifact is ~575 posts to the UI
-                // thread. Throttled to ~10/s so the bar animates without the readout flickering through
-                // numbers nobody can read.
-                var lastReport = 0L;
-                var progress = new Progress<(long Downloaded, long? Total)>(p =>
-                {
-                    var now = Environment.TickCount64;
-                    var complete = p.Total is { } t && p.Downloaded >= t;
-                    if (!complete && now - lastReport < 100) return;
-                    lastReport = now;
-
-                    if (p.Total is { } total && total > 0)
-                    {
-                        DownloadProgressBar.IsIndeterminate = false;
-                        DownloadProgressBar.Maximum = total;
-                        DownloadProgressBar.Value = p.Downloaded;
-                        DownloadProgressText.Text = $"{FormatBytes(p.Downloaded)} / {FormatBytes(total)} ({(double)p.Downloaded / total * 100:F0}%)";
-                    }
-                    else
-                    {
-                        // CADC does not send Content-Length for a package it builds on the fly, so there
-                        // is no total to show a percentage against. Say so, rather than leaving a bare
-                        // number beside a bar that looks stuck.
-                        DownloadProgressBar.IsIndeterminate = true;
-                        DownloadProgressText.Text = Loc.F("Search_DownloadedSoFar", FormatBytes(p.Downloaded));
-                    }
-                });
-                await _downloads.DownloadToPathAsync(url, file.Path, progress: progress);
-
-                DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
-                DownloadInfoBar.Title = Loc.F("Search_DownloadedFile", Path.GetFileName(file.Path));
-                DownloadProgressBar.Visibility = Visibility.Collapsed;
-                ScheduleDownloadBarReset(seq);
-            }
-            catch
-            {
-                if (seq == _downloadOpSeq) DownloadInfoBar.IsOpen = false;
-                throw; // ObservationDownloadService already removed the partial .tmp
-            }
-
-            // Track in Research module
-            var row = sourceRow;
-            if (row is not null)
-            {
-                try
-                {
-                    var dlForObs = await _dataLinkService.GetLinksAsync(publisherID);
-                    var obs = DownloadedObservation.FromSearchResult(row, file.Path,
-                        dlForObs, k => ViewModel.GetColumnHeader(k));
-                    var fi = new System.IO.FileInfo(file.Path);
-                    if (fi.Exists) obs.FileSize = fi.Length;
-                    _observationStore.Save(obs);
-                }
-                catch (Exception trackEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Download tracking error: {trackEx.Message}");
-                }
-            }
+            DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
+            DownloadInfoBar.Title = Loc.F("Search_DownloadingFile", Path.GetFileName(file.Path));
+            DownloadProgressText.Text = Loc.T("Search_DownloadInStatusBar");
+            DownloadInfoBar.IsOpen = true;
+            ScheduleDownloadBarReset(seq, 5000);
         }
         catch (Exception ex)
         {
@@ -1210,14 +1149,6 @@ public sealed partial class SearchPage : Page
             return publisherID[(lastQuestion + 1)..];
         return "observation";
     }
-
-    private static string FormatBytes(long bytes) => bytes switch
-    {
-        < 1024 => Loc.F("Search_SizeB", bytes),
-        < 1024 * 1024 => Loc.F("Search_SizeKB", bytes / 1024.0),
-        < 1024 * 1024 * 1024 => Loc.F("Search_SizeMB", bytes / (1024.0 * 1024)),
-        _ => Loc.F("Search_SizeGB", bytes / (1024.0 * 1024 * 1024))
-    };
 
     private async Task LoadPreviewFlyout(Flyout flyout, string publisherID)
     {

@@ -45,7 +45,31 @@ public sealed partial class ResearchPage : UserControl
         _noteSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
         _noteSaveTimer.Tick += (_, _) => SaveNoteNow();
 
+        // Downloads finish in the background, on the downloader's thread and in their own time.
+        ViewModel.ObservationsChanged += () => DispatcherQueue.TryEnqueue(OnObservationsChanged);
+
         RefreshList();
+    }
+
+    /// <summary>What the open detail was built to offer: the file's buttons, "downloading", or Download.</summary>
+    private (bool HasFile, bool Downloading) _detailState;
+
+    private (bool HasFile, bool Downloading) DetailState(DownloadedObservation obs)
+        => (obs.FileExists, ViewModel.IsDownloading(obs));
+
+    /// <summary>
+    /// A download started, landed or failed, or a record changed elsewhere. The list follows, and the
+    /// open detail is rebuilt only if what it offers has changed — rebuilding on every save would
+    /// reset the notes editor under someone typing in it.
+    /// </summary>
+    private void OnObservationsChanged()
+    {
+        RefreshList();
+        if (ViewModel.SelectedObservation is { } obs && DetailState(obs) != _detailState)
+        {
+            FlushNote();
+            BuildDetail(obs);
+        }
     }
 
     public void RefreshList()
@@ -220,6 +244,7 @@ public sealed partial class ResearchPage : UserControl
     {
         DetailContent.Children.Clear();
         _previewCts = new CancellationTokenSource();
+        _detailState = DetailState(obs);
 
         // Preview image
         if (obs.PreviewURL is not null || obs.ThumbnailURL is not null)
@@ -283,6 +308,17 @@ public sealed partial class ResearchPage : UserControl
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8E5", Loc.T("Research_OpenFile"), (_, _) => ViewModel.OpenFileCommand.Execute(null)));
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE838", Loc.T("Research_ShowInExplorer"), (_, _) => ViewModel.ShowInExplorerCommand.Execute(null)));
         }
+        else if (ViewModel.IsDownloading(obs))
+        {
+            // On its way, in the background: the status bar shows how far, and this detail rebuilds
+            // itself with the file's buttons when it lands (or with Download again if it fails).
+            btnPanel.Children.Add(new TextBlock
+            {
+                Text = Loc.T("Research_DownloadingInBackground"),
+                VerticalAlignment = VerticalAlignment.Center,
+                Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+            });
+        }
         else
         {
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", Loc.T("Research_DownloadFits"), async (_, _) =>
@@ -303,8 +339,9 @@ public sealed partial class ResearchPage : UserControl
                     var file = await picker.PickSaveFileAsync();
                     if (file is null) return;
 
-                    await ViewModel.DownloadObservationFileAsync(file.Path);
-                    BuildDetail(obs); // rebuild to show Open/Explorer buttons
+                    // Started, not awaited: it belongs to the app now. Closing this detail, or choosing
+                    // another observation, no longer has any say in it.
+                    ViewModel.StartDownload(obs, file.Path);
                 }
                 catch (Exception ex)
                 {

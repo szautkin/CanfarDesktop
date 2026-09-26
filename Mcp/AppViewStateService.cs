@@ -466,6 +466,23 @@ public sealed class AppViewStateService : IAnnotationHost
         => _showStorageFolder?.Invoke(folder)
            ?? Task.FromResult(new StorageFolderShown(false, folder, "the window is not available"));
 
+    // ── Settings, opened to show the person ─────────────────────────────────────────────────────
+
+    private volatile Func<string?, Task<SettingsShown>>? _openSettings;
+    private volatile Func<Task<SettingsShown>>? _closeSettings;
+
+    public void SetSettingsActions(Func<string?, Task<SettingsShown>> open, Func<Task<SettingsShown>> close)
+    {
+        _openSettings = open;
+        _closeSettings = close;
+    }
+
+    public Task<SettingsShown> OpenSettingsAsync(string? section)
+        => _openSettings?.Invoke(section) ?? Task.FromResult(new SettingsShown(false, section, "the window is not available"));
+
+    public Task<SettingsShown> CloseSettingsAsync()
+        => _closeSettings?.Invoke() ?? Task.FromResult(new SettingsShown(false, null, "the window is not available"));
+
     // ── Pointing the person at a control ────────────────────────────────────────────────────────
 
     private volatile Func<UiPointRequest, Task<UiPointOutcome>>? _pointAtUi;

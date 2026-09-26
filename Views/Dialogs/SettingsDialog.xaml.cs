@@ -32,11 +32,23 @@ public sealed partial class SettingsDialog : ContentDialog
         PopulatePortal();
         Nav.SelectedItem = Nav.MenuItems.Count > 0 ? Nav.MenuItems[0] : null; // General
 
+        Opened += (_, _) => Current = this;
+        Closed += (_, _) =>
+        {
+            if (ReferenceEquals(Current, this)) Current = null;
+            // Hints about controls in here go with them.
+            Controls.AgentPointer.CloseAll();
+        };
+
         // Flush pending edits when the dialog closes (Escape or the close button
         // would otherwise silently discard General text that hasn't lost focus yet
         // and unsaved edits in the Save-button panels).
         Closing += (_, _) =>
         {
+            // No longer open to an agent from the moment it starts closing — the Closed event comes a
+            // moment later, and a second close_settings in between would otherwise close it again.
+            if (ReferenceEquals(Current, this)) Current = null;
+
             SaveGeneral();
             SavePortal();
             if (ComputeSettingsPanel.IsDirty) ComputeSettingsPanel.SaveNow();
@@ -46,6 +58,36 @@ public sealed partial class SettingsDialog : ContentDialog
 
     public static Task ShowAsync(XamlRoot root, Func<Task>? showTerms = null)
         => new SettingsDialog { XamlRoot = root, _showTerms = showTerms }.ShowAsync().AsTask();
+
+    /// <summary>Settings while it is open, for an agent to switch its section or close it; null otherwise.</summary>
+    public static SettingsDialog? Current { get; private set; }
+
+    /// <summary>The section showing — one of <see cref="SettingsSections"/>' ids.</summary>
+    public string Section => (Nav.SelectedItem as NavigationViewItem)?.Tag as string ?? "general";
+
+    /// <summary>Show a section, as choosing it in the list does.</summary>
+    public void ShowSection(string id)
+        => Nav.SelectedItem = Nav.MenuItems.OfType<NavigationViewItem>().FirstOrDefault(i => Equals(i.Tag, id))
+                              ?? Nav.SelectedItem;
+
+    /// <summary>
+    /// Open Settings at a section and return once it is on screen, for an agent guiding the person —
+    /// its next call points at a control in it. Nothing waits for it to close: it stays open until the
+    /// person closes it, or close_settings does.
+    /// </summary>
+    public static async Task<SettingsDialog> OpenAsync(XamlRoot root, Func<Task>? showTerms, string section)
+    {
+        var dialog = new SettingsDialog { XamlRoot = root, _showTerms = showTerms };
+        dialog.ShowSection(section);
+
+        var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dialog.Opened += (_, _) => opened.TrySetResult();
+        _ = dialog.ShowAsync().AsTask().ContinueWith(
+            t => opened.TrySetException(t.Exception!.GetBaseException()), TaskContinuationOptions.OnlyOnFaulted);
+
+        await opened.Task;
+        return dialog;
+    }
 
     // Only one ContentDialog may be open at a time — close Settings before the Terms viewer.
     private async void OnTermsLinkClick(object sender, RoutedEventArgs e)
@@ -152,6 +194,9 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private void OnNavSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
+        // A hint points at a control in the section being left; like a page change, it goes with it.
+        Controls.AgentPointer.CloseAll();
+
         var tag = (args.SelectedItem as NavigationViewItem)?.Tag as string ?? "general";
         GeneralPanel.Visibility = Vis(tag == "general");
         PortalPanel.Visibility = Vis(tag == "portal");

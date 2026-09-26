@@ -80,35 +80,182 @@ public class BridgeInfraTests
         Assert.Equal(9, ((JsonInt)resp["id"]!).Value);
     }
 
-    [Fact]
-    public async Task Relay_PumpsBothDirections()
+    private const string Initialize =
+        @"{""jsonrpc"":""2.0"",""id"":1,""method"":""initialize"",""params"":{""protocolVersion"":""2025-06-18"",""clientInfo"":{""name"":""test"",""version"":""1""}}}";
+
+    private const string Initialized = @"{""jsonrpc"":""2.0"",""method"":""notifications/initialized""}";
+
+    private static string Request(int id, string method = "tools/list")
+        => $@"{{""jsonrpc"":""2.0"",""id"":{id},""method"":""{method}""}}";
+
+    private static string Answer(string id) => $@"{{""jsonrpc"":""2.0"",""id"":{id},""result"":{{}}}}";
+
+    /// <summary>The app, as the bridge dials it: each call takes the next connection, or null for none.</summary>
+    private static Func<CancellationToken, Task<IMcpTransport?>> Dial(params InMemoryTransport?[] connections)
     {
-        var stdio = new InMemoryTransport();
-        var pipe = new InMemoryTransport();
-        var relay = BridgeRelay.RelayAsync(stdio, pipe);
+        var queue = new Queue<InMemoryTransport?>(connections);
+        return _ => Task.FromResult<IMcpTransport?>(queue.Count > 0 ? queue.Dequeue() : null);
+    }
 
-        stdio.Inject("request-doc");
-        Assert.Equal("request-doc", await Read(pipe)); // stdio -> pipe
+    private static JsonObject Json(string doc) => (JsonObject)JsonValue.Parse(doc);
 
-        pipe.Inject("response-doc");
-        Assert.Equal("response-doc", await Read(stdio)); // pipe -> stdio
+    private static long ErrorCode(string doc) => ((JsonInt)((JsonObject)Json(doc)["error"]!)["code"]!).Value;
 
-        stdio.CompleteIncoming();
-        pipe.CompleteIncoming();
-        await relay;
+    /// <summary>
+    /// The app has gone: its side of the connection ends, and the bridge closes its end in turn. Waiting
+    /// for that close is what makes the next request certain to find no connection.
+    /// </summary>
+    private static async Task AppQuits(InMemoryTransport app)
+    {
+        app.CompleteIncoming();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (await app.ReadResponseAsync(cts.Token) is not null) { }
+    }
+
+    private static async Task Ends(Task run)
+    {
+        Assert.Same(run, await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(5))));
+        await run;
     }
 
     [Fact]
-    public async Task DrainAndFail_RepliesServiceUnavailable()
+    public async Task Run_RelaysBothWays()
     {
         var stdio = new InMemoryTransport();
-        var drain = BridgeRelay.DrainAndFailAsync(stdio);
+        var app = new InMemoryTransport();
+        var run = BridgeRelay.RunAsync(stdio, Dial(app));
 
-        stdio.Inject(@"{""jsonrpc"":""2.0"",""id"":3,""method"":""tools/list""}");
-        var resp = (JsonObject)JsonValue.Parse(await Read(stdio));
-        Assert.Equal(-32000, ((JsonInt)((JsonObject)resp["error"]!)["code"]!).Value);
+        stdio.Inject(Initialize);
+        Assert.Equal(Initialize, await Read(app)); // the client's own initialize, not a replay
+
+        app.Inject(Answer("1"));
+        Assert.Equal(Answer("1"), await Read(stdio));
 
         stdio.CompleteIncoming();
-        await drain;
+        await Ends(run);
+    }
+
+    [Fact]
+    public async Task Run_AnswersServiceUnavailable_WhileTheAppIsAway_AndReachesItOnceItStarts()
+    {
+        var stdio = new InMemoryTransport();
+        var app = new InMemoryTransport();
+        var run = BridgeRelay.RunAsync(stdio, Dial(null, app));
+
+        stdio.Inject(Request(3));
+        var refused = await Read(stdio);
+        Assert.Equal(-32000, ErrorCode(refused));
+        Assert.Equal(3, ((JsonInt)Json(refused)["id"]!).Value);
+
+        // It used to stay refusing for good once it had failed to connect at startup.
+        stdio.Inject(Initialize);
+        Assert.Equal(Initialize, await Read(app));
+
+        stdio.CompleteIncoming();
+        await Ends(run);
+    }
+
+    [Fact]
+    public async Task Run_Reconnects_WhenTheAppComesBack_ReplayingTheClientsInitialize()
+    {
+        var stdio = new InMemoryTransport();
+        var first = new InMemoryTransport();
+        var second = new InMemoryTransport();
+        var run = BridgeRelay.RunAsync(stdio, Dial(first, second));
+
+        stdio.Inject(Initialize);
+        await Read(first);
+        first.Inject(Answer("1"));
+        await Read(stdio);
+        stdio.Inject(Initialized);
+        await Read(first);
+
+        await AppQuits(first);
+
+        stdio.Inject(Request(5));
+
+        // The new app instance hears initialize first, under the bridge's own id...
+        var replay = Json(await Read(second));
+        Assert.Equal("initialize", ((JsonString)replay["method"]!).Value);
+        Assert.Equal("verbinal-bridge-reconnect-1", ((JsonString)replay["id"]!).Value);
+        Assert.Equal(Json(Initialize)["params"]!.ToJsonString(), replay["params"]!.ToJsonString());
+        second.Inject(Answer(@"""verbinal-bridge-reconnect-1"""));
+
+        // ...then the notification the client sent, then the request that found it gone.
+        Assert.Equal("notifications/initialized", ((JsonString)Json(await Read(second))["method"]!).Value);
+        Assert.Equal(Request(5), await Read(second));
+
+        // The client hears only the answer to what it asked; the replay's answer was the bridge's.
+        second.Inject(Answer("5"));
+        Assert.Equal(Answer("5"), await Read(stdio));
+        Assert.False(stdio.HasPendingResponse);
+
+        stdio.CompleteIncoming();
+        await Ends(run);
+    }
+
+    [Fact]
+    public async Task Run_PassesOnWhyTheAppRefusedTheReconnect()
+    {
+        var stdio = new InMemoryTransport();
+        var first = new InMemoryTransport();
+        var second = new InMemoryTransport();
+        var run = BridgeRelay.RunAsync(stdio, Dial(first, second));
+
+        stdio.Inject(Initialize);
+        await Read(first);
+        first.Inject(Answer("1"));
+        await Read(stdio);
+        await AppQuits(first);
+
+        stdio.Inject(Request(6));
+        await Read(second);
+        second.Inject(@"{""jsonrpc"":""2.0"",""id"":""verbinal-bridge-reconnect-1"",""error"":{""code"":-32001,""message"":""Client not approved by user.""}}");
+
+        var refused = Json(await Read(stdio));
+        Assert.Equal(6, ((JsonInt)refused["id"]!).Value);
+        Assert.Contains("Client not approved by user.", ((JsonString)((JsonObject)refused["error"]!)["message"]!).Value);
+
+        stdio.CompleteIncoming();
+        await Ends(run);
+    }
+
+    [Fact]
+    public async Task Run_AnswersWhatWasStillWaiting_WhenTheAppCloses()
+    {
+        var stdio = new InMemoryTransport();
+        var app = new InMemoryTransport();
+        var run = BridgeRelay.RunAsync(stdio, Dial(app));
+
+        stdio.Inject(Initialize);
+        await Read(app);
+        app.Inject(Answer("1"));
+        await Read(stdio);
+
+        stdio.Inject(Request(4, "tools/call"));
+        await Read(app);
+        app.CompleteIncoming(); // gone without answering 4
+
+        var failed = await Read(stdio);
+        Assert.Equal(4, ((JsonInt)Json(failed)["id"]!).Value);
+        Assert.Equal(-32000, ErrorCode(failed));
+
+        stdio.CompleteIncoming();
+        await Ends(run);
+    }
+
+    [Fact]
+    public async Task Run_Ends_AndLetsTheAppGo_WhenTheClientCloses()
+    {
+        var stdio = new InMemoryTransport();
+        var app = new InMemoryTransport();
+        var run = BridgeRelay.RunAsync(stdio, Dial(app));
+
+        stdio.Inject(Initialize);
+        await Read(app);
+
+        stdio.CompleteIncoming();
+        await Ends(run);
+        Assert.Null(await app.ReadResponseAsync()); // its connection was closed, not left open
     }
 }

@@ -14,6 +14,13 @@ using CanfarDesktop.Services.Fits;
 public partial class FitsViewerViewModel : ObservableObject
 {
     private FitsImageData? _imageData;
+
+    /// <summary>
+    /// What is DRAWN: the image itself, or for the very largest a reduced picture of it
+    /// (<see cref="FitsDisplayRaster"/>). Only <see cref="RenderAsync"/> reads it; values and
+    /// coordinates always come from <see cref="_imageData"/>. Set together with it, never apart.
+    /// </summary>
+    private FitsImageData? _displayData;
     private List<FitsHdu>? _hdus;
     private bool _disposed;
     private CancellationTokenSource? _renderCts;
@@ -43,6 +50,9 @@ public partial class FitsViewerViewModel : ObservableObject
     [ObservableProperty] private ColormapProvider.ColormapName _colormap = ColormapProvider.ColormapName.Grayscale;
     [ObservableProperty] private double _zoomLevel = 1.0;
     [ObservableProperty] private bool _isNorthUp;
+
+    /// <summary>The fraction of full resolution the picture is drawn at: 1 for all but the largest images.</summary>
+    [ObservableProperty] private double _displayScale = 1.0;
 
     public List<FitsHdu>? Hdus => _hdus;
     public FitsImageData? ImageData => _imageData;
@@ -95,14 +105,10 @@ public partial class FitsViewerViewModel : ObservableObject
             }
 
             SelectedHduIndex = imageHdu.Index;
-            _imageData = imageHdu.ImageData;
+            await ShowImageAsync(imageHdu.ImageData!);
 
-            // Auto-cut
-            var (autoMin, autoMax) = FitsRenderer.AutoCut(_imageData!);
-            MinCut = autoMin;
-            MaxCut = autoMax;
-
-            StatusMessage = $"{_imageData!.Width} x {_imageData.Height} | {_hdus.Count} HDU(s)";
+            StatusMessage = $"{_imageData!.Width} x {_imageData.Height} | {_hdus.Count} HDU(s)" +
+                (DisplayScale < 1 ? $" | shown at {DisplayScale:P0}" : "");
 
             await RenderAsync();
         }
@@ -118,17 +124,37 @@ public partial class FitsViewerViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Make <paramref name="image"/> the one shown: its picture, then its auto-cut. The one way an
+    /// image comes on screen, whether a file was just opened or another HDU chosen.
+    /// </summary>
+    private async Task ShowImageAsync(FitsImageData image)
+    {
+        // Off the UI thread: for a MegaPipe tile the picture is an average over 400 million pixels.
+        // Assigned together afterwards, so a render in between sees the old pair, never a mix.
+        var display = await Task.Run(() => FitsDisplayRaster.For(image));
+        _imageData = image;
+        _displayData = display;
+        DisplayScale = (double)display.Width / image.Width;
+
+        // From the image, not the picture: the cuts are physical values, and an export — rendered
+        // from the full data — has to come out looking like the screen.
+        var (autoMin, autoMax) = FitsRenderer.AutoCut(image);
+        MinCut = autoMin;
+        MaxCut = autoMax;
+    }
+
     [RelayCommand]
     public async Task RenderAsync()
     {
-        if (_imageData is null || _disposed) return;
+        if (_displayData is null || _disposed) return;
 
         // Cancel any in-flight render (e.g., from rapid slider drag)
         _renderCts?.Cancel();
         _renderCts?.Dispose();
         var cts = _renderCts = new CancellationTokenSource();
 
-        var image = _imageData;
+        var image = _displayData;
         var stretch = Stretch;
         var colormapName = Colormap;
         var minCut = MinCut;
@@ -214,13 +240,13 @@ public partial class FitsViewerViewModel : ObservableObject
         if (!hdu.HasImage || hdu.ImageData is null) return;
 
         SelectedHduIndex = index;
-        _imageData = hdu.ImageData;
+        _ = ShowAndRenderAsync(hdu.ImageData);
+    }
 
-        var (autoMin, autoMax) = FitsRenderer.AutoCut(_imageData);
-        MinCut = autoMin;
-        MaxCut = autoMax;
-
-        _ = RenderAsync();
+    private async Task ShowAndRenderAsync(FitsImageData image)
+    {
+        await ShowImageAsync(image);
+        await RenderAsync();
     }
 
     /// <summary>
@@ -234,6 +260,7 @@ public partial class FitsViewerViewModel : ObservableObject
         _renderCts = null;
         RenderedImage = null;
         _imageData = null;
+        _displayData = null;
         _hdus = null;
     }
 }

@@ -2,7 +2,10 @@
 
 ## [1.4.1] - Unreleased
 
-Fixes found by testing the published 1.4.0 from the Microsoft Store.
+Fixes found by testing the published 1.4.0 from the Microsoft Store, and an assistant that can walk you through Settings.
+
+### Added
+- **Settings, shown by your assistant** — `open_settings` opens Settings at a section and `close_settings` closes it, so an assistant can show you where something is set and point at it. `point_at_ui` and `list_ui_targets` now work inside any open dialog — the window behind a dialog cannot be clicked, so that is not where they point — and a hint goes when its section changes or the dialog closes. Nothing is set for you: settings stay yours to change, and some (the MCP server and auto-apply, service endpoints, the compute image, sign-ins) only you should
 
 ### Fixed
 - **Positions on distorted images** — on images whose header gives only the forward SIP distortion (HST's calibrated frames among them), going from the sky to a pixel skipped the distortion: up to 6.6 pixels (0.26″) out across a WFC3 frame. Go To, marks pinned to the sky, sky-region figures and aligning tabs by sky position were affected; a position now lands on its own pixel
@@ -13,6 +16,9 @@ Fixes found by testing the published 1.4.0 from the Microsoft Store.
 - **Finding a tool** — `search_tools` matched the whole query as one phrase, so "cube spectrum" found nothing; it now matches the words
 - **Service health** — `usableCount` left out the services that need sign-in even while you were signed in
 - **Queries read back** — the ADQL `run_search` reported came back with bare carriage returns for line breaks
+- **Your assistant after Verbinal restarts** — closing Verbinal left each assistant's MCP bridge stuck: it answered nothing, kept its file locked, and dropped the next request, so the assistant lost Verbinal until you reconnected it by hand. The bridge now answers "not running" at once while Verbinal is closed, picks the connection up again when it starts, and answers anything Verbinal closed in the middle of; a bridge started before Verbinal no longer keeps refusing once it is running
+- **Very large images in the FITS viewer** — anything over 512 MB was refused whatever the machine had free, so a 20315 × 20475 MegaPipe tile (1.6 GB) would not open even with room to spare. The limit is now the memory actually free, and what is drawn is a picture of the image at most 64 million pixels (a 1.6 GB tile is shown at 40%, noted in the status bar), while its full pixels stay behind every readout, coordinate, mark and export. The file is converted as it is read rather than held twice, a stream that returns its bytes a few at a time no longer reads as truncated, and when an image will not fit the message says how much it needs and how much is free, and suggests a cutout
+- **Large downloads your assistant starts** — a download taking longer than two and a half minutes (a 1.6 GB MegaPipe tile) was reported to the assistant as timed out while it carried on, kept every other change waiting behind it (Apply spun and then said "the apply queue is busy"), and stayed in Pending as if refused after it had landed in Research. It now carries on as a background job the assistant can follow, leaves Pending as applied when it lands, and shows as applying rather than offering Apply; a busy queue says which change it is waiting on; and a download that stops receiving data fails after a minute instead of holding the queue
 
 ## [1.4.0] - 2026-09-25
 

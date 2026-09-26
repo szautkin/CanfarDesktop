@@ -3269,6 +3269,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Research_DownloadFits" xml:space="preserve">
     <value>Download FITS</value>
   </data>
+  <data name="Research_DownloadingInBackground" xml:space="preserve">
+    <value>Downloading — progress is in the status bar below.</value>
+  </data>
   <data name="Research_DownloadsTitle.Text" xml:space="preserve">
     <value>Downloads</value>
   </data>
@@ -3452,14 +3455,11 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Search_DownloadFailed" xml:space="preserve">
     <value>Download failed</value>
   </data>
-  <data name="Search_DownloadedFile" xml:space="preserve">
-    <value>Downloaded {0}</value>
-  </data>
-  <data name="Search_DownloadedSoFar" xml:space="preserve">
-    <value>{0} downloaded — total size unknown</value>
-  </data>
   <data name="Search_DownloadingFile" xml:space="preserve">
     <value>Downloading {0}...</value>
+  </data>
+  <data name="Search_DownloadInStatusBar" xml:space="preserve">
+    <value>Progress is in the status bar at the bottom of the window. It carries on if you leave this page.</value>
   </data>
   <data name="Search_ErrorBar.Title" xml:space="preserve">
     <value>Error</value>
@@ -3646,18 +3646,6 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="Search_SelectFileTitle" xml:space="preserve">
     <value>Select file to download ({0} available)</value>
-  </data>
-  <data name="Search_SizeB" xml:space="preserve">
-    <value>{0} B</value>
-  </data>
-  <data name="Search_SizeGB" xml:space="preserve">
-    <value>{0:F2} GB</value>
-  </data>
-  <data name="Search_SizeKB" xml:space="preserve">
-    <value>{0:F1} KB</value>
-  </data>
-  <data name="Search_SizeMB" xml:space="preserve">
-    <value>{0:F1} MB</value>
   </data>
   <data name="Search_SpatialCutoutCheck.Content" xml:space="preserve">
     <value>Spatial cutout</value>

@@ -27,10 +27,15 @@ public sealed class ObservationDownloadService
     /// Stream <paramref name="url"/> to <paramref name="localPath"/> atomically: write a sibling <c>.tmp</c>,
     /// then move it over the target. Reports (downloaded, total?) bytes to <paramref name="progress"/> when
     /// given; deletes the partial <c>.tmp</c> on any failure. Throws on a non-success HTTP status.
+    ///
+    /// <para><paramref name="timeoutSeconds"/> bounds only the wait for the response to START — the body
+    /// streams after it with no limit of its own. <paramref name="stallTimeout"/> is what bounds the
+    /// body: it fails a transfer that goes quiet, however long a healthy one runs.</para>
     /// </summary>
     public async Task DownloadToPathAsync(
         string url, string localPath, int timeoutSeconds = 120,
-        IProgress<(long Downloaded, long? Total)>? progress = null, CancellationToken ct = default)
+        IProgress<(long Downloaded, long? Total)>? progress = null, CancellationToken ct = default,
+        TimeSpan? stallTimeout = null)
     {
         using var response = await _dataLink.DownloadAsync(url, timeoutSeconds);
         response.EnsureSuccessStatusCode();
@@ -47,7 +52,8 @@ public sealed class ObservationDownloadService
             validateTotal: written => written == 0
                 ? new EmptyDownloadException(url, IsPackageEndpoint(url))
                 : null,
-            ct: ct);
+            ct: ct,
+            stallTimeout: stallTimeout);
     }
 
     /// <summary>

@@ -38,7 +38,8 @@ public sealed class DescribeAppTool : JsonReadTool<EmptyArgs, DescribeAppTool.Ou
             "tour-workflows, tour-ai-guide and tour-remote-compute. Portal, Remote Compute and Storage " +
             "are the user's CADC/CANFAR account and stay locked until they sign in (get_auth_state): " +
             "their tools answer auth-required, and navigate_to asks the user to sign in. Signing in is " +
-            "theirs to do; never ask for their password."));
+            "theirs to do; never ask for their password. To guide them through a setting, open_settings " +
+            "shows its section and point_at_ui points inside it; settings are theirs to set."));
 
     public sealed record Output(string Name, string Version, string Summary);
 }

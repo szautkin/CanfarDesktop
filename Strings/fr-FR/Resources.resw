@@ -3269,6 +3269,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Research_DownloadFits" xml:space="preserve">
     <value>Télécharger le FITS</value>
   </data>
+  <data name="Research_DownloadingInBackground" xml:space="preserve">
+    <value>Téléchargement en cours — la progression s'affiche dans la barre d'état ci-dessous.</value>
+  </data>
   <data name="Research_DownloadsTitle.Text" xml:space="preserve">
     <value>Téléchargements</value>
   </data>
@@ -3452,14 +3455,11 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Search_DownloadFailed" xml:space="preserve">
     <value>Échec du téléchargement</value>
   </data>
-  <data name="Search_DownloadedFile" xml:space="preserve">
-    <value>{0} téléchargé</value>
-  </data>
-  <data name="Search_DownloadedSoFar" xml:space="preserve">
-    <value>{0} téléchargés — taille totale inconnue</value>
-  </data>
   <data name="Search_DownloadingFile" xml:space="preserve">
     <value>Téléchargement de {0}...</value>
+  </data>
+  <data name="Search_DownloadInStatusBar" xml:space="preserve">
+    <value>La progression s'affiche dans la barre d'état en bas de la fenêtre. Le téléchargement continue si vous quittez cette page.</value>
   </data>
   <data name="Search_ErrorBar.Title" xml:space="preserve">
     <value>Erreur</value>
@@ -3646,18 +3646,6 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Search_SelectFileTitle" xml:space="preserve">
     <value>Sélectionner le fichier à télécharger ({0} disponibles)</value>
-  </data>
-  <data name="Search_SizeB" xml:space="preserve">
-    <value>{0} o</value>
-  </data>
-  <data name="Search_SizeGB" xml:space="preserve">
-    <value>{0:F2} Go</value>
-  </data>
-  <data name="Search_SizeKB" xml:space="preserve">
-    <value>{0:F1} Ko</value>
-  </data>
-  <data name="Search_SizeMB" xml:space="preserve">
-    <value>{0:F1} Mo</value>
   </data>
   <data name="Search_SpatialCutoutCheck.Content" xml:space="preserve">
     <value>Découpe spatiale</value>

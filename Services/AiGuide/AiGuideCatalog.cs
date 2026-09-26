@@ -248,6 +248,8 @@ public static class AiGuideCatalog
         ["set_search_focus"] = "navigation",
         ["navigate_to"] = "navigation",
         ["point_at_ui"] = "navigation",
+        ["open_settings"] = "navigation",
+        ["close_settings"] = "navigation",
         ["list_ui_targets"] = "navigation",
         ["close_active_tab"] = "navigation",
         ["list_open_tabs"] = "navigation",
