@@ -23,4 +23,14 @@ public class Caom2UriTests
     [InlineData("caom:CFHT/")]             // missing obsID
     public void ToObservationUri_Invalid_ReturnsNull(string? input)
         => Assert.Null(Caom2Uri.ToObservationUri(input));
+
+    /// <summary>The collection and the archive's id, as Search is asked for them — or nothing, never a guess.</summary>
+    [Theory]
+    [InlineData("ivo://cadc.nrc.ca/CFHTMEGAPIPE?G006.010.684+41.269/G006.010.684+41.269.I", "CFHTMEGAPIPE", "G006.010.684+41.269")]
+    [InlineData("ivo://cadc.nrc.ca/HST/mirror?j8pu0y010/calibrated", "HST", "j8pu0y010")]
+    [InlineData("caom:CFHT/22803/22803p", "CFHT", "22803")]
+    [InlineData("https://example.com/x", "", "")]
+    [InlineData(null, "", "")]
+    public void Split_GivesTheCollectionAndTheObservationId(string? input, string collection, string observationId)
+        => Assert.Equal((collection, observationId), Caom2Uri.Split(input));
 }

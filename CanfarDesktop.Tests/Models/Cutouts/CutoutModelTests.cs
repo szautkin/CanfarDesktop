@@ -121,6 +121,36 @@ public class CutoutModelTests
         Assert.EndsWith(" · [SCI,1] [ERR,1]", chosen.Summary);
     }
 
+    // ── The observation a cutout was cut from ─────────────────────────────────
+
+    private const string Tile = "ivo://cadc.nrc.ca/CFHTMEGAPIPE?G006.010.684+41.269/G006.010.684+41.269.I";
+
+    /// <summary>
+    /// A cutout's complete observation is the record of the same observation that is not a cutout —
+    /// kept with its file or without — whichever order Research holds them in; not another observation's.
+    /// </summary>
+    [Fact]
+    public void ACutoutsOriginal_IsTheCompleteRecordOfTheSameObservation()
+    {
+        var cutout = new DownloadedObservation { PublisherID = Tile, Cutout = Spec() };
+        var another = new DownloadedObservation { PublisherID = Tile, Cutout = Spec(0.2) };
+        var whole = new DownloadedObservation { PublisherID = Tile }; // kept without its file
+        var elsewhere = new DownloadedObservation { PublisherID = "ivo://cadc.nrc.ca/CFHT?22803/22803p" };
+
+        Assert.Same(whole, ResearchRecords.Complete([cutout, elsewhere, another, whole], Tile));
+        Assert.Null(ResearchRecords.Complete([cutout, another, elsewhere], Tile)); // only cutouts of it: Search, then
+        Assert.Null(CanfarDesktop.Services.Cutouts.Local.LocalCopies.CompleteFile([cutout, whole], Tile)); // no file here to cut from
+    }
+
+    /// <summary>Search finds an observation by the archive's id: the record's own, else the one its publisher ID names.</summary>
+    [Fact]
+    public void TheIdSearchFindsAnObservationBy_IsTheRecordsOrItsPublisherIds()
+    {
+        Assert.Equal("1234567", ResearchRecords.ObservationIdOf(new DownloadedObservation { PublisherID = Tile, ObservationID = "1234567" }));
+        Assert.Equal("G006.010.684+41.269", ResearchRecords.ObservationIdOf(new DownloadedObservation { PublisherID = Tile }));
+        Assert.Equal("", ResearchRecords.ObservationIdOf(new DownloadedObservation { PublisherID = "not a publisher id" }));
+    }
+
     /// <summary>
     /// A cutout with its weight map is the same cutout: the same key, the same file; each companion's
     /// file is named by that key, beside it, so a record finds them again from itself.

@@ -285,6 +285,40 @@ public sealed partial class SearchPage : Page
     /// </summary>
     public void ShowSearchForm() => MainPivot.SelectedIndex = 0;
 
+    /// <summary>
+    /// Find one observation by the archive's id — the form cleared first, so nothing left from the last
+    /// search (a target, dates, a cutout box) narrows it away — and highlight the row that is this very
+    /// plane (<paramref name="publisherId"/>) when the results hold it. What Research's "Original
+    /// observation" does for a cutout whose complete observation Research does not have.
+    /// </summary>
+    public async Task FindObservationAsync(string observationId, string publisherId)
+    {
+        if (string.IsNullOrWhiteSpace(observationId)) { ShowLoadedFeedback(Loc.T("Search_FindObservationUnknown")); return; }
+        if (ViewModel.IsSearching) { ShowLoadedFeedback(Loc.T("Search_FindObservationBusy")); return; }
+
+        ViewModel.ClearForm();
+        _dataTrainMgr.ClearAll();
+        if (_dataTrainUIBuilt) SyncAllTrainLists();
+        ViewModel.ObservationId = observationId;
+        ShowSearchForm();
+        ShowLoadedFeedback(Loc.F("Search_FindingObservation", observationId));
+
+        try
+        {
+            var outcome = await RunSearchOnUi(); // as the Search button runs it: the Results tab, fresh
+            if (!outcome.Ran) return;             // a failed query says why on the page itself
+            if (outcome.TotalRows == 0) { ShowLoadedFeedback(Loc.F("Search_ObservationNotFound", observationId)); return; }
+
+            var header = ViewModel.GetColumnHeader("publisherid");
+            var row = ViewModel.GetCurrentPageRows().FindIndex(r => r.Get(header) == publisherId);
+            if (row >= 0) SelectRow(row);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Find observation error: {ex}");
+        }
+    }
+
     #region Recent searches + saved queries
 
     private void OnLoadRecentSearch(object sender, RoutedEventArgs e)

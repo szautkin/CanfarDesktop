@@ -34,6 +34,20 @@ public static class ResearchRecords
     }
 
     /// <summary>
+    /// The record of the complete observation — not a cutout of it — with its file or without; null
+    /// when Research keeps only cutouts of it, or nothing. Research keeps at most one per observation.
+    /// </summary>
+    public static DownloadedObservation? Complete(IEnumerable<DownloadedObservation> records, string publisherId)
+        => records.FirstOrDefault(r => r.PublisherID == publisherId && !r.IsCutout);
+
+    /// <summary>
+    /// The archive's id for the observation a record is of — what Search finds it by: as the record
+    /// has it, else as its publisher ID says; empty when neither says.
+    /// </summary>
+    public static string ObservationIdOf(DownloadedObservation record)
+        => record.ObservationID is { Length: > 0 } id ? id : Caom2Uri.Split(record.PublisherID).ObservationId;
+
+    /// <summary>
     /// Delete a record's file from this computer — with a cutout's companions cut with it — and keep the
     /// record: its metadata, its notes, and for a cutout its region, so it can be fetched again exactly as
     /// it was. Null when done, otherwise why not; a file already gone is not a failure, only a record to tidy.

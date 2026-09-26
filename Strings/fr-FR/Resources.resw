@@ -4766,6 +4766,27 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Research_CopyDetailsTip" xml:space="preserve">
     <value>Copier l'identifiant, la position, l'instrument, le filtre, le programme et le fichier de l'observation en texte</value>
   </data>
+  <data name="Research_Original" xml:space="preserve">
+    <value>Observation d'origine</value>
+  </data>
+  <data name="Research_OriginalHereTip" xml:space="preserve">
+    <value>Afficher l'observation complète dont cette découpe est tirée — Recherche l'a déjà</value>
+  </data>
+  <data name="Research_OriginalSearchTip" xml:space="preserve">
+    <value>Trouver dans Rechercher l'observation complète dont cette découpe est tirée — Recherche ne l'a pas encore</value>
+  </data>
+  <data name="Search_FindingObservation" xml:space="preserve">
+    <value>Recherche de l'observation {0}</value>
+  </data>
+  <data name="Search_ObservationNotFound" xml:space="preserve">
+    <value>L'observation {0} est introuvable. Si elle est propriétaire, connectez-vous et relancez la recherche.</value>
+  </data>
+  <data name="Search_FindObservationUnknown" xml:space="preserve">
+    <value>Cet enregistrement ne dit pas de quelle observation il s'agit ; elle ne peut donc pas être recherchée.</value>
+  </data>
+  <data name="Search_FindObservationBusy" xml:space="preserve">
+    <value>Une recherche est déjà en cours ; réessayez quand elle sera terminée.</value>
+  </data>
   <data name="RemoteCompute_CodeCopied" xml:space="preserve">
     <value>le code</value>
   </data>

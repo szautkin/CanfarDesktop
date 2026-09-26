@@ -17,7 +17,7 @@ public static class LocalCopies
 {
     /// <summary>The observation's complete file on this computer: Research's record of it, when the file is there.</summary>
     public static DownloadedObservation? CompleteFile(IEnumerable<DownloadedObservation> records, string publisherId)
-        => records.FirstOrDefault(r => r.PublisherID == publisherId && !r.IsCutout && r.FileExists);
+        => ResearchRecords.Complete(records, publisherId) is { FileExists: true } record ? record : null;
 
     /// <summary>Which of <paramref name="artifactIds"/> the record's file is; empty when none can be said to be.</summary>
     public static string ArtifactOf(DownloadedObservation record, IEnumerable<string> artifactIds)

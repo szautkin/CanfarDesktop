@@ -1417,6 +1417,12 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             _researchPage.ViewModel.ViewInCubeRequested += path => OpenCubeViewer(path);
             _researchPage.CutoutRequested += (publisherId, artifactId) =>
                 _ = OpenCutoutEditorAsync(new CutoutArgs { PublisherId = publisherId, ArtifactId = artifactId });
+            _researchPage.FindInSearchRequested += (observationId, publisherId) =>
+            {
+                EnsureSearchPage();
+                NavigateTo(AppMode.Search);
+                _ = _searchPage!.FindObservationAsync(observationId, publisherId);
+            };
             ResearchContainer.Child = _researchPage;
         }
         else

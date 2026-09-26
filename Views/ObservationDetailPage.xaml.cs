@@ -134,7 +134,7 @@ public sealed partial class ObservationDetailPage : UserControl
     public async Task LoadAsync(string publisherID)
     {
         _publisherID = publisherID;
-        (_collection, _observationID) = SplitUri(Caom2Uri.ToObservationUri(publisherID));
+        (_collection, _observationID) = Caom2Uri.Split(publisherID);
         HeaderObsId.Text = string.IsNullOrEmpty(_observationID) ? Loc.T("ObsDetail_ObservationFallback") : _observationID;
         HeaderCollection.Text = _collection;
         HeaderChips.Children.Clear();
@@ -201,14 +201,6 @@ public sealed partial class ObservationDetailPage : UserControl
         NotFoundPanel.Visibility = notFound ? Visibility.Visible : Visibility.Collapsed;
         DetailPivot.Visibility = success ? Visibility.Visible : Visibility.Collapsed;
         ErrorBar.IsOpen = error;
-    }
-
-    private static (string Collection, string ObservationID) SplitUri(string? caomUri)
-    {
-        if (string.IsNullOrEmpty(caomUri) || !caomUri.StartsWith("caom:", StringComparison.OrdinalIgnoreCase))
-            return (string.Empty, string.Empty);
-        var parts = caomUri["caom:".Length..].Split('/', 2);
-        return parts.Length == 2 ? (parts[0], parts[1]) : (string.Empty, string.Empty);
     }
 
     #region Populate

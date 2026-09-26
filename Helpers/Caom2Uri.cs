@@ -49,4 +49,15 @@ public static class Caom2Uri
         if (observation.Length == 0) return null;
         return $"caom:{collection}/{observation}";
     }
+
+    /// <summary>
+    /// The collection and the archive's observation id a publisher ID names — ("CFHTMEGAPIPE",
+    /// "G006.010.684+41.269") — or two empty strings when it names none.
+    /// </summary>
+    public static (string Collection, string ObservationId) Split(string? publisherID)
+    {
+        if (ToObservationUri(publisherID) is not { } uri) return (string.Empty, string.Empty);
+        var parts = uri["caom:".Length..].Split('/', 2);
+        return (parts[0], parts[1]);
+    }
 }

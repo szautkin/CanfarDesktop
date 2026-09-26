@@ -4766,6 +4766,27 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Research_CopyDetailsTip" xml:space="preserve">
     <value>Copy the observation's ID, position, instrument, filter, proposal and file as text</value>
   </data>
+  <data name="Research_Original" xml:space="preserve">
+    <value>Original observation</value>
+  </data>
+  <data name="Research_OriginalHereTip" xml:space="preserve">
+    <value>Show the complete observation this was cut from — Research already has it</value>
+  </data>
+  <data name="Research_OriginalSearchTip" xml:space="preserve">
+    <value>Find the complete observation this was cut from in Search — Research does not have it yet</value>
+  </data>
+  <data name="Search_FindingObservation" xml:space="preserve">
+    <value>Searching for observation {0}</value>
+  </data>
+  <data name="Search_ObservationNotFound" xml:space="preserve">
+    <value>Observation {0} was not found. If it is proprietary, sign in and search again.</value>
+  </data>
+  <data name="Search_FindObservationUnknown" xml:space="preserve">
+    <value>This record does not say which observation it is, so it cannot be searched for.</value>
+  </data>
+  <data name="Search_FindObservationBusy" xml:space="preserve">
+    <value>A search is already running; try again once it has finished.</value>
+  </data>
   <data name="RemoteCompute_CodeCopied" xml:space="preserve">
     <value>the code</value>
   </data>

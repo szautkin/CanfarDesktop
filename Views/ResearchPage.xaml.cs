@@ -65,6 +65,12 @@ public sealed partial class ResearchPage : UserControl
         item.Click += (_, _) => CopyDetails(obs);
         var menu = new MenuFlyout();
         menu.Items.Add(item);
+        if (obs.IsCutout)
+        {
+            var original = new MenuFlyoutItem { Text = Loc.T("Research_Original"), Icon = new FontIcon { Glyph = OriginalGlyph } };
+            original.Click += (_, _) => ShowOriginal(obs);
+            menu.Items.Add(original);
+        }
         menu.ShowAt((FrameworkElement)e.OriginalSource, e.GetPosition((FrameworkElement)e.OriginalSource));
         e.Handled = true;
     }
@@ -74,6 +80,38 @@ public sealed partial class ResearchPage : UserControl
     /// it is one. The host opens the observation's cutout editor.
     /// </summary>
     public event Action<string, string?>? CutoutRequested;
+
+    /// <summary>
+    /// The person wants the complete observation a cutout was cut from, and Research does not have it:
+    /// the host finds it in Search, by the archive's observation id, and highlights this plane's row.
+    /// </summary>
+    public event Action<string, string>? FindInSearchRequested;
+
+    private const string OriginalGlyph = "\uE71B"; // a link: the cutout's way back to what it was cut from
+
+    /// <summary>
+    /// The complete observation a cutout was cut from: here, selected, when Research has it — with its
+    /// file or without — and otherwise found in Search. Research first, since what is here is what the
+    /// person has already kept, with their notes.
+    /// </summary>
+    private void ShowOriginal(DownloadedObservation cutout)
+    {
+        if (ViewModel.OriginalOf(cutout) is { } whole) Select(whole);
+        else FindInSearchRequested?.Invoke(ResearchRecords.ObservationIdOf(cutout), cutout.PublisherID);
+    }
+
+    /// <summary>Select a record in the list and show it — clearing the filter first when it hides it.</summary>
+    public void Select(DownloadedObservation record)
+    {
+        if (!ViewModel.FilteredObservations.Contains(record) && !string.IsNullOrEmpty(ViewModel.FilterText))
+        {
+            FilterBox.Text = string.Empty;       // its TextChanged comes later, to the same list
+            ViewModel.FilterText = string.Empty; // refilters now
+        }
+        RefreshList();
+        FileList.SelectedItem = record;
+        FileList.ScrollIntoView(record);
+    }
 
     /// <summary>
     /// "Cut out…", always there: greyed while it is found out whether this observation's files can be
@@ -455,6 +493,14 @@ public sealed partial class ResearchPage : UserControl
         }
 
         btnPanel.Children.Add(CutoutButton(obs));
+
+        if (obs.IsCutout)
+        {
+            var original = UIFactory.CreateIconButton(OriginalGlyph, Loc.T("Research_Original"), (_, _) => ShowOriginal(obs));
+            original.Name = "ResearchOriginalButton";
+            ToolTipService.SetToolTip(original, Loc.T(ViewModel.OriginalOf(obs) is null ? "Research_OriginalSearchTip" : "Research_OriginalHereTip"));
+            btnPanel.Children.Add(original);
+        }
 
         var copyDetails = UIFactory.CreateIconButton("\uE8C8", Loc.T("Research_CopyDetails"), (_, _) => CopyDetails(obs));
         copyDetails.Name = "ResearchCopyDetailsButton";

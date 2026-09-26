@@ -129,6 +129,10 @@ public partial class ResearchViewModel : ObservableObject
     }
 
     /// <summary>Whether this observation's file is on its way right now.</summary>
+    /// <summary>The complete observation a cutout was cut from, when Research has it — with its file or without.</summary>
+    public DownloadedObservation? OriginalOf(DownloadedObservation cutout)
+        => ResearchRecords.Complete(_store.Observations, cutout.PublisherID);
+
     public bool IsDownloading(DownloadedObservation observation)
         => _downloader.IsDownloading(observation.PublisherID, observation.ProductKey);
 
