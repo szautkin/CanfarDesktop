@@ -165,7 +165,11 @@ public sealed class McpHost : IAsyncDisposable
         _jobs = _services.GetService<JobRegistry>();
         if (tools is List<IMcpTool> mutable)
         {
-            var runner = new BackgroundApplyRunner(proposals, registry, _services.GetRequiredService<JobRegistry>());
+            // What a proposal kind is, is its tool's verb class; a kind no tool claims is taken as the
+            // most careful kind there is.
+            var runner = new BackgroundApplyRunner(proposals, registry, _services.GetRequiredService<JobRegistry>(),
+                kind => mutable.FirstOrDefault(t => t.Descriptor.Name == kind)?.VerbClass ?? McpVerbClass.Destructive,
+                () => _settings.AutoApplyEnabled);
             mutable.Add(new StartBackgroundApplyTool(runner.StartAsync));
         }
 

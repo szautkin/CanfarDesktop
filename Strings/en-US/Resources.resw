@@ -1613,7 +1613,10 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
     <value>Delete</value>
   </data>
   <data name="Fits_EnterValidCoords" xml:space="preserve">
-    <value>Enter valid RA and Dec in degrees</value>
+    <value>Enter RA and Dec — degrees (10.68 or 10,68) or sexagesimal (00:42:44.3 +41:16:09)</value>
+  </data>
+  <data name="Fits_GoToDone" xml:space="preserve">
+    <value>Centred on RA {0}, Dec {1} — pixel ({2:F0}, {3:F0})</value>
   </data>
   <data name="Fits_GoToButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Go to coordinate</value>

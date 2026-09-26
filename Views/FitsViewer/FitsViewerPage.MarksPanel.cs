@@ -31,8 +31,7 @@ public sealed partial class FitsViewerPage
         if (_annotationStore is null || Target is not { } here) return 0;
 
         return _annotationStore.Targets()
-            .Where(key => Helpers.MarkTarget.SameFile(key, here)
-                          && !string.Equals(key, here, StringComparison.OrdinalIgnoreCase))
+            .Where(key => Helpers.MarkTarget.SameFile(key, here) && !Helpers.MarkTarget.SameKey(key, here))
             .Sum(key => _annotationStore.LoadFor(key).Count);
     }
 

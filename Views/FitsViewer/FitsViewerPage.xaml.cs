@@ -417,12 +417,10 @@ public sealed partial class FitsViewerPage : UserControl
     }
 
     /// <summary>
-    /// Navigate crosshair to a world coordinate (RA, Dec in degrees).
-    /// Converts to display pixel and places crosshair at the screen position.
-    /// </summary>
-    /// <summary>
     /// Centre on a sky position and place the crosshair there, if it is on this image — the same
-    /// decision fits_goto_coordinate reports (<see cref="FitsGoto"/>), so the two cannot disagree.
+    /// decision fits_goto_coordinate reports (<see cref="FitsGoto"/>), so the two cannot disagree. The
+    /// status says where it went either way: a Go To that found its position used to leave the last
+    /// one's "outside image bounds" standing.
     /// </summary>
     public FitsGotoTarget GoToWorldCoordinate(double ra, double dec)
     {
@@ -430,7 +428,10 @@ public sealed partial class FitsViewerPage : UserControl
         var target = FitsGoto.Resolve(image?.Wcs, image?.Width ?? 0, image?.Height ?? 0, ra, dec);
 
         if (target.OnImage)
+        {
             CenterOnImagePixel(target.X, target.Y);
+            ViewModel.StatusMessage = Loc.F("Fits_GoToDone", WcsInfo.FormatRa(ra), WcsInfo.FormatDec(dec), target.X, target.Y);
+        }
         else
             ViewModel.StatusMessage = double.IsNaN(target.X)
                 ? Loc.T("Fits_NoWcsNav")

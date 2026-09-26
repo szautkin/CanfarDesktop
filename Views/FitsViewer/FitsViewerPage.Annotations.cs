@@ -107,8 +107,7 @@ public sealed partial class FitsViewerPage : IMarkCanvas
     /// </summary>
     internal Helpers.MarkExport.Source? MarkExportSource(string target)
     {
-        if (Target is not { } mine ||
-            !string.Equals(mine, target, StringComparison.OrdinalIgnoreCase)) return null;
+        if (Target is not { } mine || !Helpers.MarkTarget.SameKey(mine, target)) return null;
 
         var image = ViewModel.ImageData;
         var hdu = ViewModel.Hdus?.FirstOrDefault(h => h.Index == ViewModel.SelectedHduIndex);

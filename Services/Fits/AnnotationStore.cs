@@ -92,11 +92,30 @@ public sealed class AnnotationStore : IAnnotationStore
     private sealed class Contents
     {
         /// <summary>Target path → its marks.</summary>
-        public Dictionary<string, List<Annotation>> Targets { get; set; } = new(StringComparer.Ordinal);
+        public Dictionary<string, List<Annotation>> Targets { get; set; } = new(MarkTarget.Comparer);
     }
 
+    /// <summary>
+    /// Every target's marks, each target written one way (<see cref="MarkTarget.CanonicalKey"/>) and
+    /// compared ignoring case — so the file reopened by an agent as C:/Users/x/m31.fits finds the marks
+    /// drawn on it as C:\Users\x\m31.fits. Keys a store wrote before, that differ only in how the path
+    /// was written, are one file's: their marks are put together, each once.
+    /// </summary>
     private Contents LoadAll()
-        => DiskPersistence.Read(_filePath, SchemaVersion, () => new Contents(), JsonOptions).Value;
+    {
+        var read = DiskPersistence.Read(_filePath, SchemaVersion, () => new Contents(), JsonOptions).Value;
+        var targets = new Dictionary<string, List<Annotation>>(MarkTarget.Comparer);
+        foreach (var (key, marks) in read.Targets)
+        {
+            var canonical = MarkTarget.CanonicalKey(key);
+            if (targets.TryGetValue(canonical, out var already))
+                already.AddRange(marks.Where(m => already.All(a => a.Id != m.Id)));
+            else
+                targets[canonical] = marks;
+        }
+        read.Targets = targets;
+        return read;
+    }
 
     private void WriteAll(Contents contents)
     {
@@ -112,7 +131,7 @@ public sealed class AnnotationStore : IAnnotationStore
     public IReadOnlyList<Annotation> LoadFor(string target)
     {
         lock (_gate)
-            return LoadAll().Targets.TryGetValue(target, out var marks) ? marks : [];
+            return LoadAll().Targets.TryGetValue(MarkTarget.CanonicalKey(target), out var marks) ? marks : [];
     }
 
     public IReadOnlyList<Annotation> SaveFor(string target, IReadOnlyList<Annotation> annotations)
@@ -123,6 +142,7 @@ public sealed class AnnotationStore : IAnnotationStore
             // another file's annotations would be a silent loss of someone's work.
             var all = LoadAll();
             var kept = annotations.Take(MaxPerTarget).ToList();
+            target = MarkTarget.CanonicalKey(target);
 
             if (kept.Count == 0) all.Targets.Remove(target);
             else all.Targets[target] = kept;
@@ -183,7 +203,8 @@ public sealed class AnnotationStore : IAnnotationStore
     {
         lock (_gate)
         {
-            if (string.Equals(from, to, StringComparison.Ordinal)) return 0;
+            (from, to) = (MarkTarget.CanonicalKey(from), MarkTarget.CanonicalKey(to));
+            if (MarkTarget.Comparer.Equals(from, to)) return 0;
 
             var all = LoadAll();
             if (!all.Targets.TryGetValue(from, out var legacy) || legacy.Count == 0) return 0;

@@ -543,12 +543,12 @@ public sealed partial class FitsTabHost : UserControl
 
         double pct = 0;
         if (ZoomPresetCombo.SelectedItem is ComboBoxItem { Tag: string tag })
-            double.TryParse(tag, out pct);
+            NumberInput.TryParseWire(tag, out pct); // the presets' own tags: invariant
         else if (!string.IsNullOrEmpty(ZoomPresetCombo.Text))
         {
             // Handle manual text entry: "300" or "300%"
             var text = ZoomPresetCombo.Text.Trim().TrimEnd('%');
-            double.TryParse(text, out pct);
+            NumberInput.TryParseUser(text, out pct); // as typed: a point or a comma, whatever the culture
         }
 
         if (pct > 0)
@@ -565,7 +565,7 @@ public sealed partial class FitsTabHost : UserControl
     {
         if (_suppressToolbarSync || _activePage is null) return;
         var text = args.Text?.Trim().TrimEnd('%') ?? "";
-        if (double.TryParse(text, out var pct) && pct > 0)
+        if (NumberInput.TryParseUser(text, out var pct) && pct > 0)
         {
             args.Handled = true;
             _activePage.SetZoomLevel(pct / 100.0);
@@ -957,8 +957,11 @@ public sealed partial class FitsTabHost : UserControl
     private void OnGoToManual(object s, RoutedEventArgs e)
     {
         if (_activePage is null) return;
-        if (!double.TryParse(ManualRaBox.Text.Trim(), out var ra) ||
-            !double.TryParse(ManualDecBox.Text.Trim(), out var dec))
+        // As a person types a position anywhere else in the app: degrees with a point or a comma, or
+        // sexagesimal. double.TryParse read it by the machine's culture, and on a French Windows "10.68"
+        // was not a number.
+        if (!Sexagesimal.TryParseAngle(ManualRaBox.Text, isRa: true, out var ra) ||
+            !Sexagesimal.TryParseAngle(ManualDecBox.Text, isRa: false, out var dec))
         {
             if (ViewModel.ActiveViewModel is not null)
                 ViewModel.ActiveViewModel.StatusMessage = Loc.T("Fits_EnterValidCoords");

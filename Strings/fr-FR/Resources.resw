@@ -1613,7 +1613,10 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
     <value>Supprimer</value>
   </data>
   <data name="Fits_EnterValidCoords" xml:space="preserve">
-    <value>Entrez une AD et une Déc valides en degrés</value>
+    <value>Entrez l'AD et la Déc — en degrés (10.68 ou 10,68) ou en sexagésimal (00:42:44.3 +41:16:09)</value>
+  </data>
+  <data name="Fits_GoToDone" xml:space="preserve">
+    <value>Centré sur AD {0}, Déc {1} — pixel ({2:F0}, {3:F0})</value>
   </data>
   <data name="Fits_GoToButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Aller à la coordonnée</value>
