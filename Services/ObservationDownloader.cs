@@ -119,8 +119,11 @@ public sealed class ObservationDownloader
             var url = request.Url;
             if (url is null)
             {
+                // A cutout record is fetched as the cutout it is — never as the whole file it was cut from.
                 task.Stage("finding the file");
-                url = await downloads.ResolveUrlAsync(request.PublisherId, request.ArtifactIndex);
+                url = request.Record?.Cutout is { } cutout
+                    ? await downloads.ResolveCutoutUrlAsync(request.PublisherId, cutout)
+                    : await downloads.ResolveUrlAsync(request.PublisherId, request.ArtifactIndex);
             }
 
             task.Stage("connecting");

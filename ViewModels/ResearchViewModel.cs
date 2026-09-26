@@ -109,6 +109,24 @@ public partial class ResearchViewModel : ObservableObject
         _ = _downloader.Start(new ObservationDownloadRequest(observation.PublisherID, savePath, observation));
     }
 
+    /// <summary>
+    /// Delete the observation's file from this computer and keep it in Research — its details, notes,
+    /// and for a cutout its region, so Download fetches it again as it was. Null when done, otherwise why not.
+    /// </summary>
+    public string? RemoveLocalFile(DownloadedObservation observation)
+        => ResearchRecords.RemoveLocalFile(_store, observation);
+
+    /// <summary>
+    /// The files of this observation CADC can cut out, from its DataLink answer — empty when there
+    /// are none, or the answer cannot be had.
+    /// </summary>
+    public async Task<IReadOnlyList<Models.Cutouts.SodaDescriptor>> CutoutFilesAsync(DownloadedObservation observation)
+    {
+        if (string.IsNullOrEmpty(observation.PublisherID)) return [];
+        try { return (await _dataLinkService.GetLinksAsync(observation.PublisherID)).Cutouts; }
+        catch { return []; }
+    }
+
     /// <summary>Whether this observation's file is on its way right now.</summary>
     public bool IsDownloading(DownloadedObservation observation)
         => _downloader.IsDownloading(observation.PublisherID, observation.ProductKey);

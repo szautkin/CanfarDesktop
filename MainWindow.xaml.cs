@@ -1089,8 +1089,17 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                 ? new CutoutArgs.BoxArg { Ra = region.Ra, Dec = region.Dec, Width = region.Width, Height = region.Height } : null,
         };
 
+        await OpenCutoutEditorAsync(args);
+    }
+
+    /// <summary>
+    /// A person's request for a cutout — from a mark, or from Research: the editor when it can choose
+    /// the file; otherwise the observation, whose Files tab says which files can be cut.
+    /// </summary>
+    private async Task OpenCutoutEditorAsync(CutoutArgs args)
+    {
         var shown = await ShowCutoutEditorForAgentAsync(args);
-        if (!shown.Shown) await OpenObservationDetailAsync(publisherId);
+        if (!shown.Shown) await OpenObservationDetailAsync(args.PublisherId!);
     }
 
     /// <summary>
@@ -1402,6 +1411,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             _researchPage = App.Services.GetRequiredService<ResearchPage>();
             _researchPage.ViewModel.ViewInFitsRequested += path => OpenFitsViewer(path);
             _researchPage.ViewModel.ViewInCubeRequested += path => OpenCubeViewer(path);
+            _researchPage.CutoutRequested += (publisherId, artifactId) =>
+                _ = OpenCutoutEditorAsync(new CutoutArgs { PublisherId = publisherId, ArtifactId = artifactId });
             ResearchContainer.Child = _researchPage;
         }
         else

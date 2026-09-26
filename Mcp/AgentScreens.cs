@@ -26,7 +26,8 @@ public static class AgentScreens
         "list_downloaded_observations" or "get_downloaded_observation" or "get_observation_notes"
             or "get_observation_caom2" or "get_data_links" or "update_observation_note"
             or "bulk_update_observation_notes" or "download_observation" or "delete_downloaded_observation"
-            or "get_cutout_options" or "download_cutout" => "research",
+            or "get_cutout_options" or "download_cutout"
+            or "save_observation_to_research" or "remove_downloaded_file" => "research",
         "list_sessions" or "get_session" or "list_session_types" or "list_headless_jobs"
             or "get_headless_job_logs" or "get_headless_job_events" or "list_session_images"
             or "list_recent_launches" or "find_images_with_packages" or "get_platform_load"

@@ -365,6 +365,9 @@ public static class McpToolCatalog
             new DownloadCutoutTool(async (id, ct) => (await dataLink.GetLinksAsync(id, ct)).Cutouts),
             new DeleteDownloadedObservationTool(),
             new ClearResearchArchiveTool(),
+            // Keep an observation without its file; drop a file and keep its observation.
+            new SaveObservationTool(),
+            new RemoveDownloadedFileTool(),
             new ExportResearchBundleTool((dest, notes, hist, files, upload, ct) =>
                 ExportResearchBundleAsync(sp, appVersion, dest, notes, hist, files, upload)),
 
@@ -514,6 +517,17 @@ public static class McpToolCatalog
             new DownloadObservationsBulkApplier((p, attribution) =>
                 DownloadObservationAsync(downloader, caom2, p.PublisherId, p.ArtifactIndex, attribution)),
             new DownloadCutoutApplier((p, attribution) => DownloadCutoutAsync(downloader, dataLink, caom2, p, attribution)),
+            new SaveObservationApplier(async (p, attribution) =>
+                observations.SaveIfAbsent(await AgentRecordAsync(caom2, p.PublisherId, attribution,
+                    await dataLink.GetLinksAsync(p.PublisherId)))),
+            new RemoveDownloadedFileApplier(p =>
+            {
+                var match = observations.Find(p.Id)
+                    ?? throw new InvalidOperationException($"'{p.Id}' is not in Research — list_downloaded_observations shows what is");
+                return ResearchRecords.RemoveLocalFile(observations, match) is { } why
+                    ? throw new InvalidOperationException(why)
+                    : Task.CompletedTask;
+            }),
             new DeleteDownloadedObservationApplier(p =>
             {
                 var match = observations.Find(p.Id);
@@ -611,14 +625,11 @@ public static class McpToolCatalog
         ObservationDownloader downloader, DataLinkService dataLink, ICAOM2Service caom2,
         DownloadCutoutPayload payload, AgentAttribution? attribution)
     {
+        // The downloader resolves the SODA request from the record's own cutout, against today's descriptor.
         var links = await dataLink.GetLinksAsync(payload.PublisherId);
-        var file = links.CutoutFor(payload.Spec.ArtifactId)
-            ?? throw new InvalidOperationException($"{payload.Spec.ArtifactId} can no longer be cut out of {payload.PublisherId}");
-
-        var url = Services.Cutouts.SodaRequest.Url(file, payload.Spec);
-        var localPath = Path.Combine(AgentDownloadsFolder(), SafeFileName(payload.Spec.FileNameFor(file.FileName)));
+        var localPath = Path.Combine(AgentDownloadsFolder(), SafeFileName(payload.Spec.FileName));
         var record = await AgentRecordAsync(caom2, payload.PublisherId, attribution, links, payload.Spec);
-        await downloader.Start(new ObservationDownloadRequest(payload.PublisherId, localPath, record, Url: url));
+        await downloader.Start(new ObservationDownloadRequest(payload.PublisherId, localPath, record));
     }
 
     /// <summary>get_cutout_options: the descriptors from DataLink, each file's size from CAOM2, the suggestion from the last search.</summary>

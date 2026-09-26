@@ -149,6 +149,65 @@ public class CutoutModelTests
         Assert.True(store.Find(cut.Id)!.IsCutout);
     }
 
+    /// <summary>
+    /// Saving an observation without its file never overwrites one that has it — which is what the
+    /// Search page's unused copy of this would have done, forgetting the downloaded file.
+    /// </summary>
+    [Fact]
+    public void SavingWithoutAFile_LeavesADownloadedRecordAlone()
+    {
+        var store = new ObservationStore();
+        store.Save(new DownloadedObservation { PublisherID = "ivo://cadc/A", LocalPath = "full.fits" });
+
+        Assert.False(store.SaveIfAbsent(new DownloadedObservation { PublisherID = "ivo://cadc/A" }));
+        Assert.Equal("full.fits", Assert.Single(store.Observations).LocalPath);
+
+        Assert.True(store.SaveIfAbsent(new DownloadedObservation { PublisherID = "ivo://cadc/B" }));
+        Assert.True(store.Has("ivo://cadc/B"));
+        Assert.False(store.Has("ivo://cadc/B", Spec().Key)); // no cutout of it
+    }
+
+    /// <summary>The file goes; the observation, and for a cutout its region, stay to be fetched again.</summary>
+    [Fact]
+    public void RemovingTheFile_KeepsTheRecord_AndItsCutout()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"verbinal-remove-{Guid.NewGuid():N}.fits");
+        File.WriteAllText(path, "pixels");
+        var store = new ObservationStore();
+        var record = new DownloadedObservation { PublisherID = "ivo://cadc/A", LocalPath = path, FileSize = 6, Cutout = Spec() };
+        store.Save(record);
+
+        Assert.Null(ResearchRecords.RemoveLocalFile(store, record));
+
+        Assert.False(File.Exists(path));
+        var kept = Assert.Single(store.Observations);
+        Assert.Equal((string.Empty, (long?)null), (kept.LocalPath, kept.FileSize));
+        Assert.Equal(Spec().Key, kept.Cutout!.Key);
+    }
+
+    /// <summary>A file held open elsewhere is not deleted, and the record still points at it — the reason is given.</summary>
+    [Fact]
+    public void AFileHeldOpen_IsNotForgotten()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"verbinal-held-{Guid.NewGuid():N}.fits");
+        File.WriteAllText(path, "pixels");
+        try
+        {
+            var store = new ObservationStore();
+            var record = new DownloadedObservation { PublisherID = "ivo://cadc/A", LocalPath = path };
+            store.Save(record);
+
+            using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+                Assert.NotNull(ResearchRecords.RemoveLocalFile(store, record));
+
+            Assert.Equal(path, store.Observations[0].LocalPath);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     /// <summary>A footprint across RA 0° is centred there, not on the far side of the sky.</summary>
     [Fact]
     public void AResearchRecord_IsCentredOnItsFootprint_EvenAcrossRaZero()

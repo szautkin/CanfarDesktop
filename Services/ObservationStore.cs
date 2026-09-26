@@ -72,6 +72,30 @@ public class ObservationStore
         RaiseChanged();
     }
 
+    /// <summary>
+    /// Save this product only if Research does not have it yet — for keeping an observation without
+    /// downloading it. Never over a record that exists: that one may hold a downloaded file, and a
+    /// record saved without one would forget it. True when it was saved.
+    /// </summary>
+    public bool SaveIfAbsent(DownloadedObservation observation)
+    {
+        lock (_lock)
+        {
+            if (_observations.Any(o => o.PublisherID == observation.PublisherID && o.ProductKey == observation.ProductKey))
+                return false;
+            _observations.Insert(0, observation);
+            WriteToDisk();
+        }
+        RaiseChanged();
+        return true;
+    }
+
+    /// <summary>Whether Research holds this product of an observation — the complete one when <paramref name="productKey"/> is null.</summary>
+    public bool Has(string publisherId, string? productKey = null)
+    {
+        lock (_lock) return _observations.Any(o => o.PublisherID == publisherId && o.ProductKey == productKey);
+    }
+
     public void Remove(DownloadedObservation observation)
     {
         lock (_lock)

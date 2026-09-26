@@ -14,6 +14,87 @@ public sealed record DownloadObservationPayload(string PublisherId, int? Artifac
 public sealed record DownloadObservationsBulkPayload(IReadOnlyList<DownloadObservationPayload> Items);
 public sealed record DeleteDownloadedObservationPayload(string Id);
 public sealed record ClearResearchArchivePayload();
+public sealed record SaveObservationPayload(string PublisherId);
+public sealed record RemoveDownloadedFilePayload(string Id);
+
+/// <summary>
+/// <c>save_observation_to_research</c> — propose keeping an observation in Research WITHOUT downloading
+/// any file: its details from CAOM2, room for notes, and Download there when the file is wanted.
+/// SemanticWrite. Never replaces a record already there, which may hold a downloaded file.
+/// </summary>
+public sealed class SaveObservationTool : JsonWriteTool<SaveObservationTool.Args>
+{
+    public override McpVerbClass VerbClass => McpVerbClass.SemanticWrite;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "save_observation_to_research",
+        "Propose keeping an observation in the Research module WITHOUT downloading its file — its details " +
+        "from CAOM2 and a place for notes; the person (or download_observation) fetches the file later. " +
+        "An observation already in Research is left as it is. Queues for the user under their auto-apply setting.",
+        """{"type":"object","properties":{"publisherId":{"type":"string"}},"required":["publisherId"],"additionalProperties":false}""");
+
+    protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var pid = (args.PublisherId ?? string.Empty).Trim();
+        if (pid.Length == 0) throw new McpToolException(new InvalidArgument("publisherId is required"));
+        return Task.FromResult(ProposalPlan.Encoding("save_observation_to_research",
+            $"Save observation {pid} to Research (no file)", new SaveObservationPayload(pid)));
+    }
+
+    public sealed record Args { public string? PublisherId { get; init; } }
+}
+
+/// <summary>
+/// <c>remove_downloaded_file</c> — propose deleting a Research observation's FILE from this computer,
+/// keeping the observation: its details, notes and (for a cutout) its region. Destructive — it deletes
+/// a file — so it always waits for the person.
+/// </summary>
+public sealed class RemoveDownloadedFileTool : JsonWriteTool<RemoveDownloadedFileTool.Args>
+{
+    public override McpVerbClass VerbClass => McpVerbClass.Destructive;
+
+    public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
+        "remove_downloaded_file",
+        "Propose deleting a downloaded observation's FILE from this computer while keeping the observation " +
+        "in Research — its details, notes, and for a cutout its region, so Download fetches it again as it " +
+        "was. By local id (from list_downloaded_observations) or publisher id. To remove the observation " +
+        "itself, use delete_downloaded_observation. Always waits for the user's approval (a destructive change).",
+        """{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}""");
+
+    protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
+    {
+        var id = (args.Id ?? string.Empty).Trim();
+        if (id.Length == 0) throw new McpToolException(new InvalidArgument("id is required"));
+        return Task.FromResult(ProposalPlan.Encoding("remove_downloaded_file",
+            $"Remove the file of {id} from this computer (keep it in Research)", new RemoveDownloadedFilePayload(id)));
+    }
+
+    public sealed record Args { public string? Id { get; init; } }
+}
+
+public sealed class SaveObservationApplier : IProposalApplier
+{
+    private readonly Func<SaveObservationPayload, Models.AgentAttribution?, Task> _save;
+
+    public SaveObservationApplier(Func<SaveObservationPayload, Models.AgentAttribution?, Task> save) => _save = save;
+
+    public string Kind => "save_observation_to_research";
+
+    public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
+        => _save(ProposalPayload.Decode<SaveObservationPayload>(proposal), Agents.AgentAttributionStamp.ForProposal(proposal));
+}
+
+public sealed class RemoveDownloadedFileApplier : IProposalApplier
+{
+    private readonly Func<RemoveDownloadedFilePayload, Task> _remove;
+
+    public RemoveDownloadedFileApplier(Func<RemoveDownloadedFilePayload, Task> remove) => _remove = remove;
+
+    public string Kind => "remove_downloaded_file";
+
+    public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
+        => _remove(ProposalPayload.Decode<RemoveDownloadedFilePayload>(proposal));
+}
 
 /// <summary><c>download_observation</c> — propose downloading an observation's FITS into Research. SemanticWrite.</summary>
 public sealed class DownloadObservationTool : JsonWriteTool<DownloadObservationTool.Args>

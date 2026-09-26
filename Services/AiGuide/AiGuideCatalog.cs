@@ -130,6 +130,8 @@ public static class AiGuideCatalog
         ["get_cutout_options"] = "downloads",
         ["download_cutout"] = "downloads",
         ["show_cutout_editor"] = "downloads",
+        ["save_observation_to_research"] = "downloads",
+        ["remove_downloaded_file"] = "downloads",
         // FITS Viewer
         ["get_fits_header"] = "fits",
         ["get_fits_wcs"] = "fits",

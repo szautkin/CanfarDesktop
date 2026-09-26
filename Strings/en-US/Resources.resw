@@ -3632,14 +3632,8 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Search_SaveQueryNameBox.PlaceholderText" xml:space="preserve">
     <value>Name (optional)</value>
   </data>
-  <data name="Search_SaveToResearchFailed" xml:space="preserve">
-    <value>Save to Research failed</value>
-  </data>
   <data name="Search_SavedHeader.Text" xml:space="preserve">
     <value>Saved Queries</value>
-  </data>
-  <data name="Search_SavedToResearch" xml:space="preserve">
-    <value>Saved to Research</value>
   </data>
   <data name="Search_SearchButtonText.Text" xml:space="preserve">
     <value>Search</value>
@@ -4735,5 +4729,50 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="Search_DownloadingCutout" xml:space="preserve">
     <value>Downloading a cutout of {0}…</value>
+  </data>
+  <data name="Cutout_Checking" xml:space="preserve">
+    <value>Checking whether CADC can cut this…</value>
+  </data>
+  <data name="Cutout_NoneForFile" xml:space="preserve">
+    <value>CADC cannot cut this file — only the whole file can be downloaded.</value>
+  </data>
+  <data name="Cutout_NoneForObservation" xml:space="preserve">
+    <value>CADC cannot cut any of this observation's files.</value>
+  </data>
+  <data name="Research_RemoveFile" xml:space="preserve">
+    <value>Remove file</value>
+  </data>
+  <data name="Research_RemoveFileTip" xml:space="preserve">
+    <value>Delete the file from this computer; the observation stays in Research</value>
+  </data>
+  <data name="Research_RemoveFileTitle" xml:space="preserve">
+    <value>Remove the file from this computer?</value>
+  </data>
+  <data name="Research_RemoveFileBody" xml:space="preserve">
+    <value>{0} will be deleted from this computer. The observation stays in Research with its notes, and Download brings the file back.</value>
+  </data>
+  <data name="Research_RemoveFileFailed" xml:space="preserve">
+    <value>The file could not be removed</value>
+  </data>
+  <data name="ObsDetail_SaveToResearch" xml:space="preserve">
+    <value>Save to Research</value>
+  </data>
+  <data name="ObsDetail_SaveToResearchTip" xml:space="preserve">
+    <value>Keep this observation in Research without downloading its files</value>
+  </data>
+  <data name="ObsDetail_AlreadyInResearch" xml:space="preserve">
+    <value>This observation is already in Research</value>
+  </data>
+  <data name="ObsDetail_SaveToResearchLoading" xml:space="preserve">
+    <value>Available once the observation has loaded</value>
+  </data>
+  <data name="ObsDetail_SavedToResearch" xml:space="preserve">
+    <value>Saved to Research</value>
+  </data>
+  <data name="ObsDetail_SavedToResearchNote" xml:space="preserve">
+    <value>Kept without its file; download it from Research whenever you need it.</value>
+  </data>
+  <data name="Search_NarrowHint" xml:space="preserve">
+    <value>Right-click to narrow results to “{0}”</value>
   </data>
 </root>

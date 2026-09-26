@@ -14,7 +14,6 @@ public sealed partial class SearchPage : Page
 {
     public SearchViewModel ViewModel { get; }
     private readonly DataLinkService _dataLinkService;
-    private readonly ObservationStore _observationStore;
     private readonly ObservationDownloader _downloader;
     private readonly DataTrainManager _dataTrainMgr = new();
     private bool _dataTrainLoaded;
@@ -26,12 +25,11 @@ public sealed partial class SearchPage : Page
     /// <summary>Raised when the user opens a result row's full CAOM2 detail (publisher ID).</summary>
     public event Action<string>? ObservationDetailRequested;
 
-    public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService, ObservationStore observationStore,
+    public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService,
                       ObservationDownloader downloader, ITapSchemaService tapSchema)
     {
         ViewModel = viewModel;
         _dataLinkService = dataLinkService;
-        _observationStore = observationStore;
         _downloader = downloader;
         _tapSchema = tapSchema;
         InitializeComponent();
@@ -441,9 +439,7 @@ public sealed partial class SearchPage : Page
         var keys = ViewModel.GetVisibleColumnKeys();
         if (keys.Length == 0) return;
 
-        var altBg = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
         var hoverBg = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
-        var selectedBg = ThemeBrush("AccentFillColorSelectedTextBackgroundBrush", hoverBg);
 
         // Rows are rebuilt on every render, so the selection cannot live on the Border. It is held by
         // page-relative index and re-applied here; a selection past the end of a shorter page (fewer
@@ -458,10 +454,8 @@ public sealed partial class SearchPage : Page
             var rowBorder = BuildRow(keys, isHeader: false, row: row, rowIndex: i);
             var capturedRow = row;
             var capturedIndex = i;
-            var stripeBg = capturedIndex % 2 == 1 ? altBg : null;
-            Microsoft.UI.Xaml.Media.Brush? RestingBg() => _selection.Contains(capturedIndex) ? selectedBg : stripeBg;
 
-            rowBorder.Background = RestingBg();
+            rowBorder.Background = RowBackground(capturedIndex);
 
             rowBorder.Tapped += (s, e) =>
             {
@@ -493,7 +487,7 @@ public sealed partial class SearchPage : Page
                 ShowRowDetail(capturedRow);
             };
             rowBorder.PointerEntered += (s, _) => ((Border)s).Background = hoverBg;
-            rowBorder.PointerExited += (s, _) => ((Border)s).Background = RestingBg();
+            rowBorder.PointerExited += (s, _) => ((Border)s).Background = RowBackground(capturedIndex);
             ResultsPanel.Children.Add(rowBorder);
             _rowBorders.Add(rowBorder);
         }
@@ -735,22 +729,26 @@ public sealed partial class SearchPage : Page
                     VerticalAlignment = VerticalAlignment.Center
                 };
 
-                // Identity columns become "narrow to this value" links (client-side filter + Apply-to-ADQL).
+                // Identity columns can narrow the results to their value (client-side filter +
+                // Apply-to-ADQL) — from a right-click menu. A left click on them opens the observation,
+                // as it does anywhere else on the row: these five were silent filter links, so clicking
+                // a row's target name, the likeliest place to click, narrowed the table instead.
                 if (IsNarrowable(key) && !string.IsNullOrEmpty(rawValue))
                 {
                     var ck = key;
                     var cv = rawValue;
-                    tb.Tag = "action"; // suppress row-detail open
-                    ToolTipService.SetToolTip(tb, Loc.F("Search_NarrowToValue", cv));
-                    tb.Tapped += (_, _) =>
+                    ToolTipService.SetToolTip(tb, Loc.F("Search_NarrowHint", cv));
+                    var narrow = new MenuFlyoutItem { Text = Loc.F("Search_NarrowToValue", cv), Icon = new FontIcon { Glyph = "" } };
+                    narrow.Click += (_, _) =>
                     {
                         ViewModel.SetColumnFilter(ck, cv);
                         ViewModel.UpdatePagination();
                         RenderResultsPage(rebuildHeader: false);
                         UpdateApplyFiltersButton();
                     };
-                    tb.PointerEntered += (s, _) => ((TextBlock)s).Opacity = 0.55;
-                    tb.PointerExited += (s, _) => ((TextBlock)s).Opacity = 1.0;
+                    var menu = new MenuFlyout();
+                    menu.Items.Add(narrow);
+                    tb.ContextFlyout = menu;
                 }
 
                 sp.Children.Add(tb);
@@ -916,20 +914,38 @@ public sealed partial class SearchPage : Page
     private void ToggleRowSelection(int index)
     {
         _selection.Toggle(index);
-        RenderResultsPage(rebuildHeader: false);
+        RefreshRowHighlights();
     }
 
     private void SelectRowRange(int index)
     {
         _selection.SelectRange(index);
-        RenderResultsPage(rebuildHeader: false);
+        RefreshRowHighlights();
     }
 
     /// <summary>Make one row the only selected row (a plain click, or an agent's selectRow).</summary>
     private void SetPrimaryRow(int index)
     {
         _selection.SetPrimary(index);
-        RenderResultsPage(rebuildHeader: false);
+        RefreshRowHighlights();
+    }
+
+    /// <summary>
+    /// Repaint which rows are highlighted — on the rows already on screen. A selection change used to
+    /// rebuild the whole page of rows, every cell of every one, before a click could open anything;
+    /// the rows have not changed, only which of them are chosen.
+    /// </summary>
+    private void RefreshRowHighlights()
+    {
+        for (var i = 0; i < _rowBorders.Count; i++) _rowBorders[i].Background = RowBackground(i);
+    }
+
+    /// <summary>A row's resting background: the selection's colour when chosen, else the stripe.</summary>
+    private Microsoft.UI.Xaml.Media.Brush? RowBackground(int index)
+    {
+        var hover = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+        if (_selection.Contains(index)) return ThemeBrush("AccentFillColorSelectedTextBackgroundBrush", hover);
+        return index % 2 == 1 ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"] : null;
     }
 
     /// <summary>Highlight a row and scroll it into view. False when the page has no such row.</summary>
@@ -985,30 +1001,6 @@ public sealed partial class SearchPage : Page
         using var stream = new System.IO.MemoryStream(bytes);
         await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
         return bitmap;
-    }
-
-    private async Task SaveToResearchAsync(string publisherID, SearchResultRow? sourceRow)
-    {
-        if (sourceRow is null) return;
-        try
-        {
-            var dataLink = await _dataLinkService.GetLinksAsync(publisherID);
-            var obs = DownloadedObservation.FromSearchResult(sourceRow, null,
-                dataLink, k => ViewModel.GetColumnHeader(k));
-            _observationStore.Save(obs);
-
-            var seq = ++_downloadOpSeq;
-            DownloadInfoBar.IsOpen = true;
-            DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
-            DownloadInfoBar.Title = Loc.T("Search_SavedToResearch");
-            DownloadProgressText.Text = obs.TargetName ?? publisherID;
-            ScheduleDownloadBarReset(seq);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Save to research error: {ex.Message}");
-            ShowDownloadError(Loc.T("Search_SaveToResearchFailed"), ex.Message);
-        }
     }
 
     /// <summary>

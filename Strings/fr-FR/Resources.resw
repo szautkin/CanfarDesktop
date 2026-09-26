@@ -3632,14 +3632,8 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Search_SaveQueryNameBox.PlaceholderText" xml:space="preserve">
     <value>Nom (facultatif)</value>
   </data>
-  <data name="Search_SaveToResearchFailed" xml:space="preserve">
-    <value>Échec de l'enregistrement dans Recherche</value>
-  </data>
   <data name="Search_SavedHeader.Text" xml:space="preserve">
     <value>Requêtes enregistrées</value>
-  </data>
-  <data name="Search_SavedToResearch" xml:space="preserve">
-    <value>Enregistré dans Recherche</value>
   </data>
   <data name="Search_SearchButtonText.Text" xml:space="preserve">
     <value>Rechercher</value>
@@ -4735,5 +4729,50 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Search_DownloadingCutout" xml:space="preserve">
     <value>Téléchargement d'une découpe de {0}…</value>
+  </data>
+  <data name="Cutout_Checking" xml:space="preserve">
+    <value>Vérification : le CADC peut-il découper ceci…</value>
+  </data>
+  <data name="Cutout_NoneForFile" xml:space="preserve">
+    <value>Le CADC ne peut pas découper ce fichier — seul le fichier complet peut être téléchargé.</value>
+  </data>
+  <data name="Cutout_NoneForObservation" xml:space="preserve">
+    <value>Le CADC ne peut découper aucun des fichiers de cette observation.</value>
+  </data>
+  <data name="Research_RemoveFile" xml:space="preserve">
+    <value>Supprimer le fichier</value>
+  </data>
+  <data name="Research_RemoveFileTip" xml:space="preserve">
+    <value>Supprimer le fichier de cet ordinateur ; l'observation reste dans Recherche</value>
+  </data>
+  <data name="Research_RemoveFileTitle" xml:space="preserve">
+    <value>Supprimer le fichier de cet ordinateur ?</value>
+  </data>
+  <data name="Research_RemoveFileBody" xml:space="preserve">
+    <value>{0} sera supprimé de cet ordinateur. L'observation reste dans Recherche avec ses notes, et Télécharger ramène le fichier.</value>
+  </data>
+  <data name="Research_RemoveFileFailed" xml:space="preserve">
+    <value>Le fichier n'a pas pu être supprimé</value>
+  </data>
+  <data name="ObsDetail_SaveToResearch" xml:space="preserve">
+    <value>Enregistrer dans Recherche</value>
+  </data>
+  <data name="ObsDetail_SaveToResearchTip" xml:space="preserve">
+    <value>Garder cette observation dans Recherche sans télécharger ses fichiers</value>
+  </data>
+  <data name="ObsDetail_AlreadyInResearch" xml:space="preserve">
+    <value>Cette observation est déjà dans Recherche</value>
+  </data>
+  <data name="ObsDetail_SaveToResearchLoading" xml:space="preserve">
+    <value>Disponible une fois l'observation chargée</value>
+  </data>
+  <data name="ObsDetail_SavedToResearch" xml:space="preserve">
+    <value>Enregistrée dans Recherche</value>
+  </data>
+  <data name="ObsDetail_SavedToResearchNote" xml:space="preserve">
+    <value>Conservée sans son fichier ; téléchargez-le depuis Recherche quand vous en avez besoin.</value>
+  </data>
+  <data name="Search_NarrowHint" xml:space="preserve">
+    <value>Clic droit pour restreindre les résultats à « {0} »</value>
   </data>
 </root>

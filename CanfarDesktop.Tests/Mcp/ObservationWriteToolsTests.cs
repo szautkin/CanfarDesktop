@@ -223,6 +223,37 @@ public class ObservationWriteToolsTests
         Assert.Equal(new[] { "ivo://A", "ivo://B" }, removed); // records still cleared
     }
 
+    /// <summary>Keeping an observation without its file is an ordinary write; removing a file always asks.</summary>
+    [Fact]
+    public async Task SaveWithoutFile_AndRemoveFile_AreProposedWithTheirWeight()
+    {
+        var (ctx, _) = Context();
+
+        var save = Assert.IsType<ProposedResult>(await new SaveObservationTool().InvokeAsync(
+            Args("""{"publisherId":"ivo://cadc/X"}"""), ctx, default)).Proposal;
+        Assert.Equal("save_observation_to_research", save.Kind);
+        Assert.Equal("ivo://cadc/X", JsonSerializer.Deserialize<SaveObservationPayload>(save.Payload, McpJson.Options)!.PublisherId);
+
+        var remove = Assert.IsType<ProposedResult>(await new RemoveDownloadedFileTool().InvokeAsync(
+            Args("""{"id":"ivo://cadc/X"}"""), ctx, default)).Proposal;
+        Assert.Equal("remove_downloaded_file", remove.Kind);
+
+        Assert.Equal(McpVerbClass.SemanticWrite, new SaveObservationTool().VerbClass);
+        Assert.Equal(McpVerbClass.Destructive, new RemoveDownloadedFileTool().VerbClass);
+    }
+
+    [Fact]
+    public async Task TheirAppliers_HandOnWhatWasProposed()
+    {
+        string? saved = null, removed = null;
+        await new SaveObservationApplier((p, _) => { saved = p.PublisherId; return Task.CompletedTask; })
+            .ApplyAsync(Proposal("save_observation_to_research", new SaveObservationPayload("ivo://cadc/X")));
+        await new RemoveDownloadedFileApplier(p => { removed = p.Id; return Task.CompletedTask; })
+            .ApplyAsync(Proposal("remove_downloaded_file", new RemoveDownloadedFilePayload("local-1")));
+
+        Assert.Equal(("ivo://cadc/X", "local-1"), (saved, removed));
+    }
+
     private static PendingProposal Proposal<T>(string kind, T payload)
         => PendingProposal.Create("t", kind, "s", JsonSerializer.SerializeToUtf8Bytes(payload, McpJson.Options), OperationOrigin.External("c1"));
 }

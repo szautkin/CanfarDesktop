@@ -134,6 +134,7 @@
     <Compile Include="..\Services\Cutouts\SodaDescriptorParser.cs" Link="Linked\Cutouts\SodaDescriptorParser.cs" />
     <Compile Include="..\Services\Cutouts\SodaRequest.cs" Link="Linked\Cutouts\SodaRequest.cs" />
     <Compile Include="..\Services\Cutouts\CutoutPrefill.cs" Link="Linked\Cutouts\CutoutPrefill.cs" />
+    <Compile Include="..\Services\Cutouts\CutoutCandidates.cs" Link="Linked\Cutouts\CutoutCandidates.cs" />
     <Compile Include="..\Services\ResearchRecords.cs" Link="Linked\ResearchRecords.cs" />
     <Compile Include="..\Helpers\HttpFailure.cs" Link="Linked\HttpFailure.cs" />
     <Compile Include="..\Helpers\DataLinkArtifactSelector.cs" Link="Linked\DataLinkArtifactSelector.cs" />

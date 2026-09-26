@@ -78,6 +78,9 @@ public sealed record CutoutSpec
     /// "G006.010.684+41.269.R.cutout-1a2b3c4d.fits". Always .fits: SODA sends the cut as plain FITS,
     /// whatever compression the whole file had.
     /// </summary>
+    [JsonIgnore]
+    public string FileName => FileNameFor(Caom2Format.ArtifactFileName(ArtifactId));
+
     public string FileNameFor(string artifactFileName)
     {
         var stem = artifactFileName;

@@ -7,6 +7,12 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
+    <UserControl.Resources>
+        <!-- Every tab's content, kept clear of the right edge: WinUI draws a ScrollViewer's scrollbar
+             OVER its content, and without this gutter it covered the Files rows' buttons and borders. -->
+        <Thickness x:Key="DetailTabPadding">0,12,16,12</Thickness>
+    </UserControl.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -36,6 +42,11 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <!-- Keep the observation in Research without downloading anything. The wrapper carries the
+                     reason while the button is greyed: a disabled button shows no tooltip of its own. -->
+                <Border Background="Transparent">
+                    <Button x:Name="SaveToResearchButton" Click="OnSaveToResearch" IsEnabled="False" />
+                </Border>
                 <HyperlinkButton x:Uid="ObsDetail_ViewOnCadcButton" x:Name="ViewOnCadcButton" Click="OnViewOnCadc"
                                  ToolTipService.ToolTip="View on CADC"
                                  AutomationProperties.Name="View observation on CADC website">
@@ -114,19 +125,19 @@
 
             <Pivot x:Name="DetailPivot" Visibility="Collapsed" Padding="16,4,16,0">
                 <PivotItem x:Uid="ObsDetail_TabOverview" Header="Overview">
-                    <ScrollViewer><StackPanel x:Name="OverviewPanel" Spacing="12" Padding="0,12" /></ScrollViewer>
+                    <ScrollViewer><StackPanel x:Name="OverviewPanel" Spacing="12" Padding="{StaticResource DetailTabPadding}" /></ScrollViewer>
                 </PivotItem>
                 <PivotItem x:Uid="ObsDetail_TabCoverage" Header="Coverage">
-                    <ScrollViewer><StackPanel x:Name="CoveragePanel" Spacing="12" Padding="0,12" /></ScrollViewer>
+                    <ScrollViewer><StackPanel x:Name="CoveragePanel" Spacing="12" Padding="{StaticResource DetailTabPadding}" /></ScrollViewer>
                 </PivotItem>
                 <PivotItem x:Uid="ObsDetail_TabFiles" Header="Files">
-                    <ScrollViewer><StackPanel x:Name="FilesPanel" Spacing="12" Padding="0,12" /></ScrollViewer>
+                    <ScrollViewer><StackPanel x:Name="FilesPanel" Spacing="12" Padding="{StaticResource DetailTabPadding}" /></ScrollViewer>
                 </PivotItem>
                 <PivotItem x:Uid="ObsDetail_TabProvenance" Header="Provenance">
-                    <ScrollViewer><StackPanel x:Name="ProvenancePanel" Spacing="12" Padding="0,12" /></ScrollViewer>
+                    <ScrollViewer><StackPanel x:Name="ProvenancePanel" Spacing="12" Padding="{StaticResource DetailTabPadding}" /></ScrollViewer>
                 </PivotItem>
                 <PivotItem x:Uid="ObsDetail_TabRaw" Header="Raw">
-                    <ScrollViewer><StackPanel x:Name="RawPanel" Spacing="4" Padding="0,12" /></ScrollViewer>
+                    <ScrollViewer><StackPanel x:Name="RawPanel" Spacing="4" Padding="{StaticResource DetailTabPadding}" /></ScrollViewer>
                 </PivotItem>
             </Pivot>
         </Grid>

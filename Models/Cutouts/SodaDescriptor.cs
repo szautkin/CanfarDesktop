@@ -41,13 +41,6 @@ public sealed record SodaDescriptor
     /// <summary>Whether it can be cut on the sky at all.</summary>
     public bool SupportsSky => Supports("CIRCLE") || Supports("POLYGON");
 
-    /// <summary>The file's own name — the last part of its ID.</summary>
-    public string FileName
-    {
-        get
-        {
-            var cut = ArtifactId.LastIndexOfAny(['/', ':']);
-            return cut >= 0 && cut < ArtifactId.Length - 1 ? ArtifactId[(cut + 1)..] : ArtifactId;
-        }
-    }
+    /// <summary>The file's own name — the last part of its ID, as the observation view names artifacts.</summary>
+    public string FileName => Helpers.Caom2Format.ArtifactFileName(ArtifactId);
 }

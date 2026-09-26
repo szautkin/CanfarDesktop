@@ -34,6 +34,31 @@ public static class ResearchRecords
     }
 
     /// <summary>
+    /// Delete a record's file from this computer and keep the record — its metadata, its notes, and
+    /// for a cutout its region, so it can be fetched again exactly as it was. Null when done, otherwise
+    /// why not; a file already gone is not a failure, only a record to tidy.
+    /// </summary>
+    public static string? RemoveLocalFile(ObservationStore store, DownloadedObservation record)
+    {
+        if (!string.IsNullOrWhiteSpace(record.LocalPath))
+        {
+            try
+            {
+                if (File.Exists(record.LocalPath)) File.Delete(record.LocalPath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return ex.Message; // open elsewhere, or not ours to delete: the record keeps pointing at it
+            }
+        }
+
+        record.LocalPath = string.Empty;
+        record.FileSize = null;
+        store.Save(record);
+        return null;
+    }
+
+    /// <summary>
     /// Fill the record's EMPTY fields from CAOM2. Only empty ones: a record saved from a search row
     /// already carries the grid's own values, and this tops it up rather than overwriting them.
     /// </summary>

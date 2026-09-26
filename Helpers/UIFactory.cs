@@ -59,4 +59,24 @@ public static class UIFactory
         btn.Click += onClick;
         return btn;
     }
+
+    /// <summary>
+    /// Wrap a button so that, greyed, it can say why. A disabled control takes no pointer input, so a
+    /// tooltip on the button itself never appears; one on this wrapper does. Set its state with
+    /// <see cref="Enable"/>.
+    /// </summary>
+    public static Border Explained(Button button) => new()
+    {
+        Child = button,
+        Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
+    };
+
+    /// <summary>Enable it, or grey it and say why — on its wrapper's tooltip, and to a screen reader.</summary>
+    public static void Enable(Button button, bool enabled, string? whyNot)
+    {
+        button.IsEnabled = enabled;
+        var reason = enabled ? null : whyNot;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(button, reason ?? string.Empty);
+        if (button.Parent is Border wrapper) ToolTipService.SetToolTip(wrapper, reason);
+    }
 }

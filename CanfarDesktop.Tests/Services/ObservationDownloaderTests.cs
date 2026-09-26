@@ -96,6 +96,40 @@ public class ObservationDownloaderTests : IDisposable
         Assert.Empty(store.Observations);
     }
 
+    /// <summary>
+    /// A cutout record fetched again — its file removed, or never there — comes back as the cutout it
+    /// is: its file's SODA service looked up from DataLink, and the request built from its own region.
+    /// Never the whole file it was cut from.
+    /// </summary>
+    [Fact]
+    public async Task ACutoutRecord_IsFetchedAsItsCutout_NotAsTheWholeFile()
+    {
+        var requested = new List<string>();
+        var (downloader, store) = Make(req =>
+        {
+            var uri = req.RequestUri!.ToString();
+            requested.Add(uri);
+            return Task.FromResult(uri.Contains("datalink", StringComparison.OrdinalIgnoreCase)
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Cutouts.SodaDescriptorParserTests.Fixture("megapipe-image.xml")) }
+                : File(64));
+        });
+        var record = new DownloadedObservation
+        {
+            PublisherID = "ivo://cadc.nrc.ca/CFHTMEGAPIPE?G006.010.684+41.269/G006.010.684+41.269.R",
+            Cutout = new CanfarDesktop.Models.Cutouts.CutoutSpec
+            {
+                ArtifactId = "cadc:CFHTSG/G006.010.684+41.269.R.fits",
+                Region = CanfarDesktop.Models.Cutouts.SkyRegion.Circle(10.68, 41.27, 0.05),
+            },
+        };
+
+        await downloader.Start(new ObservationDownloadRequest(record.PublisherID, PathFor("cut.fits"), record));
+
+        Assert.Contains(requested, u => u.StartsWith("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/sync?ID=")
+                                        && u.Contains("CIRCLE=10.68"));
+        Assert.True(Assert.Single(store.Observations).IsCutout);
+    }
+
     // ── What the status bar sees ─────────────────────────────────────────────
 
     [Fact]

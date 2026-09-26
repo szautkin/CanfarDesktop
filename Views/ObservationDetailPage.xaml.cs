@@ -28,6 +28,7 @@ public sealed partial class ObservationDetailPage : UserControl
     private readonly DataLinkService _dataLink;
     private readonly ObservationDownloader _downloader;
     private readonly SearchContext _search;
+    private readonly ObservationStore _store;
 
     private string _publisherID = string.Empty;
     private CAOM2Observation? _current;
@@ -44,13 +45,53 @@ public sealed partial class ObservationDetailPage : UserControl
     public event Action? SignInRequested;
 
     public ObservationDetailPage(ICAOM2Service caom2, DataLinkService dataLink,
-                                 ObservationDownloader downloader, SearchContext search)
+                                 ObservationDownloader downloader, SearchContext search, ObservationStore store)
     {
         InitializeComponent();
         _caom2 = caom2;
         _dataLink = dataLink;
         _downloader = downloader;
         _search = search;
+        _store = store;
+
+        SaveToResearchButton.Content = Loc.T("ObsDetail_SaveToResearch");
+        UpdateSaveToResearch();
+        // A cached page for the app's life, so it may listen for the app's life: a download landing
+        // elsewhere puts this observation in Research, and the button should say so.
+        _store.Changed += () => DispatcherQueue.TryEnqueue(UpdateSaveToResearch);
+    }
+
+    /// <summary>
+    /// "Save to Research" — keep the observation, its details and notes, without downloading a file.
+    /// Live once the observation has loaded and Research does not have it; greyed, saying why, otherwise.
+    /// </summary>
+    private void UpdateSaveToResearch()
+    {
+        var loaded = _current is not null && !string.IsNullOrEmpty(_publisherID);
+        var inResearch = loaded && _store.Has(_publisherID);
+        UIFactory.Enable(SaveToResearchButton, loaded && !inResearch,
+            inResearch ? Loc.T("ObsDetail_AlreadyInResearch") : Loc.T("ObsDetail_SaveToResearchLoading"));
+        if (loaded && !inResearch) ToolTipService.SetToolTip(SaveToResearchButton, Loc.T("ObsDetail_SaveToResearchTip"));
+    }
+
+    private void OnSaveToResearch(object sender, RoutedEventArgs e)
+    {
+        if (_current is null || string.IsNullOrEmpty(_publisherID)) return;
+
+        var ctx = new DownloadContext(_publisherID, _collection, _observationID, _current, _links, IsScience: true);
+        if (_store.SaveIfAbsent(ResearchRecordFor(ctx)))
+        {
+            DownloadBar.IsOpen = true;
+            DownloadBar.ActionButton = null;
+            DownloadBar.Severity = InfoBarSeverity.Success;
+            DownloadBar.Title = Loc.T("ObsDetail_SavedToResearch");
+            DownloadBar.Message = string.Empty;
+            DownloadText.Text = string.Empty;
+            DownloadResearchText.Text = Loc.T("ObsDetail_SavedToResearchNote");
+            DownloadResearchLink.Content = Loc.T("ObsDetail_ViewInResearch");
+            DownloadResearchRow.Visibility = Visibility.Visible;
+        }
+        UpdateSaveToResearch();
     }
 
     /// <summary>Load (or reload) the detail view for a search-result publisher ID.</summary>
@@ -85,6 +126,8 @@ public sealed partial class ObservationDetailPage : UserControl
         // The previous observation's files and cutout editor go with it.
         _links = null;
         _cutoutEditor = null;
+        _current = null;
+        UpdateSaveToResearch();
     }
 
     private async Task ReloadAsync()
@@ -154,6 +197,7 @@ public sealed partial class ObservationDetailPage : UserControl
         BuildFiles(obs);
         BuildProvenance(obs);
         BuildRaw(obs);
+        UpdateSaveToResearch();
     }
 
     private void BuildOverview(CAOM2Observation obs)
@@ -419,15 +463,24 @@ public sealed partial class ObservationDetailPage : UserControl
         Grid.SetColumn(dl, 4);
         grid.Children.Add(dl);
 
-        // Offered only where CADC says the file can be cut: its DataLink answer has a service for it.
-        if (_links?.CutoutFor(art.Uri) is { } cutout)
+        // On every FITS file — the only kind SODA cuts; never on a preview, catalogue or package. Live
+        // where CADC says THIS file can be cut (its DataLink answer has a service for it), greyed with
+        // the reason where it does not.
+        if (CutoutCandidates.IsFitsFile(art.ContentType, art.Uri, art.ProductType))
         {
+            var cutout = _links?.CutoutFor(art.Uri);
             var cut = new Button { Content = Loc.T("Cutout_Button") };
-            ToolTipService.SetToolTip(cut, Loc.T("Cutout_ButtonTooltip"));
             AutomationProperties.SetName(cut, Loc.F("Cutout_ButtonName", Caom2Format.ArtifactFileName(art.Uri)));
-            cut.Click += (_, _) => ShowCutoutEditor(cutout, art, spec: null);
-            Grid.SetColumn(cut, 3);
-            grid.Children.Add(cut);
+            if (cutout is not null)
+            {
+                ToolTipService.SetToolTip(cut, Loc.T("Cutout_ButtonTooltip"));
+                cut.Click += (_, _) => ShowCutoutEditor(cutout, art, spec: null);
+            }
+            var cutWrapper = UIFactory.Explained(cut);
+            UIFactory.Enable(cut, cutout is not null,
+                _links is null ? Loc.T("Cutout_Checking") : Loc.T("Cutout_NoneForFile"));
+            Grid.SetColumn(cutWrapper, 3);
+            grid.Children.Add(cutWrapper);
         }
 
         return new Border
@@ -814,11 +867,11 @@ public sealed partial class ObservationDetailPage : UserControl
         var publisherId = _publisherID;
         DataLinkResult links;
         try { links = await _dataLink.GetLinksAsync(publisherId); }
-        catch { return; } // the observation still shows, without cutouts
+        catch { links = new DataLinkResult(); } // the observation still shows; its files say they cannot be cut
 
         if (_publisherID != publisherId || !ReferenceEquals(_current, obs)) return;
         _links = links;
-        if (links.Cutouts.Count > 0) BuildFiles(obs);
+        BuildFiles(obs); // either way: the buttons go from "checking" to what the answer said
     }
 
     /// <summary>The files of the open observation that can be cut out.</summary>

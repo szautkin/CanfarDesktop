@@ -24,6 +24,19 @@ public sealed class ObservationDownloadService
     }
 
     /// <summary>
+    /// The SODA request for a cutout of an observation's file: the file's service from DataLink, the
+    /// request from the spec. Throws when the file can no longer be cut, or the cutout no longer passes
+    /// — a record kept for weeks meets today's descriptor, not the one it was cut from.
+    /// </summary>
+    public async Task<string> ResolveCutoutUrlAsync(string publisherId, Models.Cutouts.CutoutSpec spec, CancellationToken ct = default)
+    {
+        var links = await _dataLink.GetLinksAsync(publisherId, ct);
+        var file = links.CutoutFor(spec.ArtifactId)
+            ?? throw new InvalidOperationException($"{spec.ArtifactId} can no longer be cut out of {publisherId}");
+        return Cutouts.SodaRequest.Url(file, spec);
+    }
+
+    /// <summary>
     /// Stream <paramref name="url"/> to <paramref name="localPath"/> atomically: write a sibling <c>.tmp</c>,
     /// then move it over the target. Reports (downloaded, total?) bytes to <paramref name="progress"/> when
     /// given; deletes the partial <c>.tmp</c> on any failure. Throws on a non-success HTTP status.
