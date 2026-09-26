@@ -150,7 +150,12 @@ public sealed record CutoutFileOption(
     long? SuggestedBytes);
 
 /// <summary>What get_cutout_options answers.</summary>
-public sealed record CutoutOptions(string PublisherId, IReadOnlyList<CutoutFileOption> Files, string? Note)
+/// <param name="SodaProblems">
+/// When CADC can cut none of the files, why its answer offered no way to: DataLink refused or could not
+/// be reached, or described a cutout service the app could not read. Null when CADC can cut one.
+/// </param>
+public sealed record CutoutOptions(string PublisherId, IReadOnlyList<CutoutFileOption> Files, string? Note,
+                                   IReadOnlyList<string>? SodaProblems = null)
 {
     /// <summary>Why nothing of an observation can be cut, and what to do instead.</summary>
     public const string NoneCanBeCut =
@@ -161,7 +166,8 @@ public sealed record CutoutOptions(string PublisherId, IReadOnlyList<CutoutFileO
     /// Each file's options, each way it can be cut, with the cutout the editor would open on — from the
     /// last search when it looked at this file. Pure, so it is tested without a network or a screen.
     /// </summary>
-    public static CutoutOptions From(string publisherId, IReadOnlyList<ICutoutSource> sources, CutoutHints? hints)
+    public static CutoutOptions From(string publisherId, IReadOnlyList<ICutoutSource> sources, CutoutHints? hints,
+                                     IReadOnlyList<string>? sodaProblems = null)
     {
         var options = sources.Select(source =>
         {
@@ -173,7 +179,8 @@ public sealed record CutoutOptions(string PublisherId, IReadOnlyList<CutoutFileO
         }).ToList();
 
         var note = options.Count == 0 ? NoneCanBeCut : null;
-        return new CutoutOptions(publisherId, options, note);
+        var why = sources.Any(s => s.Method == CutoutMethod.Soda) || sodaProblems is not { Count: > 0 } ? null : sodaProblems;
+        return new CutoutOptions(publisherId, options, note, why);
     }
 }
 
@@ -194,7 +201,8 @@ public sealed class GetCutoutOptionsTool : JsonReadTool<GetCutoutOptionsTool.Arg
         "(unavailable), the images of a multi-extension file a local cut can choose among (extensions), the observation's " +
         "other files beside it on the same pixels that a local cut can take along — a weight map — each with why not when it " +
         "cannot (companions), and the cutout the editor would suggest, from the last search's target and wavelengths " +
-        "when they fall on the file, with its size (estimated for Soda, exact for Local). Read this before download_cutout.",
+        "when they fall on the file, with its size (estimated for Soda, exact for Local). When CADC can cut none of them, " +
+        "sodaProblems says why its DataLink answer offered no way to. Read this before download_cutout.",
         """{"type":"object","properties":{"publisherId":{"type":"string"}},"required":["publisherId"],"additionalProperties":false}""");
 
     protected override async Task<CutoutOptions> HandleAsync(Args args, McpToolContext context, CancellationToken ct)

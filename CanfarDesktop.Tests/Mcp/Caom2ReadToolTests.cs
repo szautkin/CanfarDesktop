@@ -145,4 +145,43 @@ public class Caom2ReadToolTests
         var result = await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":""}"""), Ctx, default);
         Assert.IsType<InvalidArgument>(Reason(result));
     }
+
+    // ── Why an answer is thin (QA D8) ─────────────────────────────────────────
+
+    [Fact]
+    public async Task GetDataLinks_SaysWhyAnAnswerHoldsLess_AndCountsTheCutoutServices()
+    {
+        var tool = new GetDataLinksTool((_, _) => Task.FromResult(new DataLinkResult { Problems = { "DataLink answered 401 Unauthorized" } }));
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":"ivo://cadc/X"}"""), Ctx, default));
+
+        Assert.Equal(0, ((JsonInt)data["cutoutServices"]!).Value);
+        Assert.Equal("DataLink answered 401 Unauthorized", ((JsonString)((JsonArray)data["problems"]!).Items[0]).Value);
+        Assert.Null(data["raw"]); // only when asked
+    }
+
+    [Fact]
+    public async Task GetDataLinks_Raw_IsTheAnswerAsItCame()
+    {
+        var tool = new GetDataLinksTool((_, _) => Task.FromResult(new DataLinkResult()),
+            (_, _) => Task.FromResult(new DataLinkAnswer(200, "<VOTABLE>…</VOTABLE>", null)));
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":"ivo://cadc/X","raw":true}"""), Ctx, default));
+
+        Assert.Equal(200, ((JsonInt)data["rawStatus"]!).Value);
+        Assert.Equal("<VOTABLE>…</VOTABLE>", ((JsonString)data["raw"]!).Value);
+        Assert.Null(data["rawTruncated"]);
+    }
+
+    [Fact]
+    public async Task GetDataLinks_Raw_IsCut_AndSaysSo()
+    {
+        var tool = new GetDataLinksTool((_, _) => Task.FromResult(new DataLinkResult()),
+            (_, _) => Task.FromResult(new DataLinkAnswer(200, new string('x', GetDataLinksTool.MaxRaw + 10), null)));
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"publisherId":"ivo://cadc/X","raw":true}"""), Ctx, default));
+
+        Assert.Equal(GetDataLinksTool.MaxRaw, ((JsonString)data["raw"]!).Value.Length);
+        Assert.Equal(new JsonBool(true), data["rawTruncated"]);
+    }
 }

@@ -79,4 +79,65 @@ public class SodaDescriptorParserTests
         Assert.NotNull(result.CutoutFor("cadc:CFHTSG/G006.010.684+41.269.R.fits"));
         Assert.Null(result.CutoutFor("cadc:CFHTSG/G006.010.684+41.269.R.weight.fits.fz"));
     }
+
+    // ── Why a service was passed over (QA D8) ─────────────────────────────────
+
+    private static IReadOnlyList<string> PassedOver(string xml) => SodaDescriptorParser.ParseWithReasons(xml).PassedOver;
+
+    [Fact]
+    public void AnAnswerItReads_HasNothingPassedOver_ThoughItListsTheAsyncServiceToo()
+        => Assert.Empty(PassedOver(Fixture("megapipe-image.xml")));
+
+    [Fact]
+    public void AServiceNotOnHttps_SaysSo()
+    {
+        var xml = Fixture("megapipe-image.xml").Replace("https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/sync\"", "http://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/sync\"");
+        Assert.Contains("not https", Assert.Single(PassedOver(xml)));
+    }
+
+    /// <summary>
+    /// DataLink lets a descriptor serve every row, its ID a reference to a column of the table rather than
+    /// a value. If CADC answers that way, this is what says so.
+    /// </summary>
+    [Fact]
+    public void AnIdGivenByReference_IsNamedAsTheReason()
+    {
+        var xml = System.Text.RegularExpressions.Regex.Replace(Fixture("megapipe-image.xml"),
+            @"<PARAM([^>]*)name=""ID""([^>]*)value=""[^""]*""", @"<PARAM$1name=""ID""$2value="""" ref=""uri""");
+
+        Assert.Empty(SodaDescriptorParser.Parse(xml));
+        Assert.Contains("by reference to the table's column \"uri\"", Assert.Single(PassedOver(xml)));
+    }
+
+    [Fact]
+    public void NoInputParams_SaysSo()
+    {
+        var xml = Fixture("megapipe-image.xml").Replace("name=\"inputParams\"", "name=\"somethingElse\"");
+        Assert.All(PassedOver(xml), why => Assert.Contains("no inputParams group", why));
+    }
+
+    [Fact]
+    public void AnAnswerWithNoServiceAtAll_SaysSo()
+        => Assert.Contains("describes no service at all",
+            Assert.Single(PassedOver("<VOTABLE><RESOURCE type=\"results\"><TABLE/></RESOURCE></VOTABLE>")));
+
+    [Fact]
+    public void AnAnswerWithOnlyOtherServices_NamesThem()
+    {
+        const string xml = """
+            <VOTABLE><RESOURCE type="meta" utype="adhoc:service">
+              <PARAM name="standardID" value="ivo://ivoa.net/std/SODA#async-1.0" />
+            </RESOURCE></VOTABLE>
+            """;
+        Assert.Contains("only: ivo://ivoa.net/std/SODA#async-1.0", Assert.Single(PassedOver(xml)));
+    }
+
+    [Fact]
+    public void AnAnswerThatIsNotXml_SaysSo()
+        => Assert.Contains("not well-formed XML", Assert.Single(PassedOver("<VOTABLE><RESOURCE")));
+
+    [Fact]
+    public void DataLinksOwnParse_CarriesTheReasons()
+        => Assert.Contains(DataLinkService.ParseVOTable("<VOTABLE><RESOURCE type=\"results\"><TABLE/></RESOURCE></VOTABLE>").Problems,
+            why => why.Contains("describes no service at all"));
 }

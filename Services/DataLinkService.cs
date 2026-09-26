@@ -5,6 +5,9 @@ using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Services;
 
+/// <summary>A DataLink answer as it came: its HTTP status and body, or why there was none.</summary>
+public sealed record DataLinkAnswer(int? Status, string? Body, string? Problem);
+
 public class DataLinkService
 {
     private readonly HttpClient _httpClient;
@@ -26,22 +29,14 @@ public class DataLinkService
         if (_cache.TryGetValue(publisherID, out var cached))
             return cached;
 
+        var answer = await FetchAsync(publisherID, cancellationToken);
+        // Neither refusals nor failures are cached: a refusal can be the sign-in's — asked while signed
+        // out about a proprietary observation — and signing in has to be able to change the answer.
+        if (answer.Body is not { } xml)
+            return new DataLinkResult { Problems = { answer.Problem ?? "DataLink gave no answer" } };
+
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, _endpoints.DataLinkUrl(publisherID));
-            request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/x-votable+xml"));
-
-            // Bound the DataLink resolution so it can't hang (the host is reachable but link resolution
-            // can be slow), but honour the caller's cancellation too.
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(30));
-            using var response = await _httpClient.SendAsync(request, cts.Token);
-            // Not cached either: a refusal can be the sign-in's — asked while signed out about a
-            // proprietary observation — and signing in has to be able to change the answer.
-            if (!response.IsSuccessStatusCode)
-                return new DataLinkResult();
-
-            var xml = await response.Content.ReadAsStringAsync(cts.Token);
             var result = ParseVOTable(xml);
             result.DownloadUrl = _endpoints.DownloadUrl(publisherID);
 
@@ -58,8 +53,38 @@ public class DataLinkService
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"DataLink parse failed for {publisherID}: {ex.Message}");
+            return new DataLinkResult { Problems = { $"DataLink's answer could not be read: {ex.Message}" } }; // not cached — allow retry
+        }
+    }
+
+    /// <summary>
+    /// Ask DataLink about an observation and take its answer as it comes — for <see cref="GetLinksAsync"/>,
+    /// and whole for get_data_links' raw, which is how to see what the app is being told. Never throws but
+    /// for the caller's own cancellation.
+    /// </summary>
+    public async Task<DataLinkAnswer> FetchAsync(string publisherID, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, _endpoints.DataLinkUrl(publisherID));
+            request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/x-votable+xml"));
+
+            // Bound the DataLink resolution so it can't hang (the host is reachable but link resolution
+            // can be slow), but honour the caller's cancellation too.
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+            using var response = await _httpClient.SendAsync(request, cts.Token);
+            var body = await response.Content.ReadAsStringAsync(cts.Token);
+            return response.IsSuccessStatusCode
+                ? new DataLinkAnswer((int)response.StatusCode, body, null)
+                : new DataLinkAnswer((int)response.StatusCode, null,
+                    $"DataLink answered {(int)response.StatusCode} {response.ReasonPhrase}".TrimEnd());
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
             System.Diagnostics.Debug.WriteLine($"DataLink fetch failed for {publisherID}: {ex.Message}");
-            return new DataLinkResult(); // Don't cache failures — allow retry
+            return new DataLinkAnswer(null, null, $"DataLink could not be reached: {ex.Message}");
         }
     }
 
@@ -134,10 +159,15 @@ public class DataLinkService
         var descriptionIdx = fieldNames.IndexOf("description");
         var errorIdx = fieldNames.IndexOf("error_message");
 
-        if (accessUrlIdx < 0 || semanticsIdx < 0) return result;
+        // Without its columns there is no table of links to read — said, and the cutout services, which
+        // are described apart from it, still read.
+        if (accessUrlIdx < 0 || semanticsIdx < 0)
+            result.Problems.Add("the DataLink answer has no table of links (no access_url and semantics columns)");
 
         // Extract rows — handle both <TD>value</TD> and <TD/> (self-closing empty)
-        foreach (Match rowMatch in Regex.Matches(xml, @"<TR>(.*?)</TR>", RegexOptions.Singleline | RegexOptions.IgnoreCase))
+        foreach (Match rowMatch in accessUrlIdx < 0 || semanticsIdx < 0
+                     ? Enumerable.Empty<Match>()
+                     : Regex.Matches(xml, @"<TR>(.*?)</TR>", RegexOptions.Singleline | RegexOptions.IgnoreCase))
         {
             var cells = ParseTDCells(rowMatch.Groups[1].Value);
             if (cells.Count <= Math.Max(accessUrlIdx, semanticsIdx)) continue;
@@ -181,7 +211,9 @@ public class DataLinkService
         }
 
         // Each file's cutout service is described apart from the rows, in its own RESOURCE.
-        result.Cutouts.AddRange(Cutouts.SodaDescriptorParser.Parse(xml));
+        var soda = Cutouts.SodaDescriptorParser.ParseWithReasons(xml);
+        result.Cutouts.AddRange(soda.Descriptors);
+        result.Problems.AddRange(soda.PassedOver);
 
         System.Diagnostics.Debug.WriteLine($"DataLink parsed: {result.Thumbnails.Count} thumbnails, {result.Previews.Count} previews, {result.Cutouts.Count} cutout services");
         return result;

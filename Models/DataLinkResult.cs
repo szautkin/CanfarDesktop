@@ -27,6 +27,13 @@ public class DataLinkResult
     /// </summary>
     public List<string> Faults { get; set; } = [];
 
+    /// <summary>
+    /// Why the answer holds less than it might: the service refused or could not be reached, or a cutout
+    /// service it describes could not be read. Said, because an empty answer otherwise reads the same as
+    /// an observation with nothing to offer (QA D8).
+    /// </summary>
+    public List<string> Problems { get; set; } = [];
+
     /// <summary>True when the service answered with faults and nothing else.</summary>
     public bool IsEntirelyFaults =>
         Faults.Count > 0 && DirectFiles.Count == 0 && Previews.Count == 0 && Thumbnails.Count == 0;

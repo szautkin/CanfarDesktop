@@ -311,4 +311,20 @@ public class CutoutToolsTests
         Assert.Contains("ivo-cadc-MP.fits", asked.Message);
         Assert.Same(local, new CutoutArgs { ArtifactId = "ivo-cadc-MP.fits" }.PickSource(sources));
     }
+
+    // ── Why CADC cannot cut (QA D8) ───────────────────────────────────────────
+
+    [Fact]
+    public void Options_WithNoWayOfCADCs_SayWhyItsAnswerOfferedNone()
+    {
+        var options = CutoutOptions.From("ivo://cadc/MP", [], null, ["DataLink answered 401 Unauthorized"]);
+
+        Assert.Equal(CutoutOptions.NoneCanBeCut, options.Note);
+        Assert.Equal(["DataLink answered 401 Unauthorized"], options.SodaProblems!);
+    }
+
+    [Fact]
+    public void Options_WhereCADCCanCut_HaveNoProblemsToReport()
+        => Assert.Null(CutoutOptions.From("ivo://cadc/MP", [new SodaCutoutSource(MegaPipe(), 1_663_807_680)], null,
+            ["a service descriptor elsewhere was passed over"]).SodaProblems);
 }

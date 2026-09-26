@@ -206,4 +206,38 @@ public class DataLinkServiceTests
         Assert.Single((await service.GetLinksAsync("ivo://cadc/X?x")).DirectFiles); // and that answer is kept
         Assert.Equal(2, calls);
     }
+
+    /// <summary>QA D8: an answer that was a refusal read as an observation with nothing to offer.</summary>
+    [Fact]
+    public async Task ARefusal_SaysWhatDataLinkAnswered()
+    {
+        var service = new DataLinkService(new HttpClient(new MockHttpMessageHandler(_ =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)))), new ApiEndpoints());
+
+        var result = await service.GetLinksAsync("ivo://cadc/X?x");
+
+        Assert.Empty(result.DirectFiles);
+        Assert.Contains("DataLink answered 401", Assert.Single(result.Problems));
+    }
+
+    [Fact]
+    public async Task Fetch_GivesTheAnswerAsItCame()
+    {
+        var service = new DataLinkService(new HttpClient(new MockHttpMessageHandler(_ =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<VOTABLE/>") }))), new ApiEndpoints());
+
+        Assert.Equal(new DataLinkAnswer(200, "<VOTABLE/>", null), await service.FetchAsync("ivo://cadc/X?x"));
+    }
+
+    [Fact]
+    public async Task Fetch_ThatCannotReachDataLink_SaysWhy()
+    {
+        var service = new DataLinkService(new HttpClient(new MockHttpMessageHandler(_ =>
+            throw new HttpRequestException("no route to host"))), new ApiEndpoints());
+
+        var answer = await service.FetchAsync("ivo://cadc/X?x");
+
+        Assert.Null(answer.Body);
+        Assert.Contains("no route to host", answer.Problem);
+    }
 }
