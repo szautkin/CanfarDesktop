@@ -455,29 +455,43 @@ public partial class SearchViewModel : ObservableObject
     [RelayCommand]
     public async Task SearchAsync()
     {
-        // A target typed a moment ago is still being resolved — half a second of debounce, then the
-        // network. Searching without waiting built the query with no coordinates, fell back to a
-        // target-name match, and an M31 search returned a quasar at Dec −31° because "J0305M3150"
-        // contains "m31". Whatever the resolver concludes, the query should be built from it.
-        await _resolving;
-
-        var state = BuildFormState();
-        var adql = ADQLBuilder.Build(state);
-        AdqlText = adql;
-        _context?.Searched(state);
-        await ExecuteAdqlAsync(adql);
-
-        if (Results is not null && Results.TotalRows > 0)
+        if (IsSearching) return;
+        var search = StartSearching();
+        try
         {
-            _storeService.SaveRecentSearch(new RecentSearch
+            // A target typed a moment ago is still being resolved — half a second of debounce, then the
+            // network. Searching without waiting built the query with no coordinates, fell back to a
+            // target-name match, and an M31 search returned a quasar at Dec −31° because "J0305M3150"
+            // contains "m31". Whatever the resolver concludes, the query should be built from it —
+            // unless the person cancels while it is still out.
+            await _resolving.WaitAsync(search.Token);
+
+            var state = BuildFormState();
+            var adql = ADQLBuilder.Build(state);
+            AdqlText = adql;
+            _context?.Searched(state);
+
+            if (await QueryAsync(adql, search.Token) && Results is { TotalRows: > 0 })
             {
-                Summary = BuildSearchSummary(state),
-                Adql = adql,
-                FormState = state,
-                ResultCount = Results.TotalRows,
-                SearchedAt = DateTime.UtcNow
-            });
-            LoadRecentSearchesFromStore();
+                _storeService.SaveRecentSearch(new RecentSearch
+                {
+                    Summary = BuildSearchSummary(state),
+                    Adql = adql,
+                    FormState = state,
+                    ResultCount = Results.TotalRows,
+                    SearchedAt = DateTime.UtcNow
+                });
+                LoadRecentSearchesFromStore();
+            }
+        }
+        catch (Exception) when (search.IsCancellationRequested)
+        {
+            SearchCancelled = true;
+            StatusMessage = "Search cancelled";
+        }
+        finally
+        {
+            StopSearching(search);
         }
     }
 
@@ -485,31 +499,80 @@ public partial class SearchViewModel : ObservableObject
     public async Task ExecuteAdqlAsync(string? adql = null)
     {
         var query = adql ?? AdqlText;
-        if (string.IsNullOrWhiteSpace(query)) return;
+        if (string.IsNullOrWhiteSpace(query) || IsSearching) return;
 
+        var search = StartSearching();
+        try
+        {
+            await QueryAsync(query, search.Token);
+        }
+        catch (Exception) when (search.IsCancellationRequested)
+        {
+            SearchCancelled = true;
+            StatusMessage = "Search cancelled";
+        }
+        finally
+        {
+            StopSearching(search);
+        }
+    }
+
+    /// <summary>
+    /// Stop the search running now — the query, or the wait for its target's position. The results
+    /// already shown stay as they were; nothing is saved as a recent search.
+    /// </summary>
+    [RelayCommand]
+    public void CancelSearch() => _search?.Cancel();
+
+    /// <summary>The search running now, to cancel; null when none is.</summary>
+    private CancellationTokenSource? _search;
+
+    /// <summary>Whether the last search was cancelled — its results, if any are shown, are the ones from before it.</summary>
+    public bool SearchCancelled { get; private set; }
+
+    private CancellationTokenSource StartSearching()
+    {
+        var search = new CancellationTokenSource();
+        _search = search;
+        SearchCancelled = false;
         IsSearching = true;
         HasError = false;
         StatusMessage = "Searching...";
+        return search;
+    }
 
+    private void StopSearching(CancellationTokenSource search)
+    {
+        if (ReferenceEquals(_search, search)) _search = null;
+        search.Dispose();
+        IsSearching = false;
+    }
+
+    /// <summary>
+    /// Run a query and show its rows. True when they replaced the results; false when it failed, and
+    /// the page says why. A cancelled query throws, for its caller to say so — it did not fail.
+    /// </summary>
+    private async Task<bool> QueryAsync(string query, CancellationToken ct)
+    {
         try
         {
-            Results = await _tapService.ExecuteQueryAsync(query, MaxRecords);
+            var results = await _tapService.ExecuteQueryAsync(query, MaxRecords, ct);
+            ct.ThrowIfCancellationRequested(); // cancelled as it arrived: the person asked for the old results to stay
+            Results = results;
             ResetFiltersAndSort();
             BuildColumns();
             CurrentPage = 1;
             UpdatePagination();
             StatusMessage = $"{Results.TotalRows} rows returned" +
                 (Results.TotalRows >= MaxRecords ? $" (limit: {MaxRecords})" : "");
+            return true;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             ErrorMessage = ex.Message;
             HasError = true;
             StatusMessage = "Search failed";
-        }
-        finally
-        {
-            IsSearching = false;
+            return false;
         }
     }
 

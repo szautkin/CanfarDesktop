@@ -1,3 +1,4 @@
+using System.Globalization;
 using Xunit;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
@@ -138,12 +139,22 @@ public class ADQLBuilderTests
         Assert.DoesNotContain("LIKE", adql.Split("observationID")[1].Split("\n")[0]); // no LIKE on obsID line
     }
 
+    /// <summary>
+    /// Released by now, as a literal UTC timestamp: CADC's TAP service has no GETDATE(), and a query
+    /// with it came back "Function [GETDATE] is not found in TapSchema".
+    /// </summary>
     [Fact]
-    public void Build_PublicOnly_GeneratesDataRelease()
+    public void Build_PublicOnly_ComparesTheReleaseWithNowAsALiteral()
     {
-        var state = new SearchFormState { PublicOnly = true };
-        var adql = ADQLBuilder.Build(state);
-        Assert.Contains("Plane.dataRelease <= GETDATE()", adql);
+        var before = DateTime.UtcNow;
+        var adql = ADQLBuilder.Build(new SearchFormState { PublicOnly = true });
+        var after = DateTime.UtcNow;
+
+        var match = System.Text.RegularExpressions.Regex.Match(adql, @"Plane\.dataRelease <= '(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3})'");
+        Assert.True(match.Success, adql);
+        var stamp = DateTime.ParseExact(match.Groups[1].Value, "yyyy-MM-dd'T'HH:mm:ss.fff", CultureInfo.InvariantCulture);
+        Assert.InRange(stamp, before.AddMilliseconds(-1), after);
+        Assert.DoesNotContain("GETDATE", adql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

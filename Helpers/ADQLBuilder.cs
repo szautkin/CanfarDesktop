@@ -437,8 +437,10 @@ public static class ADQLBuilder
         if (!string.IsNullOrWhiteSpace(s.Intent))
             c.Add($"Observation.intent = '{Escape(s.Intent)}'");
 
+        // Released by now. As a literal UTC timestamp, the way CADC's own search writes it: its TAP
+        // service has no GETDATE() — or any other function for the current time — and refused the query.
         if (s.PublicOnly)
-            c.Add("Plane.dataRelease <= GETDATE()");
+            c.Add($"Plane.dataRelease <= '{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff", CultureInfo.InvariantCulture)}'");
     }
 
     #endregion

@@ -3593,6 +3593,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Search_ResetButton.Content" xml:space="preserve">
     <value>Reset</value>
   </data>
+  <data name="Search_CancelButton.Content" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
   <data name="Search_ResolverCombo.Header" xml:space="preserve">
     <value>Resolver</value>
   </data>

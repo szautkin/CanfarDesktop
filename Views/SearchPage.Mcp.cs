@@ -388,6 +388,10 @@ public sealed partial class SearchPage : ISearchUiBridge
         sw.Stop();
 
         var vm = ViewModel;
+        if (vm.SearchCancelled)
+            return new SearchRunOutcome(false, vm.AdqlText, 0, false, vm.MaxRecords, sw.Elapsed.TotalMilliseconds,
+                null, "the search was cancelled in the app");
+
         if (vm.HasError)
             return new SearchRunOutcome(false, vm.AdqlText, 0, false, vm.MaxRecords, sw.Elapsed.TotalMilliseconds,
                 vm.ErrorMessage, "the query failed");

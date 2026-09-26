@@ -133,7 +133,9 @@ public sealed partial class SearchPage : Page
         {
             SyncDataTrainToViewModel();
             await ViewModel.SearchCommand.ExecuteAsync(null);
-            if (ViewModel.Results is not null)
+            // Only new results take the page to them: a failed search stays on the form, where its error
+            // shows, and a cancelled one where it was.
+            if (ViewModel.Results is not null && !ViewModel.HasError && !ViewModel.SearchCancelled)
             {
                 RowsPerPageCombo.SelectedItem = ViewModel.RowsPerPage;
                 RenderResultsPage(resetScroll: true);
@@ -169,7 +171,7 @@ public sealed partial class SearchPage : Page
         try
         {
             await ViewModel.ExecuteAdqlCommand.ExecuteAsync(null);
-            if (ViewModel.Results is not null)
+            if (ViewModel.Results is not null && !ViewModel.SearchCancelled)
             {
                 RowsPerPageCombo.SelectedItem = ViewModel.RowsPerPage;
                 RenderResultsPage(resetScroll: true);

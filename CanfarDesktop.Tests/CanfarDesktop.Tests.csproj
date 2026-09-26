@@ -172,6 +172,9 @@
     <Compile Include="..\Helpers\VoSpaceParser.cs" Link="Linked\VoSpaceParser.cs" />
     <Compile Include="..\Models\VoSpaceNode.cs" Link="Linked\VoSpaceNode.cs" />
     <Compile Include="..\Services\TAPService.cs" Link="Linked\TAPService.cs" />
+    <Compile Include="..\ViewModels\SearchViewModel.cs" Link="Linked\SearchViewModel.cs" />
+    <Compile Include="..\Services\SearchStoreService.cs" Link="Linked\SearchStoreService.cs" />
+    <Compile Include="..\Services\SearchContext.cs" Link="Linked\SearchContext.cs" />
     <!-- The service's own schema, and the ADQL pre-flight that reads it. -->
     <Compile Include="..\Models\TapSchema.cs" Link="Linked\TapSchema.cs" />
     <Compile Include="..\Services\TapSchemaService.cs" Link="Linked\TapSchemaService.cs" />
