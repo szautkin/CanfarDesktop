@@ -248,8 +248,11 @@ public sealed class McpHost : IAsyncDisposable
         lock (_applyingGate) _applying.Add(proposalId);
         ProposalsChanged?.Invoke(); // the strip shows the row as applying, whoever started it
 
-        var applyCts = new CancellationTokenSource(ApplyTimeout);
-        var applyTask = applier.ApplyAsync(proposal, applyCts.Token);
+        // Not cancelled at the backstop: past it, the apply carries on as a background job, as the agent
+        // is told. Cancelling it there stopped any applier that honours a token — a bulk download after
+        // its first file — while the agent was told it would finish and not to apply it again. What
+        // bounds an apply is its own work's limits (a download's stall timeout, a request's timeout).
+        var applyTask = applier.ApplyAsync(proposal, CancellationToken.None);
         using (var delayCts = new CancellationTokenSource())
         {
             var completed = await Task.WhenAny(applyTask, Task.Delay(ApplyTimeout, delayCts.Token));
@@ -257,22 +260,17 @@ public sealed class McpHost : IAsyncDisposable
 
             if (completed != applyTask)
             {
-                // The apply blew the backstop. Cancel it and hold the gate until it actually
-                // unwinds, so the next apply can't race the same store.
-                //
-                // An applier that honours the cancel stops. One that runs on — a large observation
-                // download, deliberately — is still doing the write it was asked for, so from here it
-                // is a background job: get_job_status follows it, and when it lands the proposal is
-                // marked applied. It used to stay Pending looking refused while the file sat in
-                // Research, inviting a second Apply that would fetch the whole thing again.
-                applyCts.Cancel();
+                // The apply blew the backstop. Hold the gate until it finishes, so the next apply can't
+                // race the same store. It is still doing the write it was asked for — a large
+                // observation download, say — so from here it is a background job: get_job_status
+                // follows it, and when it lands the proposal is marked applied. It used to stay Pending
+                // looking refused while the file sat in Research, inviting a second Apply that would
+                // fetch the whole thing again.
                 var jobId = proposalId.ToString();
                 _jobs?.Start(jobId, proposal.Kind, proposal.Summary);
                 _ = applyTask.ContinueWith(
                     t =>
                     {
-                        applyCts.Dispose();
-
                         // Marked before it leaves _applying, so a reject cannot slip in between.
                         var landed = t.IsCompletedSuccessfully && proposals.MarkApplied(proposalId);
                         _jobs?.Finish(jobId, t.IsCompletedSuccessfully,
@@ -300,7 +298,6 @@ public sealed class McpHost : IAsyncDisposable
         }
         finally
         {
-            applyCts.Dispose();
             lock (_applyingGate) _applying.Remove(proposalId);
             _applyGate.Release();
             ProposalsChanged?.Invoke();

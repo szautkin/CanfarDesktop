@@ -42,15 +42,10 @@ public static class AtomicFile
         });
 
     /// <summary>
-    /// Write through a stream, atomically, on the calling thread — for a long synchronous writer (a
-    /// FITS cutout, streamed row by row) that its caller already runs off the UI.
-    /// </summary>
-    public static void WriteStream(string path, Action<Stream> write) => WriteStreams([(path, write)]);
-
-    /// <summary>
-    /// Write several files as one: each built beside its target, and none put in place until every one
-    /// is built — so a failure part-way leaves every target as it was, and every temp file gone. For a
-    /// cutout and the companions cut with it.
+    /// Write several files as one, on the calling thread — a cutout and the companions cut with it,
+    /// streamed row by row by a caller already off the UI. Each is built beside its target, and none is
+    /// put in place until every one is built; if putting one in place fails, the ones already put are
+    /// put back as they were. Either all the targets are new, or all are as they were.
     /// </summary>
     public static void WriteStreams(IReadOnlyList<(string Path, Action<Stream> Write)> files)
     {
@@ -59,6 +54,7 @@ public static class AtomicFile
             throw new ArgumentException("Each file is written once.", nameof(files));
 
         var built = new List<string>();
+        var placed = new List<(string Path, string? Backup)>();
         try
         {
             foreach (var (path, write) in files)
@@ -68,13 +64,33 @@ public static class AtomicFile
                 using var stream = File.Create(tmp);
                 write(stream);
             }
-            for (var i = 0; i < files.Count; i++) Commit(built[i], files[i].Path);
+
+            for (var i = 0; i < files.Count; i++)
+            {
+                var path = files[i].Path;
+                var backup = File.Exists(path) ? BackupFor(path) : null;
+                Commit(built[i], path, backup);
+                placed.Add((path, backup));
+            }
         }
         catch
         {
+            // Back as they were: a replaced target from its backup, a new one gone.
+            foreach (var (path, backup) in Enumerable.Reverse(placed))
+            {
+                try
+                {
+                    if (backup is not null) File.Move(backup, path, overwrite: true);
+                    else File.Delete(path);
+                }
+                catch { /* best effort: the original exception is the news */ }
+            }
             foreach (var tmp in built) Cleanup(tmp);
             throw;
         }
+
+        foreach (var (_, backup) in placed)
+            if (backup is not null) Cleanup(backup);
     }
 
     /// <summary>The shared shape: build the temp file, put it over the target, clean up on failure.</summary>
@@ -114,14 +130,17 @@ public static class AtomicFile
     /// <see cref="File.Replace(string, string, string?)"/> preserves the target's attributes and only
     /// works when it exists; a first write has nothing to replace, hence the move.
     /// </summary>
-    private static void Commit(string tmp, string path)
+    private static void Commit(string tmp, string path, string? backup = null)
     {
-        if (File.Exists(path)) File.Replace(tmp, path, null);
+        if (File.Exists(path)) File.Replace(tmp, path, backup);
         else File.Move(tmp, path);
     }
 
     /// <summary>Derived from the target, so concurrent writers to different files cannot collide.</summary>
     private static string TempFor(string path) => path + ".tmp";
+
+    /// <summary>Where a replaced target is kept until every file of a <see cref="WriteStreams"/> is in place.</summary>
+    private static string BackupFor(string path) => path + ".bak";
 
     /// <summary>Best effort: the write already failed, and failing to tidy up must not mask why.</summary>
     private static void Cleanup(string tmp)

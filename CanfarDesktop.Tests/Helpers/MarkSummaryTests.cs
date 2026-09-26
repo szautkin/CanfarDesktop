@@ -11,6 +11,7 @@ namespace CanfarDesktop.Tests.Helpers;
 /// whose subject is off screen. A row that drops the place, or that reads the same for a mark of yours
 /// and a mark an agent made, fails at exactly that.
 /// </summary>
+[Collection("Translations")] // sets a process-wide translation hook
 public class MarkSummaryTests
 {
     private static Annotation Mark(

@@ -156,6 +156,29 @@ public class StreamToFileTests : IDisposable
         Assert.Equal(20 * StallingStream.ChunkSize, written);
     }
 
+    /// <summary>
+    /// The clock runs only while waiting for bytes. Writing them out can be slow — a network share, a
+    /// busy USB disk — and the time that takes is not silence on the wire: it used to be counted, and
+    /// the next read failed at once as a stall.
+    /// </summary>
+    [Fact]
+    public async Task ASlowWriteAfterARead_IsNotAStall()
+    {
+        var path = Path_("slow-disk.bin");
+
+        // Every chunk arrives at once; handling each one (here, its progress report) takes longer than the limit.
+        var written = await StreamToFile.WriteAsync(
+            new StallingStream(chunks: 3, thenEnd: true), path,
+            progress: new SlowProgress(TimeSpan.FromMilliseconds(300)), stallTimeout: TimeSpan.FromMilliseconds(100));
+
+        Assert.Equal(3 * StallingStream.ChunkSize, written);
+    }
+
+    private sealed class SlowProgress(TimeSpan each) : IProgress<(long Downloaded, long? Total)>
+    {
+        public void Report((long Downloaded, long? Total) value) => Thread.Sleep(each);
+    }
+
     /// <summary>The caller's cancel is still a cancel, not a stall.</summary>
     [Fact]
     public async Task CancellingDuringAStall_IsACancel()
@@ -178,6 +201,7 @@ public class StreamToFileTests : IDisposable
 
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
         {
+            ct.ThrowIfCancellationRequested(); // as a network stream does: a read asked with a cancelled token is refused at once
             if (_sent >= chunks)
             {
                 if (thenEnd) return 0;

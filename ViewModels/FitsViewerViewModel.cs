@@ -105,7 +105,7 @@ public partial class FitsViewerViewModel : ObservableObject
             }
 
             SelectedHduIndex = imageHdu.Index;
-            await ShowImageAsync(imageHdu.ImageData!);
+            if (!await ShowImageAsync(imageHdu.ImageData!)) return; // another HDU was chosen meanwhile, and shows itself
 
             StatusMessage = $"{_imageData!.Width} x {_imageData.Height} | {_hdus.Count} HDU(s)" +
                 (DisplayScale < 1 ? $" | shown at {DisplayScale:P0}" : "");
@@ -125,14 +125,24 @@ public partial class FitsViewerViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Make <paramref name="image"/> the one shown: its picture, then its auto-cut. The one way an
-    /// image comes on screen, whether a file was just opened or another HDU chosen.
+    /// Which request to show an image is the latest: two HDUs chosen in quick succession can have their
+    /// pictures finish in the other order, and the one chosen last is the one to show.
     /// </summary>
-    private async Task ShowImageAsync(FitsImageData image)
+    private int _showRequest;
+
+    /// <summary>
+    /// Make <paramref name="image"/> the one shown: its picture, then its auto-cut. The one way an
+    /// image comes on screen, whether a file was just opened or another HDU chosen. False when another
+    /// image was asked for while this one's picture was being made — then that one is shown instead.
+    /// </summary>
+    private async Task<bool> ShowImageAsync(FitsImageData image)
     {
+        var request = ++_showRequest;
+
         // Off the UI thread: for a MegaPipe tile the picture is an average over 400 million pixels.
         // Assigned together afterwards, so a render in between sees the old pair, never a mix.
         var display = await Task.Run(() => FitsDisplayRaster.For(image));
+        if (request != _showRequest || _disposed) return false;
         _imageData = image;
         _displayData = display;
         DisplayScale = (double)display.Width / image.Width;
@@ -142,6 +152,7 @@ public partial class FitsViewerViewModel : ObservableObject
         var (autoMin, autoMax) = FitsRenderer.AutoCut(image);
         MinCut = autoMin;
         MaxCut = autoMax;
+        return true;
     }
 
     [RelayCommand]
@@ -245,8 +256,7 @@ public partial class FitsViewerViewModel : ObservableObject
 
     private async Task ShowAndRenderAsync(FitsImageData image)
     {
-        await ShowImageAsync(image);
-        await RenderAsync();
+        if (await ShowImageAsync(image)) await RenderAsync();
     }
 
     /// <summary>

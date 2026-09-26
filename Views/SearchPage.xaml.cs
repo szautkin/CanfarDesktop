@@ -784,24 +784,19 @@ public sealed partial class SearchPage : Page
                 // Apply-to-ADQL) there. A left click opens the observation, as it does anywhere else on
                 // the row: these five were silent filter links, so clicking a row's target name, the
                 // likeliest place to click, narrowed the table instead.
-                var menu = CellMenu(tb.Text, row, rowIndex);
-                if (IsNarrowable(key) && !string.IsNullOrEmpty(rawValue))
+                var shown = tb.Text;
+                var narrowTo = IsNarrowable(key) && !string.IsNullOrEmpty(rawValue) ? rawValue : null;
+                if (narrowTo is not null) ToolTipService.SetToolTip(tb, Loc.F("Search_NarrowHint", narrowTo));
+                var (cellRow, cellRowIndex, cellKey) = (row, rowIndex, key);
+                // Built when it is asked for, not with the cell: a page of results is thousands of cells,
+                // and almost none of their menus is ever opened. The Menu key and Shift+F10 ask too.
+                tb.ContextRequested += (_, e) =>
                 {
-                    var ck = key;
-                    var cv = rawValue;
-                    ToolTipService.SetToolTip(tb, Loc.F("Search_NarrowHint", cv));
-                    var narrow = new MenuFlyoutItem { Text = Loc.F("Search_NarrowToValue", cv), Icon = new FontIcon { Glyph = "" } };
-                    narrow.Click += (_, _) =>
-                    {
-                        ViewModel.SetColumnFilter(ck, cv);
-                        ViewModel.UpdatePagination();
-                        RenderResultsPage(rebuildHeader: false);
-                        UpdateApplyFiltersButton();
-                    };
-                    menu.Items.Add(new MenuFlyoutSeparator());
-                    menu.Items.Add(narrow);
-                }
-                tb.ContextFlyout = menu;
+                    var menu = CellMenu(shown, cellRow, cellRowIndex, cellKey, narrowTo);
+                    if (e.TryGetPosition(tb, out var at)) menu.ShowAt(tb, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions { Position = at });
+                    else menu.ShowAt(tb);
+                    e.Handled = true;
+                };
 
                 sp.Children.Add(tb);
             }
@@ -824,7 +819,7 @@ public sealed partial class SearchPage : Page
     /// the observation view copy; and the row — or every chosen row, when this one is among them — as
     /// tab-separated text with the visible columns' names, ready for a spreadsheet.
     /// </summary>
-    private MenuFlyout CellMenu(string shown, SearchResultRow? row, int rowIndex)
+    private MenuFlyout CellMenu(string shown, SearchResultRow? row, int rowIndex, string key, string? narrowTo)
     {
         var menu = new MenuFlyout();
         if (shown.Length > 0) menu.Items.Add(CopyItem(Loc.T("Search_CopyValue"), () => ClipboardText.Copy(shown)));
@@ -837,6 +832,20 @@ public sealed partial class SearchPage : Page
         }
         menu.Items.Add(CopyItem(Loc.T("Search_CopyRows"), () =>
             CopyRows(_selection.Contains(rowIndex) && _selection.Count > 1 ? _selection.Selected : [rowIndex])));
+
+        if (narrowTo is not null)
+        {
+            var narrow = new MenuFlyoutItem { Text = Loc.F("Search_NarrowToValue", narrowTo), Icon = new FontIcon { Glyph = "\uE71C" } };
+            narrow.Click += (_, _) =>
+            {
+                ViewModel.SetColumnFilter(key, narrowTo);
+                ViewModel.UpdatePagination();
+                RenderResultsPage(rebuildHeader: false);
+                UpdateApplyFiltersButton();
+            };
+            menu.Items.Add(new MenuFlyoutSeparator());
+            menu.Items.Add(narrow);
+        }
         return menu;
     }
 
@@ -1105,9 +1114,7 @@ public sealed partial class SearchPage : Page
     {
         if (!ViewModel.SpatialCutout && !ViewModel.SpectralCutout) return null;
 
-        var file = dataLink.Cutouts.FirstOrDefault(c => c.FileName == selectedFilename)
-                   ?? (dataLink.Cutouts.Count == 1 ? dataLink.Cutouts[0] : null);
-        if (file is null) return null;
+        if (Services.Cutouts.CutoutCandidates.CutFor(dataLink.Cutouts, selectedFilename) is not { } file) return null;
 
         var hints = Services.Cutouts.CutoutHints.From(ViewModel.BuildFormState());
         var spec = Services.Cutouts.CutoutPrefill.FromSearchFlags(file, hints, ViewModel.SpatialCutout, ViewModel.SpectralCutout);

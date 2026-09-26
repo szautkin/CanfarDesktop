@@ -9,6 +9,7 @@ namespace CanfarDesktop.Tests.Services.Cutouts;
 /// The one judgement of a cutout: the editor shows these messages, an agent is refused with them, and
 /// a URL is built only from a cutout that passed.
 /// </summary>
+[Collection("Translations")] // sets a process-wide translation hook
 public class SodaRequestTests
 {
     private static CutoutSpec Circle(SodaDescriptor file, double ra, double dec, double r)

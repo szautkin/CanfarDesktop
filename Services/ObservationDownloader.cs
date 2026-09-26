@@ -143,14 +143,15 @@ public sealed class ObservationDownloader
                 if (url is null)
                 {
                     // The same file the record had, when it says which; otherwise the observation's
-                    // science file — and then the record can no longer say which file it holds.
+                    // science file — and the record then says which file that is when DataLink does, so a
+                    // local cut of it is tied to its file rather than counted as another one.
                     task.Stage("finding the file");
                     if (request.Record?.ArtifactId is { Length: > 0 } artifact)
                         url = await downloads.ResolveArtifactUrlAsync(request.PublisherId, artifact);
                     if (url is null)
                     {
-                        if (request.Record is { } unnamed) unnamed.ArtifactId = null;
-                        url = await downloads.ResolveUrlAsync(request.PublisherId, request.ArtifactIndex);
+                        (url, var chosen) = await downloads.ResolveFileAsync(request.PublisherId, request.ArtifactIndex);
+                        if (request.Record is { } unnamed) unnamed.ArtifactId = chosen;
                     }
                 }
 

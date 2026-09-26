@@ -256,4 +256,26 @@ public class ObservationWriteToolsTests
 
     private static PendingProposal Proposal<T>(string kind, T payload)
         => PendingProposal.Create("t", kind, "s", JsonSerializer.SerializeToUtf8Bytes(payload, McpJson.Options), OperationOrigin.External("c1"));
+
+    /// <summary>A local cutout taken with its weight map takes the weight map's cutout with it: no file is left behind with no record.</summary>
+    [Fact]
+    public async Task ClearArchiveApplier_DeletesACutoutsCompanionFilesToo()
+    {
+        var spec = new CanfarDesktop.Models.Cutouts.CutoutSpec
+        {
+            ArtifactId = "cadc:CFHTSG/t.I.fits",
+            Region = CanfarDesktop.Models.Cutouts.SkyRegion.Circle(10.68, 41.27, 0.01),
+            CutBy = CanfarDesktop.Models.Cutouts.CutoutMethod.Local,
+            Companions = ["cadc:CFHTSG/t.I.weight.fits"],
+        };
+        var cutout = Path.Combine("d", "m31.fits");
+        var deleted = new List<string>();
+        var ap = new ClearResearchArchiveApplier(
+            () => [new CanfarDesktop.Models.DownloadedObservation { PublisherID = "ivo://A", LocalPath = cutout, Cutout = spec }],
+            _ => { }, _ => { }, deleted.Add);
+
+        await ap.ApplyAsync(Proposal("clear_research_archive", new ClearResearchArchivePayload()));
+
+        Assert.Equal(new[] { cutout, spec.CompanionPath(cutout, "cadc:CFHTSG/t.I.weight.fits") }, deleted);
+    }
 }

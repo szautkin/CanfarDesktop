@@ -22,4 +22,35 @@ public class CutoutCandidatesTests
     [InlineData("application/fits", "cadc:X/preview.fits", "preview")] // a preview, whatever its format
     public void EverythingElse_IsNot(string? contentType, string uri, string? productType)
         => Assert.False(CutoutCandidates.IsFitsFile(contentType, uri, productType));
+
+    // ── What a chosen file is cut as ─────────────────────────────────────────
+
+    private static CanfarDesktop.Models.Cutouts.SodaDescriptor Cuttable(string artifactId)
+        => SodaDescriptorParserTests.MegaPipe() with { ArtifactId = artifactId };
+
+    /// <summary>
+    /// A file chosen by name is cut only if CADC cuts THAT file: the weight map picked from the list is
+    /// downloaded whole, never as a cutout of the science image, however few files CADC cuts.
+    /// </summary>
+    [Fact]
+    public void AChosenFile_IsCutOnlyIfCadcCutsThatFile()
+    {
+        var science = Cuttable("cadc:CFHTSG/G006.010.684+41.269.I.fits.fz");
+
+        Assert.Same(science, CutoutCandidates.CutFor([science], "G006.010.684+41.269.I.fits.fz"));
+        Assert.Same(science, CutoutCandidates.CutFor([science], "g006.010.684+41.269.i.FITS.fz")); // names, however written
+        Assert.Null(CutoutCandidates.CutFor([science], "G006.010.684+41.269.I.weight.fits.fz"));
+        Assert.Null(CutoutCandidates.CutFor([science], "G006.010.684+41.269.I.jpg"));
+    }
+
+    /// <summary>With no file chosen by name, the one file CADC cuts — and none, when it cuts several.</summary>
+    [Fact]
+    public void NoFileChosen_IsTheOneCadcCuts()
+    {
+        var (a, b) = (Cuttable("cadc:X/a.fits"), Cuttable("cadc:X/b.fits"));
+
+        Assert.Same(a, CutoutCandidates.CutFor([a], ""));
+        Assert.Null(CutoutCandidates.CutFor([a, b], null));
+        Assert.Null(CutoutCandidates.CutFor([], ""));
+    }
 }

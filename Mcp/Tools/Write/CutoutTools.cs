@@ -97,7 +97,7 @@ public sealed record CutoutArgs
                 "none of this observation's files can be cut out: CADC offers no cutout service for them, and none is on this computer; download_observation fetches the whole file, which can then be cut locally"));
 
         var named = (ArtifactId ?? string.Empty).Trim();
-        var files = sources.Select(s => s.File.ArtifactId).Distinct().ToList();
+        var files = sources.Select(NameOf).Distinct().ToList();
         var candidates = named.Length == 0
             ? sources
             : sources.Where(s => s.File.ArtifactId == named || s.File.FileName == named).ToList();
@@ -105,20 +105,30 @@ public sealed record CutoutArgs
         if (candidates.Count == 0)
             throw new McpToolException(new InvalidArgument(
                 $"no file '{named}' can be cut from this observation; the ones that can: {string.Join(", ", files)}"));
-        if (candidates.Select(s => s.File.ArtifactId).Distinct().Count() > 1)
+
+        // The way asked for narrows the choice first: a downloaded copy is one file to cut locally,
+        // whatever CADC can also cut.
+        if (CutBy is { } asked)
+        {
+            candidates = candidates.Where(s => s.Method == asked).ToList();
+            if (candidates.Count == 0)
+                throw new McpToolException(new InvalidArgument(asked == CutoutMethod.Local
+                    ? "this file is not on this computer to cut locally; download_observation fetches it, or cut it with cutBy 'soda'"
+                    : "CADC offers no cutout service for this file; cut it with cutBy 'local' once it is downloaded"));
+        }
+        if (candidates.Select(NameOf).Distinct().Count() > 1)
             throw new McpToolException(new InvalidArgument(
                 $"this observation has {files.Count} files that can be cut; name one as artifactId: {string.Join(", ", files)}"));
 
-        var ways = CutoutSources.Preferred(candidates, CutBy);
-        var chosen = CutBy is { } asked ? ways.FirstOrDefault(w => w.Method == asked) : ways[0];
-        if (chosen is null)
-            throw new McpToolException(new InvalidArgument(CutBy == CutoutMethod.Local
-                ? "this file is not on this computer to cut locally; download_observation fetches it, or cut it with cutBy 'soda'"
-                : "CADC offers no cutout service for this file; cut it with cutBy 'local' once it is downloaded"));
+        var chosen = CutoutSources.Preferred(candidates, CutBy)[0];
         if (chosen.Unavailable is { } why)
             throw new McpToolException(new InvalidArgument($"this file cannot be cut {Say(chosen.Method)}: {why}"));
         return chosen;
     }
+
+    /// <summary>How a file is named to an agent: its artifact id, or — a downloaded copy nobody recorded the identity of — its file name.</summary>
+    private static string NameOf(ICutoutSource source)
+        => source.File.ArtifactId is { Length: > 0 } id ? id : source.File.FileName;
 
     private static string Say(CutoutMethod method) => method == CutoutMethod.Local ? "locally" : "on CADC's side";
 }

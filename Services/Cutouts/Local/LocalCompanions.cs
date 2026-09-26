@@ -42,7 +42,8 @@ public static class LocalCompanions
         foreach (var id in artifactIds.Distinct())
         {
             var name = Caom2Format.ArtifactFileName(id);
-            if (id == file.ArtifactId || !IsFits(name) || string.Equals(name, file.FileName, StringComparison.OrdinalIgnoreCase)) continue;
+            if (id == file.ArtifactId || !CutoutCandidates.IsFitsFile(null, name)
+                || string.Equals(name, file.FileName, StringComparison.OrdinalIgnoreCase)) continue;
             var path = Path.Combine(folder, name);
             if (!System.IO.File.Exists(path)) continue;
             companions.Add(Match(file, LocalFitsFile.Inspect(path, id)));
@@ -113,11 +114,4 @@ public static class LocalCompanions
 
     private static bool Near(double? a, double? b, double within)
         => a is { } x && b is { } y && Math.Abs(x - y) <= within;
-
-    private static bool IsFits(string name)
-    {
-        var lower = name.ToLowerInvariant();
-        return lower.EndsWith(".fits") || lower.EndsWith(".fits.fz") || lower.EndsWith(".fits.gz")
-               || lower.EndsWith(".fit") || lower.EndsWith(".fts") || lower.EndsWith(".fz");
-    }
 }

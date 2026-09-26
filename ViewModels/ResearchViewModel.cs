@@ -109,10 +109,13 @@ public partial class ResearchViewModel : ObservableObject
     public string? RemoveLocalFile(DownloadedObservation observation)
         => ResearchRecords.RemoveLocalFile(_store, observation);
 
+    /// <summary>Each observation's file on this computer, read again only when it changes — not each time a detail is rebuilt.</summary>
+    private readonly Services.Cutouts.Local.LocalSourceCache _localCache = new();
+
     /// <summary>
     /// The ways this observation's files can be cut: CADC's, from its DataLink answer (none when it
     /// cannot be had), and the observation's file on this computer — for a cutout, the file it was cut
-    /// from. Reads that file's headers, off the caller's thread.
+    /// from. Reads that file's headers, off the caller's thread, when they have changed.
     /// </summary>
     public async Task<IReadOnlyList<Services.Cutouts.ICutoutSource>> CutoutSourcesAsync(DownloadedObservation observation)
     {
@@ -123,16 +126,16 @@ public partial class ResearchViewModel : ObservableObject
         catch { soda = []; }
 
         string?[] named = [observation.Cutout?.ArtifactId, observation.ArtifactId];
-        var local = await Task.Run(() => Services.Cutouts.CutoutSources.Local(
-            _store.Observations, observation.PublisherID, named.OfType<string>().Where(a => a.Length > 0)));
+        var ids = named.OfType<string>().Where(a => a.Length > 0).Distinct().ToList();
+        var local = await Task.Run(() => _localCache.Get(_store.Observations, observation.PublisherID, ids));
         return [.. soda, .. local is null ? [] : new Services.Cutouts.ICutoutSource[] { local }];
     }
 
-    /// <summary>Whether this observation's file is on its way right now.</summary>
     /// <summary>The complete observation a cutout was cut from, when Research has it — with its file or without.</summary>
     public DownloadedObservation? OriginalOf(DownloadedObservation cutout)
         => ResearchRecords.Complete(_store.Observations, cutout.PublisherID);
 
+    /// <summary>Whether this observation's file is on its way right now.</summary>
     public bool IsDownloading(DownloadedObservation observation)
         => _downloader.IsDownloading(observation.PublisherID, observation.ProductKey);
 

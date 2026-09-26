@@ -189,7 +189,7 @@ public class ObservationDownloaderTests : IDisposable
     }
 
     /// <summary>A DataLink answer listing these files as #this rows.</summary>
-    private static string DataLink(params string[] urls)
+    internal static string DataLink(params string[] urls)
     {
         var rows = string.Concat(urls.Select(u =>
             $"<TR><TD>ivo://x</TD><TD>{u}</TD><TD></TD><TD></TD><TD>#this</TD><TD></TD><TD></TD><TD>application/fits</TD><TD>100</TD></TR>"));

@@ -48,8 +48,8 @@ public sealed partial class ObservationDetailPage : UserControl
     /// </summary>
     private LocalCutoutSource? _localSource;
 
-    /// <summary>Which file, at which size and time, <see cref="_localSource"/> was read from — so it is read again only when that changes.</summary>
-    private string? _localKey;
+    /// <summary>Each observation's file on this computer, read again only when it or the files beside it change.</summary>
+    private readonly LocalSourceCache _localCache = new();
 
     /// <summary>Raised when the user presses "Sign in" on the auth-required state.</summary>
     public event Action? SignInRequested;
@@ -163,7 +163,6 @@ public sealed partial class ObservationDetailPage : UserControl
         _links = null;
         _cutoutEditor = null;
         _localSource = null;
-        _localKey = null;
         _current = null;
         UpdateSaveToResearch();
     }
@@ -502,7 +501,7 @@ public sealed partial class ObservationDetailPage : UserControl
         // it cannot.
         if (CutoutCandidates.IsFitsFile(art.ContentType, art.Uri, art.ProductType))
         {
-            var ways = CutoutSources.For(CutoutSourcesOfObservation, art.Uri);
+            var ways = CutoutSources.For(CutoutSourcesOfObservation, art.Uri, _current);
             var usable = ways.Where(w => w.Unavailable is null).Select(w => w.Method).ToHashSet();
             var cut = new Button { Content = Loc.T("Cutout_Button") };
             AutomationProperties.SetName(cut, Loc.F("Cutout_ButtonName", Caom2Format.ArtifactFileName(art.Uri)));
@@ -924,36 +923,13 @@ public sealed partial class ObservationDetailPage : UserControl
     private async Task RefreshLocalSourceAsync(CAOM2Observation obs, bool rebuild = true)
     {
         var publisherId = _publisherID;
-        var record = LocalCopies.CompleteFile(_store.Observations, publisherId);
         var artifacts = CutoutSources.ArtifactIds(obs).ToList();
-        var key = record is null ? null : LocalKey(record, artifacts);
-        if (key == _localKey) return;
-
-        var local = record is null ? null : await Task.Run(() => CutoutSources.Local([record], publisherId, artifacts));
+        var local = await Task.Run(() => _localCache.Get(_store.Observations, publisherId, artifacts));
 
         if (_publisherID != publisherId || !ReferenceEquals(_current, obs)) return;
-        (_localSource, _localKey) = (local, key);
+        if (ReferenceEquals(local, _localSource)) return; // the same file, as it was: nothing to rebuild
+        _localSource = local;
         if (rebuild && _links is not null) BuildFiles(obs);
-    }
-
-    /// <summary>
-    /// What the file on this computer, and the observation's other files beside it, are now — changed,
-    /// when one is downloaded, replaced or removed, so it is read again.
-    /// </summary>
-    private static string? LocalKey(DownloadedObservation record, IEnumerable<string> artifacts)
-    {
-        try
-        {
-            var file = new FileInfo(record.LocalPath);
-            var beside = artifacts.Select(id => new FileInfo(System.IO.Path.Combine(file.DirectoryName ?? "", Caom2Format.ArtifactFileName(id))))
-                                  .Where(f => f.Exists)
-                                  .Select(f => $"{f.Name}|{f.Length}|{f.LastWriteTimeUtc.Ticks}");
-            return string.Join('/', [$"{file.FullName}|{file.Length}|{file.LastWriteTimeUtc.Ticks}|{record.ArtifactId}", .. beside]);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
-        {
-            return null;
-        }
     }
 
     /// <summary>The ways the open observation's files can be cut: CADC's, and the one on this computer.</summary>

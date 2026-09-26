@@ -717,4 +717,51 @@ public class LocalCutoutTests : IDisposable
         Assert.Equal("cadc:CFHT/img-32.fits", LocalCopies.ArtifactOf(byName, ["cadc:CFHT/other.fits", "cadc:CFHT/img-32.fits"]));
         Assert.Equal("", LocalCopies.ArtifactOf(byName, ["cadc:CFHT/other.fits"]));
     }
+
+    // ── A downloaded copy nobody named ──────────────────────────────────────
+
+    private static CanfarDesktop.Models.Caom2.CAOM2Observation Observation(params (string Uri, long Bytes)[] files) => new()
+    {
+        Collection = "CFHTSG",
+        ObservationID = "t",
+        Planes = [new CanfarDesktop.Models.Caom2.Caom2Plane { Artifacts = files.Select(f => new CanfarDesktop.Models.Caom2.Caom2Artifact { Uri = f.Uri, ContentLength = f.Bytes }).ToList() }],
+    };
+
+    /// <summary>
+    /// A copy downloaded under another name, with no record of which file it is, is shown with the file
+    /// it is exactly the size of — and only when no other file of the observation's is that size too.
+    /// It stays "the observation's downloaded file", which is how the cut finds it again.
+    /// </summary>
+    [Fact]
+    public void AnUnnamedCopy_IsShownWithTheFileItIsExactlyTheSizeOf()
+    {
+        var source = new LocalCutoutSource(LocalFitsFile.Inspect(SingleImage(-32, 20, 10), ""));
+        var bytes = source.LocalFile.FileBytes;
+
+        Assert.Same(source, Assert.Single(CutoutSources.For([source], "cadc:CFHTSG/t.fits", Observation(("cadc:CFHTSG/t.fits", bytes), ("cadc:CFHTSG/t.weight.fits", bytes + 1)))));
+        Assert.Empty(CutoutSources.For([source], "cadc:CFHTSG/t.weight.fits", Observation(("cadc:CFHTSG/t.fits", bytes), ("cadc:CFHTSG/t.weight.fits", bytes + 1))));
+        Assert.Empty(CutoutSources.For([source], "cadc:CFHTSG/t.fits", Observation(("cadc:CFHTSG/t.fits", bytes), ("cadc:CFHTSG/u.fits", bytes)))); // two that size: not a guess
+        Assert.Empty(CutoutSources.For([source], "cadc:CFHTSG/t.fits"));                                                                   // no sizes to go by
+        Assert.Equal("", source.Bind(new CutoutSpec()).ArtifactId);
+    }
+
+    /// <summary>The file on this computer is read once while it stays as it is, and again when it changes or goes.</summary>
+    [Fact]
+    public void TheLocalCopy_IsReadAgainOnlyWhenItChanges()
+    {
+        var path = SingleImage(-32, 20, 10);
+        var record = new DownloadedObservation { PublisherID = "p", LocalPath = path, ArtifactId = "cadc:X/img-32.fits" };
+        var cache = new LocalSourceCache();
+
+        var first = cache.Get([record], "p", ["cadc:X/img-32.fits"]);
+        Assert.NotNull(first);
+        Assert.Same(first, cache.Get([record], "p", ["cadc:X/img-32.fits"]));
+
+        File.SetLastWriteTimeUtc(path, File.GetLastWriteTimeUtc(path).AddMinutes(1)); // replaced
+        var second = cache.Get([record], "p", ["cadc:X/img-32.fits"]);
+        Assert.NotSame(first, second);
+
+        File.Delete(path);
+        Assert.Null(cache.Get([record], "p", ["cadc:X/img-32.fits"]));
+    }
 }

@@ -36,8 +36,10 @@ public class DataLinkService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
             using var response = await _httpClient.SendAsync(request, cts.Token);
+            // Not cached either: a refusal can be the sign-in's — asked while signed out about a
+            // proprietary observation — and signing in has to be able to change the answer.
             if (!response.IsSuccessStatusCode)
-                return CacheAndReturn(publisherID, new DataLinkResult());
+                return new DataLinkResult();
 
             var xml = await response.Content.ReadAsStringAsync(cts.Token);
             var result = ParseVOTable(xml);

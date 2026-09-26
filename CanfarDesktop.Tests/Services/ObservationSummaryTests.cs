@@ -7,6 +7,7 @@ using CanfarDesktop.Services;
 namespace CanfarDesktop.Tests.Services;
 
 /// <summary>What "Copy details" puts on the clipboard — the same from Search, Research and the observation view.</summary>
+[Collection("Translations")] // sets a process-wide translation hook
 public class ObservationSummaryTests
 {
     private static DownloadedObservation M31() => new()

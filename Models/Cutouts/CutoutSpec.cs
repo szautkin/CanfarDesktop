@@ -64,7 +64,14 @@ public sealed record CutoutSpec
     /// choice, so the records and files already saved under it keep their names.</para>
     /// </summary>
     [JsonIgnore]
-    public string Key
+    public string Key => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Identity)), 0, 4).ToLowerInvariant();
+
+    /// <summary>
+    /// Everything that makes this cutout the one it is, in full — the <see cref="Key"/> is its hash. What
+    /// to compare when two cutouts must be the same one, not merely share eight characters.
+    /// </summary>
+    [JsonIgnore]
+    public string Identity
     {
         get
         {
@@ -76,8 +83,7 @@ public sealed record CutoutSpec
                 string.Join(',', Pol));
             if (CutBy != CutoutMethod.Soda) canonical += "|" + CutBy.ToString().ToLowerInvariant();
             if (Extensions.Count > 0) canonical += "|ext:" + string.Join(';', Extensions);
-            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(canonical));
-            return Convert.ToHexString(hash, 0, 4).ToLowerInvariant();
+            return canonical;
         }
     }
 

@@ -18,9 +18,17 @@ public sealed class ObservationDownloadService
     /// the DataLink download URL. Throws when the index is out of range.
     /// </summary>
     public async Task<string> ResolveUrlAsync(string publisherId, int? artifactIndex = null, CancellationToken ct = default)
+        => (await ResolveFileAsync(publisherId, artifactIndex, ct)).Url;
+
+    /// <summary>
+    /// The file <see cref="ResolveUrlAsync"/> chooses, and which archive file it is when DataLink says
+    /// (<see cref="DataLinkArtifactSelector.ArtifactIdOf"/>) — so a record of it can say what it holds.
+    /// </summary>
+    public async Task<(string Url, string? ArtifactId)> ResolveFileAsync(string publisherId, int? artifactIndex = null, CancellationToken ct = default)
     {
         var links = await _dataLink.GetLinksAsync(publisherId, ct);
-        return DataLinkArtifactSelector.SelectUrl(links, artifactIndex, _dataLink.GetDownloadUrl(publisherId));
+        var url = DataLinkArtifactSelector.SelectUrl(links, artifactIndex, _dataLink.GetDownloadUrl(publisherId));
+        return (url, DataLinkArtifactSelector.ArtifactIdOf(links, url));
     }
 
     /// <summary>

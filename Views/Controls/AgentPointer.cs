@@ -229,7 +229,6 @@ public static class AgentPointer
         return null;
     }
 
-    /// <summary>The element behind an id, or null when it is no longer on screen.</summary>
     /// <summary>
     /// The dialog open over the window, if there is one. While it is, everything behind it is under its
     /// smoke layer and cannot be clicked — so the dialog, not the window, is where a person can be
@@ -252,6 +251,7 @@ public static class AgentPointer
         return null;
     }
 
+    /// <summary>The element behind an id, or null when it is no longer on screen.</summary>
     public static FrameworkElement? Find(DependencyObject? root, string id)
     {
         if (root is null || string.IsNullOrWhiteSpace(id)) return null;

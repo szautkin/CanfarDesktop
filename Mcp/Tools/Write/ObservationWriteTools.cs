@@ -257,7 +257,7 @@ public sealed class DeleteDownloadedObservationApplier : IProposalApplier
 }
 
 /// <summary>
-/// Applies <c>clear_research_archive</c>: for every downloaded observation, deletes its local file
+/// Applies <c>clear_research_archive</c>: for every downloaded observation, deletes its local files
 /// (best-effort — a locked/missing file never aborts the clear), removes the record, and deletes its
 /// notes. Delegates keep it pure/testable; the catalog binds them to ObservationStore /
 /// ObservationNoteStore / File.Delete.
@@ -287,9 +287,11 @@ public sealed class ClearResearchArchiveApplier : IProposalApplier
     {
         foreach (var observation in _observations())
         {
-            if (!string.IsNullOrWhiteSpace(observation.LocalPath))
+            // Every file that is the record's — a cutout's weight map with it — or it would be left
+            // behind with no record pointing at it.
+            foreach (var path in observation.LocalFiles)
             {
-                try { _deleteFile(observation.LocalPath); }
+                try { _deleteFile(path); }
                 catch { /* best-effort: keep clearing the archive even if a file is locked/missing */ }
             }
             _remove(observation);

@@ -30,7 +30,7 @@ public sealed class LocalCutoutSource(LocalFitsFile file) : ICutoutSource
 
         // The outline of a mosaic's CCDs holds its gaps too: a region can be inside it and on no CCD —
         // or on some, just not the ones chosen.
-        if (!LocalCutPlan.For(file, spec).IsEmpty) return check;
+        if (!PlanFor(spec).IsEmpty) return check;
         return check.With([spec.Extensions.Count > 0 && !LocalCutPlan.For(file, spec with { Extensions = [] }).IsEmpty
             ? CutoutRules.T("Cutout_LocalOnNoChosenImage", "That region falls on none of the images chosen.")
             : CutoutRules.T("Cutout_LocalOnNoImage", "That region falls on none of this file's images.")], []);
@@ -38,7 +38,26 @@ public sealed class LocalCutoutSource(LocalFitsFile file) : ICutoutSource
 
     /// <summary>Exact, not estimated: the plans know every byte they will write — the cutout's, and its companions'.</summary>
     public long? EstimateBytes(CutoutSpec spec)
-        => file.Problem is null && CutoutRules.Check(file, spec).IsValid && LocalCutPlan.For(file, spec) is { IsEmpty: false } plan
+        => file.Problem is null && CutoutRules.Check(file, spec).IsValid && PlanFor(spec) is { IsEmpty: false } plan
             ? plan.Bytes + plan.CompanionsOf(file, spec).Sum(c => c.Plan.Bytes)
             : null;
+
+    /// <summary>
+    /// The plan for a cutout, made once for as long as the cutout is the same one. The editor asks for
+    /// its check, its size and its size alone on every keystroke and every step of a drag; each plan
+    /// places the region on every image — 36 of them, through SIP, on a MegaPrime frame.
+    /// </summary>
+    private LocalCutPlan PlanFor(CutoutSpec spec)
+    {
+        var key = spec.Identity; // what decides the plan: the region, band, images — not the companions taken along
+        if (_last is { } last && last.Key == key) return last.Plan;
+        var plan = LocalCutPlan.For(file, spec);
+        _last = new Planned(key, plan);
+        return plan;
+    }
+
+    /// <summary>The last plan made, as one reference, so a reader on another thread sees a whole pair.</summary>
+    private Planned? _last;
+
+    private sealed record Planned(string Key, LocalCutPlan Plan);
 }

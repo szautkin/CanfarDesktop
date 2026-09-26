@@ -277,4 +277,38 @@ public class CutoutToolsTests
 
         Assert.Equal(spec.Key, seen!.Spec.Key);
     }
+
+    /// <summary>A file on this computer nobody recorded the identity of: named by its file name, as a downloaded copy is.</summary>
+    private sealed class Unnamed(ICutoutFile file) : ICutoutFile
+    {
+        public string ArtifactId => "";
+        public string FileName => "ivo-cadc-MP.fits";
+        public SkyRegion? Footprint => file.Footprint;
+        public SkyRegion? BoundingCircle => file.BoundingCircle;
+        public double? BandMin => file.BandMin;
+        public double? BandMax => file.BandMax;
+        public double? TimeMin => file.TimeMin;
+        public double? TimeMax => file.TimeMax;
+        public IReadOnlyList<string> PolStates => file.PolStates;
+        public IReadOnlySet<string> Parameters => file.Parameters;
+    }
+
+    /// <summary>
+    /// A downloaded copy whose file was never recorded is still one to cut: asked to cut locally, it is
+    /// the one; asked nothing, the choice names it by its file name — which then picks it.
+    /// </summary>
+    [Fact]
+    public void AnUnnamedDownloadedCopy_CanBeChosen()
+    {
+        var soda = new SodaCutoutSource(MegaPipe());
+        var local = new OnThisComputer(new Unnamed(MegaPipe()));
+        ICutoutSource[] sources = [soda, local];
+
+        Assert.Same(local, new CutoutArgs { CutBy = CutoutMethod.Local }.PickSource(sources));
+        Assert.Same(soda, new CutoutArgs { CutBy = CutoutMethod.Soda }.PickSource(sources));
+
+        var asked = Assert.Throws<McpToolException>(() => new CutoutArgs().PickSource(sources));
+        Assert.Contains("ivo-cadc-MP.fits", asked.Message);
+        Assert.Same(local, new CutoutArgs { ArtifactId = "ivo-cadc-MP.fits" }.PickSource(sources));
+    }
 }

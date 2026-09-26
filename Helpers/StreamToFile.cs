@@ -39,22 +39,28 @@ public static class StreamToFile
         TimeSpan? stallTimeout = null)
     {
         long total = 0;
-        using var silence = CancellationTokenSource.CreateLinkedTokenSource(ct);
-
-        await AtomicFile.WriteStreamAsync(path, async destination =>
+        var silence = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        try
         {
-            var buffer = new byte[BufferSize];
-            int read;
-            while ((read = await ReadAsync(buffer)) > 0)
+            await AtomicFile.WriteStreamAsync(path, async destination =>
             {
-                await destination.WriteAsync(buffer.AsMemory(0, read), ct);
-                total += read;
-                progress?.Report((total, expectedTotal));
-            }
+                var buffer = new byte[BufferSize];
+                int read;
+                while ((read = await ReadAsync(buffer)) > 0)
+                {
+                    await destination.WriteAsync(buffer.AsMemory(0, read), ct);
+                    total += read;
+                    progress?.Report((total, expectedTotal));
+                }
 
-            // Thrown from INSIDE the write so the temp file is cleaned up and the target never changes.
-            if (validateTotal?.Invoke(total) is { } refusal) throw refusal;
-        }, ct);
+                // Thrown from INSIDE the write so the temp file is cleaned up and the target never changes.
+                if (validateTotal?.Invoke(total) is { } refusal) throw refusal;
+            }, ct);
+        }
+        finally
+        {
+            silence.Dispose();
+        }
 
         return total;
 
@@ -62,7 +68,7 @@ public static class StreamToFile
         {
             if (stallTimeout is not { } limit) return await source.ReadAsync(buffer, ct);
 
-            silence.CancelAfter(limit); // the clock restarts with every read
+            silence.CancelAfter(limit); // the clock runs while waiting for bytes, and only then
             try
             {
                 return await source.ReadAsync(buffer, silence.Token);
@@ -71,6 +77,16 @@ public static class StreamToFile
             {
                 throw new TimeoutException(
                     $"the transfer stalled: nothing arrived for {limit.TotalSeconds:0} s after {total:N0} bytes");
+            }
+            finally
+            {
+                // Stopped as soon as bytes arrive: writing them to a slow disk is not silence on the wire.
+                // A clock that went off just as they arrived cannot be reset, so it is replaced.
+                if (!silence.TryReset())
+                {
+                    silence.Dispose();
+                    silence = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                }
             }
         }
     }

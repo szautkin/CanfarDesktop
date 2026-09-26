@@ -53,4 +53,18 @@ public class DataLinkArtifactSelectorTests
         Assert.Throws<ArgumentOutOfRangeException>(
             () => DataLinkArtifactSelector.SelectUrl(new DataLinkResult(), 0, "https://fallback"));
     }
+
+    /// <summary>
+    /// The file a download fetches is named by the artifact id CADC's cutout service knows it by — so a
+    /// record of it says what it holds, and a local cut of it is not taken for another file.
+    /// </summary>
+    [Fact]
+    public void ArtifactIdOf_IsTheIdTheCutoutServiceGivesTheFile()
+    {
+        var links = Links("https://ws/minoc/files/cadc:CFHTSG/t.I.fits.fz", "https://ws/minoc/files/cadc:CFHTSG/t.I.weight.fits.fz");
+        links.Cutouts = [CanfarDesktop.Tests.Services.Cutouts.SodaDescriptorParserTests.MegaPipe() with { ArtifactId = "cadc:CFHTSG/t.I.fits.fz" }];
+
+        Assert.Equal("cadc:CFHTSG/t.I.fits.fz", DataLinkArtifactSelector.ArtifactIdOf(links, links.DirectFiles[0].Url));
+        Assert.Null(DataLinkArtifactSelector.ArtifactIdOf(links, links.DirectFiles[1].Url)); // CADC does not cut it: not named
+    }
 }

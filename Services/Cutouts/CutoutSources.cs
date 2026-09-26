@@ -39,9 +39,29 @@ public static class CutoutSources
     public static long? SizeOf(CAOM2Observation? observation, string artifactId)
         => observation?.Planes.SelectMany(p => p.Artifacts).FirstOrDefault(a => a.Uri == artifactId)?.ContentLength;
 
-    /// <summary>The ways one file can be cut, from all of an observation's, best first.</summary>
-    public static IReadOnlyList<ICutoutSource> For(IEnumerable<ICutoutSource> sources, string? artifactId)
-        => Preferred(sources.Where(s => string.Equals(s.File.ArtifactId, artifactId ?? string.Empty, StringComparison.Ordinal)));
+    /// <summary>
+    /// The ways one file can be cut, from all of an observation's, best first. The downloaded copy is
+    /// among them when it is that file: tied to it by id — or, when which file it is was never recorded,
+    /// by being exactly the size <paramref name="observation"/> gives that file and no other.
+    /// </summary>
+    public static IReadOnlyList<ICutoutSource> For(IEnumerable<ICutoutSource> sources, string? artifactId, CAOM2Observation? observation = null)
+        => Preferred(sources.Where(s => string.Equals(s.File.ArtifactId, artifactId ?? string.Empty, StringComparison.Ordinal)
+                                        || IsUnnamedCopyOf(s, artifactId, observation)));
+
+    /// <summary>
+    /// Whether a downloaded copy nobody recorded the identity of is this archive file: it is exactly
+    /// that file's size, and no other file of the observation's. It stays unnamed — its cut is of "the
+    /// observation's downloaded file", which is what the cut finds again — only shown where it belongs.
+    /// </summary>
+    private static bool IsUnnamedCopyOf(ICutoutSource source, string? artifactId, CAOM2Observation? observation)
+    {
+        if (source is not LocalCutoutSource { File.ArtifactId: "" } local || string.IsNullOrEmpty(artifactId) || observation is null)
+            return false;
+        var bytes = local.LocalFile.FileBytes;
+        var same = observation.Planes.SelectMany(p => p.Artifacts).Where(a => a.ContentLength == bytes)
+                              .Select(a => a.Uri).Distinct().Take(2).ToList();
+        return bytes > 0 && same.Count == 1 && same[0] == artifactId;
+    }
 
     /// <summary>
     /// The ways in the order they are offered: one that can cut before one that cannot; then the file on

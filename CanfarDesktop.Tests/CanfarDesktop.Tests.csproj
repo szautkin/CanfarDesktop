@@ -151,6 +151,7 @@
     <Compile Include="..\Services\Cutouts\Local\CutoutHeader.cs" Link="Linked\Cutouts\CutoutHeader.cs" />
     <Compile Include="..\Services\Cutouts\Local\LocalCutPlan.cs" Link="Linked\Cutouts\LocalCutPlan.cs" />
     <Compile Include="..\Services\Cutouts\Local\LocalCompanions.cs" Link="Linked\Cutouts\LocalCompanions.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalSourceCache.cs" Link="Linked\Cutouts\LocalSourceCache.cs" />
     <Compile Include="..\Services\Cutouts\Local\FitsCutter.cs" Link="Linked\Cutouts\FitsCutter.cs" />
     <Compile Include="..\Services\Cutouts\Local\LocalCutoutSource.cs" Link="Linked\Cutouts\LocalCutoutSource.cs" />
     <Compile Include="..\Services\Cutouts\Local\LocalCopies.cs" Link="Linked\Cutouts\LocalCopies.cs" />

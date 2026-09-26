@@ -24,4 +24,14 @@ public static class CutoutCandidates
         if (query >= 0) name = name[..query];
         return FitsEndings.Any(e => name.EndsWith(e, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>
+    /// What CADC would cut when this file was chosen: the file of that name — or, only when none was
+    /// chosen by name, the one file it cuts. A file chosen that CADC does not cut has nothing: a weight
+    /// map or a preview picked from the list is downloaded whole, never as a cutout of the science image.
+    /// </summary>
+    public static Models.Cutouts.SodaDescriptor? CutFor(IReadOnlyList<Models.Cutouts.SodaDescriptor> cutouts, string? chosenFileName)
+        => string.IsNullOrEmpty(chosenFileName)
+            ? (cutouts.Count == 1 ? cutouts[0] : null)
+            : cutouts.FirstOrDefault(c => string.Equals(c.FileName, chosenFileName, StringComparison.OrdinalIgnoreCase));
 }

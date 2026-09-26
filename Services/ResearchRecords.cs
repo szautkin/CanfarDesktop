@@ -54,7 +54,8 @@ public static class ResearchRecords
     /// </summary>
     public static string? RemoveLocalFile(ObservationStore store, DownloadedObservation record)
     {
-        if (DeleteLocalFiles(record) is { } why) return why; // open elsewhere, or not ours to delete: the record keeps pointing at it
+        // Open elsewhere, or not ours to delete: the record keeps pointing at its file, which is still there.
+        if (DeleteLocalFiles(record) is { } why) return why;
 
         record.LocalPath = string.Empty;
         record.FileSize = null;
@@ -64,13 +65,13 @@ public static class ResearchRecords
 
     /// <summary>
     /// Delete every file on this computer that is the record's (<see cref="DownloadedObservation.LocalFiles"/>):
-    /// its own first — and when that cannot be, none — then its companions'. Null when done, otherwise
-    /// why the first that could not be deleted was not.
+    /// its companions' first and its own last, stopping at the first that cannot be deleted — so the
+    /// record's own file, which it points at, goes only once the files that go with it have, and a
+    /// record never points at a file that is gone. Null when done, otherwise why not.
     /// </summary>
     public static string? DeleteLocalFiles(DownloadedObservation record)
     {
-        string? why = null;
-        foreach (var path in record.LocalFiles)
+        foreach (var path in record.LocalFiles.Reverse())
         {
             try
             {
@@ -78,11 +79,10 @@ public static class ResearchRecords
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
-                if (path == record.LocalPath) return ex.Message;
-                why ??= ex.Message;
+                return ex.Message;
             }
         }
-        return why;
+        return null;
     }
 
     /// <summary>
