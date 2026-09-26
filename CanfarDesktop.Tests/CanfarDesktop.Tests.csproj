@@ -90,6 +90,9 @@
     <Compile Include="..\Helpers\ImageDiscovery\DiscoveryFormatting.cs" Link="Linked\ImageDiscovery\DiscoveryFormatting.cs" />
     <Compile Include="..\Helpers\ImageDiscovery\ManifestDetailBuilder.cs" Link="Linked\ImageDiscovery\ManifestDetailBuilder.cs" />
     <Compile Include="..\Models\ContainerImage.cs" Link="Linked\ImageDiscovery\ContainerImage.cs" />
+    <Compile Include="..\Models\SessionTypes.cs" Link="Linked\ImageDiscovery\SessionTypes.cs" />
+    <Compile Include="..\Models\ImageDiscovery\ImageDiscoveryStatus.cs" Link="Linked\ImageDiscovery\ImageDiscoveryStatus.cs" />
+    <Compile Include="..\Helpers\ImageDiscovery\ImageCatalogue.cs" Link="Linked\ImageDiscovery\ImageCatalogue.cs" />
     <Compile Include="..\ViewModels\ImageDiscovery\FacetViewModels.cs" Link="Linked\ImageDiscovery\FacetViewModels.cs" />
     <Compile Include="..\ViewModels\ImageDiscovery\ImageRowViewModel.cs" Link="Linked\ImageDiscovery\ImageRowViewModel.cs" />
     <Compile Include="..\ViewModels\ImageDiscovery\ActiveFilterChip.cs" Link="Linked\ImageDiscovery\ActiveFilterChip.cs" />

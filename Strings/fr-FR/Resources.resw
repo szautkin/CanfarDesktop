@@ -1918,6 +1918,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="ImageDiscoveryDialog.Title" xml:space="preserve">
     <value>Trouver des images par paquet</value>
   </data>
+  <data name="Images_DiscoveredOf" xml:space="preserve">
+    <value>{0} images inspectées sur {1}</value>
+  </data>
   <data name="Images_FindByPackageBtn.Content" xml:space="preserve">
     <value>Trouver par paquet…</value>
   </data>
@@ -1935,6 +1938,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Images_Inspecting" xml:space="preserve">
     <value>Inspection en cours…</value>
+  </data>
+  <data name="Images_LoadFailed" xml:space="preserve">
+    <value>Impossible de charger les images : {0}</value>
   </data>
   <data name="Images_Packages" xml:space="preserve">
     <value>{0} paquets</value>
@@ -4391,8 +4397,8 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Settings_AboutTermsLink.Content" xml:space="preserve">
     <value>Conditions d'utilisation</value>
   </data>
-  <data name="Images_AllProjects" xml:space="preserve">
-    <value>Tous les projets</value>
+  <data name="Images_All" xml:space="preserve">
+    <value>Tout</value>
   </data>
   <data name="Images_AlreadyAdded" xml:space="preserve">
     <value>Déjà ajoutée</value>

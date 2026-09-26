@@ -1,11 +1,12 @@
+using CanfarDesktop.Helpers.ImageDiscovery;
 using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Mcp.Tools.Read;
 
-/// <summary>One session image from the Skaha catalog (id + the session types it supports).</summary>
-public sealed record SessionImageView(string Id, IReadOnlyList<string> Types)
+/// <summary>One session image from the Skaha catalog: its id, the session types it supports, and its project.</summary>
+public sealed record SessionImageView(string Id, IReadOnlyList<string> Types, string Project)
 {
-    public static SessionImageView From(RawImage i) => new(i.Id, i.Types);
+    public static SessionImageView From(ParsedImage i) => new(i.Id, i.Types, i.Project);
 }
 
 /// <summary><c>list_session_images</c> — the container images in the Skaha catalog, optionally filtered by type.</summary>
@@ -17,14 +18,17 @@ public sealed class ListSessionImagesTool : JsonReadTool<ListSessionImagesTool.A
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_session_images",
-        "List the container images in the Skaha catalog (id + supported session types), optionally filtered to one type.",
-        """{"type":"object","properties":{"type":{"type":"string","description":"Optional: only images supporting this session type (e.g. notebook, desktop, headless)"}},"additionalProperties":false}""");
+        "List the container images in the Skaha catalog (id, supported session types, project), optionally narrowed " +
+        "to one session type and one project — the Portal's CANFAR images card's two filters.",
+        """{"type":"object","properties":{"type":{"type":"string","description":"Optional: only images supporting this session type (e.g. notebook, desktop, headless)"},"project":{"type":"string","description":"Optional: only images in this project (the second segment of the id, e.g. skaha)"}},"additionalProperties":false}""");
 
     protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
-        var images = (await _images(ct)).AsEnumerable();
+        var images = (await _images(ct)).Select(ImageParser.Parse);
         if (!string.IsNullOrWhiteSpace(args.Type))
-            images = images.Where(i => i.Types.Any(t => string.Equals(t, args.Type, StringComparison.OrdinalIgnoreCase)));
+            images = images.Where(i => i.Types.Any(t => string.Equals(t, args.Type.Trim(), StringComparison.OrdinalIgnoreCase)));
+        if (!string.IsNullOrWhiteSpace(args.Project))
+            images = images.Where(i => ImageCatalogue.InProject(i, args.Project.Trim()));
 
         var items = images.Select(SessionImageView.From).ToList();
         return new Output(items.Count, items);
@@ -33,6 +37,7 @@ public sealed class ListSessionImagesTool : JsonReadTool<ListSessionImagesTool.A
     public sealed record Args
     {
         public string? Type { get; init; }
+        public string? Project { get; init; }
     }
 
     public sealed record Output(int Count, IReadOnlyList<SessionImageView> Images);

@@ -75,4 +75,28 @@ public static class ImageParser
             .Select(g => (g.Key,
                 (IReadOnlyList<ParsedImage>)g.OrderBy(i => i.Label, StringComparer.Ordinal).ToList()))
             .ToList();
+
+    /// <summary>
+    /// Group images by session type, then by project, each project's newest version first — the launch
+    /// form's type and project lists.
+    /// </summary>
+    public static Dictionary<string, Dictionary<string, List<ParsedImage>>> GroupByTypeAndProject(
+        IEnumerable<RawImage> rawImages)
+    {
+        var result = new Dictionary<string, Dictionary<string, List<ParsedImage>>>();
+
+        foreach (var parsed in rawImages.Select(Parse))
+            foreach (var type in parsed.Types)
+            {
+                if (!result.TryGetValue(type, out var projects)) result[type] = projects = [];
+                if (!projects.TryGetValue(parsed.Project, out var images)) projects[parsed.Project] = images = [];
+                images.Add(parsed);
+            }
+
+        foreach (var projects in result.Values)
+            foreach (var project in projects.Keys)
+                projects[project] = projects[project].OrderByDescending(i => i.Version).ToList();
+
+        return result;
+    }
 }

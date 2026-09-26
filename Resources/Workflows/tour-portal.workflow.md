@@ -41,10 +41,11 @@ Time: ~15 min
       `UsageBar` (their storage quota).
       Tool: get_platform_load, get_storage_quota, point_at_ui
       View: portal
-- [ ] **What you can run** — Point at `TypeSelector`, `ProjectFilter`, `ImageList` and a row's
-      `RowAction`: every image, and the software inside it. `Image discovery settings` controls how
-      images are probed for their packages.
-      Tool: list_my_images, describe_image, search_packages, find_images_with_packages, point_at_ui
+- [ ] **What you can run** — Point at `TypeSelector` (session types, All first), `ProjectFilter`
+      (the projects that type leaves; a chip is `ImagesProject[skaha]`), `DiscoveredText`, `ImageList`
+      and a row's `RowAction`: every image a launch can start, and the software inside it.
+      `Image discovery settings` controls how images are probed for their packages.
+      Tool: list_session_images, list_my_images, describe_image, search_packages, find_images_with_packages, point_at_ui
       View: portal
 - [ ] **Images from a registry** — An agent can search the registry behind the catalogue for a
       colleague's build and add it to their list.

@@ -12,9 +12,6 @@ using CanfarDesktop.Views.Dialogs;
 
 namespace CanfarDesktop.Views.Controls;
 
-/// <summary>3-state discovery status for an image row (mirrors macOS CanfarImageRow.Status).</summary>
-public enum ImageDiscoveryStatus { Unknown, Discovered, Failed }
-
 /// <summary>One image row in the Canfar Images widget, with a live discovery status glyph.</summary>
 public partial class CanfarImageRow : ObservableObject
 {
@@ -77,8 +74,10 @@ public partial class CanfarImageRow : ObservableObject
 }
 
 /// <summary>
-/// Dashboard widget listing CANFAR session container images by type, each with a per-image "Inspect"
-/// action and a live discovery status glyph (discovered / failed / not-inspected, discovered first).
+/// Dashboard widget listing the CANFAR images a launch can start, narrowed by session type and then by
+/// project, each with a live discovery status (inspected first, then failed, then never inspected) and one
+/// action — Inspect, or the contents of an image already inspected. The rules are
+/// <see cref="ImageCatalogue"/>'s, shared with Find by package and the agents' image listing.
 /// </summary>
 public sealed partial class CanfarImagesControl : UserControl
 {
@@ -87,26 +86,18 @@ public sealed partial class CanfarImagesControl : UserControl
     private readonly ImageDiscoverySettingsService _settings;
     private readonly IUserImageStore _userImages;
     private readonly ObservableCollection<CanfarImageRow> _rows = new();
-    private List<RawImage> _images = new();
 
-    /// <summary>
-    /// A published application, not a session anyone can start.
-    ///
-    /// Seventy-seven of the platform's images carry this and nothing else — every CASA tag back to
-    /// 3.4.0 among them. They were a fifth of this card, and Inspect on one spent a real probe job on an
-    /// image no launch tab would ever offer.
-    /// </summary>
-    private const string DesktopAppType = "desktop-app";
+    /// <summary>The images a launch can start, as the catalogue gave them — what Find by package searches.</summary>
+    private List<RawImage> _launchable = new();
 
-    /// <summary>The project a reference belongs to: host/PROJECT/name:tag.</summary>
-    private static string? ProjectOf(string imageId)
-    {
-        var parts = (imageId ?? string.Empty).Split('/');
-        return parts.Length >= 3 ? parts[1] : null;
-    }
+    /// <summary>The same images, parsed — what the filters and rows read.</summary>
+    private List<ParsedImage> _images = new();
 
-    /// <summary>Every project shown, in the order the filter offers them.</summary>
-    private const string AllProjects = "__all__";
+    private string _type = ImageCatalogue.All;
+    private string _project = ImageCatalogue.All;
+
+    /// <summary>True while a chip row is being filled, when its selection changing is ours, not the person's.</summary>
+    private bool _filling;
 
     /// <summary>Raised when the user picks an image via "Use this image" in the find-by-package dialog.</summary>
     public event EventHandler<string>? UseImageRequested;
@@ -140,95 +131,107 @@ public sealed partial class CanfarImagesControl : UserControl
 
     public async Task LoadAsync()
     {
+        List<RawImage> catalogue;
         try
         {
-            _images = await _imageService.GetImagesAsync();
+            catalogue = await _imageService.GetImagesAsync();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Canfar images load failed: {ex.Message}");
+            DiscoveredText.Text = Helpers.Loc.F("Images_LoadFailed", ex.Message);
             return;
         }
 
         // The user's own additions, merged in and de-duplicated against the catalogue.
-        foreach (var mine in _userImages.All())
-            if (!_images.Any(i => string.Equals(i.Id, mine.Id, StringComparison.OrdinalIgnoreCase)))
-                _images.Add(new RawImage { Id = mine.Id, Types = mine.Types.ToArray() });
+        var mine = _userImages.All().Select(i => i.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var added in _userImages.All())
+            if (!catalogue.Any(i => string.Equals(i.Id, added.Id, StringComparison.OrdinalIgnoreCase)))
+                catalogue.Add(new RawImage { Id = added.Id, Types = added.Types.ToArray() });
 
+        // Only what a launch can start; the count says as much.
+        var launchable = catalogue
+            .Select(raw => (Raw: raw, Image: ImageParser.Parse(raw)))
+            .Where(x => ImageCatalogue.Launchable(x.Image, mine))
+            .ToList();
+        _launchable = launchable.Select(x => x.Raw).ToList();
+        _images = launchable.Select(x => x.Image).ToList();
         CountText.Text = $"({_images.Count})";
 
-        // Only the types a launch tab can actually offer. desktop-app is an application published INSIDE
-        // a desktop session, not a session to start, so a tab for it offers nothing that can be launched.
-        var types = _images
-            .SelectMany(i => i.Types)
-            .Where(t => !string.Equals(t, DesktopAppType, StringComparison.OrdinalIgnoreCase))
-            .Distinct()
-            .OrderBy(t => t, StringComparer.Ordinal)
-            .ToList();
+        // A choice kept while it is still offered; otherwise All, never the first type — an image just
+        // added may name no type at all, and landing on one would hide it from the list it was added to.
+        var types = ImageCatalogue.Types(_images);
+        _type = ImageCatalogue.Surviving(_type, types);
+        Fill(TypeSelector, "ImagesType", types.Select(t => (t, SessionTypes.Label(t))), _type);
 
-        TypeSelector.Items.Clear();
-        foreach (var type in types)
-            TypeSelector.Items.Add(new SelectorBarItem { Text = Capitalize(type), Tag = type });
+        FillProjects();
+        RebuildRows();
+    }
 
-        if (TypeSelector.Items.Count > 0)
-            TypeSelector.SelectedItem = TypeSelector.Items[0];
-
-        BuildProjectFilter();
+    /// <summary>The project row, from the projects the chosen type leaves; a project gone with it takes the choice back to All.</summary>
+    private void FillProjects()
+    {
+        var projects = ImageCatalogue.Projects(_images, _type);
+        _project = ImageCatalogue.Surviving(_project, projects);
+        Fill(ProjectFilter, "ImagesProject", projects.Select(p => (p, p)), _project);
+        ProjectRow.Visibility = projects.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>
-    /// The projects present, so a card of several hundred images can be narrowed to the one collection
-    /// someone works in. Rebuilt on load because an added image can bring a project with it.
+    /// Fill a chip row: All first, then each choice, the chosen one selected. One builder for both rows, so
+    /// both mean the same by All. Each chip is named for agents to point at: ImagesType[notebook].
     /// </summary>
-    private void BuildProjectFilter()
+    private void Fill(SelectorBar bar, string name, IEnumerable<(string Value, string Label)> choices, string chosen)
     {
-        var previous = (ProjectFilter.SelectedItem as ComboBoxItem)?.Tag as string ?? AllProjects;
-
-        var projects = _images
-            .Select(i => ProjectOf(i.Id))
-            .Where(p => !string.IsNullOrEmpty(p))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        ProjectFilter.Items.Clear();
-        ProjectFilter.Items.Add(new ComboBoxItem { Content = Helpers.Loc.T("Images_AllProjects"), Tag = AllProjects });
-        foreach (var project in projects)
-            ProjectFilter.Items.Add(new ComboBoxItem { Content = project, Tag = project });
-
-        ProjectFilter.SelectedIndex = Math.Max(0, ProjectFilter.Items
-            .OfType<ComboBoxItem>()
-            .ToList()
-            .FindIndex(i => (string?)i.Tag == previous));
-
-        ProjectFilter.Visibility = projects.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        _filling = true;
+        try
+        {
+            bar.Items.Clear();
+            SelectorBarItem? selected = null;
+            foreach (var (value, label) in choices.Prepend((ImageCatalogue.All, Helpers.Loc.T("Images_All"))))
+            {
+                var chip = new SelectorBarItem { Text = label, Tag = value, Name = $"{name}[{(value.Length == 0 ? "All" : value)}]" };
+                bar.Items.Add(chip);
+                if (string.Equals(value, chosen, StringComparison.OrdinalIgnoreCase)) selected = chip;
+            }
+            bar.SelectedItem = selected;
+        }
+        finally
+        {
+            _filling = false;
+        }
     }
 
-    private void OnProjectChanged(object sender, SelectionChangedEventArgs e) => RebuildRows();
+    private void OnTypeChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        if (_filling || sender.SelectedItem?.Tag is not string type) return;
+        _type = type;
+        FillProjects(); // the projects on offer depend on the type
+        RebuildRows();
+    }
 
-    private void OnTypeChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args) => RebuildRows();
+    private void OnProjectChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        if (_filling || sender.SelectedItem?.Tag is not string project) return;
+        _project = project;
+        RebuildRows();
+    }
 
     private void RebuildRows()
     {
-        var type = TypeSelector.SelectedItem?.Tag as string ?? string.Empty;
-        var project = (ProjectFilter.SelectedItem as ComboBoxItem)?.Tag as string ?? AllProjects;
-
         _rows.Clear();
-        var rows = _images
-            .Where(i => i.Types.Contains(type))
-            .Where(i => project == AllProjects
-                     || string.Equals(ProjectOf(i.Id), project, StringComparison.OrdinalIgnoreCase))
-            .Select(ImageParser.Parse)
-            .Select(p =>
-            {
-                var row = new CanfarImageRow(p.Id, p.Label, p.Types);
-                ApplyStatus(row);
-                return row;
-            })
-            .OrderBy(r => StatusOrder(r.Status))
-            .ThenBy(r => r.ImageId, StringComparer.Ordinal);
-        foreach (var row in rows) _rows.Add(row);
+        foreach (var image in ImageCatalogue.Shown(_images, _type, _project, StatusOf))
+        {
+            var row = new CanfarImageRow(image.Id, image.Label, image.Types);
+            ApplyStatus(row);
+            _rows.Add(row);
+        }
+        ShowDiscovered();
     }
+
+    /// <summary>"Discovered 3 of 12 images" — of the rows shown, not the whole catalogue, since it sits right above them.</summary>
+    private void ShowDiscovered()
+        => DiscoveredText.Text = _images.Count == 0 ? string.Empty
+            : Helpers.Loc.F("Images_DiscoveredOf", _rows.Count(r => r.Status == ImageDiscoveryStatus.Discovered), _rows.Count);
 
     private async Task ShowContentsAsync(Models.ImageDiscovery.ImageManifest manifest)
     {
@@ -272,7 +275,7 @@ public sealed partial class CanfarImagesControl : UserControl
     {
         try
         {
-            var dialog = new ImageDiscoveryDialog(_coordinator, _images) { XamlRoot = XamlRoot };
+            var dialog = new ImageDiscoveryDialog(_coordinator, _launchable) { XamlRoot = XamlRoot };
             var result = await dialog.ShowAsync();
             RefreshStatuses(); // the dialog may have probed images
             if (result == ContentDialogResult.Primary && dialog.PickedImageId is { } imageId)
@@ -311,25 +314,25 @@ public sealed partial class CanfarImagesControl : UserControl
         ReSort();
     }
 
+    /// <summary>What is known of an image's contents, from the discovery cache.</summary>
+    private ImageDiscoveryStatus StatusOf(string imageId) => _coordinator.Outcome(imageId) switch
+    {
+        { IsSuccess: true, Manifest: not null } => ImageDiscoveryStatus.Discovered,
+        { IsSuccess: false } => ImageDiscoveryStatus.Failed,
+        _ => ImageDiscoveryStatus.Unknown,
+    };
+
     private void ApplyStatus(CanfarImageRow row)
     {
         var outcome = _coordinator.Outcome(row.ImageId);
-        if (outcome is { IsSuccess: true, Manifest: { } m })
+        row.Status = StatusOf(row.ImageId);
+        row.MetaLine = (row.Status, outcome) switch
         {
-            row.Status = ImageDiscoveryStatus.Discovered;
-            var os = m.OsFamily != "unknown" ? $"{m.OsFamily} {m.OsVersion} · " : string.Empty;
-            row.MetaLine = os + Helpers.Loc.F("Images_Packages", PackageCount(m));
-        }
-        else if (outcome is { IsSuccess: false })
-        {
-            row.Status = ImageDiscoveryStatus.Failed;
-            row.MetaLine = outcome.Message ?? Helpers.Loc.T("Images_ProbeFailed");
-        }
-        else
-        {
-            row.Status = ImageDiscoveryStatus.Unknown;
-            row.MetaLine = row.ImageId;
-        }
+            (ImageDiscoveryStatus.Discovered, { Manifest: { } m }) =>
+                (m.OsFamily != "unknown" ? $"{m.OsFamily} {m.OsVersion} · " : string.Empty) + Helpers.Loc.F("Images_Packages", PackageCount(m)),
+            (ImageDiscoveryStatus.Failed, _) => outcome?.Message ?? Helpers.Loc.T("Images_ProbeFailed"),
+            _ => row.ImageId,
+        };
     }
 
     private void RefreshStatuses()
@@ -343,7 +346,7 @@ public sealed partial class CanfarImagesControl : UserControl
         // In-place Move (instead of Clear+re-add) keeps the ListView's scroll
         // position when an Inspect result re-orders the list.
         var sorted = _rows
-            .OrderBy(r => StatusOrder(r.Status))
+            .OrderBy(r => ImageCatalogue.Order(r.Status))
             .ThenBy(r => r.ImageId, StringComparer.Ordinal)
             .ToList();
         for (var target = 0; target < sorted.Count; target++)
@@ -351,17 +354,9 @@ public sealed partial class CanfarImagesControl : UserControl
             var current = _rows.IndexOf(sorted[target]);
             if (current != target) _rows.Move(current, target);
         }
+        ShowDiscovered();
     }
-
-    private static int StatusOrder(ImageDiscoveryStatus s) => s switch
-    {
-        ImageDiscoveryStatus.Discovered => 0,
-        ImageDiscoveryStatus.Failed => 1,
-        _ => 2,
-    };
 
     private static int PackageCount(ImageManifest m)
         => m.DpkgPackages.Count + m.RpmPackages.Count + m.ApkPackages.Count + m.PythonPackages.Count + m.RPackages.Count;
-
-    private static string Capitalize(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s[1..];
 }

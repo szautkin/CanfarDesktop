@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CanfarDesktop.Mcp.Tools.Proposals;
+using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Mcp.Tools.Write;
 
@@ -18,7 +19,7 @@ public sealed record RenewSessionPayload(string Id);
 
 internal static class SessionWriteHelpers
 {
-    public static readonly string[] InteractiveTypes = { "notebook", "desktop", "carta", "contributed", "firefly" };
+    public static IReadOnlyList<string> InteractiveTypes => SessionTypes.Interactive;
 
     public static void RequireResources(int? cores, int? ram, int? gpus)
     {
