@@ -50,6 +50,19 @@ public static class ADQLBuilder
         Plane.publisherID
         """;
 
+    /// <summary>
+    /// The keys (<see cref="CellFormatter.CleanKey"/>) of the columns a search from the form answers
+    /// with: each column's alias, or its name when it has none. Read from the query itself, so it cannot
+    /// fall out of step with it.
+    /// </summary>
+    public static IReadOnlySet<string> ColumnKeys { get; } = SelectColumns
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(column => column.LastIndexOf(" AS ", StringComparison.Ordinal) is var alias and >= 0
+            ? column[(alias + 4)..]
+            : column[(column.LastIndexOf('.') + 1)..])
+        .Select(CellFormatter.CleanKey)
+        .ToHashSet(StringComparer.Ordinal);
+
     private const string FromClause =
         "caom2.Plane AS Plane JOIN caom2.Observation AS Observation ON Plane.obsID = Observation.obsID";
 

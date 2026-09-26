@@ -471,18 +471,15 @@ public partial class SearchViewModel : ObservableObject
             AdqlText = adql;
             _context?.Searched(state);
 
-            if (await QueryAsync(adql, search.Token) && Results is { TotalRows: > 0 })
-            {
-                _storeService.SaveRecentSearch(new RecentSearch
+            if (await QueryAsync(adql, search.Token) && Results is { TotalRows: > 0 } results)
+                Remember(new RecentSearch
                 {
                     Summary = BuildSearchSummary(state),
                     Adql = adql,
                     FormState = state,
-                    ResultCount = Results.TotalRows,
+                    ResultCount = results.TotalRows,
                     SearchedAt = DateTime.UtcNow
                 });
-                LoadRecentSearchesFromStore();
-            }
         }
         catch (Exception) when (search.IsCancellationRequested)
         {
@@ -504,7 +501,9 @@ public partial class SearchViewModel : ObservableObject
         var search = StartSearching();
         try
         {
-            await QueryAsync(query, search.Token);
+            // Remembered like a search from the form: the rail is the history of what was run (QA D1b).
+            if (await QueryAsync(query, search.Token) && Results is { TotalRows: > 0 } results)
+                Remember(RecentSearch.FromEditor(query, results.TotalRows, DateTime.UtcNow));
         }
         catch (Exception) when (search.IsCancellationRequested)
         {
@@ -576,6 +575,13 @@ public partial class SearchViewModel : ObservableObject
         }
     }
 
+    /// <summary>Keep a search that found something in the recent searches, newest first.</summary>
+    private void Remember(RecentSearch search)
+    {
+        _storeService.SaveRecentSearch(search);
+        LoadRecentSearchesFromStore();
+    }
+
     private static string BuildSearchSummary(SearchFormState s)
     {
         var parts = new List<string>();
@@ -610,15 +616,16 @@ public partial class SearchViewModel : ObservableObject
         });
 
         // Real TAP columns
+        var visible = CellFormatter.VisibleByDefault(Results.Columns.Select(CellFormatter.CleanKey).ToList());
         foreach (var header in Results.Columns)
         {
             var key = CellFormatter.CleanKey(header);
             ResultColumns.Add(new ResultColumnInfo
             {
                 Key = key,
-                Label = header.Replace("\"", "").Trim(),
+                Label = CellFormatter.Label(header),
                 Header = header,
-                Visible = CellFormatter.DefaultVisibleKeys.Contains(key),
+                Visible = visible(key),
                 Width = CellFormatter.ColumnWidth(key)
             });
         }
@@ -818,9 +825,13 @@ public partial class SearchViewModel : ObservableObject
             SavedQueries.Add(q);
     }
 
+    /// <summary>
+    /// Put a recent search back: the form as it was and its query in the editor — or, for a query written
+    /// in the editor, the query alone, leaving the form as it is.
+    /// </summary>
     public void LoadFromRecentSearch(RecentSearch search)
     {
-        LoadFromFormState(search.FormState);
+        if (search.FormState is { } form) LoadFromFormState(form);
         AdqlText = search.Adql;
     }
 
@@ -1014,7 +1025,7 @@ public partial class SearchViewModel : ObservableObject
     {
         if (Results is null || Results.Rows.Count == 0) return string.Empty;
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine(string.Join(",", Results.Columns.Select(QuoteCsv)));
+        sb.AppendLine(string.Join(",", Results.Columns.Select(c => QuoteCsv(CellFormatter.Label(c)))));
         foreach (var row in Results.Rows)
             sb.AppendLine(string.Join(",", Results.Columns.Select(c => QuoteCsv(row.Get(c)))));
         return sb.ToString();
@@ -1024,7 +1035,7 @@ public partial class SearchViewModel : ObservableObject
     {
         if (Results is null || Results.Rows.Count == 0) return string.Empty;
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine(string.Join("\t", Results.Columns));
+        sb.AppendLine(string.Join("\t", Results.Columns.Select(CellFormatter.Label)));
         foreach (var row in Results.Rows)
             sb.AppendLine(string.Join("\t", Results.Columns.Select(c => row.Get(c).Replace("\t", " "))));
         return sb.ToString();

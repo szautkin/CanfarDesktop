@@ -202,4 +202,20 @@ public class ADQLBuilderTests
         Assert.Contains("Plane.energy_resolvingPower >= 1000", adql);
         Assert.Contains("Plane.energy_resolvingPower <= 5000", adql);
     }
+
+    [Fact]
+    public void ColumnKeys_AreTheFormQuerysOutputNames()
+    {
+        // An alias names its column; a column without one goes by its own name, not its table's.
+        Assert.Contains("ra(j20000)", ADQLBuilder.ColumnKeys);
+        Assert.Contains("obsid", ADQLBuilder.ColumnKeys);
+        Assert.Contains("observationid", ADQLBuilder.ColumnKeys);
+        Assert.Contains("publisherid", ADQLBuilder.ColumnKeys);
+        Assert.DoesNotContain("observation", ADQLBuilder.ColumnKeys);
+
+        // One for each column the query selects, none lost to two sharing a key.
+        var query = ADQLBuilder.Build(new SearchFormState());
+        var select = query[..query.IndexOf("FROM", StringComparison.Ordinal)];
+        Assert.Equal(select.Split(',').Length, ADQLBuilder.ColumnKeys.Count);
+    }
 }

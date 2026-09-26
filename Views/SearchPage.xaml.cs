@@ -333,6 +333,13 @@ public sealed partial class SearchPage : Page
     private void LoadRecentSearchCore(RecentSearch search)
     {
         ViewModel.LoadFromRecentSearch(search);
+        if (search.WrittenInEditor)
+        {
+            // No form to go back to: the query goes back where it was written.
+            ShowAdqlEditor();
+            ShowLoadedFeedback(Loc.F("Search_LoadedRecent", search.Summary));
+            return;
+        }
         // Sync data train UI if loaded
         if (_dataTrainUIBuilt)
         {

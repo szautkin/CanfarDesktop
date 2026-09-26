@@ -149,4 +149,22 @@ public class CellFormatterTests
     [Fact]
     public void NamesColumn_DoesNotGuess()
         => Assert.False(CellFormatter.NamesColumn("startdate", "date"));
+
+    [Theory]
+    [InlineData("\"RA (J2000.0)\"", "RA (J2000.0)")]
+    [InlineData("collection", "collection")]
+    [InlineData(" \"Target Name\" ", "Target Name")]
+    public void Label_IsTheHeaderWithoutItsAliasQuotes(string header, string label)
+        => Assert.Equal(label, CellFormatter.Label(header));
+
+    [Fact]
+    public void VisibleByDefault_OnlyNarrowsTheFormsOwnColumns()
+    {
+        var mine = CellFormatter.VisibleByDefault(["observationid", "productid"]);
+        Assert.True(mine("observationid"));
+        Assert.True(mine("productid"));
+
+        var form = CellFormatter.VisibleByDefault([.. ADQLBuilder.ColumnKeys]);
+        Assert.All(ADQLBuilder.ColumnKeys, key => Assert.Equal(CellFormatter.DefaultVisibleKeys.Contains(key), form(key)));
+    }
 }

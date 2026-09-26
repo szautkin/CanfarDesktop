@@ -75,6 +75,13 @@ public sealed partial class SearchPage
         _adqlCheckTimer.Start();
     }
 
+    /// <summary>Show the ADQL editor, with what it holds checked now rather than after the typing pause.</summary>
+    private void ShowAdqlEditor()
+    {
+        MainPivot.SelectedIndex = 2;
+        RecheckAdql();
+    }
+
     /// <summary>
     /// Check the editor's text, mark what is wrong, and grey out Execute if anything is.
     ///

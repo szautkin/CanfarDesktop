@@ -276,10 +276,10 @@ public sealed class SetAdqlQueryTool : JsonReadTool<SetAdqlQueryTool.Args, Searc
         "set_adql_query",
         "Put an ADQL query in the Search page's ADQL editor so the user can see and edit it, and " +
         "optionally execute it. Use this rather than search_observations when the point is that the " +
-        "user ends up looking at the query and its results.",
+        "user ends up looking at the query and its results. An empty adql clears the editor.",
         """
         {"type":"object","properties":{
-          "adql":{"type":"string","description":"The ADQL query text."},
+          "adql":{"type":"string","description":"The ADQL query text; empty clears the editor."},
           "execute":{"type":"boolean","description":"Run it as well as showing it (default false)."}
         },"required":["adql"],"additionalProperties":false}
         """);
@@ -287,7 +287,9 @@ public sealed class SetAdqlQueryTool : JsonReadTool<SetAdqlQueryTool.Args, Searc
     protected override async Task<SearchAdqlOutcome> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
         var adql = (args.Adql ?? string.Empty).Trim();
-        if (adql.Length == 0) throw new McpToolException(new InvalidArgument("adql is required"));
+        // Empty clears the editor, which there was no other way to do (QA D11) — but is nothing to run.
+        if (adql.Length == 0 && args.Execute == true)
+            throw new McpToolException(new InvalidArgument("there is nothing to execute: an empty adql only clears the editor"));
         return await _set(adql, args.Execute ?? false);
     }
 

@@ -359,6 +359,27 @@ public class SearchUiToolsTests
 
     // ── Getting back to a known state ───────────────────────────────────────────────────────────
 
+    // ── Clearing the ADQL editor (QA D11) ─────────────────────────────────────
 
+    [Fact]
+    public async Task SetAdqlQuery_WithNothing_ClearsTheEditor()
+    {
+        string? put = null;
+        var tool = new SetAdqlQueryTool((a, execute) => { put = a; return Task.FromResult(new SearchAdqlOutcome(true, a, execute)); });
 
+        var result = await tool.InvokeAsync(Args("""{"adql":"  "}"""), Ctx(), default);
+
+        Assert.IsType<DataResult>(result);
+        Assert.Equal(string.Empty, put);
+    }
+
+    [Fact]
+    public async Task SetAdqlQuery_WithNothing_IsNothingToExecute()
+    {
+        var tool = new SetAdqlQueryTool((a, e) => Task.FromResult(new SearchAdqlOutcome(true, a, e)));
+
+        var failure = Failure(await tool.InvokeAsync(Args("""{"adql":"","execute":true}"""), Ctx(), default));
+
+        Assert.Contains("nothing to execute", failure);
+    }
 }

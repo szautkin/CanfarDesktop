@@ -162,6 +162,22 @@ public static class CellFormatter
         return dotIdx >= 0 ? cleaned[..dotIdx] : cleaned;
     }
 
+    /// <summary>A column's name as a person reads it: the TAP header without the quotes an ADQL alias keeps, <c>"RA (J2000.0)"</c>.</summary>
+    public static string Label(string header) => header.Replace("\"", "").Trim();
+
+    /// <summary>
+    /// Which of a result's columns (by key) show before anyone chooses. A result with the form's own
+    /// columns — a search from the form, or its query edited in the ADQL editor — shows the usual ones
+    /// (<see cref="DefaultVisibleKeys"/>), and any column added to them. Any other query shows every
+    /// column: whoever wrote it chose them, and hiding all those the form does not show left an empty
+    /// table (QA D1).
+    /// </summary>
+    public static Func<string, bool> VisibleByDefault(IReadOnlyCollection<string> keys)
+    {
+        var formColumns = ADQLBuilder.ColumnKeys.IsSubsetOf(keys);
+        return key => !formColumns || DefaultVisibleKeys.Contains(key) || !ADQLBuilder.ColumnKeys.Contains(key);
+    }
+
     /// <summary>Default visible column keys (matching macOS).</summary>
     public static readonly HashSet<string> DefaultVisibleKeys = new(StringComparer.OrdinalIgnoreCase)
     {
