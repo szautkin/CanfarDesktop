@@ -1672,6 +1672,12 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Fits_NoCrosshair" xml:space="preserve">
     <value>Aucun réticule placé</value>
   </data>
+  <data name="Fits_OpenFailedTitle" xml:space="preserve">
+    <value>{0} n'a pas été ouvert</value>
+  </data>
+  <data name="Fits_GoToTooFar" xml:space="preserve">
+    <value>Cette position est trop loin de l'image pour que ses coordonnées la situent</value>
+  </data>
   <data name="Fits_NoWcsNav" xml:space="preserve">
     <value>Aucun WCS disponible pour la navigation par coordonnées</value>
   </data>

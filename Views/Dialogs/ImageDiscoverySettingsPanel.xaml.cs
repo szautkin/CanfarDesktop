@@ -29,7 +29,7 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
     private void Populate()
     {
         var s = _service.Settings;
-        InspectorImageBox.Text = s.InspectorImage == ImageDiscoverySettings.DefaultInspectorImage ? string.Empty : s.InspectorImage;
+        InspectorImageBox.Text = ImageShown(s);
         RegistryHostBox.Text = s.RegistryHost == ImageDiscoverySettings.DefaultRegistryHost ? string.Empty : s.RegistryHost;
         RegistryRepoBox.Text = s.RegistryRepository;
         UsernameBox.Text = s.Username;
@@ -67,14 +67,17 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
         ClearCacheButton.IsEnabled = count > 0;
     }
 
+    /// <summary>The inspector image as the box shows it: empty for the default, which the box's placeholder names.</summary>
+    private static string ImageShown(ImageDiscoverySettings s)
+        => s.InspectorImage == ImageDiscoverySettings.DefaultInspectorImage ? string.Empty : s.InspectorImage;
+
     /// <summary>True when the UI holds edits that haven't been saved yet.</summary>
     public bool IsDirty
     {
         get
         {
             var s = _service.Settings;
-            var imageShown = s.InspectorImage == ImageDiscoverySettings.DefaultInspectorImage
-                ? string.Empty : s.InspectorImage;
+            var imageShown = ImageShown(s);
             var hostShown = s.RegistryHost == ImageDiscoverySettings.DefaultRegistryHost
                 ? string.Empty : s.RegistryHost;
             return InspectorImageBox.Text != imageShown
@@ -91,6 +94,7 @@ public sealed partial class ImageDiscoverySettingsPanel : UserControl
     private void OnSave(object sender, RoutedEventArgs e)
     {
         _service.SetInspectorImage(InspectorImageBox.Text);
+        InspectorImageBox.Text = ImageShown(_service.Settings); // as kept: without the spaces or https:// a paste can bring
         _service.SetRegistryHost(RegistryHostBox.Text);
         _service.SetRegistryRepository(RegistryRepoBox.Text);
         _service.SetUsername(UsernameBox.Text);

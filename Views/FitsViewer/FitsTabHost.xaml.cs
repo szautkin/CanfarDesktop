@@ -86,6 +86,19 @@ public sealed partial class FitsTabHost : UserControl
         UpdateEmptyState();
 
         await page.OpenFileAsync(filePath);
+
+        // Refused — too large for the memory free, not FITS, cut short: no tab is left standing for an
+        // image that is not there (QA O2), and the reason stays in sight rather than going with it.
+        if (page.ViewModel.LoadError is { } error)
+        {
+            if (TabFor(tabItem) is { } tab) CloseTabItem(tab, leaveWhenEmpty: false);
+            OpenFailedBar.Title = Loc.F("Fits_OpenFailedTitle", System.IO.Path.GetFileName(filePath));
+            OpenFailedBar.Message = error;
+            OpenFailedBar.IsOpen = true;
+            return page;
+        }
+
+        OpenFailedBar.IsOpen = false;
         SyncToolbarToActiveTab();
         UpdateWcsSyncWarning(); // WCS is loaded now — re-check if opening this file made sync approximate
 
@@ -264,7 +277,14 @@ public sealed partial class FitsTabHost : UserControl
         return true;
     }
 
-    private void CloseTabItem(TabViewItem tab)
+    private TabViewItem? TabFor(FitsViewerTabItem tabItem)
+        => TabViewControl.TabItems.OfType<TabViewItem>().FirstOrDefault(t => ReferenceEquals(t.Tag, tabItem));
+
+    /// <param name="leaveWhenEmpty">
+    /// Whether closing the last tab leaves the viewer, as closing it by hand does. Not for a tab closed
+    /// because its file would not open: the viewer stays, to say why.
+    /// </param>
+    private void CloseTabItem(TabViewItem tab, bool leaveWhenEmpty = true)
     {
         if (tab.Tag is not FitsViewerTabItem tabItem) return;
 
@@ -294,7 +314,7 @@ public sealed partial class FitsTabHost : UserControl
         if (TabViewControl.TabItems.Count == 0)
         {
             _activePage = null;
-            AllTabsClosed?.Invoke();
+            if (leaveWhenEmpty) AllTabsClosed?.Invoke();
         }
         UpdateEmptyState();
     }

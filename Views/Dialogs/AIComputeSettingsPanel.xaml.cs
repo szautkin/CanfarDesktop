@@ -71,6 +71,7 @@ public sealed partial class AIComputeSettingsPanel : UserControl
     private void OnSave(object sender, RoutedEventArgs e)
     {
         _service.SetImage(ImageBox.Text);
+        ImageBox.Text = _service.Settings.Image; // as kept: without the spaces or https:// a paste can bring
         _service.SetCores(ToInt(CoresBox.Value, _service.Settings.Cores));
         _service.SetRam(ToInt(RamBox.Value, _service.Settings.Ram));
         _service.SetRegistryHost(RegistryHostBox.Text);

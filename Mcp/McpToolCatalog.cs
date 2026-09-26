@@ -182,7 +182,7 @@ public static class McpToolCatalog
             downloadVoSpaceFile,
             new GetStorageQuotaTool(ct => storage.GetQuotaAsync(auth.CurrentUsername ?? string.Empty, ct)),
             new GetFitsHeaderTool(ParseFitsHeadersAsync),
-            new GetFitsWcsTool(ParseFitsHeadersAsync),
+            new GetFitsWcsTool(ParseFitsHeadersAsync, () => viewState.ActiveTargetAsync(AnnotationViewer.Fits)),
 
             // Platform load + upstream service health
             new GetPlatformLoadTool(ct => platform.GetStatsAsync(ct)),

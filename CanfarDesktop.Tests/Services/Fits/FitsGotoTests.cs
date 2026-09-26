@@ -47,6 +47,7 @@ public class FitsGotoTests
         var target = FitsGoto.Resolve(Wcs(), Width, Height, 10.684708, 41.26875);
 
         Assert.False(target.OnImage);
+        Assert.Equal(FitsGotoMiss.OffImage, target.Miss);
         Assert.Contains("outside the image", target.Why);
     }
 
@@ -69,6 +70,7 @@ public class FitsGotoTests
         var target = FitsGoto.Resolve(null, Width, Height, 10.5, 41.2);
 
         Assert.False(target.OnImage);
+        Assert.Equal(FitsGotoMiss.NoWcs, target.Miss);
         Assert.Contains("WCS", target.Why);
     }
 
@@ -80,5 +82,7 @@ public class FitsGotoTests
 
         Assert.False(target.OnImage);
         Assert.NotNull(target.Why);
+        // Not "no WCS", which the status bar used to say though the image has one (QA D3).
+        Assert.Equal(FitsGotoMiss.CannotPlace, target.Miss);
     }
 }

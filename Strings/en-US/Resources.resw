@@ -1672,6 +1672,12 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Fits_NoCrosshair" xml:space="preserve">
     <value>No crosshair placed</value>
   </data>
+  <data name="Fits_OpenFailedTitle" xml:space="preserve">
+    <value>{0} was not opened</value>
+  </data>
+  <data name="Fits_GoToTooFar" xml:space="preserve">
+    <value>That position is too far from this image for its coordinates to place it</value>
+  </data>
   <data name="Fits_NoWcsNav" xml:space="preserve">
     <value>No WCS available for coordinate navigation</value>
   </data>

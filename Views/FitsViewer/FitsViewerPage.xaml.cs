@@ -433,9 +433,13 @@ public sealed partial class FitsViewerPage : UserControl
             ViewModel.StatusMessage = Loc.F("Fits_GoToDone", WcsInfo.FormatRa(ra), WcsInfo.FormatDec(dec), target.X, target.Y);
         }
         else
-            ViewModel.StatusMessage = double.IsNaN(target.X)
-                ? Loc.T("Fits_NoWcsNav")
-                : Loc.F("Fits_CoordOutsideBounds", target.X, target.Y, image!.Width, image.Height);
+            // Said as it is: a position the WCS cannot reach used to be reported as no WCS at all (QA D3).
+            ViewModel.StatusMessage = target.Miss switch
+            {
+                FitsGotoMiss.NoWcs => Loc.T("Fits_NoWcsNav"),
+                FitsGotoMiss.CannotPlace => Loc.T("Fits_GoToTooFar"),
+                _ => Loc.F("Fits_CoordOutsideBounds", target.X, target.Y, image!.Width, image.Height),
+            };
 
         return target;
     }

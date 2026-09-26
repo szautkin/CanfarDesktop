@@ -155,9 +155,15 @@ public sealed class StopComputeTool : JsonWriteTool<StopComputeTool.Args>
 }
 
 /// <summary>What <c>get_compute_state</c> answers: the compute as the Remote Compute screen shows it.</summary>
+/// <param name="Image">The image the session launches from, as configured.</param>
+/// <param name="Cores">The cores it launches with, as configured.</param>
+/// <param name="SessionImage">The image the session on the account runs, when there is one.</param>
+/// <param name="SessionCores">The cores it has, as list_sessions reports them (cpuAllocated) — the platform can grant fewer than asked.</param>
+/// <param name="SessionRam">The memory it has, as list_sessions reports it (memoryAllocated).</param>
 public sealed record ComputeStateView(
     string State, bool Configured, string? Image, int Cores, int Ram,
-    string? SessionId, string? SessionStatus, string? StartedAt, int? UptimeMinutes, string? Note)
+    string? SessionId, string? SessionStatus, string? StartedAt, int? UptimeMinutes, string? Note,
+    string? SessionImage = null, string? SessionCores = null, string? SessionRam = null)
 {
     /// <summary>The snapshot as get_compute_state reports it: state names in camelCase, as on the wire.</summary>
     public static ComputeStateView From(ComputeSnapshot s, DateTimeOffset now)
@@ -167,8 +173,13 @@ public sealed record ComputeStateView(
             ComputeStatus.Name(s.State), s.Configured, s.Configured ? s.Image : null, s.Cores, s.Ram,
             s.Session?.Id, s.Session?.Status, s.Session?.StartedTime,
             up is { } u ? (int)u.TotalMinutes : null,
-            NoteFor(s));
+            NoteFor(s),
+            // What the session has, beside what it is set to launch with: the two disagreed, and only
+            // one was said, as if it were the other (QA D6).
+            Given(s.Session?.ContainerImage), Given(s.Session?.CpuAllocated), Given(s.Session?.MemoryAllocated));
     }
+
+    private static string? Given(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static string? NoteFor(ComputeSnapshot s) => (s.Configured, s.Session) switch
     {
@@ -196,8 +207,10 @@ public sealed class GetComputeStateTool : JsonReadTool<GetComputeStateTool.Args,
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_compute_state",
         "Whether remote compute (run_code) is set up, and the state of its session on the user's CANFAR " +
-        "account: notSetUp, stopped, starting, running, stopping or failed — with the image, the size it " +
-        "launches at, and how long it has been up. The same status the Remote Compute screen shows.",
+        "account: notSetUp, stopped, starting, running, stopping or failed — with the image and size it " +
+        "launches at (image, cores, ram), and, while there is a session, what it actually runs and has " +
+        "(sessionImage, sessionCores, sessionRam, as list_sessions reports them; the platform can grant " +
+        "less than asked) and how long it has been up. The same status the Remote Compute screen shows.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<ComputeStateView> HandleAsync(Args args, McpToolContext context, CancellationToken ct)

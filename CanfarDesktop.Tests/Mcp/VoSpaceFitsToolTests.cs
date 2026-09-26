@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using Xunit;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.Fits;
 using CanfarDesktop.Mcp.Tools;
@@ -334,6 +335,58 @@ public class VoSpaceFitsToolTests
         // pixelScaleArcsec is present (non-null) because the WCS is valid.
         Assert.NotNull(data["pixelScaleArcsec"]);
         Assert.IsType<JsonDouble>(data["pixelScaleArcsec"]);
+    }
+
+    /// <summary>An HST-shaped file: a primary without an image or a WCS, then SCI with one.</summary>
+    private static List<FitsHeader> PrimaryWithoutWcs() => [HeaderFrom(("NAXIS", "0")), HeaderWithWcs(), HeaderWithWcs()];
+
+    [Fact]
+    public async Task GetFitsWcs_WithoutAnHdu_TakesTheFirstWithAWcs()
+    {
+        // QA O1: it took the primary, and said isValid:false of a file whose SCI extension has a good one.
+        var tool = new GetFitsWcsTool(_ => Task.FromResult(PrimaryWithoutWcs()));
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"localPath":"hst.fits"}"""), Ctx, default));
+
+        Assert.Equal(1, ((JsonInt)data["hdu"]!).Value);
+        Assert.True(((JsonBool)data["isValid"]!).Value);
+        Assert.Contains("first HDU with a WCS", ((JsonString)data["defaultedTo"]!).Value);
+    }
+
+    [Fact]
+    public async Task GetFitsWcs_WithoutAnHdu_TakesTheExtensionOnScreen_ForTheFileOnScreen()
+    {
+        var tool = new GetFitsWcsTool(_ => Task.FromResult(PrimaryWithoutWcs()),
+            () => Task.FromResult<string?>(MarkTarget.Key("hst.fits", 2)));
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"localPath":"hst.fits"}"""), Ctx, default));
+
+        Assert.Equal(2, ((JsonInt)data["hdu"]!).Value);
+        Assert.Equal("the extension on screen", ((JsonString)data["defaultedTo"]!).Value);
+    }
+
+    [Fact]
+    public async Task GetFitsWcs_TheExtensionOnScreen_OfAnotherFile_IsNotThisOnes()
+    {
+        var tool = new GetFitsWcsTool(_ => Task.FromResult(PrimaryWithoutWcs()),
+            () => Task.FromResult<string?>(MarkTarget.Key("other.fits", 2)));
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"localPath":"hst.fits"}"""), Ctx, default));
+
+        Assert.Equal(1, ((JsonInt)data["hdu"]!).Value);
+    }
+
+    [Fact]
+    public async Task GetFitsWcs_AnHduAsked_IsTheOneGiven()
+    {
+        var tool = new GetFitsWcsTool(_ => Task.FromResult(PrimaryWithoutWcs()),
+            () => Task.FromResult<string?>(MarkTarget.Key("hst.fits", 2)));
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"localPath":"hst.fits","hdu":0}"""), Ctx, default));
+
+        Assert.Equal(0, ((JsonInt)data["hdu"]!).Value);
+        Assert.False(((JsonBool)data["isValid"]!).Value);
+        Assert.Null(data["defaultedTo"]);
     }
 
     [Fact]

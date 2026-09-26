@@ -1895,15 +1895,19 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             var store = App.Services.GetRequiredService<CanfarDesktop.Services.Fits.IAnnotationStore>();
             var marks = store.LoadFor(target);
 
-            // The image the marks are on. A cube has no WCS of the flat kind, so it exports its marks
-            // with positions and without a sky — which is what a voxel is.
+            // The image the marks are on: the viewer's, when it shows the file, otherwise read from the
+            // file's header. A cube has no WCS of the flat kind, so it exports its marks with positions
+            // and without a sky — which is what a voxel is.
             var source = cube
                 ? new Helpers.MarkExport.Source(target, System.IO.Path.GetFileName(target), 0, null, 0, 0, null)
                 : _fitsTabHost?.MarkExportSource(target);
+            string? unreadable = null;
+            if (source is null)
+                (source, unreadable) = await Task.Run(() => CanfarDesktop.Services.Fits.MarkExportFiles.Read(target));
 
             if (source is null)
                 return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
-                    false, request.Path, null, 0, "that file is not the one on screen, so its image is not loaded");
+                    false, request.Path, null, marks.Count, unreadable);
 
             var document = Helpers.MarkExport.Build(
                 marks, source, ProvenanceFor(Helpers.MarkTarget.PathOf(target)), App.AppVersion(), DateTime.UtcNow);
@@ -1920,7 +1924,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             catch (Exception ex)
             {
                 return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
-                    false, request.Path, extension.TrimStart('.'), 0, ex.Message);
+                    false, request.Path, extension.TrimStart('.'), marks.Count, ex.Message);
             }
 
             return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(

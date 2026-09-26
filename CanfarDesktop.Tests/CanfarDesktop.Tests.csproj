@@ -248,6 +248,7 @@
     <Compile Include="..\Helpers\SettingsSections.cs" Link="Linked\SettingsSections.cs" />
     <Compile Include="..\Mcp\Tools\Write\SettingsViewTools.cs" Link="Linked\Mcp\SettingsViewTools.cs" />
     <Compile Include="..\Services\Fits\FitsGoto.cs" Link="Linked\Fits\FitsGoto.cs" />
+    <Compile Include="..\Services\Fits\MarkExportFiles.cs" Link="Linked\Fits\MarkExportFiles.cs" />
     <Compile Include="..\Services\AICompute\ComputeSnapshot.cs" Link="Linked\AICompute\ComputeSnapshot.cs" />
     <Compile Include="..\Mcp\AgentScreens.cs" Link="Linked\Mcp\AgentScreens.cs" />
     <Compile Include="..\Mcp\Tools\Write\RemoteComputeViewTools.cs" Link="Linked\Mcp\RemoteComputeViewTools.cs" />

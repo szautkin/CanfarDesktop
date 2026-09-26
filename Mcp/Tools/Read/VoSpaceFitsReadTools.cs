@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Models.Fits;
 
@@ -244,6 +245,10 @@ public sealed class GetFitsHeaderTool : JsonReadTool<GetFitsHeaderTool.Args, Get
     }
 
     internal static async Task<FitsHeader> ResolveHeaderAsync(Func<string, Task<List<FitsHeader>>> parse, string localPath, int hduIndex)
+        => Pick(await LoadHeadersAsync(parse, localPath), hduIndex);
+
+    /// <summary>Every HDU's header, by index; a file that cannot be read, or holds none, is refused with why.</summary>
+    internal static async Task<List<FitsHeader>> LoadHeadersAsync(Func<string, Task<List<FitsHeader>>> parse, string localPath)
     {
         List<FitsHeader> headers;
         try
@@ -257,11 +262,13 @@ public sealed class GetFitsHeaderTool : JsonReadTool<GetFitsHeaderTool.Args, Get
 
         if (headers is null || headers.Count == 0)
             throw new McpToolException(new UnknownTarget($"no FITS HDUs found in: {localPath}"));
-        if (hduIndex >= headers.Count)
-            throw new McpToolException(new UnknownTarget($"HDU {hduIndex} not found ({headers.Count} HDU(s) in file)"));
-
-        return headers[hduIndex];
+        return headers;
     }
+
+    internal static FitsHeader Pick(List<FitsHeader> headers, int hduIndex)
+        => hduIndex < headers.Count
+            ? headers[hduIndex]
+            : throw new McpToolException(new UnknownTarget($"HDU {hduIndex} not found ({headers.Count} HDU(s) in file)"));
 
     public sealed record Args
     {
@@ -276,24 +283,33 @@ public sealed class GetFitsHeaderTool : JsonReadTool<GetFitsHeaderTool.Args, Get
 public sealed class GetFitsWcsTool : JsonReadTool<GetFitsWcsTool.Args, GetFitsWcsTool.Output>
 {
     private readonly Func<string, Task<List<FitsHeader>>> _parseHeaders;
+    private readonly Func<Task<string?>>? _shown;
 
-    public GetFitsWcsTool(Func<string, Task<List<FitsHeader>>> parseHeaders) => _parseHeaders = parseHeaders;
+    /// <param name="shown">The FITS viewer's file and extension on screen (a mark key), or null when nothing is.</param>
+    public GetFitsWcsTool(Func<string, Task<List<FitsHeader>>> parseHeaders, Func<Task<string?>>? shown = null)
+    {
+        _parseHeaders = parseHeaders;
+        _shown = shown;
+    }
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_fits_wcs",
-        "Read the World Coordinate System (WCS) solution of one HDU in a local FITS file (reference pixel/value, CD matrix, projection, pixel scale).",
-        """{"type":"object","properties":{"localPath":{"type":"string","description":"Local filesystem path to a FITS file"},"hdu":{"type":"integer","minimum":0,"description":"HDU index (default 0, the primary HDU)"}},"required":["localPath"],"additionalProperties":false}""");
+        "Read the World Coordinate System (WCS) solution of one HDU in a local FITS file (reference pixel/value, CD matrix, projection, pixel scale). " +
+        "Without hdu: the extension on screen when the FITS viewer shows this file, otherwise the first HDU with a WCS; `defaultedTo` says which it took.",
+        """{"type":"object","properties":{"localPath":{"type":"string","description":"Local filesystem path to a FITS file"},"hdu":{"type":"integer","minimum":0,"description":"HDU index. Default: the extension on screen, or the first with a WCS."}},"required":["localPath"],"additionalProperties":false}""");
 
     protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(args.LocalPath))
             throw new McpToolException(new InvalidArgument("localPath is required"));
-        var hduIndex = args.Hdu ?? 0;
-        if (hduIndex < 0)
+        if (args.Hdu is < 0)
             throw new McpToolException(new InvalidArgument("hdu must be a non-negative integer"));
 
-        var header = await GetFitsHeaderTool.ResolveHeaderAsync(_parseHeaders, args.LocalPath, hduIndex);
-        var wcs = WcsInfo.FromHeader(header);
+        var headers = await GetFitsHeaderTool.LoadHeadersAsync(_parseHeaders, args.LocalPath);
+        var (hduIndex, defaultedTo) = args.Hdu is { } asked
+            ? (asked, null)
+            : DefaultHdu(headers, args.LocalPath, _shown is null ? null : await _shown());
+        var wcs = WcsInfo.FromHeader(GetFitsHeaderTool.Pick(headers, hduIndex));
 
         return new Output(
             args.LocalPath, hduIndex, wcs.IsValid, wcs.IsApproximate,
@@ -302,7 +318,26 @@ public sealed class GetFitsWcsTool : JsonReadTool<GetFitsWcsTool.Args, GetFitsWc
             wcs.Cd1_1, wcs.Cd1_2, wcs.Cd2_1, wcs.Cd2_2,
             wcs.IsValid ? wcs.PixelScaleArcsec : null,
             wcs.IsValid ? wcs.NorthAngle : null,
-            wcs.IsValid ? wcs.HasParityFlip : null);
+            wcs.IsValid ? wcs.HasParityFlip : null,
+            defaultedTo);
+    }
+
+    /// <summary>
+    /// The HDU meant when none is named: the extension on screen, when the viewer shows this file;
+    /// otherwise the first with a usable WCS; otherwise the primary. It was always the primary, which in
+    /// an HST file holds no image and no WCS — isValid:false beside a SCI extension with a good one (QA O1).
+    /// </summary>
+    internal static (int Hdu, string Why) DefaultHdu(IReadOnlyList<FitsHeader> headers, string localPath, string? shownKey)
+    {
+        if (shownKey is not null && MarkTarget.SameFile(shownKey, localPath)
+            && MarkTarget.Parse(shownKey).Hdu is { } shown && shown < headers.Count)
+            return (shown, "the extension on screen");
+
+        for (var i = 0; i < headers.Count; i++)
+            if (WcsInfo.FromHeader(headers[i]) is { IsValid: true, IsApproximate: false })
+                return (i, i == 0 ? "the primary HDU, which has a WCS" : "the first HDU with a WCS");
+
+        return (0, "the primary HDU: none has a WCS");
     }
 
     public sealed record Args
@@ -316,5 +351,6 @@ public sealed class GetFitsWcsTool : JsonReadTool<GetFitsWcsTool.Args, GetFitsWc
         string CType1, string CType2, string Projection,
         double CrPix1, double CrPix2, double CrVal1, double CrVal2,
         double Cd1_1, double Cd1_2, double Cd2_1, double Cd2_2,
-        double? PixelScaleArcsec, double? NorthAngle, bool? HasParityFlip);
+        double? PixelScaleArcsec, double? NorthAngle, bool? HasParityFlip,
+        string? DefaultedTo = null);
 }

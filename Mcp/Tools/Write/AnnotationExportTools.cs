@@ -7,7 +7,10 @@ namespace CanfarDesktop.Mcp.Tools.Write;
 public sealed record AnnotationExportRequest(string Path, string Viewer, string? Target);
 
 /// <summary>What came of it.</summary>
-/// <param name="Marks">How many were written — zero is a real answer, not a failure.</param>
+/// <param name="Marks">
+/// How many were written — zero is a real answer, not a failure. When nothing could be written, how
+/// many the file has: a refusal used to say 0 of a file holding one (QA D5b).
+/// </param>
 public sealed record AnnotationExportOutcome(
     bool Exported, string? Path, string? Format, int Marks, string? Message);
 
@@ -43,7 +46,8 @@ public sealed class ExportAnnotationsTool : JsonReadTool<ExportAnnotationsTool.A
         "and, when the app downloaded it, the observation's publisher id, proposal and release date " +
         "so it can be fetched again. .reg writes a DS9 region file, which carries less and is read by " +
         "DS9, CARTA and most reduction scripts; it uses fk5 when the image has WCS so the regions " +
-        "land on any image of the same field. Defaults to the file on screen. Live-applied.",
+        "land on any image of the same field. Defaults to the file on screen; a file that is not open is read " +
+        "from its header. Live-applied.",
         """
         {"type":"object","properties":{
           "path":{"type":"string","description":"Absolute path ending in .json or .reg."},

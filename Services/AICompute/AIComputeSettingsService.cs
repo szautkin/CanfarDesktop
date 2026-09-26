@@ -58,7 +58,7 @@ public class AIComputeSettingsService
 
     public void SetImage(string value)
     {
-        var final = value?.Trim() ?? string.Empty;
+        var final = CanfarDesktop.Helpers.RegistryImageResolver.Normalize(value);
         WriteSetting(KeyImage, final);
         Settings = Settings with { Image = final };
     }
@@ -79,7 +79,7 @@ public class AIComputeSettingsService
 
     public void SetRegistryHost(string value)
     {
-        var final = string.IsNullOrWhiteSpace(value) ? AIComputeSettings.DefaultRegistryHost : value.Trim();
+        var final = string.IsNullOrWhiteSpace(value) ? AIComputeSettings.DefaultRegistryHost : CanfarDesktop.Helpers.RegistryImageResolver.Normalize(value);
         WriteSetting(KeyRegistryHost, final);
         Settings = Settings with { RegistryHost = final, HasSecret = HasStoredSecret(final, Settings.RegistryUsername) };
     }

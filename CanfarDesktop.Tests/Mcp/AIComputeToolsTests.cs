@@ -217,6 +217,36 @@ public class AIComputeToolsTests
         Assert.Null(view.Note);
     }
 
+    /// <summary>
+    /// QA D6: set to launch at 2 cores and 8 GB, the session on the account had 1 and 1.07, and the tool
+    /// said 2 and 8 as if they were the session's. Both are said now, each as what it is.
+    /// </summary>
+    [Fact]
+    public void WhatTheSessionHas_IsSaidBesideWhatItLaunchesWith()
+    {
+        var session = ComputeSession("Running");
+        session.ContainerImage = "images.canfar.net/private-test/verbinal-execution:0.0.2";
+        session.CpuAllocated = "1";
+        session.MemoryAllocated = "1.07";
+
+        var view = ComputeStateView.From(
+            new ComputeSnapshot(ComputeState.Running, session, "images.canfar.net/private-test/verbinal-execution:0.0.2", 2, 8, Configured: true), Now);
+
+        Assert.Equal((2, 8), (view.Cores, view.Ram));
+        Assert.Equal(("1", "1.07"), (view.SessionCores, view.SessionRam));
+        Assert.Equal("images.canfar.net/private-test/verbinal-execution:0.0.2", view.SessionImage);
+    }
+
+    [Fact]
+    public void WithoutASession_ThereIsNothingOfOneToSay()
+    {
+        var view = ComputeStateView.From(new ComputeSnapshot(ComputeState.Stopped, null, "img:1", 2, 4, Configured: true), Now);
+
+        Assert.Null(view.SessionImage);
+        Assert.Null(view.SessionCores);
+        Assert.Null(view.SessionRam);
+    }
+
     // ── appliers ──
 
     [Fact]
