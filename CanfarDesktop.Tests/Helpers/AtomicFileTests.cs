@@ -70,6 +70,26 @@ public class AtomicFileTests : IDisposable
     }
 
     /// <summary>Nothing is left behind on a successful write either.</summary>
+    /// <summary>
+    /// Several files as one: when one of them cannot be put in place — a cutout's weight map open in the
+    /// viewer — the ones already put in place are put back, so the pair is never half new.
+    /// </summary>
+    [Fact]
+    public void SeveralFilesWrittenAsOne_PutBackWhatTheyReplaced_WhenOneCannotBePutInPlace()
+    {
+        var (cutout, weight) = (Path_("cut.fits"), Path_("cut.weight.fits"));
+        File.WriteAllText(cutout, "old cutout");
+        Directory.CreateDirectory(weight); // in the way: nothing can be put there
+
+        Assert.ThrowsAny<IOException>(() => AtomicFile.WriteStreams([
+            (cutout, s => s.Write("new cutout"u8)),
+            (weight, s => s.Write("new weight"u8)),
+        ]));
+
+        Assert.Equal("old cutout", File.ReadAllText(cutout));
+        Assert.Equal(new[] { "cut.fits" }, Directory.GetFiles(_dir).Select(Path.GetFileName)); // no .tmp, no .bak
+    }
+
     [Fact]
     public void LeavesNoTempFileBehindOnSuccess()
     {

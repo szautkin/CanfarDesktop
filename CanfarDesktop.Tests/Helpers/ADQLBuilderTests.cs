@@ -1,3 +1,4 @@
+using System.Globalization;
 using Xunit;
 using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
@@ -138,12 +139,22 @@ public class ADQLBuilderTests
         Assert.DoesNotContain("LIKE", adql.Split("observationID")[1].Split("\n")[0]); // no LIKE on obsID line
     }
 
+    /// <summary>
+    /// Released by now, as a literal UTC timestamp: CADC's TAP service has no GETDATE(), and a query
+    /// with it came back "Function [GETDATE] is not found in TapSchema".
+    /// </summary>
     [Fact]
-    public void Build_PublicOnly_GeneratesDataRelease()
+    public void Build_PublicOnly_ComparesTheReleaseWithNowAsALiteral()
     {
-        var state = new SearchFormState { PublicOnly = true };
-        var adql = ADQLBuilder.Build(state);
-        Assert.Contains("Plane.dataRelease <= GETDATE()", adql);
+        var before = DateTime.UtcNow;
+        var adql = ADQLBuilder.Build(new SearchFormState { PublicOnly = true });
+        var after = DateTime.UtcNow;
+
+        var match = System.Text.RegularExpressions.Regex.Match(adql, @"Plane\.dataRelease <= '(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3})'");
+        Assert.True(match.Success, adql);
+        var stamp = DateTime.ParseExact(match.Groups[1].Value, "yyyy-MM-dd'T'HH:mm:ss.fff", CultureInfo.InvariantCulture);
+        Assert.InRange(stamp, before.AddMilliseconds(-1), after);
+        Assert.DoesNotContain("GETDATE", adql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -190,5 +201,21 @@ public class ADQLBuilderTests
         var adql = ADQLBuilder.Build(state);
         Assert.Contains("Plane.energy_resolvingPower >= 1000", adql);
         Assert.Contains("Plane.energy_resolvingPower <= 5000", adql);
+    }
+
+    [Fact]
+    public void ColumnKeys_AreTheFormQuerysOutputNames()
+    {
+        // An alias names its column; a column without one goes by its own name, not its table's.
+        Assert.Contains("ra(j20000)", ADQLBuilder.ColumnKeys);
+        Assert.Contains("obsid", ADQLBuilder.ColumnKeys);
+        Assert.Contains("observationid", ADQLBuilder.ColumnKeys);
+        Assert.Contains("publisherid", ADQLBuilder.ColumnKeys);
+        Assert.DoesNotContain("observation", ADQLBuilder.ColumnKeys);
+
+        // One for each column the query selects, none lost to two sharing a key.
+        var query = ADQLBuilder.Build(new SearchFormState());
+        var select = query[..query.IndexOf("FROM", StringComparison.Ordinal)];
+        Assert.Equal(select.Split(',').Length, ADQLBuilder.ColumnKeys.Count);
     }
 }

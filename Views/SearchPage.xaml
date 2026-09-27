@@ -266,8 +266,12 @@
                                 <NumberBox Width="100" Value="{x:Bind ViewModel.MaxRecords, Mode=TwoWay}"
                                            Minimum="1" Maximum="30000" SpinButtonPlacementMode="Compact" />
                             </StackPanel>
-                            <ProgressRing Grid.Column="3" IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}"
-                                          Width="24" Height="24" VerticalAlignment="Bottom" />
+                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+                                <ProgressRing IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}" Width="24" Height="24" />
+                                <Button x:Name="CancelSearchButton" x:Uid="Search_CancelSearch" Content="Cancel"
+                                        Command="{x:Bind ViewModel.CancelSearchCommand}"
+                                        Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
                         </Grid>
 
                         <InfoBar Grid.Row="2" x:Uid="Search_ErrorBar"
@@ -347,19 +351,18 @@
                                           SelectionChanged="OnRowsPerPageChanged" />
                             </StackPanel>
                         </StackPanel>
-                        <!-- Download progress — overlaid on the bottom of the results list so
-                             showing/hiding it never reflows the rows underneath. -->
+                        <!-- Short notices (a download started, a search loaded, an export failed) —
+                             overlaid on the bottom of the results list so showing/hiding it never
+                             reflows the rows underneath. A download's PROGRESS is in the status bar,
+                             which outlives this page. -->
                         <InfoBar x:Name="DownloadInfoBar" Grid.Row="2"
                                  VerticalAlignment="Bottom" Canvas.ZIndex="10"
                                  IsOpen="False" IsClosable="True"
                                  Severity="Informational" Title="Downloading..."
                                  Margin="0,4,0,0">
                             <InfoBar.Content>
-                                <StackPanel Spacing="4">
-                                    <ProgressBar x:Name="DownloadProgressBar" Minimum="0" Maximum="100" />
-                                    <TextBlock x:Name="DownloadProgressText"
-                                               Style="{StaticResource CaptionTextBlockStyle}" />
-                                </StackPanel>
+                                <TextBlock x:Name="DownloadProgressText"
+                                           Style="{StaticResource CaptionTextBlockStyle}" />
                             </InfoBar.Content>
                         </InfoBar>
                     </Grid>
@@ -393,6 +396,9 @@
                                 </StackPanel>
                             </Button>
                             <ProgressRing IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}" Width="20" Height="20" />
+                            <Button x:Name="CancelAdqlButton" x:Uid="Search_CancelSearch" Content="Cancel"
+                                    Command="{x:Bind ViewModel.CancelSearchCommand}"
+                                    Visibility="{x:Bind ViewModel.IsSearching, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
                     </Grid>
                 </PivotItem>

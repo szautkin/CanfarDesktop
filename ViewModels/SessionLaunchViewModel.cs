@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CanfarDesktop.Helpers;
+using CanfarDesktop.Helpers.ImageDiscovery;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 
@@ -93,8 +94,7 @@ public partial class SessionLaunchViewModel : ObservableObject
     private Func<string, int>? _sessionCounter;
     private Func<int>? _totalSessionCounter;
 
-    public ObservableCollection<string> SessionTypes { get; } =
-        ["notebook", "desktop", "carta", "contributed", "firefly"];
+    public ObservableCollection<string> SessionTypes { get; } = new(Models.SessionTypes.Interactive);
 
     public ObservableCollection<string> Projects { get; } = [];
     public ObservableCollection<ParsedImage> Images { get; } = [];

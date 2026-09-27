@@ -369,7 +369,7 @@ public abstract class ListAnnotationsToolBase : JsonReadTool<ListAnnotationsTool
         }
 
         var marks = _store.LoadFor(target);
-        var shown = string.Equals(active, target, StringComparison.OrdinalIgnoreCase);
+        var shown = CanfarDesktop.Helpers.MarkTarget.SameKey(active, target);
 
         return new AnnotationListView(name, target, shown, marks.Count,
             marks.Select(AnnotationView.From).ToList(),
@@ -683,7 +683,7 @@ public sealed class SelectAnnotationTool : JsonReadTool<SelectAnnotationTool.Arg
 
         // On this file, but another extension. Picking it out would highlight nothing on screen, so
         // say where it is and how to get there rather than claiming it is shown.
-        if (!string.Equals(holding, target, StringComparison.OrdinalIgnoreCase)
+        if (!CanfarDesktop.Helpers.MarkTarget.SameKey(holding, target)
             && CanfarDesktop.Helpers.MarkTarget.Parse(holding).Hdu is { } elsewhere)
             return new AnnotationChange(false, name, holding, false, AnnotationView.From(mark),
                 _store.LoadFor(holding).Count,
@@ -770,7 +770,7 @@ public sealed class ClearAnnotationsTool : JsonReadTool<ClearAnnotationsTool.Arg
 
         // The viewer is told about the image it is showing, whichever of these that was.
         var active = await _host.ActiveTargetAsync(viewer);
-        var redraw = active is not null && keys.Contains(active, StringComparer.OrdinalIgnoreCase) ? active : target;
+        var redraw = active is not null && keys.Any(k => CanfarDesktop.Helpers.MarkTarget.SameKey(k, active)) ? active : target;
         var shown = await _host.RefreshAsync(viewer, redraw, null);
         return new AnnotationChange(true, name, target, shown, null, 0, Removed: removed);
     }

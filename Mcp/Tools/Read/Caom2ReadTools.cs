@@ -77,17 +77,30 @@ public sealed record DataLinkFileView(string Url, string ContentType, string Des
 /// <summary><c>get_data_links</c> — download / preview / thumbnail links for one publisher id.</summary>
 public sealed class GetDataLinksTool : JsonReadTool<GetDataLinksTool.Args, GetDataLinksTool.Output>
 {
-    private readonly Func<string, CancellationToken, Task<DataLinkResult>> _get;
+    /// <summary>How much of a raw answer is given back: DataLink answers are tens of kilobytes; more is not one.</summary>
+    public const int MaxRaw = 200_000;
 
-    public GetDataLinksTool(Func<string, CancellationToken, Task<DataLinkResult>> get) => _get = get;
+    private readonly Func<string, CancellationToken, Task<DataLinkResult>> _get;
+    private readonly Func<string, CancellationToken, Task<DataLinkAnswer>>? _fetch;
+
+    /// <param name="fetch">DataLink's answer as it came, for <c>raw</c>; without it, raw is refused.</param>
+    public GetDataLinksTool(Func<string, CancellationToken, Task<DataLinkResult>> get,
+                            Func<string, CancellationToken, Task<DataLinkAnswer>>? fetch = null)
+    {
+        _get = get;
+        _fetch = fetch;
+    }
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_data_links",
         "Get the DataLink artifacts (download url, direct files, preview images, thumbnails) for one " +
         "observation by its publisher id. Each entry's 0-based position in `directFiles` is its " +
         "`artifactIndex` for download_observation — use it to fetch a SPECIFIC product (e.g. the science " +
-        "cube, a moment map _mom0/1/2, or the integrated spectrum _spec) instead of the default first one.",
-        """{"type":"object","properties":{"publisherId":{"type":"string","description":"Observation publisher id"}},"required":["publisherId"],"additionalProperties":false}""");
+        "cube, a moment map _mom0/1/2, or the integrated spectrum _spec) instead of the default first one. " +
+        "`cutoutServices` counts the files CADC can cut; `problems` says why the answer holds less than it " +
+        "might (DataLink refused, or described a cutout service the app could not read). `raw` also gives " +
+        "DataLink's answer exactly as it came — for finding out why.",
+        """{"type":"object","properties":{"publisherId":{"type":"string","description":"Observation publisher id"},"raw":{"type":"boolean","description":"Also return DataLink's answer as it came (default false)."}},"required":["publisherId"],"additionalProperties":false}""");
 
     protected override async Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
     {
@@ -96,21 +109,44 @@ public sealed class GetDataLinksTool : JsonReadTool<GetDataLinksTool.Args, GetDa
 
         var result = await _get(args.PublisherId, ct);
         var files = result.DirectFiles.Select(DataLinkFileView.From).ToList();
-        return new Output(
+        var output = new Output(
             result.DownloadUrl,
             files.Count, files,
             result.Previews.Count, result.Previews,
-            result.Thumbnails.Count, result.Thumbnails);
+            result.Thumbnails.Count, result.Thumbnails,
+            result.Cutouts.Count, result.Problems);
+
+        if (args.Raw != true) return output;
+        if (_fetch is null) throw new McpToolException(new NotImplemented("raw is not available here"));
+
+        // Asked afresh rather than from the cache: the point is to see what DataLink says now.
+        var answer = await _fetch(args.PublisherId, ct);
+        var body = answer.Body;
+        return output with
+        {
+            RawStatus = answer.Status,
+            Raw = body is null || body.Length <= MaxRaw ? body : body[..MaxRaw],
+            RawTruncated = body is { Length: > MaxRaw } ? true : null,
+            RawProblem = answer.Problem,
+        };
     }
 
     public sealed record Args
     {
         public string PublisherId { get; init; } = string.Empty;
+        public bool? Raw { get; init; }
     }
 
     public sealed record Output(
         string? DownloadUrl,
         int DirectFileCount, IReadOnlyList<DataLinkFileView> DirectFiles,
         int PreviewCount, IReadOnlyList<string> Previews,
-        int ThumbnailCount, IReadOnlyList<string> Thumbnails);
+        int ThumbnailCount, IReadOnlyList<string> Thumbnails,
+        int CutoutServices, IReadOnlyList<string> Problems)
+    {
+        public int? RawStatus { get; init; }
+        public string? Raw { get; init; }
+        public bool? RawTruncated { get; init; }
+        public string? RawProblem { get; init; }
+    }
 }

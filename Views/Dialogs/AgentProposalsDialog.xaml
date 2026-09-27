@@ -65,7 +65,7 @@
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
                                                     VerticalAlignment="Center">
                                             <ProgressRing Width="18" Height="18"
-                                                          IsActive="{x:Bind IsBusy, Mode=OneWay}"
+                                                          IsActive="{x:Bind Spinning, Mode=OneWay}"
                                                           Visibility="{x:Bind BusyVisibility, Mode=OneWay}" />
                                             <Button x:Uid="Proposals_RejectButton" Content="Reject" Click="OnRejectClick"
                                                     Visibility="{x:Bind ButtonsVisibility, Mode=OneWay}" />

@@ -39,7 +39,9 @@ public class TAPService : ITAPService
         }
 
         var csv = await response.Content.ReadAsStringAsync(cancellationToken);
-        return ParseCsv(csv, adql);
+        // Off the caller's thread — the UI's, for a search — and stopping when cancelled: parsed where it
+        // was awaited, ten thousand rows held the UI, the Cancel button with it, until they were done (QA D7).
+        return await Task.Run(() => ParseCsv(csv, adql, cancellationToken), cancellationToken);
     }
 
     public async Task<List<DataTrainRow>> GetDataTrainAsync()
@@ -86,6 +88,9 @@ public class TAPService : ITAPService
         return ParseResolverResponse(text, target);
     }
 
+    /// <summary>How many rows are parsed between looks at whether the search was cancelled.</summary>
+    private const int CancelCheckRows = 500;
+
     /// <summary>
     /// Parse a TAP CSV response into rows keyed by column name.
     ///
@@ -93,7 +98,7 @@ public class TAPService : ITAPService
     /// transport: CADC's own TAP_SCHEMA descriptions carry commas and embedded quotes, which is exactly
     /// where a hand-rolled CSV reader goes wrong. Tests feed it captured responses.
     /// </summary>
-    public static SearchResults ParseCsv(string csv, string? query)
+    public static SearchResults ParseCsv(string csv, string? query, CancellationToken cancellationToken = default)
     {
         var result = new SearchResults { Query = query };
         var lines = csv.ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -103,6 +108,7 @@ public class TAPService : ITAPService
 
         for (var i = 1; i < lines.Length; i++)
         {
+            if (i % CancelCheckRows == 0) cancellationToken.ThrowIfCancellationRequested();
             var values = ParseCsvLine(lines[i]);
             if (values.Count != result.Columns.Count)
             {

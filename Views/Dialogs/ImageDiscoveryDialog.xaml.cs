@@ -43,9 +43,7 @@ public sealed partial class ImageDiscoveryDialog : ContentDialog
     private void OnCopyJson(object sender, RoutedEventArgs e)
     {
         if (_viewModel.Detail is not { } detail || string.IsNullOrEmpty(detail.Json)) return;
-        var data = new DataPackage();
-        data.SetText(detail.Json);
-        Clipboard.SetContent(data);
+        Helpers.ClipboardText.Copy(detail.Json);
     }
 
     // The per-ecosystem package lists stay virtualized (they can hold thousands of

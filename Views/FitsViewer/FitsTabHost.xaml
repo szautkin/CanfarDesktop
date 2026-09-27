@@ -291,6 +291,11 @@
                 </StackPanel>
             </StackPanel>
 
+            <!-- Why a file was not opened: its tab is closed rather than left empty, so the reason goes here. -->
+            <InfoBar x:Name="OpenFailedBar" Grid.Column="0"
+                     Severity="Error" IsOpen="False" IsClosable="True"
+                     VerticalAlignment="Top" Margin="8,8,8,0" />
+
             <!-- Warns when crosshair/zoom sync is on but a file lacks a precise WCS (e.g. a raw
                  DAO frame with only a pointing): the linked position/zoom will be approximate. -->
             <InfoBar x:Name="WcsSyncWarningBar" Grid.Column="0"

@@ -59,6 +59,16 @@ public sealed partial class LaunchFormControl : UserControl
         };
     }
 
+    /// <summary>The tab showing: standard, advanced or headless.</summary>
+    public string Tab => Mcp.Tools.Write.LaunchFormTabs.All[Math.Clamp(LaunchModes.SelectedIndex, 0, Mcp.Tools.Write.LaunchFormTabs.All.Count - 1)];
+
+    /// <summary>Show a tab by its name; a name that is not one is ignored.</summary>
+    public void ShowTab(string tab)
+    {
+        var index = Mcp.Tools.Write.LaunchFormTabs.IndexOf(tab);
+        if (index >= 0) LaunchModes.SelectedIndex = index;
+    }
+
     private void OnGenerateNameClick(object sender, RoutedEventArgs e)
     {
         ViewModel.GenerateSessionName();

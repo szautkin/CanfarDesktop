@@ -1613,7 +1613,10 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
     <value>Supprimer</value>
   </data>
   <data name="Fits_EnterValidCoords" xml:space="preserve">
-    <value>Entrez une AD et une Déc valides en degrés</value>
+    <value>Entrez l'AD et la Déc — en degrés (10.68 ou 10,68) ou en sexagésimal (00:42:44.3 +41:16:09)</value>
+  </data>
+  <data name="Fits_GoToDone" xml:space="preserve">
+    <value>Centré sur AD {0}, Déc {1} — pixel ({2:F0}, {3:F0})</value>
   </data>
   <data name="Fits_GoToButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Aller à la coordonnée</value>
@@ -1668,6 +1671,12 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Fits_NoCrosshair" xml:space="preserve">
     <value>Aucun réticule placé</value>
+  </data>
+  <data name="Fits_OpenFailedTitle" xml:space="preserve">
+    <value>{0} n'a pas été ouvert</value>
+  </data>
+  <data name="Fits_GoToTooFar" xml:space="preserve">
+    <value>Cette position est trop loin de l'image pour que ses coordonnées la situent</value>
   </data>
   <data name="Fits_NoWcsNav" xml:space="preserve">
     <value>Aucun WCS disponible pour la navigation par coordonnées</value>
@@ -1909,6 +1918,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="ImageDiscoveryDialog.Title" xml:space="preserve">
     <value>Trouver des images par paquet</value>
   </data>
+  <data name="Images_DiscoveredOf" xml:space="preserve">
+    <value>{0} images inspectées sur {1}</value>
+  </data>
   <data name="Images_FindByPackageBtn.Content" xml:space="preserve">
     <value>Trouver par paquet…</value>
   </data>
@@ -1926,6 +1938,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Images_Inspecting" xml:space="preserve">
     <value>Inspection en cours…</value>
+  </data>
+  <data name="Images_LoadFailed" xml:space="preserve">
+    <value>Impossible de charger les images : {0}</value>
   </data>
   <data name="Images_Packages" xml:space="preserve">
     <value>{0} paquets</value>
@@ -2017,7 +2032,10 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Launch_FlexibleResources" xml:space="preserve">
     <value>Ressources flexibles</value>
   </data>
-  <data name="Launch_FormHeader.Text" xml:space="preserve">
+  <data name="LaunchFormDialog.CloseButtonText" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="LaunchFormDialog.Title" xml:space="preserve">
     <value>Lancer une session</value>
   </data>
   <data name="Launch_GenerateNameBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -2367,6 +2385,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Wizard_ComputeLinkReady" xml:space="preserve">
     <value>Ouvrir le calcul distant</value>
+  </data>
+  <data name="Compute_SessionWithoutSetup" xml:space="preserve">
+    <value>Une session de calcul s’exécute sur votre compte, mais le calcul distant n’est pas configuré dans cette application — elle date peut-être d’avant une réinstallation. Arrêtez-la pour libérer ses cœurs, ou configurez le calcul pour l’utiliser.</value>
   </data>
   <data name="Launch_TypeTip.Title" xml:space="preserve">
     <value>Type de session</value>
@@ -3266,6 +3287,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Research_DownloadFits" xml:space="preserve">
     <value>Télécharger le FITS</value>
   </data>
+  <data name="Research_DownloadingInBackground" xml:space="preserve">
+    <value>Téléchargement en cours — la progression s'affiche dans la barre d'état ci-dessous.</value>
+  </data>
   <data name="Research_DownloadsTitle.Text" xml:space="preserve">
     <value>Téléchargements</value>
   </data>
@@ -3449,14 +3473,11 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Search_DownloadFailed" xml:space="preserve">
     <value>Échec du téléchargement</value>
   </data>
-  <data name="Search_DownloadedFile" xml:space="preserve">
-    <value>{0} téléchargé</value>
-  </data>
-  <data name="Search_DownloadedSoFar" xml:space="preserve">
-    <value>{0} téléchargés — taille totale inconnue</value>
-  </data>
   <data name="Search_DownloadingFile" xml:space="preserve">
     <value>Téléchargement de {0}...</value>
+  </data>
+  <data name="Download_InStatusBar" xml:space="preserve">
+    <value>La progression s'affiche dans la barre d'état en bas de la fenêtre. Le téléchargement continue si vous quittez cette page.</value>
   </data>
   <data name="Search_ErrorBar.Title" xml:space="preserve">
     <value>Erreur</value>
@@ -3590,6 +3611,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Search_ResetButton.Content" xml:space="preserve">
     <value>Réinitialiser</value>
   </data>
+  <data name="Search_CancelSearch.Content" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
   <data name="Search_ResolverCombo.Header" xml:space="preserve">
     <value>Résolveur</value>
   </data>
@@ -3629,32 +3653,14 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Search_SaveQueryNameBox.PlaceholderText" xml:space="preserve">
     <value>Nom (facultatif)</value>
   </data>
-  <data name="Search_SaveToResearchFailed" xml:space="preserve">
-    <value>Échec de l'enregistrement dans Recherche</value>
-  </data>
   <data name="Search_SavedHeader.Text" xml:space="preserve">
     <value>Requêtes enregistrées</value>
-  </data>
-  <data name="Search_SavedToResearch" xml:space="preserve">
-    <value>Enregistré dans Recherche</value>
   </data>
   <data name="Search_SearchButtonText.Text" xml:space="preserve">
     <value>Rechercher</value>
   </data>
   <data name="Search_SelectFileTitle" xml:space="preserve">
     <value>Sélectionner le fichier à télécharger ({0} disponibles)</value>
-  </data>
-  <data name="Search_SizeB" xml:space="preserve">
-    <value>{0} o</value>
-  </data>
-  <data name="Search_SizeGB" xml:space="preserve">
-    <value>{0:F2} Go</value>
-  </data>
-  <data name="Search_SizeKB" xml:space="preserve">
-    <value>{0:F1} Ko</value>
-  </data>
-  <data name="Search_SizeMB" xml:space="preserve">
-    <value>{0:F1} Mo</value>
   </data>
   <data name="Search_SpatialCutoutCheck.Content" xml:space="preserve">
     <value>Découpe spatiale</value>
@@ -3751,6 +3757,9 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Sessions_Header.Text" xml:space="preserve">
     <value>Sessions actives</value>
+  </data>
+  <data name="Sessions_LaunchSession.Text" xml:space="preserve">
+    <value>Lancer une session</value>
   </data>
   <data name="Sessions_NotAvailable" xml:space="preserve">
     <value>n/d</value>
@@ -4394,8 +4403,8 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   <data name="Settings_AboutTermsLink.Content" xml:space="preserve">
     <value>Conditions d'utilisation</value>
   </data>
-  <data name="Images_AllProjects" xml:space="preserve">
-    <value>Tous les projets</value>
+  <data name="Images_All" xml:space="preserve">
+    <value>Tout</value>
   </data>
   <data name="Images_AlreadyAdded" xml:space="preserve">
     <value>Déjà ajoutée</value>
@@ -4585,5 +4594,395 @@ Vos autres serveurs MCP sont préservés et une sauvegarde .bak est conservée. 
   </data>
   <data name="Fits_ImageCanvas.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Canevas de l’image</value>
+  </data>
+  <data name="Cutout_Shape" xml:space="preserve">
+    <value>Forme</value>
+  </data>
+  <data name="Cutout_ShapeCircle" xml:space="preserve">
+    <value>Cercle</value>
+  </data>
+  <data name="Cutout_ShapeBox" xml:space="preserve">
+    <value>Rectangle</value>
+  </data>
+  <data name="Cutout_Ra" xml:space="preserve">
+    <value>AD (degrés ou hh:mm:ss)</value>
+  </data>
+  <data name="Cutout_Dec" xml:space="preserve">
+    <value>Déc (degrés ou ±dd:mm:ss)</value>
+  </data>
+  <data name="Cutout_Radius" xml:space="preserve">
+    <value>Rayon</value>
+  </data>
+  <data name="Cutout_Width" xml:space="preserve">
+    <value>Largeur</value>
+  </data>
+  <data name="Cutout_Height" xml:space="preserve">
+    <value>Hauteur</value>
+  </data>
+  <data name="Cutout_Unit" xml:space="preserve">
+    <value>Unité</value>
+  </data>
+  <data name="Cutout_Band" xml:space="preserve">
+    <value>Longueur d'onde</value>
+  </data>
+  <data name="Cutout_BandFrom" xml:space="preserve">
+    <value>De</value>
+  </data>
+  <data name="Cutout_BandTo" xml:space="preserve">
+    <value>À</value>
+  </data>
+  <data name="Cutout_BandHint" xml:space="preserve">
+    <value>Laissez une borne vide pour garder la limite du fichier.</value>
+  </data>
+  <data name="Cutout_SkyName" xml:space="preserve">
+    <value>L'empreinte du fichier et la zone découpée</value>
+  </data>
+  <data name="Cutout_SkyHint" xml:space="preserve">
+    <value>Faites glisser la zone pour la déplacer, son point pour la redimensionner, ou ailleurs pour en tracer une nouvelle.</value>
+  </data>
+  <data name="Cutout_Download" xml:space="preserve">
+    <value>Télécharger la découpe</value>
+  </data>
+  <data name="Cutout_Reset" xml:space="preserve">
+    <value>Recommencer</value>
+  </data>
+  <data name="Cutout_Close" xml:space="preserve">
+    <value>Fermer l'éditeur de découpe</value>
+  </data>
+  <data name="Cutout_EditorTitle" xml:space="preserve">
+    <value>Découpe de {0}</value>
+  </data>
+  <data name="Cutout_EditorNote" xml:space="preserve">
+    <value>Le CADC découpe la zone de son côté et n'envoie que cette partie. Elle est conservée dans Recherche comme une découpe de cette observation — pas l'observation complète.</value>
+  </data>
+  <data name="Cutout_BadCoordinate" xml:space="preserve">
+    <value>« {0} » n'est pas une coordonnée : utilisez des degrés, ou hh:mm:ss pour l'AD et ±dd:mm:ss pour la Déc.</value>
+  </data>
+  <data name="Cutout_BadNumber" xml:space="preserve">
+    <value>« {0} » n'est pas un nombre.</value>
+  </data>
+  <data name="Cutout_Estimate" xml:space="preserve">
+    <value>Environ {0} sur les {1} du fichier complet.</value>
+  </data>
+  <data name="Cutout_Button" xml:space="preserve">
+    <value>Découpe…</value>
+  </data>
+  <data name="Cutout_ButtonTooltip" xml:space="preserve">
+    <value>Télécharger seulement une partie de ce fichier, découpée par le CADC</value>
+  </data>
+  <data name="Cutout_ButtonName" xml:space="preserve">
+    <value>Découper une partie de {0}</value>
+  </data>
+  <data name="Cutout_CheckNothing" xml:space="preserve">
+    <value>Choisissez une zone (ou une bande) à découper ; sans l'une ni l'autre, le fichier entier serait renvoyé.</value>
+  </data>
+  <data name="Cutout_CheckNoBand" xml:space="preserve">
+    <value>Ce fichier ne peut pas être découpé en longueur d'onde.</value>
+  </data>
+  <data name="Cutout_CheckBandOrder" xml:space="preserve">
+    <value>La longueur d'onde la plus courte doit être inférieure à la plus longue.</value>
+  </data>
+  <data name="Cutout_CheckBandOutside" xml:space="preserve">
+    <value>Cette plage de longueurs d'onde est hors de celle du fichier.</value>
+  </data>
+  <data name="Cutout_CheckBandPartial" xml:space="preserve">
+    <value>Une partie de cette plage de longueurs d'onde est hors de celle du fichier ; la découpe sera réduite à celle-ci.</value>
+  </data>
+  <data name="Cutout_CheckNoTime" xml:space="preserve">
+    <value>Ce fichier ne peut pas être découpé dans le temps.</value>
+  </data>
+  <data name="Cutout_CheckTimeOrder" xml:space="preserve">
+    <value>Le début doit précéder la fin.</value>
+  </data>
+  <data name="Cutout_CheckTimeOutside" xml:space="preserve">
+    <value>Cette plage de temps est hors de celle du fichier.</value>
+  </data>
+  <data name="Cutout_CheckTimePartial" xml:space="preserve">
+    <value>Une partie de cette plage de temps est hors de celle du fichier ; la découpe sera réduite à celle-ci.</value>
+  </data>
+  <data name="Cutout_CheckNoPol" xml:space="preserve">
+    <value>Ce fichier ne peut pas être découpé par polarisation.</value>
+  </data>
+  <data name="Cutout_CheckPolUnknown" xml:space="preserve">
+    <value>Ce fichier n'a pas de polarisation {0} ; il a {1}.</value>
+  </data>
+  <data name="Cutout_CheckNoRegion" xml:space="preserve">
+    <value>Ce fichier ne peut pas être découpé selon cette forme.</value>
+  </data>
+  <data name="Cutout_CheckOutside" xml:space="preserve">
+    <value>Cette zone est hors de l'empreinte de ce fichier.</value>
+  </data>
+  <data name="Cutout_CheckPartial" xml:space="preserve">
+    <value>Une partie de cette zone est hors de l'empreinte ; la découpe sera réduite à celle-ci.</value>
+  </data>
+  <data name="Cutout_ProblemNumber" xml:space="preserve">
+    <value>La position et la taille doivent être des nombres.</value>
+  </data>
+  <data name="Cutout_ProblemDec" xml:space="preserve">
+    <value>La Déc doit être comprise entre −90° et +90°.</value>
+  </data>
+  <data name="Cutout_ProblemSize" xml:space="preserve">
+    <value>La taille doit être supérieure à zéro.</value>
+  </data>
+  <data name="Cutout_ProblemTooLarge" xml:space="preserve">
+    <value>Cette zone est plus grande qu'aucune découpe ne peut l'être.</value>
+  </data>
+  <data name="Cutout_ProblemVertices" xml:space="preserve">
+    <value>Un polygone a besoin d'au moins trois sommets.</value>
+  </data>
+  <data name="Cutout_ProblemDegenerate" xml:space="preserve">
+    <value>Ces sommets n'entourent aucune surface.</value>
+  </data>
+  <data name="Research_CutoutBadge" xml:space="preserve">
+    <value>Découpe</value>
+  </data>
+  <data name="Research_CutoutBadgeTip" xml:space="preserve">
+    <value>Une découpe de cette observation : {0}</value>
+  </data>
+  <data name="Research_CutoutTitle" xml:space="preserve">
+    <value>Découpe — pas l'observation complète</value>
+  </data>
+  <data name="Research_CutoutNote" xml:space="preserve">
+    <value>Ce fichier est une partie de l'observation, découpée par le CADC : {0}. Les informations et notes ci-dessous sont celles de l'observation complète.</value>
+  </data>
+  <data name="Marks_CmdCutOut" xml:space="preserve">
+    <value>Découper…</value>
+  </data>
+  <data name="Marks_CmdCutOutNeedsObservation" xml:space="preserve">
+    <value>Ouvrez une observation de l'archive depuis Recherche, avec des coordonnées célestes, pour découper cette zone dans son fichier — par le CADC, ou dans la copie sur cet ordinateur.</value>
+  </data>
+  <data name="Search_DownloadingCutout" xml:space="preserve">
+    <value>Téléchargement d'une découpe de {0}…</value>
+  </data>
+  <data name="Cutout_Checking" xml:space="preserve">
+    <value>Vérification : le CADC peut-il découper ceci…</value>
+  </data>
+  <data name="Cutout_NoneForFile" xml:space="preserve">
+    <value>Le CADC ne peut pas découper ce fichier, et il n'est pas sur cet ordinateur — téléchargez-le pour le découper ici.</value>
+  </data>
+  <data name="Cutout_NoneForObservation" xml:space="preserve">
+    <value>Le CADC ne peut découper aucun des fichiers de cette observation, et aucun n'est sur cet ordinateur.</value>
+  </data>
+  <data name="Clipboard_Copied" xml:space="preserve">
+    <value>Copié : {0}</value>
+  </data>
+  <data name="Clipboard_Failed" xml:space="preserve">
+    <value>Le presse-papiers est utilisé par une autre application ; réessayez.</value>
+  </data>
+  <data name="Search_CopyValue" xml:space="preserve">
+    <value>Copier la valeur</value>
+  </data>
+  <data name="Search_CopyObservation" xml:space="preserve">
+    <value>Copier les détails de l'observation</value>
+  </data>
+  <data name="Search_CopyRows" xml:space="preserve">
+    <value>Copier la ligne (les lignes choisies, s'il y en a plusieurs)</value>
+  </data>
+  <data name="Search_RowsCopied" xml:space="preserve">
+    <value>{0} lignes de résultats, séparées par des tabulations</value>
+  </data>
+  <data name="Search_ObservationCopied" xml:space="preserve">
+    <value>détails de l'observation</value>
+  </data>
+  <data name="Research_CopyDetails" xml:space="preserve">
+    <value>Copier les détails</value>
+  </data>
+  <data name="Research_CopyDetailsTip" xml:space="preserve">
+    <value>Copier l'identifiant, la position, l'instrument, le filtre, le programme et le fichier de l'observation en texte</value>
+  </data>
+  <data name="Research_Original" xml:space="preserve">
+    <value>Observation d'origine</value>
+  </data>
+  <data name="Research_OriginalHereTip" xml:space="preserve">
+    <value>Afficher l'observation complète dont cette découpe est tirée — Recherche l'a déjà</value>
+  </data>
+  <data name="Research_OriginalSearchTip" xml:space="preserve">
+    <value>Trouver dans Rechercher l'observation complète dont cette découpe est tirée — Recherche ne l'a pas encore</value>
+  </data>
+  <data name="Search_FindingObservation" xml:space="preserve">
+    <value>Recherche de l'observation {0}</value>
+  </data>
+  <data name="Search_ObservationNotFound" xml:space="preserve">
+    <value>L'observation {0} est introuvable. Si elle est propriétaire, connectez-vous et relancez la recherche.</value>
+  </data>
+  <data name="Search_FindObservationUnknown" xml:space="preserve">
+    <value>Cet enregistrement ne dit pas de quelle observation il s'agit ; elle ne peut donc pas être recherchée.</value>
+  </data>
+  <data name="Search_FindObservationBusy" xml:space="preserve">
+    <value>Une recherche est déjà en cours ; réessayez quand elle sera terminée.</value>
+  </data>
+  <data name="RemoteCompute_CodeCopied" xml:space="preserve">
+    <value>le code</value>
+  </data>
+  <data name="Summary_PublisherId" xml:space="preserve">
+    <value>Identifiant de publication</value>
+  </data>
+  <data name="Summary_Position" xml:space="preserve">
+    <value>Position</value>
+  </data>
+  <data name="Summary_Proposal" xml:space="preserve">
+    <value>Programme</value>
+  </data>
+  <data name="Summary_Released" xml:space="preserve">
+    <value>Publiée</value>
+  </data>
+  <data name="Summary_Cutout" xml:space="preserve">
+    <value>Découpe</value>
+  </data>
+  <data name="Summary_CutLocally" xml:space="preserve">
+    <value>découpée sur cet ordinateur</value>
+  </data>
+  <data name="Cutout_CheckNoExtensions" xml:space="preserve">
+    <value>Cette façon de découper ne peut pas choisir parmi les images du fichier ; elle garde toutes celles sur lesquelles tombe la zone.</value>
+  </data>
+  <data name="Cutout_CheckExtensionUnknown" xml:space="preserve">
+    <value>Ce fichier n'a pas d'image {0} ; il a {1}.</value>
+  </data>
+  <data name="Cutout_LocalOnNoChosenImage" xml:space="preserve">
+    <value>Cette zone ne tombe sur aucune des images choisies.</value>
+  </data>
+  <data name="Cutout_Extensions" xml:space="preserve">
+    <value>Images</value>
+  </data>
+  <data name="Cutout_ExtensionsHint" xml:space="preserve">
+    <value>Décochez une image pour la laisser de côté. Cochée, une image est découpée si la zone tombe dessus.</value>
+  </data>
+  <data name="Cutout_ExtensionMissed" xml:space="preserve">
+    <value>[{0}] — la zone n'est pas dessus</value>
+  </data>
+  <data name="Cutout_Companions" xml:space="preserve">
+    <value>Découper aussi</value>
+  </data>
+  <data name="Cutout_CompanionsHint" xml:space="preserve">
+    <value>Les autres fichiers de l'observation à côté de celui-ci, sur les mêmes pixels : chacun est découpé avec la même boîte de pixels, dans un fichier à côté de la découpe, nommé par la même clé.</value>
+  </data>
+  <data name="Cutout_EstimateCompanions" xml:space="preserve">
+    <value>Ses compagnons : {0} de plus.</value>
+  </data>
+  <data name="Cutout_CheckNoCompanions" xml:space="preserve">
+    <value>Aucun des autres fichiers de l'observation ne peut être découpé avec celui-ci : une découpe sur cet ordinateur prend ceux qui sont à côté du fichier, sur les mêmes pixels.</value>
+  </data>
+  <data name="Cutout_CheckCompanionUnknown" xml:space="preserve">
+    <value>{0} n'est pas à côté de ce fichier sur cet ordinateur ; il ne peut donc pas être découpé avec lui.</value>
+  </data>
+  <data name="Cutout_CheckCompanionUnavailable" xml:space="preserve">
+    <value>{0} ne peut pas être découpé avec ce fichier : {1}</value>
+  </data>
+  <data name="Cutout_CompanionNoImage" xml:space="preserve">
+    <value>Il n'a pas d'image {0}, comme en a le fichier découpé.</value>
+  </data>
+  <data name="Cutout_CompanionOtherGrid" xml:space="preserve">
+    <value>Son image {0} n'est pas sur les mêmes pixels que le fichier découpé : la même boîte ne serait pas le même ciel.</value>
+  </data>
+  <data name="Cutout_NoneForFileLocal" xml:space="preserve">
+    <value>Le CADC ne peut pas découper ce fichier, et la copie sur cet ordinateur ne peut pas l'être : {0}</value>
+  </data>
+  <data name="Cutout_NoneForObservationLocal" xml:space="preserve">
+    <value>Le CADC ne peut découper aucun des fichiers de cette observation, et la copie sur cet ordinateur ne peut pas l'être : {0}</value>
+  </data>
+  <data name="Cutout_ButtonTooltipLocal" xml:space="preserve">
+    <value>Découper une partie de la copie de ce fichier sur cet ordinateur</value>
+  </data>
+  <data name="Cutout_ButtonTooltipBoth" xml:space="preserve">
+    <value>Découper une partie de ce fichier — par le CADC, ou dans la copie sur cet ordinateur</value>
+  </data>
+  <data name="Cutout_CutBy" xml:space="preserve">
+    <value>Découpé par</value>
+  </data>
+  <data name="Cutout_CutBySoda" xml:space="preserve">
+    <value>Le CADC — ne télécharger que cette partie</value>
+  </data>
+  <data name="Cutout_CutByLocal" xml:space="preserve">
+    <value>Cet ordinateur — dans le fichier téléchargé</value>
+  </data>
+  <data name="Cutout_WayUnavailable" xml:space="preserve">
+    <value>{0} : {1}</value>
+  </data>
+  <data name="Cutout_EditorNoteLocal" xml:space="preserve">
+    <value>Découpée sur cet ordinateur dans le fichier déjà téléchargé — aussitôt, hors ligne, autant de fois que vous le voulez — ses pixels copiés à l'identique. Elle est conservée dans Recherche comme une découpe de cette observation — pas l'observation complète.</value>
+  </data>
+  <data name="Cutout_CutLocal" xml:space="preserve">
+    <value>Découper</value>
+  </data>
+  <data name="Cutout_EstimateLocal" xml:space="preserve">
+    <value>{0}, découpés dans le fichier de {1} sur cet ordinateur.</value>
+  </data>
+  <data name="Cutout_LocalUnreadable" xml:space="preserve">
+    <value>Le fichier téléchargé ne peut pas être lu comme un FITS : {0}</value>
+  </data>
+  <data name="Cutout_LocalNoImage" xml:space="preserve">
+    <value>Le fichier téléchargé ne contient aucune image à découper.</value>
+  </data>
+  <data name="Cutout_LocalNoWcs" xml:space="preserve">
+    <value>L'image du fichier téléchargé n'a pas de coordonnées célestes : une zone du ciel ne peut pas y être placée.</value>
+  </data>
+  <data name="Cutout_LocalApproximateWcs" xml:space="preserve">
+    <value>Les coordonnées célestes du fichier téléchargé ne sont qu'approximatives — reconstruites à partir de ses mots-clés RA et DEC — trop grossières pour découper.</value>
+  </data>
+  <data name="Cutout_LocalNotRaDec" xml:space="preserve">
+    <value>L'image du fichier téléchargé est en {0} et {1}, pas en RA et Dec : une zone en RA et Dec ne peut pas y être placée.</value>
+  </data>
+  <data name="Cutout_LocalFk4" xml:space="preserve">
+    <value>Les coordonnées du fichier téléchargé sont en B1950 (FK4) ; la zone d'une découpe est en ICRS, et l'application ne convertit pas de l'un à l'autre.</value>
+  </data>
+  <data name="Cutout_LocalBadBitpix" xml:space="preserve">
+    <value>Les pixels du fichier téléchargé sont enregistrés d'une façon que FITS ne définit pas (BITPIX {0}).</value>
+  </data>
+  <data name="Cutout_LocalCompressed" xml:space="preserve">
+    <value>Le fichier téléchargé est compressé par tuiles d'une façon que l'application ne sait pas lire ({0}) ; funpack en fait un .fits ordinaire qui peut être découpé.</value>
+  </data>
+  <data name="Cutout_LocalTruncated" xml:space="preserve">
+    <value>Le fichier téléchargé s'arrête avant la fin de son image ; son téléchargement n'est peut-être pas terminé.</value>
+  </data>
+  <data name="Cutout_LocalOnNoImage" xml:space="preserve">
+    <value>Cette zone ne tombe sur aucune des images de ce fichier.</value>
+  </data>
+  <data name="Cutout_LocalSourceGone" xml:space="preserve">
+    <value>Le fichier dans lequel elle est découpée n'est plus sur cet ordinateur. Téléchargez le fichier de l'observation, puis réessayez.</value>
+  </data>
+  <data name="Cutout_LocalOverSource" xml:space="preserve">
+    <value>Une découpe ne peut pas être enregistrée à la place du fichier dans lequel elle est découpée.</value>
+  </data>
+  <data name="Research_CutoutNoteLocal" xml:space="preserve">
+    <value>Ce fichier est une partie de l'observation, découpée sur cet ordinateur dans son fichier téléchargé : {0}. Les informations et notes ci-dessous sont celles de l'observation complète.</value>
+  </data>
+  <data name="Research_CutAgain" xml:space="preserve">
+    <value>Découper à nouveau</value>
+  </data>
+  <data name="Research_RemoveFile" xml:space="preserve">
+    <value>Supprimer le fichier</value>
+  </data>
+  <data name="Research_RemoveFileTip" xml:space="preserve">
+    <value>Supprimer le fichier de cet ordinateur ; l'observation reste dans Recherche</value>
+  </data>
+  <data name="Research_RemoveFileTitle" xml:space="preserve">
+    <value>Supprimer le fichier de cet ordinateur ?</value>
+  </data>
+  <data name="Research_RemoveFileBody" xml:space="preserve">
+    <value>{0} sera supprimé de cet ordinateur. L'observation reste dans Recherche avec ses notes, et Télécharger ramène le fichier.</value>
+  </data>
+  <data name="Research_RemoveFileFailed" xml:space="preserve">
+    <value>Le fichier n'a pas pu être supprimé</value>
+  </data>
+  <data name="ObsDetail_SaveToResearch" xml:space="preserve">
+    <value>Enregistrer dans Recherche</value>
+  </data>
+  <data name="ObsDetail_SaveToResearchTip" xml:space="preserve">
+    <value>Garder cette observation dans Recherche sans télécharger ses fichiers</value>
+  </data>
+  <data name="ObsDetail_AlreadyInResearch" xml:space="preserve">
+    <value>Cette observation est déjà dans Recherche</value>
+  </data>
+  <data name="ObsDetail_SaveToResearchLoading" xml:space="preserve">
+    <value>Disponible une fois l'observation chargée</value>
+  </data>
+  <data name="ObsDetail_SavedToResearch" xml:space="preserve">
+    <value>Enregistrée dans Recherche</value>
+  </data>
+  <data name="ObsDetail_SavedToResearchNote" xml:space="preserve">
+    <value>Conservée sans son fichier ; téléchargez-le depuis Recherche quand vous en avez besoin.</value>
+  </data>
+  <data name="Search_NarrowHint" xml:space="preserve">
+    <value>Clic droit pour restreindre les résultats à « {0} »</value>
   </data>
 </root>

@@ -10,9 +10,10 @@ namespace CanfarDesktop.Mcp.Transport;
 /// </summary>
 public static class OsTransports
 {
-    /// <summary>A duplex named pipe — the same stream reads and writes.</summary>
-    public static StreamTransport ForPipe(PipeStream pipe, FrameMode mode = FrameMode.Ndjson)
-        => new(pipe, pipe, mode);
+    /// <summary>A duplex named pipe — the same stream reads and writes. <paramref name="ownsPipe"/>
+    /// disposes it when the transport closes.</summary>
+    public static StreamTransport ForPipe(PipeStream pipe, FrameMode mode = FrameMode.Ndjson, bool ownsPipe = false)
+        => new(pipe, pipe, mode, ownsPipe);
 
     /// <summary>The bridge process's standard input/output, used to talk to the MCP client.</summary>
     public static StreamTransport ForStdio(FrameMode mode = FrameMode.Ndjson)

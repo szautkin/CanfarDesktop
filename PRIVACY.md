@@ -1,7 +1,7 @@
 # Privacy Policy — Verbinal
 
 **Effective date:** 1 March 2025
-**Last updated:** 22 September 2026 (Verbinal 1.4.0)
+**Last updated:** 26 September 2026 (Verbinal 1.4.1)
 **App name:** Verbinal — A CANFAR Science Portal Companion
 **Publisher:** CodeBG (Serhii Zautkin)
 
@@ -36,7 +36,7 @@ this data.
 | User preferences | Windows ApplicationData LocalSettings | Remembers your preferred session type, resource defaults, and theme |
 | Image-registry secret (optional) | Windows Credential Manager (PasswordVault) | Lets image search and inspection reach the container registry, if you enter one |
 | Search history and saved queries | App local data | Recent searches and queries you chose to save |
-| Research library | App local data | Metadata of observations you downloaded, and your notes on them |
+| Research library | App local data | Observations you downloaded or saved — with the region of any cutout — and your notes on them |
 | Marks (annotations) | `annotations.json` in app local data | Marks you or an AI assistant drew on FITS images and cubes, keyed by file path |
 | Recently opened files | App local data | Paths of FITS images, cubes and notebooks you opened, for the viewers' "recent" lists |
 | Finished batch jobs | `job_history.json` in app local data | The outcome of recent jobs, kept after CANFAR removes them |
@@ -61,7 +61,7 @@ HTTPS, and your authentication token is only ever sent to CANFAR/CADC hosts.
 | `ws-uv.canfar.net/skaha` | Authentication token (Bearer header) | Session management, image listing, platform stats |
 | `ws-uv.canfar.net/ac` | Authentication token | User profile retrieval |
 | `ws-uv.canfar.net/arc` | Authentication token | Storage quota retrieval |
-| `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca` | Search queries; authentication token when signed in | Archive search, data links, downloads, target name resolution |
+| `ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca` | Search queries; the region of a cutout; authentication token when signed in | Archive search, data links, downloads and cutouts, target name resolution |
 | `images.canfar.net` | Image search terms; registry secret if you entered one | Container image search and inspection |
 | `tapvizier.cds.unistra.fr`, `tapvizier.u-strasbg.fr` (CDS, France); `vizier.china-vo.org` (last-resort mirror, HTTP) | The sky position, radius and catalogue of a cone search — no credentials, no account information | VizieR catalogue searches |
 

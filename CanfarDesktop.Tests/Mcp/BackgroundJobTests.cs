@@ -34,7 +34,14 @@ public class BackgroundJobTests
 
         public string Kind { get; }
 
-        public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default) => _gate.Task;
+        /// <summary>Whether anything asked it to apply.</summary>
+        public bool Started { get; private set; }
+
+        public Task ApplyAsync(PendingProposal proposal, CancellationToken cancellationToken = default)
+        {
+            Started = true;
+            return _gate.Task;
+        }
 
         public void Succeed() => _gate.TrySetResult();
         public void Fail(string why) => _gate.TrySetException(new InvalidOperationException(why));
@@ -130,6 +137,52 @@ public class BackgroundJobTests
 
     // ── start_background_apply ──────────────────────────────────────────────────────────────────
 
+    /// <summary>A runner for proposals of a kind auto-apply may apply, with auto-apply on — unless said otherwise.</summary>
+    private static BackgroundApplyRunner Runner(IProposalStore store, ProposalApplierRegistry appliers, JobRegistry jobs,
+                                                McpVerbClass verb = McpVerbClass.SemanticWrite, bool autoApply = true)
+        => new(store, appliers, jobs, _ => verb, () => autoApply);
+
+    /// <summary>
+    /// A destructive change waits for the person, whoever asks to start it. An agent could start any
+    /// pending proposal in the background, and a file removal waiting for approval went ahead.
+    /// </summary>
+    [Fact]
+    public async Task ADestructiveProposal_IsNotTheAgentsToStart()
+    {
+        var store = new InMemoryProposalStore();
+        var appliers = new ProposalApplierRegistry();
+        var applier = new GatedApplier("remove_downloaded_file");
+        appliers.Register(applier);
+        var jobs = new JobRegistry();
+        var proposal = Queue(store, "remove_downloaded_file");
+
+        var outcome = await Runner(store, appliers, jobs, McpVerbClass.Destructive).StartAsync(proposal.Id.ToString());
+
+        Assert.False(outcome.Started);
+        Assert.Contains("only the person can apply it", outcome.Message);
+        Assert.Equal(ProposalState.Pending, store.State(proposal.Id));
+        Assert.Null(jobs.Get(proposal.Id.ToString()));
+        Assert.False(applier.Started);
+    }
+
+    /// <summary>With auto-apply off, the person applies every change — none is the agent's to start.</summary>
+    [Fact]
+    public async Task WithAutoApplyOff_NothingIsTheAgentsToStart()
+    {
+        var store = new InMemoryProposalStore();
+        var appliers = new ProposalApplierRegistry();
+        var applier = new GatedApplier("download_observation");
+        appliers.Register(applier);
+        var proposal = Queue(store);
+
+        var outcome = await Runner(store, appliers, new JobRegistry(), autoApply: false).StartAsync(proposal.Id.ToString());
+
+        Assert.False(outcome.Started);
+        Assert.Contains("auto-apply is off", outcome.Message);
+        Assert.Equal(ProposalState.Pending, store.State(proposal.Id));
+        Assert.False(applier.Started);
+    }
+
     [Fact]
     public async Task StartingAnApplyAnswersAtOnceWithTheProposalsOwnId()
     {
@@ -140,7 +193,7 @@ public class BackgroundJobTests
         var jobs = new JobRegistry();
 
         var proposal = Queue(store);
-        var runner = new BackgroundApplyRunner(store, appliers, jobs);
+        var runner = Runner(store, appliers, jobs);
 
         var outcome = await runner.StartAsync(proposal.Id.ToString());
 
@@ -163,7 +216,7 @@ public class BackgroundJobTests
         var jobs = new JobRegistry();
 
         var proposal = Queue(store);
-        await new BackgroundApplyRunner(store, appliers, jobs).StartAsync(proposal.Id.ToString());
+        await Runner(store, appliers, jobs).StartAsync(proposal.Id.ToString());
 
         applier.Succeed();
         await WaitForFinish(jobs, proposal.Id.ToString());
@@ -186,7 +239,7 @@ public class BackgroundJobTests
         var jobs = new JobRegistry();
 
         var proposal = Queue(store);
-        await new BackgroundApplyRunner(store, appliers, jobs).StartAsync(proposal.Id.ToString());
+        await Runner(store, appliers, jobs).StartAsync(proposal.Id.ToString());
 
         applier.Fail("the service refused it");
         await WaitForFinish(jobs, proposal.Id.ToString());
@@ -199,7 +252,7 @@ public class BackgroundJobTests
     [Fact]
     public async Task AProposalThatIsNotThereIsRefusedWithWhereToLook()
     {
-        var runner = new BackgroundApplyRunner(new InMemoryProposalStore(), new ProposalApplierRegistry(), new JobRegistry());
+        var runner = Runner(new InMemoryProposalStore(), new ProposalApplierRegistry(), new JobRegistry());
 
         var outcome = await runner.StartAsync(Guid.NewGuid().ToString());
 
@@ -210,7 +263,7 @@ public class BackgroundJobTests
     [Fact]
     public async Task SomethingThatIsNotAnIdIsSaidToBeOne()
     {
-        var runner = new BackgroundApplyRunner(new InMemoryProposalStore(), new ProposalApplierRegistry(), new JobRegistry());
+        var runner = Runner(new InMemoryProposalStore(), new ProposalApplierRegistry(), new JobRegistry());
 
         var outcome = await runner.StartAsync("the-big-one");
 
@@ -226,7 +279,7 @@ public class BackgroundJobTests
         var jobs = new JobRegistry();
         var proposal = Queue(store, "some_unwired_kind");
 
-        var outcome = await new BackgroundApplyRunner(store, new ProposalApplierRegistry(), jobs)
+        var outcome = await Runner(store, new ProposalApplierRegistry(), jobs)
             .StartAsync(proposal.Id.ToString());
 
         Assert.False(outcome.Started);

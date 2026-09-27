@@ -543,4 +543,81 @@ public class FitsParserTests
         var hdus = FitsParser.Parse(ms);
         Assert.Contains(hdus, h => h.ImageData is not null && h.Header.NAxis1 == 4);
     }
+
+    // ── Large images ─────────────────────────────────────────────────────────
+
+    private static byte[] BigEndianFloats(int count, Func<int, float> value)
+    {
+        var bytes = new byte[count * 4];
+        for (var i = 0; i < count; i++)
+            System.Buffers.Binary.BinaryPrimitives.WriteSingleBigEndian(bytes.AsSpan(i * 4), value(i));
+        return bytes;
+    }
+
+    /// <summary>
+    /// Refused on what the machine has free — and before a byte is allocated, so the header of a
+    /// 3.6 GB image is all it takes to answer. The data is not even in the stream.
+    /// </summary>
+    [Fact]
+    public void Parse_AnImageThereIsNoRoomFor_IsRefusedFromItsHeader_WithTheNumbers()
+    {
+        using var stream = BuildFitsStream(-32, 30000, 30000);
+
+        var ex = Assert.Throws<NotSupportedException>(
+            () => FitsParser.Parse(stream, availableMemory: 1024L * 1024 * 1024));
+
+        Assert.Contains(30000.ToString("N0"), ex.Message);
+        Assert.Contains("cutout", ex.Message);
+    }
+
+    /// <summary>
+    /// Converted a chunk at a time now, not read whole first — so an image larger than one chunk
+    /// (4 MB) has to come out with every pixel in its place, the last one included.
+    /// </summary>
+    [Fact]
+    public void Parse_AnImageLargerThanOneChunk_ConvertsEveryPixel()
+    {
+        const int width = 1100, height = 1000; // 4.4 MB of float32
+        using var stream = BuildFitsStream(-32, width, height, BigEndianFloats(width * height, i => i));
+
+        var image = FitsParser.Parse(stream).Single().ImageData!;
+
+        Assert.Equal(0f, image.Pixels[0]);
+        Assert.Equal(1_048_576f, image.Pixels[1_048_576]); // the first pixel of the second chunk
+        Assert.Equal(width * height - 1, image.Pixels[^1]);
+        Assert.Equal((0f, width * height - 1f), (image.Min, image.Max));
+    }
+
+    /// <summary>
+    /// A stream may hand back fewer bytes than asked while more are coming — a decompressing one
+    /// routinely does. The image path read once and called the file truncated.
+    /// </summary>
+    [Fact]
+    public void Parse_AStreamThatTricklesItsBytes_IsNotTruncated()
+    {
+        const int width = 16, height = 16;
+        using var inner = BuildFitsStream(-32, width, height, BigEndianFloats(width * height, i => i * 0.5f));
+        using var stream = new TricklingStream(inner, perRead: 7);
+
+        var image = FitsParser.Parse(stream).Single().ImageData!;
+
+        Assert.Equal(127.5f, image.Pixels[^1]);
+    }
+
+    /// <summary>A seekable stream that never returns more than a few bytes from one Read.</summary>
+    private sealed class TricklingStream(Stream inner, int perRead) : Stream
+    {
+        public override int Read(byte[] buffer, int offset, int count)
+            => inner.Read(buffer, offset, Math.Min(count, perRead));
+
+        public override bool CanRead => true;
+        public override bool CanSeek => true;
+        public override bool CanWrite => false;
+        public override long Length => inner.Length;
+        public override long Position { get => inner.Position; set => inner.Position = value; }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => inner.Seek(offset, origin);
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
 }

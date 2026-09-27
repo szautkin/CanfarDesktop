@@ -45,6 +45,22 @@ public static class Sexagesimal
         return sign * (d + m / 60.0 + s / 3600.0);
     }
 
+    /// <summary>
+    /// An angle as a person types it: decimal degrees ("10.68", or "10,68" from a French keyboard,
+    /// through <see cref="NumberInput.TryParseUser"/>), or sexagesimal with ':' or spaces — RA in
+    /// hours, Dec in degrees. The one reading of a typed coordinate, for the search's target and the
+    /// cutout editor's fields alike.
+    /// </summary>
+    public static bool TryParseAngle(string? text, bool isRa, out double degrees)
+    {
+        var t = text?.Trim() ?? string.Empty;
+        if (NumberInput.TryParseUser(t, out degrees)) return double.IsFinite(degrees);
+
+        var parsed = isRa ? ParseRa(t) : ParseDec(t);
+        degrees = parsed ?? 0;
+        return parsed is not null;
+    }
+
     // ── Decomposition (the one carry-correct split every presentation formats from) ──────────
 
     /// <summary>

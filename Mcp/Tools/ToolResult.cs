@@ -28,7 +28,16 @@ public abstract record ToolFailureReason
     public abstract string Description { get; }
     public abstract string AuditTag { get; }
 
-    protected static string Clip(string s) => s.Length <= 200 ? s : s[..200];
+    /// <summary>
+    /// The longest a description gets. Enough to keep a service's page of HTML out of the agent's
+    /// context; far more than any message the app writes itself, which must arrive whole — an agent's
+    /// next step is often in its last clause. It was 200, and cut "download_observation fetches the
+    /// whole file, which can then be cut locally" off at "can then be" (QA D2).
+    /// </summary>
+    public const int MaxDescription = 2000;
+
+    /// <summary><paramref name="s"/>, or its first part ending in "…" when it is longer than <see cref="MaxDescription"/>.</summary>
+    protected static string Clip(string s) => s.Length <= MaxDescription ? s : s[..(MaxDescription - 1)] + "…";
 }
 
 public sealed record InvalidArgument(string Detail) : ToolFailureReason

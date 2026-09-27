@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using CanfarDesktop.Models.Cutouts;
+
 namespace CanfarDesktop.Models;
 
 /// <summary>
@@ -25,6 +28,14 @@ public class DownloadedObservation
     public string ProposalTitle { get; set; } = string.Empty;
     public string LocalPath { get; set; } = string.Empty;
     public long? FileSize { get; set; }
+
+    /// <summary>
+    /// Which of the observation's archive files the local file is (e.g. cadc:HST/j8pu0y010_flt.fits),
+    /// when that is known: stamped when a particular file is downloaded, so Download fetches the same one
+    /// again and a local cutout knows what it cuts. Null for records from before, or when the app chose
+    /// the file itself.
+    /// </summary>
+    public string? ArtifactId { get; set; }
     public DateTime DownloadedAt { get; set; } = DateTime.UtcNow;
     public string? ThumbnailURL { get; set; }
     public string? PreviewURL { get; set; }
@@ -32,7 +43,35 @@ public class DownloadedObservation
     /// <summary>Provenance stamp when the download was initiated by an MCP agent; null = user-authored.</summary>
     public AgentAttribution? AgentAttribution { get; set; }
 
+    /// <summary>
+    /// Null for the complete observation. Set, this record is a CUTOUT of it — part of one file, cut on
+    /// CADC's side — and says which part. Still the observation's record (its metadata and notes are
+    /// the observation's), but never to be shown as, or mistaken for, the whole.
+    /// </summary>
+    public CutoutSpec? Cutout { get; set; }
+
+    [JsonIgnore]
+    public bool IsCutout => Cutout is not null;
+
+    /// <summary>
+    /// Which product of the observation this is: null for the complete one, the cutout's key otherwise.
+    /// With the publisher id, what makes a record the same record — so a cutout never replaces the
+    /// full download, nor one cutout another.
+    /// </summary>
+    [JsonIgnore]
+    public string? ProductKey => Cutout?.Key;
+
     public bool FileExists => !string.IsNullOrWhiteSpace(LocalPath) && File.Exists(LocalPath);
+
+    /// <summary>
+    /// Every file on this computer that is this record's: its own, and for a cutout cut with its
+    /// companions — a weight map — theirs beside it. What removing the record's file removes.
+    /// </summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> LocalFiles
+        => string.IsNullOrWhiteSpace(LocalPath) ? []
+            : [LocalPath, .. Cutout?.CompanionPaths(LocalPath) ?? []];
+
     public string Filename => string.IsNullOrEmpty(LocalPath) ? "" : Path.GetFileName(LocalPath);
 
     public string FormattedSize => FileSize switch

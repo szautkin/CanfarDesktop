@@ -1,7 +1,10 @@
+using System.Net;
 using System.Reflection;
 using Xunit;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
+using CanfarDesktop.Tests.Helpers;
 
 namespace CanfarDesktop.Tests.Services;
 
@@ -177,5 +180,64 @@ public class DataLinkServiceTests
         var result = ParseVOTable(xml);
         Assert.Empty(result.Thumbnails);
         Assert.Empty(result.Previews);
+    }
+
+    /// <summary>
+    /// What DataLink answers is kept for the session — but not a refusal: asked while signed out about a
+    /// proprietary observation, the answer has to be able to change once the person signs in.
+    /// </summary>
+    [Fact]
+    public async Task ARefusal_IsNotKept_SoSigningInCanChangeTheAnswer()
+    {
+        var signedIn = false;
+        var calls = 0;
+        var service = new DataLinkService(new HttpClient(new MockHttpMessageHandler(_ =>
+        {
+            calls++;
+            return Task.FromResult(signedIn
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ObservationDownloaderTests.DataLink("https://ws/minoc/files/cadc:X/x.fits")) }
+                : new HttpResponseMessage(HttpStatusCode.Forbidden));
+        })), new ApiEndpoints());
+
+        Assert.Empty((await service.GetLinksAsync("ivo://cadc/X?x")).DirectFiles); // signed out: refused
+
+        signedIn = true;
+        Assert.Single((await service.GetLinksAsync("ivo://cadc/X?x")).DirectFiles);
+        Assert.Single((await service.GetLinksAsync("ivo://cadc/X?x")).DirectFiles); // and that answer is kept
+        Assert.Equal(2, calls);
+    }
+
+    /// <summary>QA D8: an answer that was a refusal read as an observation with nothing to offer.</summary>
+    [Fact]
+    public async Task ARefusal_SaysWhatDataLinkAnswered()
+    {
+        var service = new DataLinkService(new HttpClient(new MockHttpMessageHandler(_ =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)))), new ApiEndpoints());
+
+        var result = await service.GetLinksAsync("ivo://cadc/X?x");
+
+        Assert.Empty(result.DirectFiles);
+        Assert.Contains("DataLink answered 401", Assert.Single(result.Problems));
+    }
+
+    [Fact]
+    public async Task Fetch_GivesTheAnswerAsItCame()
+    {
+        var service = new DataLinkService(new HttpClient(new MockHttpMessageHandler(_ =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<VOTABLE/>") }))), new ApiEndpoints());
+
+        Assert.Equal(new DataLinkAnswer(200, "<VOTABLE/>", null), await service.FetchAsync("ivo://cadc/X?x"));
+    }
+
+    [Fact]
+    public async Task Fetch_ThatCannotReachDataLink_SaysWhy()
+    {
+        var service = new DataLinkService(new HttpClient(new MockHttpMessageHandler(_ =>
+            throw new HttpRequestException("no route to host"))), new ApiEndpoints());
+
+        var answer = await service.FetchAsync("ivo://cadc/X?x");
+
+        Assert.Null(answer.Body);
+        Assert.Contains("no route to host", answer.Problem);
     }
 }

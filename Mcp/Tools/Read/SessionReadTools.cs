@@ -80,7 +80,6 @@ public sealed class GetSessionTool : JsonReadTool<GetSessionTool.Args, SessionSu
 /// <summary><c>list_session_types</c> — the interactive + headless session types Skaha supports.</summary>
 public sealed class ListSessionTypesTool : JsonReadTool<EmptyArgs, ListSessionTypesTool.Output>
 {
-    private static readonly string[] Types = { "notebook", "desktop", "carta", "contributed", "firefly", "headless" };
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_session_types",
@@ -88,7 +87,7 @@ public sealed class ListSessionTypesTool : JsonReadTool<EmptyArgs, ListSessionTy
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<Output> HandleAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
-        => Task.FromResult(new Output(Types));
+        => Task.FromResult(new Output(SessionTypes.Launchable));
 
     public sealed record Output(IReadOnlyList<string> Types);
 }

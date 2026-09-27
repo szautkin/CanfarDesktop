@@ -12,6 +12,7 @@ public partial class SearchViewModel : ObservableObject
     private readonly ITAPService _tapService;
     private readonly ISearchStoreService _storeService;
     private readonly IColumnUnitStore _unitStore;
+    private readonly SearchContext? _context;
     private List<DataTrainRow> _allDataTrainRows = [];
     public IReadOnlyList<DataTrainRow> AllDataTrainRows => _allDataTrainRows;
     private CancellationTokenSource? _resolverCts;
@@ -132,11 +133,15 @@ public partial class SearchViewModel : ObservableObject
     // For ComboBox binding
     public string[] ResolverServices { get; } = ["ALL", "SIMBAD", "NED", "VIZIER", "NONE"];
 
-    public SearchViewModel(ITAPService tapService, ISearchStoreService storeService, IColumnUnitStore unitStore)
+    /// <param name="context">Where the form is left for the screens that follow a search — a cutout's
+    /// starting region comes from it. Optional, so the view model still stands alone in a test.</param>
+    public SearchViewModel(ITAPService tapService, ISearchStoreService storeService, IColumnUnitStore unitStore,
+                           SearchContext? context = null)
     {
         _tapService = tapService;
         _storeService = storeService;
         _unitStore = unitStore;
+        _context = context;
     }
 
     #region Data train
@@ -450,28 +455,40 @@ public partial class SearchViewModel : ObservableObject
     [RelayCommand]
     public async Task SearchAsync()
     {
-        // A target typed a moment ago is still being resolved — half a second of debounce, then the
-        // network. Searching without waiting built the query with no coordinates, fell back to a
-        // target-name match, and an M31 search returned a quasar at Dec −31° because "J0305M3150"
-        // contains "m31". Whatever the resolver concludes, the query should be built from it.
-        await _resolving;
-
-        var state = BuildFormState();
-        var adql = ADQLBuilder.Build(state);
-        AdqlText = adql;
-        await ExecuteAdqlAsync(adql);
-
-        if (Results is not null && Results.TotalRows > 0)
+        if (IsSearching) return;
+        var search = StartSearching();
+        try
         {
-            _storeService.SaveRecentSearch(new RecentSearch
-            {
-                Summary = BuildSearchSummary(state),
-                Adql = adql,
-                FormState = state,
-                ResultCount = Results.TotalRows,
-                SearchedAt = DateTime.UtcNow
-            });
-            LoadRecentSearchesFromStore();
+            // A target typed a moment ago is still being resolved — half a second of debounce, then the
+            // network. Searching without waiting built the query with no coordinates, fell back to a
+            // target-name match, and an M31 search returned a quasar at Dec −31° because "J0305M3150"
+            // contains "m31". Whatever the resolver concludes, the query should be built from it —
+            // unless the person cancels while it is still out.
+            await _resolving.WaitAsync(search.Token);
+
+            var state = BuildFormState();
+            var adql = ADQLBuilder.Build(state);
+            AdqlText = adql;
+            _context?.Searched(state);
+
+            if (await QueryAsync(adql, search.Token) && Results is { TotalRows: > 0 } results)
+                Remember(new RecentSearch
+                {
+                    Summary = BuildSearchSummary(state),
+                    Adql = adql,
+                    FormState = state,
+                    ResultCount = results.TotalRows,
+                    SearchedAt = DateTime.UtcNow
+                });
+        }
+        catch (Exception) when (search.IsCancellationRequested)
+        {
+            SearchCancelled = true;
+            StatusMessage = "Search cancelled";
+        }
+        finally
+        {
+            StopSearching(search);
         }
     }
 
@@ -479,32 +496,90 @@ public partial class SearchViewModel : ObservableObject
     public async Task ExecuteAdqlAsync(string? adql = null)
     {
         var query = adql ?? AdqlText;
-        if (string.IsNullOrWhiteSpace(query)) return;
+        if (string.IsNullOrWhiteSpace(query) || IsSearching) return;
 
+        var search = StartSearching();
+        try
+        {
+            // Remembered like a search from the form: the rail is the history of what was run (QA D1b).
+            if (await QueryAsync(query, search.Token) && Results is { TotalRows: > 0 } results)
+                Remember(RecentSearch.FromEditor(query, results.TotalRows, DateTime.UtcNow));
+        }
+        catch (Exception) when (search.IsCancellationRequested)
+        {
+            SearchCancelled = true;
+            StatusMessage = "Search cancelled";
+        }
+        finally
+        {
+            StopSearching(search);
+        }
+    }
+
+    /// <summary>
+    /// Stop the search running now — the query, or the wait for its target's position. The results
+    /// already shown stay as they were; nothing is saved as a recent search.
+    /// </summary>
+    [RelayCommand]
+    public void CancelSearch() => _search?.Cancel();
+
+    /// <summary>The search running now, to cancel; null when none is.</summary>
+    private CancellationTokenSource? _search;
+
+    /// <summary>Whether the last search was cancelled — its results, if any are shown, are the ones from before it.</summary>
+    public bool SearchCancelled { get; private set; }
+
+    private CancellationTokenSource StartSearching()
+    {
+        var search = new CancellationTokenSource();
+        _search = search;
+        SearchCancelled = false;
         IsSearching = true;
         HasError = false;
         StatusMessage = "Searching...";
+        return search;
+    }
 
+    private void StopSearching(CancellationTokenSource search)
+    {
+        if (ReferenceEquals(_search, search)) _search = null;
+        search.Dispose();
+        IsSearching = false;
+    }
+
+    /// <summary>
+    /// Run a query and show its rows. True when they replaced the results; false when it failed, and
+    /// the page says why. A cancelled query throws, for its caller to say so — it did not fail.
+    /// </summary>
+    private async Task<bool> QueryAsync(string query, CancellationToken ct)
+    {
         try
         {
-            Results = await _tapService.ExecuteQueryAsync(query, MaxRecords);
+            var results = await _tapService.ExecuteQueryAsync(query, MaxRecords, ct);
+            ct.ThrowIfCancellationRequested(); // cancelled as it arrived: the person asked for the old results to stay
+            Results = results;
             ResetFiltersAndSort();
             BuildColumns();
             CurrentPage = 1;
             UpdatePagination();
             StatusMessage = $"{Results.TotalRows} rows returned" +
                 (Results.TotalRows >= MaxRecords ? $" (limit: {MaxRecords})" : "");
+            return true;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             ErrorMessage = ex.Message;
             HasError = true;
             StatusMessage = "Search failed";
+            return false;
         }
-        finally
-        {
-            IsSearching = false;
-        }
+    }
+
+    /// <summary>Keep a search that found something in the recent searches, newest first.</summary>
+    private void Remember(RecentSearch search)
+    {
+        _storeService.SaveRecentSearch(search);
+        LoadRecentSearchesFromStore();
     }
 
     private static string BuildSearchSummary(SearchFormState s)
@@ -541,15 +616,16 @@ public partial class SearchViewModel : ObservableObject
         });
 
         // Real TAP columns
+        var visible = CellFormatter.VisibleByDefault(Results.Columns.Select(CellFormatter.CleanKey).ToList());
         foreach (var header in Results.Columns)
         {
             var key = CellFormatter.CleanKey(header);
             ResultColumns.Add(new ResultColumnInfo
             {
                 Key = key,
-                Label = header.Replace("\"", "").Trim(),
+                Label = CellFormatter.Label(header),
                 Header = header,
-                Visible = CellFormatter.DefaultVisibleKeys.Contains(key),
+                Visible = visible(key),
                 Width = CellFormatter.ColumnWidth(key)
             });
         }
@@ -749,9 +825,13 @@ public partial class SearchViewModel : ObservableObject
             SavedQueries.Add(q);
     }
 
+    /// <summary>
+    /// Put a recent search back: the form as it was and its query in the editor — or, for a query written
+    /// in the editor, the query alone, leaving the form as it is.
+    /// </summary>
     public void LoadFromRecentSearch(RecentSearch search)
     {
-        LoadFromFormState(search.FormState);
+        if (search.FormState is { } form) LoadFromFormState(form);
         AdqlText = search.Adql;
     }
 
@@ -945,7 +1025,7 @@ public partial class SearchViewModel : ObservableObject
     {
         if (Results is null || Results.Rows.Count == 0) return string.Empty;
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine(string.Join(",", Results.Columns.Select(QuoteCsv)));
+        sb.AppendLine(string.Join(",", Results.Columns.Select(c => QuoteCsv(CellFormatter.Label(c)))));
         foreach (var row in Results.Rows)
             sb.AppendLine(string.Join(",", Results.Columns.Select(c => QuoteCsv(row.Get(c)))));
         return sb.ToString();
@@ -955,7 +1035,7 @@ public partial class SearchViewModel : ObservableObject
     {
         if (Results is null || Results.Rows.Count == 0) return string.Empty;
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine(string.Join("\t", Results.Columns));
+        sb.AppendLine(string.Join("\t", Results.Columns.Select(CellFormatter.Label)));
         foreach (var row in Results.Rows)
             sb.AppendLine(string.Join("\t", Results.Columns.Select(c => row.Get(c).Replace("\t", " "))));
         return sb.ToString();

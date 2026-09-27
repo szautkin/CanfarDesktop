@@ -22,7 +22,10 @@ public sealed class McpToolRouter
     private readonly Func<string, Task>? _onAgentActivity;
     private readonly Action<string>? _onAgentDispatchStart;
 
-    /// <summary>The agent-safe tool descriptors exposed to external clients via <c>tools/list</c>.</summary>
+    /// <summary>
+    /// The agent-safe tools exposed to external clients via <c>tools/list</c>, as agents are shown them
+    /// (<see cref="McpToolExtensions.Advertised"/>).
+    /// </summary>
     public IReadOnlyList<ToolDescriptor> ExternalManifest { get; }
 
     public McpToolRouter(
@@ -46,12 +49,19 @@ public sealed class McpToolRouter
         _audit = audit ?? new LoggingAuditSink();
         ExternalManifest = dict.Values
             .Where(t => t.AgentSafe)
-            .Select(t => t.Descriptor)
+            .Select(t => t.Advertised())
             .OrderBy(d => d.Name, StringComparer.Ordinal)
             .ToList();
     }
 
     public IReadOnlyCollection<string> ToolNames => _tools.Keys.ToList();
+
+    /// <summary>
+    /// <paramref name="description"/> — one the person wrote for the named tool in place of its own —
+    /// ending with when the tool's changes apply, which is the app's to say, not the description's.
+    /// </summary>
+    public string Advertise(string name, string description)
+        => _tools.TryGetValue(name, out var tool) ? tool.Described(description) : description;
 
     public async Task<ToolResult> DispatchAsync(string name, JsonValue arguments, McpToolContext context, CancellationToken cancellationToken)
     {

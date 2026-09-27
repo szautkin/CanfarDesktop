@@ -52,6 +52,50 @@ public class StreamTransportTests
         Assert.Equal(Frame("hello"), output.ToArray());
     }
 
+    [Fact]
+    public async Task Close_Returns_EvenWhenTheReadIgnoresCancellation()
+    {
+        // Console stdin is such a stream. The bridge used to hang here once its app had quit, holding
+        // its exe open until the client happened to send something.
+        var transport = new StreamTransport(new StuckStream(), new MemoryStream());
+
+        var close = transport.CloseAsync().AsTask();
+
+        Assert.Same(close, await Task.WhenAny(close, Task.Delay(TimeSpan.FromSeconds(5))));
+    }
+
+    [Fact]
+    public async Task Close_DisposesTheStreams_OnlyWhenItOwnsThem()
+    {
+        var kept = new MemoryStream();
+        await new StreamTransport(kept, kept).CloseAsync();
+        Assert.True(kept.CanRead);
+
+        var owned = new MemoryStream();
+        await new StreamTransport(owned, owned, ownsStreams: true).CloseAsync();
+        Assert.False(owned.CanRead);
+    }
+
+    /// <summary>A read that never finishes and pays no attention to its cancellation token.</summary>
+    private sealed class StuckStream : Stream
+    {
+        private readonly TaskCompletionSource<int> _never = new();
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+            => new(_never.Task);
+
+        public override int Read(byte[] buffer, int offset, int count) => _never.Task.GetAwaiter().GetResult();
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => 0; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     /// <summary>A stream that hands back its data in preset chunks to exercise frame reassembly.</summary>
     private sealed class ChunkedStream : Stream
     {

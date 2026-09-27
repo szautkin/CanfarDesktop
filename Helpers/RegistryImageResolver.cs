@@ -11,14 +11,27 @@ public static class RegistryImageResolver
 {
     public static string Resolve(string? image, string? host, string? repository)
     {
-        var img = (image ?? string.Empty).Trim();
+        var img = Normalize(image);
         if (img.Length == 0) return string.Empty;
         if (img.Contains('/')) return img; // already host/project-qualified — leave it alone
 
-        var h = (host ?? string.Empty).Trim().TrimEnd('/');
+        var h = Normalize(host).TrimEnd('/');
         if (h.Length == 0) return img; // no host to prefix with
 
         var repo = (repository ?? string.Empty).Trim().Trim('/');
         return repo.Length == 0 ? $"{h}/{img}" : $"{h}/{repo}/{img}";
+    }
+
+    /// <summary>
+    /// An image reference or registry host as typed or pasted, made one: without whitespace or a web
+    /// scheme, neither of which a reference can have and both of which a copy from a browser brings.
+    /// "https:// images.canfar.net/…" was kept as typed, reported by get_compute_state as a URI that was
+    /// not one, and refused by the platform at launch (QA D6).
+    /// </summary>
+    public static string Normalize(string? value)
+    {
+        var text = string.Concat((value ?? string.Empty).Where(c => !char.IsWhiteSpace(c)));
+        var scheme = text.IndexOf("://", StringComparison.Ordinal);
+        return scheme >= 0 ? text[(scheme + 3)..] : text;
     }
 }

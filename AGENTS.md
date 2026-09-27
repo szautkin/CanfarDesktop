@@ -109,7 +109,9 @@ args = ["mcp"]
 
 ## 5. Check it works
 
-Call `describe_app`. It answers with the app's version and what it can do. If the call fails:
+Call `describe_app`. It answers with the app's version and what it can do. While Verbinal is closed
+the server still connects, and every tool answers that Verbinal is not running; once the person starts
+it, the server finds it by itself and says its tool list has changed. If the call fails:
 
 - **Is Verbinal running?** The bridge only relays to the app. It cannot start it.
 - **Is Enable MCP server on?**

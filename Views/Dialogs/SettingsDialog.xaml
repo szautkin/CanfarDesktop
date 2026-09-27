@@ -12,16 +12,22 @@
     DefaultButton="Close">
 
     <ContentDialog.Resources>
-        <!-- The default ContentDialogMaxWidth (548) would clip the 640-wide NavigationView (the content
-             ScrollViewer doesn't scroll horizontally), hiding the right edge — widen the cap. -->
-        <x:Double x:Key="ContentDialogMaxWidth">680</x:Double>
+        <!-- Sized from the inside out, because nothing here scrolls sideways and whatever does not fit is
+             cut off. The panes hold 440-wide panels: 440 + 2×20 padding + a scrollbar's gutter needs a
+             500-wide content area. The list needs 220 for its longest name, "Découverte d'images" with its
+             icon. 720 in all — and the dialog's cap has to clear that plus its own 2×24 margin. At 640/168
+             the names were cut ("Image discover", "AI compu") and every pane lost its right edge. -->
+        <x:Double x:Key="ContentDialogMaxWidth">780</x:Double>
     </ContentDialog.Resources>
 
-    <muxc:NavigationView x:Name="Nav" PaneDisplayMode="Left" OpenPaneLength="168"
+    <!-- The Grid only carries AgentPointerHost: an agent's hints about controls in here live in the dialog,
+         above it and closing with it, rather than in the window behind its smoke layer. -->
+    <Grid>
+    <muxc:NavigationView x:Name="Nav" PaneDisplayMode="Left" OpenPaneLength="220"
                          IsSettingsVisible="False" IsBackButtonVisible="Collapsed"
                          IsPaneToggleButtonVisible="False"
                          SelectionChanged="OnNavSelectionChanged"
-                         Width="640" Height="460">
+                         Width="720" Height="460">
         <muxc:NavigationView.MenuItems>
             <muxc:NavigationViewItem x:Uid="Settings_NavGeneral" Content="General" Tag="general">
                 <muxc:NavigationViewItem.Icon><SymbolIcon Symbol="Setting" /></muxc:NavigationViewItem.Icon>
@@ -236,4 +242,6 @@
             </Grid>
         </ScrollViewer>
     </muxc:NavigationView>
+    <Grid x:Name="AgentPointerHost" />
+    </Grid>
 </ContentDialog>

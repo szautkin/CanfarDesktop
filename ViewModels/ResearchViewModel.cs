@@ -11,7 +11,7 @@ public partial class ResearchViewModel : ObservableObject
     private readonly ObservationStore _store;
     private readonly DataLinkService _dataLinkService;
     private readonly ObservationNoteStore _noteStore;
-    private readonly ObservationDownloadService _downloads;
+    private readonly ObservationDownloader _downloader;
 
     [ObservableProperty]
     private DownloadedObservation? _selectedObservation;
@@ -25,14 +25,26 @@ public partial class ResearchViewModel : ObservableObject
     [ObservableProperty]
     private int _observationCount;
 
-    public ResearchViewModel(ObservationStore store, DataLinkService dataLinkService, ObservationNoteStore noteStore, ObservationDownloadService downloads)
+    public ResearchViewModel(ObservationStore store, DataLinkService dataLinkService, ObservationNoteStore noteStore, ObservationDownloader downloader)
     {
         _store = store;
         _dataLinkService = dataLinkService;
         _noteStore = noteStore;
-        _downloads = downloads;
+        _downloader = downloader;
+
+        // Held for the app's life, as the one Research page that owns this view model is.
+        _store.Changed += RaiseObservationsChanged;
+        _downloader.Changed += RaiseObservationsChanged;
         Refresh();
     }
+
+    /// <summary>
+    /// Something about the observations changed — a download started, landed or failed, or a record was
+    /// saved from elsewhere — on whatever thread it happened. The page marshals and refreshes.
+    /// </summary>
+    public event Action? ObservationsChanged;
+
+    private void RaiseObservationsChanged() => ObservationsChanged?.Invoke();
 
     partial void OnFilterTextChanged(string value) => Refresh();
 
@@ -62,15 +74,8 @@ public partial class ResearchViewModel : ObservableObject
     {
         if (SelectedObservation is null) return;
 
-        try
-        {
-            if (SelectedObservation.FileExists)
-                File.Delete(SelectedObservation.LocalPath);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Delete file error: {ex.Message}");
-        }
+        if (ResearchRecords.DeleteLocalFiles(SelectedObservation) is { } why)
+            System.Diagnostics.Debug.WriteLine($"Delete file error: {why}");
 
         _store.Remove(SelectedObservation);
         SelectedObservation = null;
@@ -84,34 +89,55 @@ public partial class ResearchViewModel : ObservableObject
     public event Action<string>? ViewInCubeRequested;
 
     /// <summary>
-    /// Download the FITS file for an observation that was saved without a file.
-    /// The save path is provided by the caller (View handles file picker).
+    /// Start downloading the file for a record saved without one; the caller chose where it goes.
+    ///
+    /// <para>For THIS record, named here, and handed to the app. It used to await the bytes and then
+    /// write the path onto whatever was selected by then: closing the detail mid-download threw and the
+    /// file was never recorded, and picking another observation recorded it on the wrong one. Progress
+    /// and failure are in the status bar; <see cref="ObservationsChanged"/> says when it lands.</para>
     /// </summary>
-    public async Task DownloadObservationFileAsync(string savePath)
+    public void StartDownload(DownloadedObservation observation, string savePath)
     {
-        if (SelectedObservation is null || string.IsNullOrEmpty(SelectedObservation.PublisherID)) return;
-
-        try
-        {
-            var url = await _downloads.ResolveUrlAsync(SelectedObservation.PublisherID);
-            await _downloads.DownloadToPathAsync(url, savePath);
-
-            // Update observation with the file path
-            SelectedObservation.LocalPath = savePath;
-            var fi = new FileInfo(savePath);
-            if (fi.Exists) SelectedObservation.FileSize = fi.Length;
-            _store.Save(SelectedObservation);
-            OnPropertyChanged(nameof(SelectedObservation));
-            Refresh();
-        }
-        catch (Exception ex)
-        {
-            // No temp file to tidy: DownloadToPathAsync writes through StreamToFile, which removes its
-            // own on failure.
-            System.Diagnostics.Debug.WriteLine($"Download error: {ex.Message}");
-            throw;
-        }
+        if (string.IsNullOrEmpty(observation.PublisherID)) return;
+        _ = _downloader.Start(new ObservationDownloadRequest(observation.PublisherID, savePath, observation));
     }
+
+    /// <summary>
+    /// Delete the observation's file from this computer and keep it in Research — its details, notes,
+    /// and for a cutout its region, so Download fetches it again as it was. Null when done, otherwise why not.
+    /// </summary>
+    public string? RemoveLocalFile(DownloadedObservation observation)
+        => ResearchRecords.RemoveLocalFile(_store, observation);
+
+    /// <summary>Each observation's file on this computer, read again only when it changes — not each time a detail is rebuilt.</summary>
+    private readonly Services.Cutouts.Local.LocalSourceCache _localCache = new();
+
+    /// <summary>
+    /// The ways this observation's files can be cut: CADC's, from its DataLink answer (none when it
+    /// cannot be had), and the observation's file on this computer — for a cutout, the file it was cut
+    /// from. Reads that file's headers, off the caller's thread, when they have changed.
+    /// </summary>
+    public async Task<IReadOnlyList<Services.Cutouts.ICutoutSource>> CutoutSourcesAsync(DownloadedObservation observation)
+    {
+        if (string.IsNullOrEmpty(observation.PublisherID)) return [];
+
+        IReadOnlyList<Services.Cutouts.ICutoutSource> soda;
+        try { soda = Services.Cutouts.CutoutSources.Soda(await _dataLinkService.GetLinksAsync(observation.PublisherID), null); }
+        catch { soda = []; }
+
+        string?[] named = [observation.Cutout?.ArtifactId, observation.ArtifactId];
+        var ids = named.OfType<string>().Where(a => a.Length > 0).Distinct().ToList();
+        var local = await Task.Run(() => _localCache.Get(_store.Observations, observation.PublisherID, ids));
+        return [.. soda, .. local is null ? [] : new Services.Cutouts.ICutoutSource[] { local }];
+    }
+
+    /// <summary>The complete observation a cutout was cut from, when Research has it — with its file or without.</summary>
+    public DownloadedObservation? OriginalOf(DownloadedObservation cutout)
+        => ResearchRecords.Complete(_store.Observations, cutout.PublisherID);
+
+    /// <summary>Whether this observation's file is on its way right now.</summary>
+    public bool IsDownloading(DownloadedObservation observation)
+        => _downloader.IsDownloading(observation.PublisherID, observation.ProductKey);
 
     [RelayCommand]
     public void OpenFile()

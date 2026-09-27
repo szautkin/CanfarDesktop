@@ -45,7 +45,147 @@ public sealed partial class ResearchPage : UserControl
         _noteSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
         _noteSaveTimer.Tick += (_, _) => SaveNoteNow();
 
+        // Downloads finish in the background, on the downloader's thread and in their own time.
+        ViewModel.ObservationsChanged += () => DispatcherQueue.TryEnqueue(OnObservationsChanged);
+
+        // An observation in the list copies from its right-click menu, as a result row does in Search.
+        FileList.RightTapped += OnListRightTapped;
+
         RefreshList();
+    }
+
+    /// <summary>Copy the observation's details — the same summary Search and the observation view copy.</summary>
+    private static void CopyDetails(DownloadedObservation obs)
+        => ClipboardText.Copy(ObservationSummary.Text(obs), Loc.T("Search_ObservationCopied"));
+
+    private void OnListRightTapped(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
+    {
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is not DownloadedObservation obs) return;
+        var item = new MenuFlyoutItem { Text = Loc.T("Research_CopyDetails"), Icon = new FontIcon { Glyph = "\uE8C8" } };
+        item.Click += (_, _) => CopyDetails(obs);
+        var menu = new MenuFlyout();
+        menu.Items.Add(item);
+        if (obs.IsCutout)
+        {
+            var original = new MenuFlyoutItem { Text = Loc.T("Research_Original"), Icon = new FontIcon { Glyph = OriginalGlyph } };
+            original.Click += (_, _) => _ = ShowOriginal(obs);
+            menu.Items.Add(original);
+        }
+        menu.ShowAt((FrameworkElement)e.OriginalSource, e.GetPosition((FrameworkElement)e.OriginalSource));
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// The person wants a cutout of this observation — of the file a cutout record was cut from, when
+    /// it is one. The host opens the observation's cutout editor.
+    /// </summary>
+    public event Action<string, string?>? CutoutRequested;
+
+    /// <summary>
+    /// The person wants the complete observation a cutout was cut from, and Research does not have it:
+    /// the host finds it in Search, by the archive's observation id, and highlights this plane's row.
+    /// </summary>
+    public event Action<string, string>? FindInSearchRequested;
+
+    private const string OriginalGlyph = "\uE71B"; // a link: the cutout's way back to what it was cut from
+
+    /// <summary>
+    /// The complete observation a cutout was cut from: here, selected, when Research has it — with its
+    /// file or without — and otherwise found in Search. Research first, since what is here is what the
+    /// person has already kept, with their notes. Returns the record shown here; null when Search was asked.
+    /// </summary>
+    public DownloadedObservation? ShowOriginal(DownloadedObservation cutout)
+    {
+        if (ViewModel.OriginalOf(cutout) is { } whole)
+        {
+            Select(whole);
+            return whole;
+        }
+        FindInSearchRequested?.Invoke(ResearchRecords.ObservationIdOf(cutout), cutout.PublisherID);
+        return null;
+    }
+
+    /// <summary>Select a record in the list and show it — clearing the filter first when it hides it.</summary>
+    public void Select(DownloadedObservation record)
+    {
+        if (!ViewModel.FilteredObservations.Contains(record) && !string.IsNullOrEmpty(ViewModel.FilterText))
+        {
+            FilterBox.Text = string.Empty;       // its TextChanged comes later, to the same list
+            ViewModel.FilterText = string.Empty; // refilters now
+        }
+        RefreshList();
+        FileList.SelectedItem = record;
+        FileList.ScrollIntoView(record);
+    }
+
+    /// <summary>
+    /// "Cut out…", always there: greyed while it is found out whether this observation's files can be
+    /// cut — by CADC, or from its file on this computer — then live, or greyed with the reason, so the
+    /// person knows the app can do it, and whether it can for THIS observation.
+    /// </summary>
+    private FrameworkElement CutoutButton(DownloadedObservation obs)
+    {
+        var button = UIFactory.CreateIconButton("", Loc.T("Cutout_Button"),
+            (_, _) => CutoutRequested?.Invoke(obs.PublisherID, obs.Cutout?.ArtifactId ?? obs.ArtifactId));
+        button.Name = "ResearchCutoutButton";
+        var wrapper = UIFactory.Explained(button);
+        UIFactory.Enable(button, false, Loc.T("Cutout_Checking"));
+
+        var ct = _previewCts?.Token ?? CancellationToken.None;
+        _ = Task.Run(() => ViewModel.CutoutSourcesAsync(obs)).ContinueWith(t => DispatcherQueue.TryEnqueue(() =>
+        {
+            if (ct.IsCancellationRequested) return;
+            IReadOnlyList<Services.Cutouts.ICutoutSource> ways = t.Status == TaskStatus.RanToCompletion ? t.Result : [];
+            var why = ways.FirstOrDefault(w => w.Method == Models.Cutouts.CutoutMethod.Local)?.Unavailable is { } local
+                ? Loc.F("Cutout_NoneForObservationLocal", local)
+                : Loc.T("Cutout_NoneForObservation");
+            UIFactory.Enable(button, ways.Any(w => w.Unavailable is null), why);
+        }), TaskScheduler.Default);
+
+        return wrapper;
+    }
+
+    /// <summary>
+    /// Delete the file from this computer, after asking — the observation, its notes and (for a cutout)
+    /// its region stay in Research, and Download brings the file back.
+    /// </summary>
+    private async Task ConfirmRemoveFileAsync(DownloadedObservation obs)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = Loc.T("Research_RemoveFileTitle"),
+            Content = new TextBlock { Text = Loc.F("Research_RemoveFileBody", obs.Filename), TextWrapping = TextWrapping.Wrap },
+            PrimaryButtonText = Loc.T("Research_RemoveFile"),
+            CloseButtonText = Loc.T("Research_Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+        if (ViewModel.RemoveLocalFile(obs) is { } why)
+            await ShowExportResultAsync(Loc.T("Research_RemoveFileFailed"), why);
+        // Done: the store's Changed rebuilds this detail with Download in place of the file's buttons.
+    }
+
+    /// <summary>What the open detail was built to offer: the file's buttons, "downloading", or Download.</summary>
+    private (bool HasFile, bool Downloading) _detailState;
+
+    private (bool HasFile, bool Downloading) DetailState(DownloadedObservation obs)
+        => (obs.FileExists, ViewModel.IsDownloading(obs));
+
+    /// <summary>
+    /// A download started, landed or failed, or a record changed elsewhere. The list follows, and the
+    /// open detail is rebuilt only if what it offers has changed — rebuilding on every save would
+    /// reset the notes editor under someone typing in it.
+    /// </summary>
+    private void OnObservationsChanged()
+    {
+        RefreshList();
+        if (ViewModel.SelectedObservation is { } obs && DetailState(obs) != _detailState)
+        {
+            FlushNote();
+            BuildDetail(obs);
+        }
     }
 
     public void RefreshList()
@@ -56,7 +196,11 @@ public sealed partial class ResearchPage : UserControl
         // instance under the same PublisherID, and keeping the stale one would show
         // old fields and break Delete (which matches on the record's internal Id).
         var before = (FileList.ItemsSource as IEnumerable<DownloadedObservation>)?.ToList();
-        var selectedId = (FileList.SelectedItem as DownloadedObservation)?.PublisherID;
+        // The same PRODUCT, not just the same observation: a cutout and the complete download share a
+        // publisher id, and re-selecting by it alone jumped from one to the other.
+        var selected = FileList.SelectedItem as DownloadedObservation;
+        var selectedId = selected?.PublisherID;
+        var selectedProduct = selected?.ProductKey;
 
         ViewModel.Refresh();
         var fresh = ViewModel.FilteredObservations;
@@ -66,7 +210,7 @@ public sealed partial class ResearchPage : UserControl
         {
             FileList.ItemsSource = fresh;
             if (selectedId is not null)
-                FileList.SelectedItem = fresh.FirstOrDefault(o => o.PublisherID == selectedId);
+                FileList.SelectedItem = fresh.FirstOrDefault(o => o.PublisherID == selectedId && o.ProductKey == selectedProduct);
         }
         CountText.Text = $"({ViewModel.ObservationCount})";
     }
@@ -220,6 +364,7 @@ public sealed partial class ResearchPage : UserControl
     {
         DetailContent.Children.Clear();
         _previewCts = new CancellationTokenSource();
+        _detailState = DetailState(obs);
 
         // Preview image
         if (obs.PreviewURL is not null || obs.ThumbnailURL is not null)
@@ -255,6 +400,22 @@ public sealed partial class ResearchPage : UserControl
             Opacity = 0.6
         });
 
+        // A cutout says so before anything else: its metadata and notes are the observation's, and
+        // nothing else on this page would tell a reader the file is only part of it.
+        if (obs.Cutout is { } cutout)
+        {
+            DetailContent.Children.Add(new InfoBar
+            {
+                Name = "CutoutNoteBar",
+                IsOpen = true,
+                IsClosable = false,
+                Severity = InfoBarSeverity.Warning,
+                Title = Loc.T("Research_CutoutTitle"),
+                Message = Loc.F(cutout.CutBy == Models.Cutouts.CutoutMethod.Local ? "Research_CutoutNoteLocal" : "Research_CutoutNote",
+                    cutout.Summary),
+            });
+        }
+
         // Action buttons
         var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
 
@@ -282,10 +443,29 @@ public sealed partial class ResearchPage : UserControl
             });
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE8E5", Loc.T("Research_OpenFile"), (_, _) => ViewModel.OpenFileCommand.Execute(null)));
             btnPanel.Children.Add(UIFactory.CreateIconButton("\uE838", Loc.T("Research_ShowInExplorer"), (_, _) => ViewModel.ShowInExplorerCommand.Execute(null)));
+
+            // The file off this computer, the observation kept: Download brings it back.
+            var removeFile = UIFactory.CreateIconButton("\uE738", Loc.T("Research_RemoveFile"), async (_, _) => await ConfirmRemoveFileAsync(obs));
+            removeFile.Name = "ResearchRemoveFileButton";
+            ToolTipService.SetToolTip(removeFile, Loc.T("Research_RemoveFileTip"));
+            btnPanel.Children.Add(removeFile);
+        }
+        else if (ViewModel.IsDownloading(obs))
+        {
+            // On its way, in the background: the status bar shows how far, and this detail rebuilds
+            // itself with the file's buttons when it lands (or with Download again if it fails).
+            btnPanel.Children.Add(new TextBlock
+            {
+                Text = Loc.T("Research_DownloadingInBackground"),
+                VerticalAlignment = VerticalAlignment.Center,
+                Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+            });
         }
         else
         {
-            btnPanel.Children.Add(UIFactory.CreateIconButton("\uE896", Loc.T("Research_DownloadFits"), async (_, _) =>
+            // A local cutout is made again from the file it was cut from, rather than downloaded.
+            var fetch = obs.Cutout?.CutBy == Models.Cutouts.CutoutMethod.Local ? Loc.T("Research_CutAgain") : Loc.T("Research_DownloadFits");
+            var download = UIFactory.CreateIconButton("\uE896", fetch, async (_, _) =>
             {
                 try
                 {
@@ -297,21 +477,42 @@ public sealed partial class ResearchPage : UserControl
                     var picker = new Windows.Storage.Pickers.FileSavePicker();
                     WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
                     var name = obs.TargetName is { Length: > 0 } ? obs.TargetName : Loc.T("Research_DefaultFileName");
-                    picker.SuggestedFileName = $"{name}.fits";
+                    // A cutout comes back as the cutout it is, under its own name.
+                    picker.SuggestedFileName = obs.Cutout is { } cut
+                        ? System.IO.Path.GetFileNameWithoutExtension(cut.FileName)
+                        : name;
                     picker.FileTypeChoices.Add(Loc.T("Research_FileTypeFits"), new List<string> { ".fits" });
 
                     var file = await picker.PickSaveFileAsync();
                     if (file is null) return;
 
-                    await ViewModel.DownloadObservationFileAsync(file.Path);
-                    BuildDetail(obs); // rebuild to show Open/Explorer buttons
+                    // Started, not awaited: it belongs to the app now. Closing this detail, or choosing
+                    // another observation, no longer has any say in it.
+                    ViewModel.StartDownload(obs, file.Path);
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Research download error: {ex.Message}");
                 }
-            }));
+            });
+            download.Name = "ResearchDownloadButton";
+            btnPanel.Children.Add(download);
         }
+
+        btnPanel.Children.Add(CutoutButton(obs));
+
+        if (obs.IsCutout)
+        {
+            var original = UIFactory.CreateIconButton(OriginalGlyph, Loc.T("Research_Original"), (_, _) => _ = ShowOriginal(obs));
+            original.Name = "ResearchOriginalButton";
+            ToolTipService.SetToolTip(original, Loc.T(ViewModel.OriginalOf(obs) is null ? "Research_OriginalSearchTip" : "Research_OriginalHereTip"));
+            btnPanel.Children.Add(original);
+        }
+
+        var copyDetails = UIFactory.CreateIconButton("\uE8C8", Loc.T("Research_CopyDetails"), (_, _) => CopyDetails(obs));
+        copyDetails.Name = "ResearchCopyDetailsButton";
+        ToolTipService.SetToolTip(copyDetails, Loc.T("Research_CopyDetailsTip"));
+        btnPanel.Children.Add(copyDetails);
 
         var deleteBtn = UIFactory.CreateIconButton("\uE74D", Loc.T("Research_Delete"), (_, _) =>
         {

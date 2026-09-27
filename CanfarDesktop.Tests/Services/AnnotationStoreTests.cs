@@ -266,4 +266,36 @@ public class AnnotationStoreTests : IDisposable
         Assert.Equal(10.6847, back.Anchor.X, 6);
         Assert.Equal(41.2687, back.Anchor.Y, 6);
     }
+
+    // ── The same file, however it is written ───────────────────────────────────────────────────
+
+    /// <summary>A mark with French words, and a French path, comes back as it was, after a restart.</summary>
+    [Fact]
+    public void AFrenchMark_OnAFrenchPath_ComesBackAfterARestart()
+    {
+        const string file = @"C:\Users\Émilie\Téléchargements\M31 — noyau.fits#1";
+        Store().Add(file, Mark("fr") with { Text = "Noyau de M31 — l’étoile « centrale » : ça brille" });
+
+        var back = Assert.Single(new AnnotationStore(Path.Combine(_dir, "annotations.json")).LoadFor(file));
+
+        Assert.Equal("Noyau de M31 — l’étoile « centrale » : ça brille", back.Text);
+    }
+
+    /// <summary>
+    /// The file an agent reopens by its path is the file the marks were drawn on, however the path is
+    /// written — other separators, other case, a ..\ in it — and its marks come back with it.
+    /// </summary>
+    [Theory]
+    [InlineData(@"C:/Users/emilie/Downloads/m31.fits#1")]
+    [InlineData(@"c:\users\EMILIE\downloads\M31.FITS#1")]
+    [InlineData(@"C:\Users\emilie\Downloads\..\Downloads\m31.fits#1")]
+    [InlineData(@"C:\Users\emilie\Downloads\\m31.fits#1")]
+    public void AFileReopenedUnderAnotherSpellingOfItsPath_FindsItsMarks(string reopened)
+    {
+        Store().Add(@"C:\Users\emilie\Downloads\m31.fits#1", Mark("a"));
+
+        var store = new AnnotationStore(Path.Combine(_dir, "annotations.json"));
+
+        Assert.Equal("a", Assert.Single(store.LoadFor(reopened)).Id);
+    }
 }

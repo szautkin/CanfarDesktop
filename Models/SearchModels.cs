@@ -147,9 +147,38 @@ public class SavedQuery
 /// </summary>
 public class RecentSearch
 {
+    /// <summary>How much of a query written by hand its summary shows.</summary>
+    private const int SummaryLength = 60;
+
     public string Summary { get; set; } = string.Empty;
     public string Adql { get; set; } = string.Empty;
-    public SearchFormState FormState { get; set; } = new();
+
+    /// <summary>
+    /// The form as it was searched; null for a query written in the ADQL editor, which has no form to
+    /// go back to and so goes back into the editor.
+    /// </summary>
+    public SearchFormState? FormState { get; set; } = new();
+
     public int ResultCount { get; set; }
     public DateTime SearchedAt { get; set; }
+
+    /// <summary>Whether it was run from the ADQL editor rather than the form.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool WrittenInEditor => FormState is null;
+
+    /// <summary>
+    /// A query written by hand, remembered: its summary is the query itself, on one line, as far as fits.
+    /// </summary>
+    public static RecentSearch FromEditor(string adql, int resultCount, DateTime searchedAt)
+    {
+        var line = string.Join(' ', adql.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return new RecentSearch
+        {
+            Summary = line.Length <= SummaryLength ? line : line[..(SummaryLength - 1)] + "…",
+            Adql = adql,
+            FormState = null,
+            ResultCount = resultCount,
+            SearchedAt = searchedAt,
+        };
+    }
 }

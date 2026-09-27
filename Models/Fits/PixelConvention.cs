@@ -71,4 +71,8 @@ public static class PixelConvention
     /// </summary>
     public static (double X, double Y)? DisplayOfSky(WcsInfo wcs, int imageHeight, double ra, double dec)
         => wcs.WorldToPixel(ra, dec) is { } p ? FitsToDisplay(p.Px, p.Py, imageHeight) : null;
+
+    /// <summary>Whether a display pixel lies on an image of this size.</summary>
+    public static bool IsOnImage(double x, double y, int width, int height)
+        => x >= 0 && x < width && y >= 0 && y < height;
 }

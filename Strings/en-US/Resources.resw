@@ -1613,7 +1613,10 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
     <value>Delete</value>
   </data>
   <data name="Fits_EnterValidCoords" xml:space="preserve">
-    <value>Enter valid RA and Dec in degrees</value>
+    <value>Enter RA and Dec — degrees (10.68 or 10,68) or sexagesimal (00:42:44.3 +41:16:09)</value>
+  </data>
+  <data name="Fits_GoToDone" xml:space="preserve">
+    <value>Centred on RA {0}, Dec {1} — pixel ({2:F0}, {3:F0})</value>
   </data>
   <data name="Fits_GoToButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Go to coordinate</value>
@@ -1668,6 +1671,12 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="Fits_NoCrosshair" xml:space="preserve">
     <value>No crosshair placed</value>
+  </data>
+  <data name="Fits_OpenFailedTitle" xml:space="preserve">
+    <value>{0} was not opened</value>
+  </data>
+  <data name="Fits_GoToTooFar" xml:space="preserve">
+    <value>That position is too far from this image for its coordinates to place it</value>
   </data>
   <data name="Fits_NoWcsNav" xml:space="preserve">
     <value>No WCS available for coordinate navigation</value>
@@ -1909,6 +1918,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="ImageDiscoveryDialog.Title" xml:space="preserve">
     <value>Find images by package</value>
   </data>
+  <data name="Images_DiscoveredOf" xml:space="preserve">
+    <value>Discovered {0} of {1} images</value>
+  </data>
   <data name="Images_FindByPackageBtn.Content" xml:space="preserve">
     <value>Find by package…</value>
   </data>
@@ -1926,6 +1938,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="Images_Inspecting" xml:space="preserve">
     <value>Inspecting…</value>
+  </data>
+  <data name="Images_LoadFailed" xml:space="preserve">
+    <value>Failed to load images: {0}</value>
   </data>
   <data name="Images_Packages" xml:space="preserve">
     <value>{0} packages</value>
@@ -2017,8 +2032,11 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Launch_FlexibleResources" xml:space="preserve">
     <value>Flexible resources</value>
   </data>
-  <data name="Launch_FormHeader.Text" xml:space="preserve">
-    <value>Launch Session</value>
+  <data name="LaunchFormDialog.CloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="LaunchFormDialog.Title" xml:space="preserve">
+    <value>Launch a session</value>
   </data>
   <data name="Launch_GenerateNameBtn.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Generate Name</value>
@@ -2367,6 +2385,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="Wizard_ComputeLinkReady" xml:space="preserve">
     <value>Open Remote Compute</value>
+  </data>
+  <data name="Compute_SessionWithoutSetup" xml:space="preserve">
+    <value>A compute session is running on your account, but remote compute isn't set up in this app — it may be left from before a reinstall. Stop it to free its cores, or set compute up to use it.</value>
   </data>
   <data name="Launch_TypeTip.Title" xml:space="preserve">
     <value>Session Type</value>
@@ -3266,6 +3287,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Research_DownloadFits" xml:space="preserve">
     <value>Download FITS</value>
   </data>
+  <data name="Research_DownloadingInBackground" xml:space="preserve">
+    <value>Downloading — progress is in the status bar below.</value>
+  </data>
   <data name="Research_DownloadsTitle.Text" xml:space="preserve">
     <value>Downloads</value>
   </data>
@@ -3449,14 +3473,11 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Search_DownloadFailed" xml:space="preserve">
     <value>Download failed</value>
   </data>
-  <data name="Search_DownloadedFile" xml:space="preserve">
-    <value>Downloaded {0}</value>
-  </data>
-  <data name="Search_DownloadedSoFar" xml:space="preserve">
-    <value>{0} downloaded — total size unknown</value>
-  </data>
   <data name="Search_DownloadingFile" xml:space="preserve">
     <value>Downloading {0}...</value>
+  </data>
+  <data name="Download_InStatusBar" xml:space="preserve">
+    <value>Progress is in the status bar at the bottom of the window. It carries on if you leave this page.</value>
   </data>
   <data name="Search_ErrorBar.Title" xml:space="preserve">
     <value>Error</value>
@@ -3590,6 +3611,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Search_ResetButton.Content" xml:space="preserve">
     <value>Reset</value>
   </data>
+  <data name="Search_CancelSearch.Content" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
   <data name="Search_ResolverCombo.Header" xml:space="preserve">
     <value>Resolver</value>
   </data>
@@ -3629,32 +3653,14 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Search_SaveQueryNameBox.PlaceholderText" xml:space="preserve">
     <value>Name (optional)</value>
   </data>
-  <data name="Search_SaveToResearchFailed" xml:space="preserve">
-    <value>Save to Research failed</value>
-  </data>
   <data name="Search_SavedHeader.Text" xml:space="preserve">
     <value>Saved Queries</value>
-  </data>
-  <data name="Search_SavedToResearch" xml:space="preserve">
-    <value>Saved to Research</value>
   </data>
   <data name="Search_SearchButtonText.Text" xml:space="preserve">
     <value>Search</value>
   </data>
   <data name="Search_SelectFileTitle" xml:space="preserve">
     <value>Select file to download ({0} available)</value>
-  </data>
-  <data name="Search_SizeB" xml:space="preserve">
-    <value>{0} B</value>
-  </data>
-  <data name="Search_SizeGB" xml:space="preserve">
-    <value>{0:F2} GB</value>
-  </data>
-  <data name="Search_SizeKB" xml:space="preserve">
-    <value>{0:F1} KB</value>
-  </data>
-  <data name="Search_SizeMB" xml:space="preserve">
-    <value>{0:F1} MB</value>
   </data>
   <data name="Search_SpatialCutoutCheck.Content" xml:space="preserve">
     <value>Spatial cutout</value>
@@ -3751,6 +3757,9 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="Sessions_Header.Text" xml:space="preserve">
     <value>Active Sessions</value>
+  </data>
+  <data name="Sessions_LaunchSession.Text" xml:space="preserve">
+    <value>Launch session</value>
   </data>
   <data name="Sessions_NotAvailable" xml:space="preserve">
     <value>n/a</value>
@@ -4394,8 +4403,8 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   <data name="Settings_AboutTermsLink.Content" xml:space="preserve">
     <value>Terms of Use</value>
   </data>
-  <data name="Images_AllProjects" xml:space="preserve">
-    <value>All projects</value>
+  <data name="Images_All" xml:space="preserve">
+    <value>All</value>
   </data>
   <data name="Images_AlreadyAdded" xml:space="preserve">
     <value>Already added</value>
@@ -4585,5 +4594,395 @@ Your other MCP servers are preserved and a .bak is kept. Restart Claude Desktop 
   </data>
   <data name="Fits_ImageCanvas.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Image canvas</value>
+  </data>
+  <data name="Cutout_Shape" xml:space="preserve">
+    <value>Shape</value>
+  </data>
+  <data name="Cutout_ShapeCircle" xml:space="preserve">
+    <value>Circle</value>
+  </data>
+  <data name="Cutout_ShapeBox" xml:space="preserve">
+    <value>Box</value>
+  </data>
+  <data name="Cutout_Ra" xml:space="preserve">
+    <value>RA (degrees or hh:mm:ss)</value>
+  </data>
+  <data name="Cutout_Dec" xml:space="preserve">
+    <value>Dec (degrees or ±dd:mm:ss)</value>
+  </data>
+  <data name="Cutout_Radius" xml:space="preserve">
+    <value>Radius</value>
+  </data>
+  <data name="Cutout_Width" xml:space="preserve">
+    <value>Width</value>
+  </data>
+  <data name="Cutout_Height" xml:space="preserve">
+    <value>Height</value>
+  </data>
+  <data name="Cutout_Unit" xml:space="preserve">
+    <value>Unit</value>
+  </data>
+  <data name="Cutout_Band" xml:space="preserve">
+    <value>Wavelength</value>
+  </data>
+  <data name="Cutout_BandFrom" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="Cutout_BandTo" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Cutout_BandHint" xml:space="preserve">
+    <value>Leave an end empty to keep the file's own limit.</value>
+  </data>
+  <data name="Cutout_SkyName" xml:space="preserve">
+    <value>The file's footprint and the cutout region</value>
+  </data>
+  <data name="Cutout_SkyHint" xml:space="preserve">
+    <value>Drag the region to move it, its dot to resize it, or anywhere else to draw a new one.</value>
+  </data>
+  <data name="Cutout_Download" xml:space="preserve">
+    <value>Download cutout</value>
+  </data>
+  <data name="Cutout_Reset" xml:space="preserve">
+    <value>Start again</value>
+  </data>
+  <data name="Cutout_Close" xml:space="preserve">
+    <value>Close the cutout editor</value>
+  </data>
+  <data name="Cutout_EditorTitle" xml:space="preserve">
+    <value>Cutout of {0}</value>
+  </data>
+  <data name="Cutout_EditorNote" xml:space="preserve">
+    <value>CADC cuts the region out on its side and sends only that part. It is kept in Research as a cutout of this observation — not the complete observation.</value>
+  </data>
+  <data name="Cutout_BadCoordinate" xml:space="preserve">
+    <value>“{0}” is not a coordinate: use degrees, or hh:mm:ss for RA and ±dd:mm:ss for Dec.</value>
+  </data>
+  <data name="Cutout_BadNumber" xml:space="preserve">
+    <value>“{0}” is not a number.</value>
+  </data>
+  <data name="Cutout_Estimate" xml:space="preserve">
+    <value>About {0} of the whole file's {1}.</value>
+  </data>
+  <data name="Cutout_Button" xml:space="preserve">
+    <value>Cutout…</value>
+  </data>
+  <data name="Cutout_ButtonTooltip" xml:space="preserve">
+    <value>Download only part of this file, cut out on CADC's side</value>
+  </data>
+  <data name="Cutout_ButtonName" xml:space="preserve">
+    <value>Cut out part of {0}</value>
+  </data>
+  <data name="Cutout_CheckNothing" xml:space="preserve">
+    <value>Choose a region (or a band) to cut; with neither, the whole file would come back.</value>
+  </data>
+  <data name="Cutout_CheckNoBand" xml:space="preserve">
+    <value>This file cannot be cut by wavelength.</value>
+  </data>
+  <data name="Cutout_CheckBandOrder" xml:space="preserve">
+    <value>The shortest wavelength has to be below the longest.</value>
+  </data>
+  <data name="Cutout_CheckBandOutside" xml:space="preserve">
+    <value>That wavelength range is outside this file's.</value>
+  </data>
+  <data name="Cutout_CheckBandPartial" xml:space="preserve">
+    <value>Part of that wavelength range is outside this file's; the cutout will be trimmed to it.</value>
+  </data>
+  <data name="Cutout_CheckNoTime" xml:space="preserve">
+    <value>This file cannot be cut by time.</value>
+  </data>
+  <data name="Cutout_CheckTimeOrder" xml:space="preserve">
+    <value>The start has to be before the end.</value>
+  </data>
+  <data name="Cutout_CheckTimeOutside" xml:space="preserve">
+    <value>That time range is outside this file's.</value>
+  </data>
+  <data name="Cutout_CheckTimePartial" xml:space="preserve">
+    <value>Part of that time range is outside this file's; the cutout will be trimmed to it.</value>
+  </data>
+  <data name="Cutout_CheckNoPol" xml:space="preserve">
+    <value>This file cannot be cut by polarization.</value>
+  </data>
+  <data name="Cutout_CheckPolUnknown" xml:space="preserve">
+    <value>This file has no {0} polarization; it has {1}.</value>
+  </data>
+  <data name="Cutout_CheckNoRegion" xml:space="preserve">
+    <value>This file cannot be cut to that shape.</value>
+  </data>
+  <data name="Cutout_CheckOutside" xml:space="preserve">
+    <value>That region is outside this file's footprint.</value>
+  </data>
+  <data name="Cutout_CheckPartial" xml:space="preserve">
+    <value>Part of that region is outside the footprint; the cutout will be trimmed to it.</value>
+  </data>
+  <data name="Cutout_ProblemNumber" xml:space="preserve">
+    <value>The position and size have to be numbers.</value>
+  </data>
+  <data name="Cutout_ProblemDec" xml:space="preserve">
+    <value>Dec has to be between −90° and +90°.</value>
+  </data>
+  <data name="Cutout_ProblemSize" xml:space="preserve">
+    <value>The size has to be greater than zero.</value>
+  </data>
+  <data name="Cutout_ProblemTooLarge" xml:space="preserve">
+    <value>That region is larger than any cutout can be.</value>
+  </data>
+  <data name="Cutout_ProblemVertices" xml:space="preserve">
+    <value>A polygon needs at least three corners.</value>
+  </data>
+  <data name="Cutout_ProblemDegenerate" xml:space="preserve">
+    <value>Those corners enclose no area.</value>
+  </data>
+  <data name="Research_CutoutBadge" xml:space="preserve">
+    <value>Cutout</value>
+  </data>
+  <data name="Research_CutoutBadgeTip" xml:space="preserve">
+    <value>A cutout of this observation: {0}</value>
+  </data>
+  <data name="Research_CutoutTitle" xml:space="preserve">
+    <value>Cutout — not the complete observation</value>
+  </data>
+  <data name="Research_CutoutNote" xml:space="preserve">
+    <value>This file is part of the observation, cut out on CADC's side: {0}. The details and notes here are the whole observation's.</value>
+  </data>
+  <data name="Marks_CmdCutOut" xml:space="preserve">
+    <value>Cut out…</value>
+  </data>
+  <data name="Marks_CmdCutOutNeedsObservation" xml:space="preserve">
+    <value>Open an archive observation from Research, with sky coordinates, to cut this region out of its file — on CADC's side, or from the copy on this computer.</value>
+  </data>
+  <data name="Search_DownloadingCutout" xml:space="preserve">
+    <value>Downloading a cutout of {0}…</value>
+  </data>
+  <data name="Cutout_Checking" xml:space="preserve">
+    <value>Checking whether CADC can cut this…</value>
+  </data>
+  <data name="Cutout_NoneForFile" xml:space="preserve">
+    <value>CADC cannot cut this file, and it is not on this computer — download it to cut it here.</value>
+  </data>
+  <data name="Cutout_NoneForObservation" xml:space="preserve">
+    <value>CADC cannot cut any of this observation's files, and none of them is on this computer.</value>
+  </data>
+  <data name="Clipboard_Copied" xml:space="preserve">
+    <value>Copied: {0}</value>
+  </data>
+  <data name="Clipboard_Failed" xml:space="preserve">
+    <value>The clipboard is in use by another application; try again.</value>
+  </data>
+  <data name="Search_CopyValue" xml:space="preserve">
+    <value>Copy value</value>
+  </data>
+  <data name="Search_CopyObservation" xml:space="preserve">
+    <value>Copy observation details</value>
+  </data>
+  <data name="Search_CopyRows" xml:space="preserve">
+    <value>Copy row (chosen rows, when several are)</value>
+  </data>
+  <data name="Search_RowsCopied" xml:space="preserve">
+    <value>{0} result rows, tab-separated</value>
+  </data>
+  <data name="Search_ObservationCopied" xml:space="preserve">
+    <value>observation details</value>
+  </data>
+  <data name="Research_CopyDetails" xml:space="preserve">
+    <value>Copy details</value>
+  </data>
+  <data name="Research_CopyDetailsTip" xml:space="preserve">
+    <value>Copy the observation's ID, position, instrument, filter, proposal and file as text</value>
+  </data>
+  <data name="Research_Original" xml:space="preserve">
+    <value>Original observation</value>
+  </data>
+  <data name="Research_OriginalHereTip" xml:space="preserve">
+    <value>Show the complete observation this was cut from — Research already has it</value>
+  </data>
+  <data name="Research_OriginalSearchTip" xml:space="preserve">
+    <value>Find the complete observation this was cut from in Search — Research does not have it yet</value>
+  </data>
+  <data name="Search_FindingObservation" xml:space="preserve">
+    <value>Searching for observation {0}</value>
+  </data>
+  <data name="Search_ObservationNotFound" xml:space="preserve">
+    <value>Observation {0} was not found. If it is proprietary, sign in and search again.</value>
+  </data>
+  <data name="Search_FindObservationUnknown" xml:space="preserve">
+    <value>This record does not say which observation it is, so it cannot be searched for.</value>
+  </data>
+  <data name="Search_FindObservationBusy" xml:space="preserve">
+    <value>A search is already running; try again once it has finished.</value>
+  </data>
+  <data name="RemoteCompute_CodeCopied" xml:space="preserve">
+    <value>the code</value>
+  </data>
+  <data name="Summary_PublisherId" xml:space="preserve">
+    <value>Publisher ID</value>
+  </data>
+  <data name="Summary_Position" xml:space="preserve">
+    <value>Position</value>
+  </data>
+  <data name="Summary_Proposal" xml:space="preserve">
+    <value>Proposal</value>
+  </data>
+  <data name="Summary_Released" xml:space="preserve">
+    <value>Released</value>
+  </data>
+  <data name="Summary_Cutout" xml:space="preserve">
+    <value>Cutout</value>
+  </data>
+  <data name="Summary_CutLocally" xml:space="preserve">
+    <value>cut on this computer</value>
+  </data>
+  <data name="Cutout_CheckNoExtensions" xml:space="preserve">
+    <value>This way of cutting cannot choose among the file's images; it keeps every image the region falls on.</value>
+  </data>
+  <data name="Cutout_CheckExtensionUnknown" xml:space="preserve">
+    <value>This file has no image {0}; it has {1}.</value>
+  </data>
+  <data name="Cutout_LocalOnNoChosenImage" xml:space="preserve">
+    <value>That region falls on none of the images chosen.</value>
+  </data>
+  <data name="Cutout_Extensions" xml:space="preserve">
+    <value>Images</value>
+  </data>
+  <data name="Cutout_ExtensionsHint" xml:space="preserve">
+    <value>Untick an image to leave it out. Ticked, an image is cut when the region falls on it.</value>
+  </data>
+  <data name="Cutout_ExtensionMissed" xml:space="preserve">
+    <value>[{0}] — the region is not on it</value>
+  </data>
+  <data name="Cutout_Companions" xml:space="preserve">
+    <value>Also cut</value>
+  </data>
+  <data name="Cutout_CompanionsHint" xml:space="preserve">
+    <value>The observation's other files beside this one, on the same pixels: each is cut with the same pixel box, into a file beside the cutout named by the same key.</value>
+  </data>
+  <data name="Cutout_EstimateCompanions" xml:space="preserve">
+    <value>Its companions: {0} more.</value>
+  </data>
+  <data name="Cutout_CheckNoCompanions" xml:space="preserve">
+    <value>None of the observation's other files can be cut with this one: a cut on this computer takes those beside the file, on the same pixels.</value>
+  </data>
+  <data name="Cutout_CheckCompanionUnknown" xml:space="preserve">
+    <value>{0} is not beside this file on this computer, so it cannot be cut with it.</value>
+  </data>
+  <data name="Cutout_CheckCompanionUnavailable" xml:space="preserve">
+    <value>{0} cannot be cut with this file: {1}</value>
+  </data>
+  <data name="Cutout_CompanionNoImage" xml:space="preserve">
+    <value>It has no image {0}, as the file cut has.</value>
+  </data>
+  <data name="Cutout_CompanionOtherGrid" xml:space="preserve">
+    <value>Its image {0} is not on the same pixels as the file cut, so the same box would not be the same sky.</value>
+  </data>
+  <data name="Cutout_NoneForFileLocal" xml:space="preserve">
+    <value>CADC cannot cut this file, and the copy on this computer cannot be cut: {0}</value>
+  </data>
+  <data name="Cutout_NoneForObservationLocal" xml:space="preserve">
+    <value>CADC cannot cut any of this observation's files, and the copy on this computer cannot be cut: {0}</value>
+  </data>
+  <data name="Cutout_ButtonTooltipLocal" xml:space="preserve">
+    <value>Cut out part of the copy of this file on this computer</value>
+  </data>
+  <data name="Cutout_ButtonTooltipBoth" xml:space="preserve">
+    <value>Cut out part of this file — on CADC's side, or from the copy on this computer</value>
+  </data>
+  <data name="Cutout_CutBy" xml:space="preserve">
+    <value>Cut by</value>
+  </data>
+  <data name="Cutout_CutBySoda" xml:space="preserve">
+    <value>CADC — download only this part</value>
+  </data>
+  <data name="Cutout_CutByLocal" xml:space="preserve">
+    <value>This computer — from the downloaded file</value>
+  </data>
+  <data name="Cutout_WayUnavailable" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Cutout_EditorNoteLocal" xml:space="preserve">
+    <value>Cut on this computer from the file already downloaded — at once, offline, as often as you like — its pixels copied exactly. It is kept in Research as a cutout of this observation — not the complete observation.</value>
+  </data>
+  <data name="Cutout_CutLocal" xml:space="preserve">
+    <value>Cut out</value>
+  </data>
+  <data name="Cutout_EstimateLocal" xml:space="preserve">
+    <value>{0}, cut from the {1} file on this computer.</value>
+  </data>
+  <data name="Cutout_LocalUnreadable" xml:space="preserve">
+    <value>The downloaded file cannot be read as FITS: {0}</value>
+  </data>
+  <data name="Cutout_LocalNoImage" xml:space="preserve">
+    <value>The downloaded file holds no image to cut.</value>
+  </data>
+  <data name="Cutout_LocalNoWcs" xml:space="preserve">
+    <value>The downloaded file's image has no sky coordinates, so a region on the sky cannot be placed on it.</value>
+  </data>
+  <data name="Cutout_LocalApproximateWcs" xml:space="preserve">
+    <value>The downloaded file's sky coordinates are only approximate — rebuilt from its RA and DEC keywords — too rough to cut by.</value>
+  </data>
+  <data name="Cutout_LocalNotRaDec" xml:space="preserve">
+    <value>The downloaded file's image is in {0} and {1}, not RA and Dec, so a region in RA and Dec cannot be placed on it.</value>
+  </data>
+  <data name="Cutout_LocalFk4" xml:space="preserve">
+    <value>The downloaded file's coordinates are B1950 (FK4); a cutout's region is ICRS, and the app does not convert between them.</value>
+  </data>
+  <data name="Cutout_LocalBadBitpix" xml:space="preserve">
+    <value>The downloaded file's pixels are stored in a way FITS does not define (BITPIX {0}).</value>
+  </data>
+  <data name="Cutout_LocalCompressed" xml:space="preserve">
+    <value>The downloaded file is tile-compressed in a way the app cannot read ({0}); funpack makes a plain .fits of it that can be cut.</value>
+  </data>
+  <data name="Cutout_LocalTruncated" xml:space="preserve">
+    <value>The downloaded file ends before its image does; it may not have finished downloading.</value>
+  </data>
+  <data name="Cutout_LocalOnNoImage" xml:space="preserve">
+    <value>That region falls on none of this file's images.</value>
+  </data>
+  <data name="Cutout_LocalSourceGone" xml:space="preserve">
+    <value>The file it is cut from is not on this computer any more. Download the observation's file, then try again.</value>
+  </data>
+  <data name="Cutout_LocalOverSource" xml:space="preserve">
+    <value>A cutout cannot be saved over the file it is cut from.</value>
+  </data>
+  <data name="Research_CutoutNoteLocal" xml:space="preserve">
+    <value>This file is part of the observation, cut on this computer from its downloaded file: {0}. The details and notes here are the whole observation's.</value>
+  </data>
+  <data name="Research_CutAgain" xml:space="preserve">
+    <value>Cut out again</value>
+  </data>
+  <data name="Research_RemoveFile" xml:space="preserve">
+    <value>Remove file</value>
+  </data>
+  <data name="Research_RemoveFileTip" xml:space="preserve">
+    <value>Delete the file from this computer; the observation stays in Research</value>
+  </data>
+  <data name="Research_RemoveFileTitle" xml:space="preserve">
+    <value>Remove the file from this computer?</value>
+  </data>
+  <data name="Research_RemoveFileBody" xml:space="preserve">
+    <value>{0} will be deleted from this computer. The observation stays in Research with its notes, and Download brings the file back.</value>
+  </data>
+  <data name="Research_RemoveFileFailed" xml:space="preserve">
+    <value>The file could not be removed</value>
+  </data>
+  <data name="ObsDetail_SaveToResearch" xml:space="preserve">
+    <value>Save to Research</value>
+  </data>
+  <data name="ObsDetail_SaveToResearchTip" xml:space="preserve">
+    <value>Keep this observation in Research without downloading its files</value>
+  </data>
+  <data name="ObsDetail_AlreadyInResearch" xml:space="preserve">
+    <value>This observation is already in Research</value>
+  </data>
+  <data name="ObsDetail_SaveToResearchLoading" xml:space="preserve">
+    <value>Available once the observation has loaded</value>
+  </data>
+  <data name="ObsDetail_SavedToResearch" xml:space="preserve">
+    <value>Saved to Research</value>
+  </data>
+  <data name="ObsDetail_SavedToResearchNote" xml:space="preserve">
+    <value>Kept without its file; download it from Research whenever you need it.</value>
+  </data>
+  <data name="Search_NarrowHint" xml:space="preserve">
+    <value>Right-click to narrow results to “{0}”</value>
   </data>
 </root>

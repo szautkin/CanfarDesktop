@@ -221,9 +221,7 @@ public sealed partial class LocalFileBrowserPanel : UserControl
     {
         if (sender is MenuFlyoutItem { DataContext: LocalFileNode node })
         {
-            var package = new DataPackage();
-            package.SetText(node.FullPath);
-            Clipboard.SetContent(package);
+            Helpers.ClipboardText.Copy(node.FullPath);
         }
     }
 

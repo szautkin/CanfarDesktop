@@ -30,7 +30,7 @@ public sealed class RemoveRecentSearchTool : JsonWriteTool<RemoveRecentSearchToo
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "remove_recent_search",
         "Propose removing one entry from the user's recent-search history. `index` is 0-based, newest " +
-        "first, matching list_recent_searches order. Queues for the user to apply (a destructive change).",
+        "first, matching list_recent_searches order.",
         """{"type":"object","properties":{"index":{"type":"integer","minimum":0}},"required":["index"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -64,8 +64,7 @@ public sealed class ClearRecentSearchesTool : JsonWriteTool<EmptyArgs>
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "clear_recent_searches",
-        "Propose clearing the user's entire recent-search history (the panel's Clear All button). Queues " +
-        "for the user to apply (a destructive change).",
+        "Propose clearing the user's entire recent-search history (the panel's Clear All button).",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)

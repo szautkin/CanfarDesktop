@@ -14,6 +14,12 @@ public sealed partial class FitsTabHost : UserControl
 {
     public FitsTabHostViewModel ViewModel { get; }
     public event Action<double, double>? SearchAtPositionRequested;
+
+    /// <summary>A mark's region to cut out of its observation's file in the archive, from any tab.</summary>
+    public event Action<string, string?, Models.Cutouts.SkyRegion>? CutoutRequested;
+
+    private void OnPageCutoutRequested(string publisherId, string? artifactId, Models.Cutouts.SkyRegion region)
+        => CutoutRequested?.Invoke(publisherId, artifactId, region);
     public event Action? AllTabsClosed;
 
     private FitsViewerPage? _activePage;
@@ -80,6 +86,19 @@ public sealed partial class FitsTabHost : UserControl
         UpdateEmptyState();
 
         await page.OpenFileAsync(filePath);
+
+        // Refused — too large for the memory free, not FITS, cut short: no tab is left standing for an
+        // image that is not there (QA O2), and the reason stays in sight rather than going with it.
+        if (page.ViewModel.LoadError is { } error)
+        {
+            if (TabFor(tabItem) is { } tab) CloseTabItem(tab, leaveWhenEmpty: false);
+            OpenFailedBar.Title = Loc.F("Fits_OpenFailedTitle", System.IO.Path.GetFileName(filePath));
+            OpenFailedBar.Message = error;
+            OpenFailedBar.IsOpen = true;
+            return page;
+        }
+
+        OpenFailedBar.IsOpen = false;
         SyncToolbarToActiveTab();
         UpdateWcsSyncWarning(); // WCS is loaded now — re-check if opening this file made sync approximate
 
@@ -143,6 +162,7 @@ public sealed partial class FitsTabHost : UserControl
         // The mode turns itself off after one region, and the button has to follow it rather than
         // keep claiming to be on.
         page.SelectingAreaChanged += OnPageSelectingAreaChanged;
+        page.CutoutRequested += OnPageCutoutRequested;
 
         var tab = new TabViewItem
         {
@@ -257,7 +277,14 @@ public sealed partial class FitsTabHost : UserControl
         return true;
     }
 
-    private void CloseTabItem(TabViewItem tab)
+    private TabViewItem? TabFor(FitsViewerTabItem tabItem)
+        => TabViewControl.TabItems.OfType<TabViewItem>().FirstOrDefault(t => ReferenceEquals(t.Tag, tabItem));
+
+    /// <param name="leaveWhenEmpty">
+    /// Whether closing the last tab leaves the viewer, as closing it by hand does. Not for a tab closed
+    /// because its file would not open: the viewer stays, to say why.
+    /// </param>
+    private void CloseTabItem(TabViewItem tab, bool leaveWhenEmpty = true)
     {
         if (tab.Tag is not FitsViewerTabItem tabItem) return;
 
@@ -270,6 +297,7 @@ public sealed partial class FitsTabHost : UserControl
             {
                 page.SearchAtPositionRequested -= handlers.SearchHandler;
                 page.SelectingAreaChanged -= OnPageSelectingAreaChanged;
+                page.CutoutRequested -= OnPageCutoutRequested;
                 page.ZoomChanged -= handlers.ZoomHandler;
                 page.CleanupForClose();
             }
@@ -286,7 +314,7 @@ public sealed partial class FitsTabHost : UserControl
         if (TabViewControl.TabItems.Count == 0)
         {
             _activePage = null;
-            AllTabsClosed?.Invoke();
+            if (leaveWhenEmpty) AllTabsClosed?.Invoke();
         }
         UpdateEmptyState();
     }
@@ -535,12 +563,12 @@ public sealed partial class FitsTabHost : UserControl
 
         double pct = 0;
         if (ZoomPresetCombo.SelectedItem is ComboBoxItem { Tag: string tag })
-            double.TryParse(tag, out pct);
+            NumberInput.TryParseWire(tag, out pct); // the presets' own tags: invariant
         else if (!string.IsNullOrEmpty(ZoomPresetCombo.Text))
         {
             // Handle manual text entry: "300" or "300%"
             var text = ZoomPresetCombo.Text.Trim().TrimEnd('%');
-            double.TryParse(text, out pct);
+            NumberInput.TryParseUser(text, out pct); // as typed: a point or a comma, whatever the culture
         }
 
         if (pct > 0)
@@ -557,7 +585,7 @@ public sealed partial class FitsTabHost : UserControl
     {
         if (_suppressToolbarSync || _activePage is null) return;
         var text = args.Text?.Trim().TrimEnd('%') ?? "";
-        if (double.TryParse(text, out var pct) && pct > 0)
+        if (NumberInput.TryParseUser(text, out var pct) && pct > 0)
         {
             args.Handled = true;
             _activePage.SetZoomLevel(pct / 100.0);
@@ -949,8 +977,11 @@ public sealed partial class FitsTabHost : UserControl
     private void OnGoToManual(object s, RoutedEventArgs e)
     {
         if (_activePage is null) return;
-        if (!double.TryParse(ManualRaBox.Text.Trim(), out var ra) ||
-            !double.TryParse(ManualDecBox.Text.Trim(), out var dec))
+        // As a person types a position anywhere else in the app: degrees with a point or a comma, or
+        // sexagesimal. double.TryParse read it by the machine's culture, and on a French Windows "10.68"
+        // was not a number.
+        if (!Sexagesimal.TryParseAngle(ManualRaBox.Text, isRa: true, out var ra) ||
+            !Sexagesimal.TryParseAngle(ManualDecBox.Text, isRa: false, out var dec))
         {
             if (ViewModel.ActiveViewModel is not null)
                 ViewModel.ActiveViewModel.StatusMessage = Loc.T("Fits_EnterValidCoords");
@@ -1195,10 +1226,8 @@ public sealed partial class FitsTabHost : UserControl
         if (vm?.ImageData is null) return new FitsGotoOutcome(false, ra, dec, "no FITS image is loaded");
         if (vm.ImageData.Wcs is not { IsValid: true }) return new FitsGotoOutcome(false, ra, dec, "the loaded FITS has no valid WCS");
         if (_activePage is null) return new FitsGotoOutcome(false, ra, dec, "no active FITS tab");
-        if (vm.GoToCoordinate(ra, dec) is null)
-            return new FitsGotoOutcome(false, ra, dec, "coordinate is outside the image / WCS domain");
 
-        _activePage.GoToWorldCoordinate(ra, dec); // centers viewport + places the crosshair
-        return new FitsGotoOutcome(true, ra, dec, null);
+        var target = _activePage.GoToWorldCoordinate(ra, dec); // centres the viewport + places the crosshair
+        return new FitsGotoOutcome(target.OnImage, ra, dec, target.Why);
     }
 }

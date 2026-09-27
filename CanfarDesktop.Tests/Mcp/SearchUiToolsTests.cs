@@ -345,8 +345,41 @@ public class SearchUiToolsTests
         Assert.Empty(SearchToolArgs.DidYouMean("anything", []));
     }
 
+    /// <summary>
+    /// The ADQL box is a WinUI TextBox, which separates lines with a bare carriage return. The query
+    /// a run reported came back to an agent as one line of \r's; it is reported with \n.
+    /// </summary>
+    [Fact]
+    public void ARunReportsItsQueryWithPlainLineBreaks()
+    {
+        var outcome = new SearchRunOutcome(true, "SELECT TOP 5\rcollection,\r\nobservationID\nFROM caom2.Observation", 0, false, 5, 1);
+
+        Assert.Equal("SELECT TOP 5\ncollection,\nobservationID\nFROM caom2.Observation", outcome.Adql);
+    }
+
     // ── Getting back to a known state ───────────────────────────────────────────────────────────
 
+    // ── Clearing the ADQL editor (QA D11) ─────────────────────────────────────
 
+    [Fact]
+    public async Task SetAdqlQuery_WithNothing_ClearsTheEditor()
+    {
+        string? put = null;
+        var tool = new SetAdqlQueryTool((a, execute) => { put = a; return Task.FromResult(new SearchAdqlOutcome(true, a, execute)); });
 
+        var result = await tool.InvokeAsync(Args("""{"adql":"  "}"""), Ctx(), default);
+
+        Assert.IsType<DataResult>(result);
+        Assert.Equal(string.Empty, put);
+    }
+
+    [Fact]
+    public async Task SetAdqlQuery_WithNothing_IsNothingToExecute()
+    {
+        var tool = new SetAdqlQueryTool((a, e) => Task.FromResult(new SearchAdqlOutcome(true, a, e)));
+
+        var failure = Failure(await tool.InvokeAsync(Args("""{"adql":"","execute":true}"""), Ctx(), default));
+
+        Assert.Contains("nothing to execute", failure);
+    }
 }

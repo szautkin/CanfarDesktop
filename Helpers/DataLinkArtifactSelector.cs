@@ -29,6 +29,17 @@ public static class DataLinkArtifactSelector
     }
 
     /// <summary>
+    /// Which archive file a download URL fetches, when DataLink says: the file of that name its cutout
+    /// service describes, by the artifact id SODA knows it by. Null for a file CADC cannot cut, whose
+    /// DataLink row carries no id.
+    /// </summary>
+    public static string? ArtifactIdOf(DataLinkResult links, string url)
+    {
+        var name = new DataLinkFile { Url = url }.Filename;
+        return links.Cutouts.FirstOrDefault(c => string.Equals(c.FileName, name, StringComparison.OrdinalIgnoreCase))?.ArtifactId;
+    }
+
+    /// <summary>
     /// Which of several <c>#this</c> rows is the science product.
     ///
     /// A <c>#this</c> row marks a science product and most collections publish exactly one, so taking

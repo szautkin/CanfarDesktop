@@ -31,13 +31,18 @@ public enum ComputeState
 public static class ComputeStatus
 {
     /// <summary>
-    /// The state for a compute session's platform status. Null or empty means there is no session.
-    /// A finished session (Succeeded, Completed) is stopped: it holds nothing and runs nothing.
+    /// The state for a compute session's platform status. Null or empty means there is no session:
+    /// stopped where an image is set, not set up where none is. A finished session (Succeeded,
+    /// Completed) counts as none — it holds nothing and runs nothing.
+    ///
+    /// <para>A live session is what it is either way. It used to read "not set up" wherever no image
+    /// was set, so after a reinstall a session still running from before could be neither seen nor
+    /// stopped from the Remote Compute screen.</para>
     /// </summary>
     public static ComputeState From(bool configured, string? sessionStatus)
     {
-        if (!configured) return ComputeState.NotSetUp;
-        if (string.IsNullOrWhiteSpace(sessionStatus)) return ComputeState.Stopped;
+        var none = configured ? ComputeState.Stopped : ComputeState.NotSetUp;
+        if (string.IsNullOrWhiteSpace(sessionStatus)) return none;
 
         return sessionStatus.Trim().ToLowerInvariant() switch
         {
@@ -45,7 +50,7 @@ public static class ComputeStatus
             "running" => ComputeState.Running,
             "terminating" => ComputeState.Stopping,
             "failed" or "error" => ComputeState.Failed,
-            _ => ComputeState.Stopped,
+            _ => none,
         };
     }
 
@@ -56,15 +61,23 @@ public static class ComputeStatus
         return char.ToLowerInvariant(name[0]) + name[1..];
     }
 
-    /// <summary>Start is offered when there is no session to reuse — a failed one is replaced.</summary>
-    public static bool CanStart(ComputeState state) => state is ComputeState.Stopped or ComputeState.Failed;
+    /// <summary>
+    /// Start is offered when there is no session to reuse — a failed one is replaced — and an image is
+    /// set: launching needs the one the person chose, and choosing it is their consent.
+    /// </summary>
+    public static bool CanStart(ComputeState state, bool configured)
+        => configured && state is ComputeState.Stopped or ComputeState.Failed;
 
-    /// <summary>Stop is offered whenever a session exists and is not already going away.</summary>
+    /// <summary>
+    /// Stop is offered whenever a session exists and is not already going away — set up or not: a
+    /// session nobody can stop is the thing to avoid.
+    /// </summary>
     public static bool CanStop(ComputeState state)
         => state is ComputeState.Starting or ComputeState.Running or ComputeState.Failed;
 
     /// <summary>Code can be sent whenever the compute is set up: a stopped session is started for it.</summary>
-    public static bool CanRun(ComputeState state) => state is not ComputeState.NotSetUp and not ComputeState.Stopping;
+    public static bool CanRun(ComputeState state, bool configured)
+        => configured && state is not ComputeState.NotSetUp and not ComputeState.Stopping;
 
     /// <summary>
     /// How long the session has been up, from the platform's start time. Null when the time does not

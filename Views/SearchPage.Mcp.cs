@@ -388,6 +388,10 @@ public sealed partial class SearchPage : ISearchUiBridge
         sw.Stop();
 
         var vm = ViewModel;
+        if (vm.SearchCancelled)
+            return new SearchRunOutcome(false, vm.AdqlText, 0, false, vm.MaxRecords, sw.Elapsed.TotalMilliseconds,
+                null, "the search was cancelled in the app");
+
         if (vm.HasError)
             return new SearchRunOutcome(false, vm.AdqlText, 0, false, vm.MaxRecords, sw.Elapsed.TotalMilliseconds,
                 vm.ErrorMessage, "the query failed");
@@ -427,11 +431,10 @@ public sealed partial class SearchPage : ISearchUiBridge
                 return SearchAdqlOutcome.Unavailable("a search is already running");
 
             ViewModel.AdqlText = adql;
-            MainPivot.SelectedIndex = 2;
-            RecheckAdql();
+            ShowAdqlEditor();
 
             if (!execute)
-                return new SearchAdqlOutcome(true, adql, false);
+                return new SearchAdqlOutcome(true, adql, false, null, adql.Length == 0 ? "the ADQL editor is cleared" : null);
 
             // Applied but not run: the user can see and fix it, which is the point of putting it in the
             // editor rather than running it headlessly.
@@ -458,8 +461,7 @@ public sealed partial class SearchPage : ISearchUiBridge
                 return SearchRunOutcome.Unavailable("a search is already running");
 
             ViewModel.LoadSavedQuery(query);
-            MainPivot.SelectedIndex = 2;
-            RecheckAdql();
+            ShowAdqlEditor();
 
             // A saved query can go stale: it was written against the schema of the day it was saved.
             if (RefuseIfInvalid(ViewModel.AdqlText) is { } refused) return refused;
@@ -806,10 +808,25 @@ public sealed partial class SearchPage : ISearchUiBridge
                         : $"no recent search matching '{match}' — match on the summary or the exact ADQL");
 
             ViewModel.LoadFromRecentSearch(found);
+            if (found.WrittenInEditor)
+            {
+                ShowAdqlEditor();
+                return new SearchFormApplied(true, Array.Empty<string>(), Array.Empty<string>(), known, CaptureForm(),
+                    "it was written in the ADQL editor, so it is back in the editor and the form is as it was; execute_adql_query runs it");
+            }
             SyncDataTrainToViewModel();
 
             return new SearchFormApplied(true, known, Array.Empty<string>(), known, CaptureForm());
         }, SearchFormApplied.Unavailable("the Search page could not be reached"));
+
+    /// <summary>The Cancel button beside the spinner: stop the search running now, keeping what was shown before it.</summary>
+    Task<SearchCancelOutcome> ISearchUiBridge.CancelSearchAsync()
+        => UiDispatch.OnUi(DispatcherQueue, () =>
+        {
+            if (!ViewModel.IsSearching) return new SearchCancelOutcome(false, "no search is running");
+            ViewModel.CancelSearch();
+            return new SearchCancelOutcome(true, "stopped; the results shown before it stay");
+        }, SearchCancelOutcome.Unavailable("the Search page could not be reached"));
 
     /// <summary>Empty the recent-searches rail. Saved queries are a different list and are untouched.</summary>
     Task<SearchRecentRemoved> ISearchUiBridge.ClearRecentSearchesAsync()

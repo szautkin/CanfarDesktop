@@ -35,4 +35,23 @@ public class RegistryImageResolverTests
     public void TrimsHostSlashAndRepoSlashes()
         => Assert.Equal("h/r/img",
             RegistryImageResolver.Resolve("img", "h/", "/r/"));
+
+    [Theory]
+    [InlineData("https:// images.canfar.net/private-test/verbinal-execution:0.0.2", "images.canfar.net/private-test/verbinal-execution:0.0.2")]
+    [InlineData("  images.canfar.net/skaha/astroml:latest \n", "images.canfar.net/skaha/astroml:latest")]
+    [InlineData("http://images.canfar.net", "images.canfar.net")]
+    [InlineData("verbinal-compute:1.0", "verbinal-compute:1.0")]
+    [InlineData(null, "")]
+    public void Normalize_KeepsOnlyWhatAReferenceCanHave(string? typed, string reference)
+        => Assert.Equal(reference, RegistryImageResolver.Normalize(typed));
+
+    [Fact]
+    public void Resolve_ReadsAPastedReference_AsTheReference()
+    {
+        // QA D6: kept and reported as typed, a URI that was not one.
+        Assert.Equal("images.canfar.net/private-test/verbinal-execution:0.0.2",
+            RegistryImageResolver.Resolve("https:// images.canfar.net/private-test/verbinal-execution:0.0.2", "images.canfar.net", "skaha"));
+        Assert.Equal("images.canfar.net/skaha/verbinal-compute:1.0",
+            RegistryImageResolver.Resolve("verbinal-compute:1.0", "https://images.canfar.net/", "skaha"));
+    }
 }

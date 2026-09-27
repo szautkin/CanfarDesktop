@@ -10,10 +10,8 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
     </UserControl.Resources>
 
-    <Border Padding="16" CornerRadius="8"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-            BorderThickness="1">
+    <!-- Shown in the Portal's launch dialog (LaunchFormDialog), whose title is its header. -->
+    <Border>
         <Grid RowSpacing="12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -21,9 +19,6 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-
-            <!-- Header -->
-            <TextBlock Grid.Row="0" x:Uid="Launch_FormHeader" Text="Launch Session" Style="{StaticResource SubtitleTextBlockStyle}" />
 
             <!-- Loading -->
             <ProgressBar Grid.Row="1" x:Name="LoadingBar" IsIndeterminate="True" Visibility="Collapsed" />

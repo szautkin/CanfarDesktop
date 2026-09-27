@@ -61,7 +61,9 @@ public sealed class ListRecentSearchesTool : JsonReadTool<ListRecentSearchesTool
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "list_recent_searches",
-        "List the user's recent searches (summary, ADQL, result count, when run). Newest first; optional limit.",
+        "List the user's recent searches (summary, ADQL, result count, when run), from the form and from the " +
+        "ADQL editor alike. Newest first; optional limit. `fromEditor` marks a query written in the editor: " +
+        "load_recent_search puts it back in the editor, not the form.",
         """{"type":"object","properties":{"limit":{"type":"integer","minimum":1,"description":"Max entries to return"}},"additionalProperties":false}""");
 
     protected override Task<Output> HandleAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -70,7 +72,7 @@ public sealed class ListRecentSearchesTool : JsonReadTool<ListRecentSearchesTool
         if (args.Limit is > 0)
             recent = recent.Take(args.Limit.Value);
 
-        var items = recent.Select(s => new SearchView(s.Summary, s.Adql, s.ResultCount, s.SearchedAt)).ToList();
+        var items = recent.Select(s => new SearchView(s.Summary, s.Adql, s.ResultCount, s.SearchedAt, s.WrittenInEditor)).ToList();
         return Task.FromResult(new Output(items.Count, items));
     }
 
@@ -79,6 +81,6 @@ public sealed class ListRecentSearchesTool : JsonReadTool<ListRecentSearchesTool
         public int? Limit { get; init; }
     }
 
-    public sealed record SearchView(string Summary, string Adql, int ResultCount, DateTime SearchedAt);
+    public sealed record SearchView(string Summary, string Adql, int ResultCount, DateTime SearchedAt, bool FromEditor);
     public sealed record Output(int Count, IReadOnlyList<SearchView> Searches);
 }

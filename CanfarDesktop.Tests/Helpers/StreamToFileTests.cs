@@ -118,6 +118,114 @@ public class StreamToFileTests : IDisposable
         Assert.Equal("before", File.ReadAllText(path));
     }
 
+    // ── Stalls ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A transfer that goes quiet fails, and fails as a stall. The observation download relied on a
+    /// "120 s" that only covered the response starting, so a dead body held the agent's apply gate —
+    /// and every other write behind it — for as long as the connection stayed open.
+    /// </summary>
+    [Fact]
+    public async Task AStalledTransfer_FailsAsATimeout_AndLeavesTheExistingFileIntact()
+    {
+        var path = Path_("stalled.bin");
+        File.WriteAllText(path, "before");
+
+        var ex = await Assert.ThrowsAsync<TimeoutException>(() =>
+            StreamToFile.WriteAsync(new StallingStream(chunks: 2), path, stallTimeout: TimeSpan.FromMilliseconds(200)));
+
+        Assert.Contains("stalled", ex.Message);
+        Assert.Equal("before", File.ReadAllText(path));
+    }
+
+    /// <summary>
+    /// The limit is on SILENCE, not on the transfer: one that keeps arriving runs as long as it needs.
+    /// A total would have to choose between cutting off a 1.6 GB tile and never catching a dead one.
+    /// </summary>
+    [Fact]
+    public async Task ATransferThatKeepsArriving_OutlastsTheStallTimeout()
+    {
+        var path = Path_("slow-but-alive.bin");
+
+        // Twenty chunks 60 ms apart: 1.2 s in all, past the 1 s limit, and no gap within a sixteenth of
+        // it — margin enough that a busy test run's thread pool cannot turn a gap into a stall.
+        var written = await StreamToFile.WriteAsync(
+            new StallingStream(chunks: 20, gap: TimeSpan.FromMilliseconds(60), thenEnd: true), path,
+            stallTimeout: TimeSpan.FromSeconds(1));
+
+        Assert.Equal(20 * StallingStream.ChunkSize, written);
+    }
+
+    /// <summary>
+    /// The clock runs only while waiting for bytes. Writing them out can be slow — a network share, a
+    /// busy USB disk — and the time that takes is not silence on the wire: it used to be counted, and
+    /// the next read failed at once as a stall.
+    /// </summary>
+    [Fact]
+    public async Task ASlowWriteAfterARead_IsNotAStall()
+    {
+        var path = Path_("slow-disk.bin");
+
+        // Every chunk arrives at once; handling each one (here, its progress report) takes longer than the limit.
+        var written = await StreamToFile.WriteAsync(
+            new StallingStream(chunks: 3, thenEnd: true), path,
+            progress: new SlowProgress(TimeSpan.FromMilliseconds(300)), stallTimeout: TimeSpan.FromMilliseconds(100));
+
+        Assert.Equal(3 * StallingStream.ChunkSize, written);
+    }
+
+    private sealed class SlowProgress(TimeSpan each) : IProgress<(long Downloaded, long? Total)>
+    {
+        public void Report((long Downloaded, long? Total) value) => Thread.Sleep(each);
+    }
+
+    /// <summary>The caller's cancel is still a cancel, not a stall.</summary>
+    [Fact]
+    public async Task CancellingDuringAStall_IsACancel()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            StreamToFile.WriteAsync(new StallingStream(chunks: 1), Path_("cancel.bin"),
+                ct: cts.Token, stallTimeout: TimeSpan.FromSeconds(30)));
+    }
+
+    /// <summary>
+    /// Hands out <c>chunks</c> chunks, <c>gap</c> apart, then either ends or goes silent until
+    /// cancelled — a connection that stops sending without closing.
+    /// </summary>
+    private sealed class StallingStream(int chunks, TimeSpan? gap = null, bool thenEnd = false) : Stream
+    {
+        public const int ChunkSize = 1024;
+        private int _sent;
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+        {
+            ct.ThrowIfCancellationRequested(); // as a network stream does: a read asked with a cancelled token is refused at once
+            if (_sent >= chunks)
+            {
+                if (thenEnd) return 0;
+                await Task.Delay(Timeout.Infinite, ct);
+            }
+            if (gap is { } wait) await Task.Delay(wait, ct);
+            _sent++;
+            var n = Math.Min(ChunkSize, buffer.Length);
+            buffer.Span[..n].Fill((byte)'s');
+            return n;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => 0; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     // ── The caller's own policy ──────────────────────────────────────────────
 
     /// <summary>

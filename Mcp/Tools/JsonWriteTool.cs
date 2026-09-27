@@ -17,6 +17,7 @@ public abstract class JsonWriteTool<TArgs> : IMcpTool where TArgs : new()
     public abstract McpVerbClass VerbClass { get; }
     public bool AgentSafe => true;
     public abstract ToolDescriptor Descriptor { get; }
+    public bool Proposes => true;
 
     protected virtual TimeSpan Timeout => TimeSpan.FromSeconds(60);
 

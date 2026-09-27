@@ -69,8 +69,9 @@ public sealed class SearchToolsTool : JsonReadTool<SearchToolsTool.Args, SearchT
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "search_tools",
-        "Find a tool by what it DOES, when you do not know which area it lives in. Matches the query " +
-        "against tool names and descriptions and reports each hit with its area, so the next step is " +
+        "Find a tool by what it DOES, when you do not know which area it lives in. Matches the words of " +
+        "the query — most of them must appear — against tool names and descriptions, best matches first, " +
+        "and reports each hit with its area, so the next step is " +
         "either calling it or describe_app on the area around it. Use list_apps instead when you want " +
         "the shape of the whole app rather than one capability.",
         """
@@ -87,20 +88,27 @@ public sealed class SearchToolsTool : JsonReadTool<SearchToolsTool.Args, SearchT
 
         var app = (args.App ?? string.Empty).Trim();
 
+        // The query is its words. Matched as one phrase, "cube spectrum" found nothing although
+        // probe_cube_spectrum carries both — and agents write several words. Most of them must
+        // appear (all of one or two, two of three, three of four…), so one shared word is not a hit.
+        var words = Words(query);
+        var needed = words.Count - words.Count / 3;
+
         var matches = _tools()
             .Select(t => new
             {
                 Tool = t,
                 Category = AiGuideCatalog.CategoryForTool(t.Name),
+                Found = words.Count(w => t.Name.Contains(w, StringComparison.OrdinalIgnoreCase)
+                                         || t.Description.Contains(w, StringComparison.OrdinalIgnoreCase)),
                 // A name match beats a description match: someone typing "annotate" wants annotate_fits
-                // before it wants every tool whose prose happens to mention annotations.
-                Rank = t.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ? 0
-                     : t.Description.Contains(query, StringComparison.OrdinalIgnoreCase) ? 1
-                     : 2,
+                // before every tool whose prose happens to mention annotations.
+                InName = words.Count(w => t.Name.Contains(w, StringComparison.OrdinalIgnoreCase)),
             })
-            .Where(x => x.Rank < 2)
+            .Where(x => x.Found >= needed)
             .Where(x => app.Length == 0 || string.Equals(x.Category.Id, app, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(x => x.Rank)
+            .OrderByDescending(x => x.Found)
+            .ThenByDescending(x => x.InName)
             .ThenBy(x => x.Tool.Name, StringComparer.Ordinal)
             .ToList();
 
@@ -113,6 +121,29 @@ public sealed class SearchToolsTool : JsonReadTool<SearchToolsTool.Args, SearchT
             matches.Count == 0
                 ? "nothing matched — try list_apps for the areas, or a plainer word"
                 : matches.Count > MaxMatches ? $"showing the first {MaxMatches}" : null));
+    }
+
+    /// <summary>Letters, digits and underscores — so a tool's own name, run_code, is one word.</summary>
+    private static readonly System.Text.RegularExpressions.Regex WordPattern = new(@"[\p{L}\p{N}_]+");
+
+    /// <summary>Words that say nothing about what a tool does.</summary>
+    private static readonly HashSet<string> Filler = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "a", "an", "the", "of", "on", "in", "at", "to", "for", "and", "or", "with", "by", "from", "into",
+        "is", "are", "be", "it", "its", "my", "me", "how", "do", "can", "what", "this", "that", "some", "please",
+    };
+
+    /// <summary>
+    /// The words of a query that say what is wanted. A query of nothing but filler is taken as written,
+    /// so "a" still finds what "a" finds.
+    /// </summary>
+    private static List<string> Words(string query)
+    {
+        var words = WordPattern.Matches(query).Select(m => m.Value)
+            .Where(w => w.Length > 1 && !Filler.Contains(w))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return words.Count > 0 ? words : [query];
     }
 
     /// <summary>

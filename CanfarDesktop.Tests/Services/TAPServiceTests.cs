@@ -1,6 +1,7 @@
 using System.Reflection;
 using Xunit;
 using CanfarDesktop.Models;
+using CanfarDesktop.Helpers;
 using CanfarDesktop.Services;
 
 namespace CanfarDesktop.Tests.Services;
@@ -140,5 +141,63 @@ public class TAPServiceTests
         Assert.Equal("Optical", rows[0].Band);
         Assert.Equal("CFHT", rows[0].Collection);
         Assert.Equal("SCI", rows[0].ObservationType);
+    }
+
+    // ── Cancelling (QA D7) ────────────────────────────────────────────────────
+
+    [Fact]
+    public void ParseCsv_StopsWhenCancelled()
+    {
+        var csv = "a,b\n" + string.Concat(Enumerable.Repeat("1,2\n", 5000));
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+
+        Assert.ThrowsAny<OperationCanceledException>(() => TAPService.ParseCsv(csv, "q", cancelled.Token));
+        Assert.Equal(5000, TAPService.ParseCsv(csv, "q").Rows.Count); // and without, reads it all
+    }
+
+    /// <summary>A reply that never ends, a row at a time, as a TAP service streams a long result.</summary>
+    private sealed class EndlessReply : Stream
+    {
+        private readonly byte[] _row = "1,2\n"u8.ToArray();
+        private bool _headerSent;
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(10, cancellationToken);
+            var chunk = _headerSent ? _row : "a,b\n"u8.ToArray();
+            _headerSent = true;
+            chunk.CopyTo(buffer);
+            return chunk.Length;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    private sealed class Replying(Stream body) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StreamContent(body) });
+    }
+
+    [Fact]
+    public async Task ExecuteQuery_StopsPromptly_WhileTheReplyIsStillArriving()
+    {
+        var tap = new TAPService(new HttpClient(new Replying(new EndlessReply())), new ApiEndpoints());
+        using var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => tap.ExecuteQueryAsync("SELECT 1", 10, cancel.Token));
+
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(3), $"took {clock.Elapsed}");
     }
 }

@@ -29,10 +29,6 @@ public static class FitsSniff
     private const int CardSize = 80;
     private const int MaxHeaderBlocks = 64; // defensive cap per HDU header
 
-    // FITS WCS Paper III spectral algorithm codes (CTYPE3 prefix). CGPS uses "VELO-LSR".
-    private static readonly string[] SpectralCodes =
-        { "FREQ", "ENER", "WAVN", "VRAD", "WAVE", "VOPT", "ZOPT", "AWAV", "VELO", "BETA", "FELO", "VELOCITY" };
-
     /// <summary>
     /// Inspect a file's shape (content-based — a mis-served download can put FITS bytes in a ".png",
     /// so magic-check first). Distinguishes a spectral cube (recommend Cube Viewer) from a 2D image
@@ -87,14 +83,8 @@ public static class FitsSniff
     /// </summary>
     public static FitsKind ClassifyFile(string path) => Inspect(path).Kind;
 
-    private static bool IsSpectralAxis(string? ctype3)
-    {
-        if (string.IsNullOrWhiteSpace(ctype3)) return false;
-        var code = ctype3.Trim();
-        foreach (var c in SpectralCodes)
-            if (code.StartsWith(c, StringComparison.OrdinalIgnoreCase)) return true;
-        return false;
-    }
+    /// <summary>A spectral CTYPE3 — FITS WCS Paper III's codes, and the AIPS ones CGPS still writes ("VELO-LSR").</summary>
+    private static bool IsSpectralAxis(string? ctype3) => Models.Fits.SpectralAxis.IsSpectralType(ctype3);
 
     public static bool IsLikelyCube(string path)
     {

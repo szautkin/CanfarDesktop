@@ -47,6 +47,20 @@ public class CatalogJobToolTests
     }
 
     [Fact]
+    public async Task ListSessionImages_FiltersByProject_AsTheImagesCardDoes()
+    {
+        var images = SampleImages();
+        images.Add(new RawImage { Id = "images.canfar.net/uvickbos/pipeline:3", Types = ["notebook", "headless"] });
+        var tool = new ListSessionImagesTool(_ => Task.FromResult(images));
+
+        var data = Data(await tool.InvokeAsync(JsonValue.Parse("""{"type":"notebook","project":"uvickbos"}"""), Ctx, default));
+
+        var only = (JsonObject)Assert.Single(((JsonArray)data["images"]!).Items);
+        Assert.Equal("images.canfar.net/uvickbos/pipeline:3", ((JsonString)only["id"]!).Value);
+        Assert.Equal("uvickbos", ((JsonString)only["project"]!).Value);
+    }
+
+    [Fact]
     public async Task ListRecentLaunches_ReturnsFieldsMostRecentFirst()
     {
         var launches = new List<RecentLaunch>

@@ -164,9 +164,12 @@ public sealed class McpServerService
         var guide = _aiGuide?.Invoke() ?? AiGuideSnapshot.Empty;
         var tools = new List<ToolDefinitionWire>(_router.ExternalManifest.Count + guide.Guides.Count);
 
-        // Built-in tools — substitute the user's description override when present.
+        // Built-in tools — substitute the user's description override when present, still ending with
+        // when the tool's changes apply.
         foreach (var d in _router.ExternalManifest)
-            tools.Add(new ToolDefinitionWire(d.Name, guide.DescriptionForTool(d.Name, d.Description), d.InputSchema));
+            tools.Add(new ToolDefinitionWire(d.Name,
+                guide.Overrides.TryGetValue(d.Name, out var own) ? _router.Advertise(d.Name, own) : d.Description,
+                d.InputSchema));
 
         // Append the user's read-only guide tools (no schema; calling one returns its stored text).
         // Defensive: never emit a guide whose name collides with a built-in — that would put a duplicate

@@ -95,7 +95,7 @@ public sealed class SaveWorkflowTool : JsonWriteTool<SaveWorkflowTool.Args>
         "into a reusable protocol). Format: `# Title`, `> description`, `Tags: a, b`, then steps as " +
         "`- [ ] **Step title** — what to do` with optional indented `Tool: name1, name2`, `View: search`, " +
         "`Note: hint` lines. location `local` (default; progress-trackable) or `vospace` " +
-        "(publishes to vos:<user>/workflows/, shareable). Auto-applies under the user's auto-apply setting.",
+        "(publishes to vos:<user>/workflows/, shareable).",
         """{"type":"object","properties":{"name":{"type":"string","minLength":1},"text":{"type":"string","minLength":1,"description":"Full .workflow.md content"},"location":{"type":"string","enum":["local","vospace"],"description":"Default local"}},"required":["name","text"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -126,7 +126,7 @@ public sealed class UpdateWorkflowTool : JsonWriteTool<UpdateWorkflowTool.Args>
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "update_workflow",
         "Replace the full text of a LOCAL workflow (refine a protocol). Built-in templates are " +
-        "read-only — use_workflow them first. Auto-applies under the user's auto-apply setting.",
+        "read-only — use_workflow them first.",
         """{"type":"object","properties":{"id":{"type":"string","description":"local:… id"},"text":{"type":"string","minLength":1}},"required":["id","text"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -151,7 +151,7 @@ public sealed class SetWorkflowStepTool : JsonWriteTool<SetWorkflowStepTool.Args
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "set_workflow_step",
         "Mark a step of a LOCAL workflow done (or not done) by its 0-based index — call this after " +
-        "completing each step so the user sees live progress. Auto-applies under the user's auto-apply setting.",
+        "completing each step so the user sees live progress.",
         """{"type":"object","properties":{"id":{"type":"string","description":"local:… id"},"index":{"type":"integer","minimum":0},"done":{"type":"boolean","description":"Default true"}},"required":["id","index"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -177,8 +177,7 @@ public sealed class UseWorkflowTool : JsonWriteTool<UseWorkflowTool.Args>
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "use_workflow",
         "Copy a built-in template (or another workflow) into a LOCAL working copy that can track " +
-        "step progress. Optionally name the copy after the concrete target (e.g. \"M31 run\"). " +
-        "Auto-applies under the user's auto-apply setting.",
+        "step progress. Optionally name the copy after the concrete target (e.g. \"M31 run\").",
         """{"type":"object","properties":{"id":{"type":"string","description":"builtin:… or local:… source id"},"name":{"type":"string","description":"Optional name for the copy"}},"required":["id"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -200,7 +199,7 @@ public sealed class DeleteWorkflowTool : JsonWriteTool<DeleteWorkflowTool.Args>
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "delete_workflow",
-        "Delete a LOCAL workflow file, including its progress. Queues for the user's approval.",
+        "Delete a LOCAL workflow file, including its progress.",
         """{"type":"object","properties":{"id":{"type":"string","description":"local:… id"}},"required":["id"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)

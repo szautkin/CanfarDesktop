@@ -26,6 +26,7 @@ public sealed class SignedInTool : IMcpTool
 
     public McpVerbClass VerbClass => _inner.VerbClass;
     public bool AgentSafe => _inner.AgentSafe;
+    public bool Proposes => _inner.Proposes;
     public ToolDescriptor Descriptor => _inner.Descriptor;
 
     public Task<ToolResult> InvokeAsync(JsonValue arguments, McpToolContext context, CancellationToken cancellationToken)

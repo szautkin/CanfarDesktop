@@ -10,6 +10,7 @@ namespace CanfarDesktop.Tests.Helpers;
 /// running, a permanent "0 failed", a row that says "Discovering…" for every one of three jobs. These
 /// pin the wording so it keeps being worth a strip of chrome.
 /// </summary>
+[Collection("Translations")] // sets a process-wide translation hook
 public class ActivitySummaryTests
 {
     private static TrackedTask Task(

@@ -36,6 +36,7 @@ public interface ISearchUiBridge
     Task<SearchFormApplied> ResetFormAsync();
     Task<SearchFormApplied> LoadRecentSearchAsync(string match);
     Task<SearchRecentRemoved> ClearRecentSearchesAsync();
+    Task<SearchCancelOutcome> CancelSearchAsync();
 }
 
 // ── Form ────────────────────────────────────────────────────────────────────────────────────────
@@ -136,6 +137,12 @@ public sealed record SearchRunOutcome(
     string? Error = null,
     string? Message = null)
 {
+    /// <summary>
+    /// The query as run, with <c>\n</c> line breaks. It comes from the ADQL box, a WinUI TextBox, whose
+    /// lines are kept apart with a bare <c>\r</c> — and went back to an agent as one line of them.
+    /// </summary>
+    public string Adql { get; init; } = CanfarDesktop.Helpers.LineEndings.ToLf(Adql);
+
     public static SearchRunOutcome Unavailable(string message) => new(
         false, string.Empty, 0, false, 0, 0, null, message);
 }
@@ -245,4 +252,10 @@ public sealed record SearchRowDetailOutcome(bool Opened, int? Row, string? Publi
 public sealed record SearchRecentRemoved(bool Removed, string? Summary, int Remaining, string? Message = null)
 {
     public static SearchRecentRemoved Unavailable(string message) => new(false, null, 0, message);
+}
+
+/// <summary>What cancel_search did: stopped the search running, or found none to stop.</summary>
+public sealed record SearchCancelOutcome(bool Cancelled, string? Message = null)
+{
+    public static SearchCancelOutcome Unavailable(string message) => new(false, message);
 }

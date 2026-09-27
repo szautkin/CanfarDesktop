@@ -330,6 +330,36 @@ public sealed class AppViewStateService : IAnnotationHost
         => _closeTabAt?.Invoke(kind, index)
            ?? Task.FromResult(new TabActionOutcome(false, kind, index, "viewer unavailable"));
 
+    // ── Cutout editor (in the observation view, which the host owns) ─────────────────────────────
+
+    private volatile Func<Tools.Write.CutoutArgs, Task<Tools.Write.CutoutEditorShown>>? _cutoutEditorHost;
+
+    /// <summary>The host registers how to open the observation view's cutout editor on the person's screen.</summary>
+    public void SetCutoutEditorHost(Func<Tools.Write.CutoutArgs, Task<Tools.Write.CutoutEditorShown>> show)
+        => _cutoutEditorHost = show;
+
+    public Task<Tools.Write.CutoutEditorShown> ShowCutoutEditorAsync(Tools.Write.CutoutArgs args)
+        => _cutoutEditorHost?.Invoke(args)
+           ?? Task.FromResult(Tools.Write.CutoutEditorShown.Refused("the observation view is not available"));
+
+    // ── Research and the clipboard (the host owns both) ─────────────────────────────────────────
+
+    private volatile Func<string, bool, Task<Tools.Write.ResearchShown>>? _researchHost;
+    private volatile Func<string, string?, Task<bool>>? _clipboardHost;
+
+    /// <summary>The host registers how to show a Research record — or a cutout's original — on the person's screen.</summary>
+    public void SetResearchHost(Func<string, bool, Task<Tools.Write.ResearchShown>> show) => _researchHost = show;
+
+    /// <summary>The host registers how to put text on the clipboard: on the UI thread, saying so in the status bar.</summary>
+    public void SetClipboardHost(Func<string, string?, Task<bool>> copy) => _clipboardHost = copy;
+
+    public Task<Tools.Write.ResearchShown> ShowResearchObservationAsync(string id, bool original)
+        => _researchHost?.Invoke(id, original)
+           ?? Task.FromResult(Tools.Write.ResearchShown.Refused("Research is not available"));
+
+    public Task<bool> CopyToClipboardAsync(string text, string? what)
+        => _clipboardHost?.Invoke(text, what) ?? Task.FromResult(false);
+
     // ── Search page (resolved lazily: the page is built the first time anyone asks for it) ───────
 
     private volatile Func<Task<ISearchUiBridge?>>? _searchHost;
@@ -388,6 +418,9 @@ public sealed class AppViewStateService : IAnnotationHost
 
     public async Task<SearchRecentRemoved> RemoveRecentSearchAsync(string match)
         => await ResolveSearchAsync() is { } b ? await b.RemoveRecentSearchAsync(match) : SearchRecentRemoved.Unavailable(SearchUnavailable);
+
+    public async Task<SearchCancelOutcome> CancelSearchAsync()
+        => await ResolveSearchAsync() is { } b ? await b.CancelSearchAsync() : SearchCancelOutcome.Unavailable(SearchUnavailable);
 
     public async Task<SearchFormApplied> ResetSearchFormAsync()
         => await ResolveSearchAsync() is { } b ? await b.ResetFormAsync() : SearchFormApplied.Unavailable(SearchUnavailable);
@@ -465,6 +498,32 @@ public sealed class AppViewStateService : IAnnotationHost
     public Task<StorageFolderShown> ShowStorageFolderAsync(string folder)
         => _showStorageFolder?.Invoke(folder)
            ?? Task.FromResult(new StorageFolderShown(false, folder, "the window is not available"));
+
+    // ── Settings, opened to show the person ─────────────────────────────────────────────────────
+
+    private volatile Func<string?, Task<SettingsShown>>? _openSettings;
+    private volatile Func<Task<SettingsShown>>? _closeSettings;
+
+    public void SetSettingsActions(Func<string?, Task<SettingsShown>> open, Func<Task<SettingsShown>> close)
+    {
+        _openSettings = open;
+        _closeSettings = close;
+    }
+
+    public Task<SettingsShown> OpenSettingsAsync(string? section)
+        => _openSettings?.Invoke(section) ?? Task.FromResult(new SettingsShown(false, section, "the window is not available"));
+
+    public Task<SettingsShown> CloseSettingsAsync()
+        => _closeSettings?.Invoke() ?? Task.FromResult(new SettingsShown(false, null, "the window is not available"));
+
+    // ── The Portal's launch form, opened to show the person ─────────────────────────────────────
+
+    private volatile Func<LaunchFormRequest, Task<LaunchFormShown>>? _showLaunchForm;
+
+    public void SetLaunchFormAction(Func<LaunchFormRequest, Task<LaunchFormShown>> show) => _showLaunchForm = show;
+
+    public Task<LaunchFormShown> ShowLaunchFormAsync(LaunchFormRequest request)
+        => _showLaunchForm?.Invoke(request) ?? Task.FromResult(LaunchFormShown.Unavailable("the window is not available"));
 
     // ── Pointing the person at a control ────────────────────────────────────────────────────────
 

@@ -378,9 +378,7 @@ public sealed partial class StorageBrowserPage : UserControl
         var fullPath = string.IsNullOrEmpty(ViewModel.CurrentPath)
             ? ViewModel.SelectedNode.Name
             : $"{ViewModel.CurrentPath}/{ViewModel.SelectedNode.Name}";
-        var package = new DataPackage();
-        package.SetText($"vos://cadc.nrc.ca~arc/home/{fullPath}");
-        Clipboard.SetContent(package);
+        ClipboardText.Copy($"vos://cadc.nrc.ca~arc/home/{fullPath}");
     }
 
     #endregion

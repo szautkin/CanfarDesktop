@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VOTABLE xmlns="http://www.ivoa.net/xml/VOTable/v1.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.4">
+  <RESOURCE type="results">
+    <INFO name="standardID" value="ivo://ivoa.net/std/DataLink#links-1.1" />
+    <TABLE>
+      <FIELD name="ID" datatype="char" arraysize="*" ucd="meta.id;meta.main" />
+      <FIELD name="access_url" datatype="char" arraysize="*" ucd="meta.ref.url" />
+      <FIELD name="service_def" datatype="char" arraysize="*" ucd="meta.ref" />
+      <FIELD name="error_message" datatype="char" arraysize="*" ucd="meta.code.error" />
+      <FIELD name="semantics" datatype="char" arraysize="*" ucd="meta.code" />
+      <FIELD name="local_semantics" datatype="char" arraysize="*" ucd="meta.code">
+        <DESCRIPTION>local tag indicating equivalent meaning or role of this link (DataLink-1.1)</DESCRIPTION>
+      </FIELD>
+      <FIELD name="description" datatype="char" arraysize="*" ucd="meta.note" />
+      <FIELD name="content_type" datatype="char" arraysize="*" ucd="meta.code.mime" />
+      <FIELD name="content_length" datatype="long" ucd="phys.size;meta.file" unit="byte" />
+      <FIELD name="content_qualifier" datatype="char" arraysize="*">
+        <DESCRIPTION>the nature of the thing the link will deliver (DataLink-1.1)</DESCRIPTION>
+      </FIELD>
+      <FIELD name="link_auth" datatype="char" arraysize="*" ucd="meta.code">
+        <DESCRIPTION>link supports authentication (DataLink-1.1)</DESCRIPTION>
+      </FIELD>
+      <FIELD name="link_authorized" datatype="boolean" ucd="meta.code">
+        <DESCRIPTION>the current authenticated identity is authorized (DataLink-1.1)</DESCRIPTION>
+      </FIELD>
+      <DATA>
+        <TABLEDATA>
+<TR><TD>ivo://cadc.nrc.ca/JCMT?acsis_00019_20181130T064519/reduced-345796MHz-1000MHzx2048-1</TD><TD>https://cadc-west-01.canfar.net/raven/files/cadc:JCMT/jcmth20181130_00019_01_reduced_obs_000_preview_1024.png</TD><TD/><TD/><TD>#preview</TD><TD/><TD>download cadc:JCMT/jcmth20181130_00019_01_reduced_obs_000_preview_1024.png</TD><TD>image/png</TD><TD>26911</TD><TD/><TD>optional</TD><TD>true</TD></TR>
+<TR><TD>ivo://cadc.nrc.ca/JCMT?acsis_00019_20181130T064519/reduced-345796MHz-1000MHzx2048-1</TD><TD>https://cadc-west-01.canfar.net/raven/files/cadc:JCMT/jcmth20181130_00019_01_reduced_obs_000_preview_256.png</TD><TD/><TD/><TD>#thumbnail</TD><TD/><TD>download cadc:JCMT/jcmth20181130_00019_01_reduced_obs_000_preview_256.png</TD><TD>image/png</TD><TD>4199</TD><TD/><TD>optional</TD><TD>true</TD></TR>
+<TR><TD>ivo://cadc.nrc.ca/JCMT?acsis_00019_20181130T064519/reduced-345796MHz-1000MHzx2048-1</TD><TD>https://cadc-west-01.canfar.net/raven/files/cadc:JCMT/jcmth20181130_00019_01_rsp_obs_000.fits</TD><TD/><TD/><TD>#auxiliary</TD><TD/><TD>download cadc:JCMT/jcmth20181130_00019_01_rsp_obs_000.fits</TD><TD>application/fits</TD><TD>434880</TD><TD/><TD>optional</TD><TD>true</TD></TR>
+<TR><TD>ivo://cadc.nrc.ca/JCMT?acsis_00019_20181130T064519/reduced-345796MHz-1000MHzx2048-1</TD><TD>https://cadc-west-01.canfar.net/raven/files/cadc:JCMT/jcmth20181130_00019_01_reduced001_obs_000.fits</TD><TD/><TD/><TD>#this</TD><TD/><TD>download cadc:JCMT/jcmth20181130_00019_01_reduced001_obs_000.fits</TD><TD>application/fits</TD><TD>4147200</TD><TD/><TD>optional</TD><TD>true</TD></TR>
+<TR><TD>ivo://cadc.nrc.ca/JCMT?acsis_00019_20181130T064519/reduced-345796MHz-1000MHzx2048-1</TD><TD/><TD>soda-40255740-6338-41a5-b2f5-0d92a8fb54bc</TD><TD/><TD>#cutout</TD><TD/><TD>SODA-sync cutout of cadc:JCMT/jcmth20181130_00019_01_reduced001_obs_000.fits</TD><TD>application/fits</TD><TD/><TD/><TD>optional</TD><TD>true</TD></TR>
+<TR><TD>ivo://cadc.nrc.ca/JCMT?acsis_00019_20181130T064519/reduced-345796MHz-1000MHzx2048-1</TD><TD/><TD>soda-dcd2df5e-31ea-43e3-b4db-b57cce22b25c</TD><TD/><TD>#cutout</TD><TD/><TD>SODA-async cutout of cadc:JCMT/jcmth20181130_00019_01_reduced001_obs_000.fits</TD><TD>application/fits</TD><TD/><TD/><TD>optional</TD><TD>true</TD></TR>
+<TR><TD>ivo://cadc.nrc.ca/JCMT?acsis_00019_20181130T064519/reduced-345796MHz-1000MHzx2048-1</TD><TD>https://cadc-west-01.canfar.net/raven/files/cadc:JCMT/jcmth20181130_00019_01_rimg_obs_000.fits</TD><TD/><TD/><TD>#auxiliary</TD><TD/><TD>download cadc:JCMT/jcmth20181130_00019_01_rimg_obs_000.fits</TD><TD>application/fits</TD><TD>414720</TD><TD/><TD>optional</TD><TD>true</TD></TR>
+<TR><TD>ivo://cadc.nrc.ca/JCMT?acsis_00019_20181130T064519/reduced-345796MHz-1000MHzx2048-1</TD><TD>https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/pkg?ID=ivo%3A%2F%2Fcadc.nrc.ca%2FJCMT%3Facsis_00019_20181130T064519%2Freduced-345796MHz-1000MHzx2048-1</TD><TD/><TD/><TD>#package</TD><TD/><TD>single download containing all files (previews and thumbnails excluded)</TD><TD>application/x-tar</TD><TD/><TD/><TD>optional</TD><TD>true</TD></TR></TABLEDATA>
+      </DATA>
+    </TABLE>
+    <INFO name="placeholder" value="ignore" />
+  </RESOURCE>
+  <RESOURCE type="meta" ID="soda-40255740-6338-41a5-b2f5-0d92a8fb54bc" utype="adhoc:service">
+    <PARAM name="resourceIdentifier" datatype="char" arraysize="22" value="ivo://cadc.nrc.ca/JCMT" />
+    <PARAM name="standardID" datatype="char" arraysize="32" value="ivo://ivoa.net/std/SODA#sync-1.0" />
+    <PARAM name="contentType" datatype="char" arraysize="16" value="application/fits" />
+    <PARAM name="accessURL" datatype="char" arraysize="57" value="https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/sync" />
+    <GROUP name="inputParams">
+      <PARAM name="ID" datatype="char" arraysize="56" ucd="meta.id;meta.dataset" value="cadc:JCMT/jcmth20181130_00019_01_reduced001_obs_000.fits" />
+      <PARAM name="POS" datatype="char" arraysize="*" ucd="obs.field" value="" />
+      <PARAM name="CIRCLE" datatype="double" arraysize="3" ucd="obs.field" unit="deg" xtype="circle" value="">
+        <VALUES>
+          <MAX value="10.6163841417991 41.30057125222757 0.023570224858236375" />
+        </VALUES>
+      </PARAM>
+      <PARAM name="POLYGON" datatype="double" arraysize="*" ucd="obs.field" unit="deg" xtype="polygon" value="">
+        <VALUES>
+          <MAX value="10.638601829707646 41.283931298664456 10.594243186634646 41.283873667086084 10.594155115026243 41.317206932562584 10.63853643561677 41.31726459325142" />
+        </VALUES>
+      </PARAM>
+      <PARAM name="BAND" datatype="double" arraysize="2" ucd="em.wl;stat.interval" unit="m" xtype="interval" value="">
+        <VALUES>
+          <MIN value="8.657629528947576E-4" />
+          <MAX value="8.680495123089463E-4" />
+        </VALUES>
+      </PARAM>
+    </GROUP>
+  </RESOURCE>
+  <RESOURCE type="meta" ID="soda-dcd2df5e-31ea-43e3-b4db-b57cce22b25c" utype="adhoc:service">
+    <PARAM name="resourceIdentifier" datatype="char" arraysize="22" value="ivo://cadc.nrc.ca/JCMT" />
+    <PARAM name="standardID" datatype="char" arraysize="33" value="ivo://ivoa.net/std/SODA#async-1.0" />
+    <PARAM name="contentType" datatype="char" arraysize="16" value="application/fits" />
+    <PARAM name="accessURL" datatype="char" arraysize="58" value="https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/caom2ops/async" />
+    <GROUP name="inputParams">
+      <PARAM name="ID" datatype="char" arraysize="56" ucd="meta.id;meta.dataset" value="cadc:JCMT/jcmth20181130_00019_01_reduced001_obs_000.fits" />
+      <PARAM name="POS" datatype="char" arraysize="*" ucd="obs.field" value="" />
+      <PARAM name="CIRCLE" datatype="double" arraysize="3" ucd="obs.field" unit="deg" xtype="circle" value="">
+        <VALUES>
+          <MAX value="10.6163841417991 41.30057125222757 0.023570224858236375" />
+        </VALUES>
+      </PARAM>
+      <PARAM name="POLYGON" datatype="double" arraysize="*" ucd="obs.field" unit="deg" xtype="polygon" value="">
+        <VALUES>
+          <MAX value="10.638601829707646 41.283931298664456 10.594243186634646 41.283873667086084 10.594155115026243 41.317206932562584 10.63853643561677 41.31726459325142" />
+        </VALUES>
+      </PARAM>
+      <PARAM name="BAND" datatype="double" arraysize="2" ucd="em.wl;stat.interval" unit="m" xtype="interval" value="">
+        <VALUES>
+          <MIN value="8.657629528947576E-4" />
+          <MAX value="8.680495123089463E-4" />
+        </VALUES>
+      </PARAM>
+    </GROUP>
+  </RESOURCE>
+</VOTABLE>

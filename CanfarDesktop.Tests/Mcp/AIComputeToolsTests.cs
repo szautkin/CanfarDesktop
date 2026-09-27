@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Xunit;
+using CanfarDesktop.Helpers;
+using CanfarDesktop.Models;
 using CanfarDesktop.Mcp.Tools;
 using CanfarDesktop.Mcp.Tools.Proposals;
 using CanfarDesktop.Mcp.Tools.Write;
@@ -163,6 +165,86 @@ public class AIComputeToolsTests
 
         Assert.Equal(20, doc.GetProperty("total").GetInt32());
         Assert.Equal(3, doc.GetProperty("runs").GetArrayLength());
+    }
+
+    // ── get_compute_state: the snapshot as an agent reads it ──
+
+    private static readonly DateTimeOffset Now = new(2026, 9, 25, 12, 0, 0, TimeSpan.Zero);
+
+    private static Session ComputeSession(string status) => new()
+    {
+        Id = "kedczixz", SessionName = RunCodeContract.SessionName, Status = status, StartedTime = "2026-09-24T02:23:42Z",
+    };
+
+    /// <summary>
+    /// The Store test's case: a fresh install with no image set, and yesterday's compute session still
+    /// running on the account. It read "not set up", with nothing about a session the agent could stop.
+    /// </summary>
+    [Fact]
+    public void ASessionRunningWhereNothingIsSetUpIsReportedWithAWayToStopIt()
+    {
+        var view = ComputeStateView.From(
+            new ComputeSnapshot(ComputeState.Running, ComputeSession("Running"), "", 1, 1, Configured: false), Now);
+
+        Assert.Equal("running", view.State);
+        Assert.False(view.Configured);
+        Assert.Null(view.Image);
+        Assert.Equal("kedczixz", view.SessionId);
+        Assert.Equal(2016, view.UptimeMinutes);
+        Assert.Contains("stop_compute", view.Note);
+    }
+
+    [Fact]
+    public void NothingSetUpAndNothingRunningPointsToTheSetUp()
+    {
+        var view = ComputeStateView.From(new ComputeSnapshot(ComputeState.NotSetUp, null, "", 1, 1, Configured: false), Now);
+
+        Assert.Equal("notSetUp", view.State);
+        Assert.False(view.Configured);
+        Assert.Null(view.SessionId);
+        Assert.Contains("navigate_to remoteCompute", view.Note);
+    }
+
+    [Fact]
+    public void SetUpAndStoppedSaysSoPlainly()
+    {
+        var view = ComputeStateView.From(
+            new ComputeSnapshot(ComputeState.Stopped, null, "images.canfar.net/p/verbinal-compute:1", 2, 4, Configured: true), Now);
+
+        Assert.Equal("stopped", view.State);
+        Assert.True(view.Configured);
+        Assert.Equal("images.canfar.net/p/verbinal-compute:1", view.Image);
+        Assert.Null(view.Note);
+    }
+
+    /// <summary>
+    /// QA D6: set to launch at 2 cores and 8 GB, the session on the account had 1 and 1.07, and the tool
+    /// said 2 and 8 as if they were the session's. Both are said now, each as what it is.
+    /// </summary>
+    [Fact]
+    public void WhatTheSessionHas_IsSaidBesideWhatItLaunchesWith()
+    {
+        var session = ComputeSession("Running");
+        session.ContainerImage = "images.canfar.net/private-test/verbinal-execution:0.0.2";
+        session.CpuAllocated = "1";
+        session.MemoryAllocated = "1.07";
+
+        var view = ComputeStateView.From(
+            new ComputeSnapshot(ComputeState.Running, session, "images.canfar.net/private-test/verbinal-execution:0.0.2", 2, 8, Configured: true), Now);
+
+        Assert.Equal((2, 8), (view.Cores, view.Ram));
+        Assert.Equal(("1", "1.07"), (view.SessionCores, view.SessionRam));
+        Assert.Equal("images.canfar.net/private-test/verbinal-execution:0.0.2", view.SessionImage);
+    }
+
+    [Fact]
+    public void WithoutASession_ThereIsNothingOfOneToSay()
+    {
+        var view = ComputeStateView.From(new ComputeSnapshot(ComputeState.Stopped, null, "img:1", 2, 4, Configured: true), Now);
+
+        Assert.Null(view.SessionImage);
+        Assert.Null(view.SessionCores);
+        Assert.Null(view.SessionRam);
     }
 
     // ── appliers ──

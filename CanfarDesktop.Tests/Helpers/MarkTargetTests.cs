@@ -107,4 +107,31 @@ public class MarkTargetTests
     [Fact]
     public void NothingNamedAndNothingOnScreenIsNothing()
         => Assert.Null(MarkTarget.Resolve(null, null, null, perExtension: true));
+
+    // ── One way of writing a path ───────────────────────────────────────────
+
+    /// <summary>
+    /// However a Windows path is written — the other separator, doubled ones, a "." or ".." step — it is
+    /// written back one way, so the marks of one file are found under one key. Case is kept; keys are
+    /// compared ignoring it.
+    /// </summary>
+    [Theory]
+    [InlineData(@"C:/Users/x/m31.fits", @"C:\Users\x\m31.fits")]
+    [InlineData(@"C:\Users\x\\m31.fits", @"C:\Users\x\m31.fits")]
+    [InlineData(@"C:\Users\x\.\data\..\m31.fits", @"C:\Users\x\m31.fits")]
+    [InlineData(@"C:\..\m31.fits", @"C:\m31.fits")]
+    [InlineData(@"\\server\share\a\..\m31.fits", @"\\server\share\m31.fits")]
+    [InlineData(@"  C:\Users\x\m31.fits ", @"C:\Users\x\m31.fits")]
+    public void APath_IsWrittenOneWay(string written, string canonical)
+        => Assert.Equal(canonical, MarkTarget.Canonical(written));
+
+    [Fact]
+    public void KeysNamingOneExtensionOfOneFile_AreTheSameKey_HoweverWritten()
+    {
+        Assert.True(MarkTarget.SameKey(@"C:/Users/x/M31.fits#1", @"c:\users\x\m31.FITS#1"));
+        Assert.False(MarkTarget.SameKey(@"C:\Users\x\m31.fits#1", @"C:\Users\x\m31.fits#2"));
+        Assert.True(MarkTarget.SameFile(@"C:/Users/x/m31.fits#1", @"C:\Users\x\m31.fits#2"));
+        Assert.Equal(@"C:\Users\x\m31.fits#3", MarkTarget.Key("C:/Users/x/m31.fits", 3));
+        Assert.Equal(@"C:\odd#name.fits", MarkTarget.CanonicalKey("C:/odd#name.fits")); // a '#' in a name is not an extension
+    }
 }

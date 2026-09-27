@@ -1,4 +1,5 @@
 using CanfarDesktop.Helpers;
+using CanfarDesktop.Models.Cutouts;
 
 namespace CanfarDesktop.Models;
 
@@ -10,6 +11,14 @@ public class DataLinkResult
     /// <summary>All downloadable files from DataLink #this semantic.</summary>
     public List<DataLinkFile> DirectFiles { get; set; } = [];
 
+    /// <summary>The files that can be cut out, each with its SODA service and limits.</summary>
+    public List<SodaDescriptor> Cutouts { get; set; } = [];
+
+    /// <summary>The cutout service for one file, by its CAOM2 artifact URI (which is SODA's ID for it).</summary>
+    public SodaDescriptor? CutoutFor(string? artifactUri)
+        => string.IsNullOrEmpty(artifactUri) ? null
+            : Cutouts.FirstOrDefault(c => string.Equals(c.ArtifactId, artifactUri, StringComparison.Ordinal));
+
     /// <summary>
     /// The <c>error_message</c> text of every faulted row. A fault beside real rows is not fatal — the
     /// service is entitled to refuse part of a request — but a response that is ENTIRELY faults used to
@@ -17,6 +26,13 @@ public class DataLinkResult
     /// "UsageFault: invalid ID". <see cref="IsEntirelyFaults"/> is the difference.
     /// </summary>
     public List<string> Faults { get; set; } = [];
+
+    /// <summary>
+    /// Why the answer holds less than it might: the service refused or could not be reached, or a cutout
+    /// service it describes could not be read. Said, because an empty answer otherwise reads the same as
+    /// an observation with nothing to offer (QA D8).
+    /// </summary>
+    public List<string> Problems { get; set; } = [];
 
     /// <summary>True when the service answered with faults and nothing else.</summary>
     public bool IsEntirelyFaults =>

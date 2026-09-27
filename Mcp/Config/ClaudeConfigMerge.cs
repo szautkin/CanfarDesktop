@@ -12,7 +12,7 @@ namespace CanfarDesktop.Mcp.Config;
 public static class ClaudeConfigMerge
 {
     /// <summary>The stable key for our server in <c>mcpServers</c>.</summary>
-    public const string ServerKey = "verbinal-canfar";
+    public const string ServerKey = McpConstants.ServerName;
 
     /// <summary>The argument the bridge exe is launched with to enter MCP-serve mode.</summary>
     public static readonly IReadOnlyList<string> DefaultArgs = new[] { "mcp" };

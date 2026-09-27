@@ -14,6 +14,13 @@ using CanfarDesktop.Services.Fits;
 public partial class FitsViewerViewModel : ObservableObject
 {
     private FitsImageData? _imageData;
+
+    /// <summary>
+    /// What is DRAWN: the image itself, or for the very largest a reduced picture of it
+    /// (<see cref="FitsDisplayRaster"/>). Only <see cref="RenderAsync"/> reads it; values and
+    /// coordinates always come from <see cref="_imageData"/>. Set together with it, never apart.
+    /// </summary>
+    private FitsImageData? _displayData;
     private List<FitsHdu>? _hdus;
     private bool _disposed;
     private CancellationTokenSource? _renderCts;
@@ -43,6 +50,9 @@ public partial class FitsViewerViewModel : ObservableObject
     [ObservableProperty] private ColormapProvider.ColormapName _colormap = ColormapProvider.ColormapName.Grayscale;
     [ObservableProperty] private double _zoomLevel = 1.0;
     [ObservableProperty] private bool _isNorthUp;
+
+    /// <summary>The fraction of full resolution the picture is drawn at: 1 for all but the largest images.</summary>
+    [ObservableProperty] private double _displayScale = 1.0;
 
     public List<FitsHdu>? Hdus => _hdus;
     public FitsImageData? ImageData => _imageData;
@@ -95,14 +105,10 @@ public partial class FitsViewerViewModel : ObservableObject
             }
 
             SelectedHduIndex = imageHdu.Index;
-            _imageData = imageHdu.ImageData;
+            if (!await ShowImageAsync(imageHdu.ImageData!)) return; // another HDU was chosen meanwhile, and shows itself
 
-            // Auto-cut
-            var (autoMin, autoMax) = FitsRenderer.AutoCut(_imageData!);
-            MinCut = autoMin;
-            MaxCut = autoMax;
-
-            StatusMessage = $"{_imageData!.Width} x {_imageData.Height} | {_hdus.Count} HDU(s)";
+            StatusMessage = $"{_imageData!.Width} x {_imageData.Height} | {_hdus.Count} HDU(s)" +
+                (DisplayScale < 1 ? $" | shown at {DisplayScale:P0}" : "");
 
             await RenderAsync();
         }
@@ -118,17 +124,48 @@ public partial class FitsViewerViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Which request to show an image is the latest: two HDUs chosen in quick succession can have their
+    /// pictures finish in the other order, and the one chosen last is the one to show.
+    /// </summary>
+    private int _showRequest;
+
+    /// <summary>
+    /// Make <paramref name="image"/> the one shown: its picture, then its auto-cut. The one way an
+    /// image comes on screen, whether a file was just opened or another HDU chosen. False when another
+    /// image was asked for while this one's picture was being made — then that one is shown instead.
+    /// </summary>
+    private async Task<bool> ShowImageAsync(FitsImageData image)
+    {
+        var request = ++_showRequest;
+
+        // Off the UI thread: for a MegaPipe tile the picture is an average over 400 million pixels.
+        // Assigned together afterwards, so a render in between sees the old pair, never a mix.
+        var display = await Task.Run(() => FitsDisplayRaster.For(image));
+        if (request != _showRequest || _disposed) return false;
+        _imageData = image;
+        _displayData = display;
+        DisplayScale = (double)display.Width / image.Width;
+
+        // From the image, not the picture: the cuts are physical values, and an export — rendered
+        // from the full data — has to come out looking like the screen.
+        var (autoMin, autoMax) = FitsRenderer.AutoCut(image);
+        MinCut = autoMin;
+        MaxCut = autoMax;
+        return true;
+    }
+
     [RelayCommand]
     public async Task RenderAsync()
     {
-        if (_imageData is null || _disposed) return;
+        if (_displayData is null || _disposed) return;
 
         // Cancel any in-flight render (e.g., from rapid slider drag)
         _renderCts?.Cancel();
         _renderCts?.Dispose();
         var cts = _renderCts = new CancellationTokenSource();
 
-        var image = _imageData;
+        var image = _displayData;
         var stretch = Stretch;
         var colormapName = Colormap;
         var minCut = MinCut;
@@ -214,23 +251,12 @@ public partial class FitsViewerViewModel : ObservableObject
         if (!hdu.HasImage || hdu.ImageData is null) return;
 
         SelectedHduIndex = index;
-        _imageData = hdu.ImageData;
-
-        var (autoMin, autoMax) = FitsRenderer.AutoCut(_imageData);
-        MinCut = autoMin;
-        MaxCut = autoMax;
-
-        _ = RenderAsync();
+        _ = ShowAndRenderAsync(hdu.ImageData);
     }
 
-    /// <summary>
-    /// Convert world RA/Dec to display pixel coordinates (0-based, Y-flipped).
-    /// Returns null if no image/WCS or singular matrix.
-    /// </summary>
-    public (double X, double Y)? GoToCoordinate(double ra, double dec)
+    private async Task ShowAndRenderAsync(FitsImageData image)
     {
-        if (_imageData?.Wcs is not { IsValid: true } wcs) return null;
-        return PixelConvention.DisplayOfSky(wcs, _imageData.Height, ra, dec);
+        if (await ShowImageAsync(image)) await RenderAsync();
     }
 
     /// <summary>
@@ -244,6 +270,7 @@ public partial class FitsViewerViewModel : ObservableObject
         _renderCts = null;
         RenderedImage = null;
         _imageData = null;
+        _displayData = null;
         _hdus = null;
     }
 }

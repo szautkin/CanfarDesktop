@@ -32,8 +32,7 @@ public sealed class RunCodeTool : JsonWriteTool<RunCodeTool.Args>
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "run_code",
         "Run a short Python or Bash snippet on a warm remote CANFAR compute session (launched/reused " +
-        "automatically on the user's account). Auto-applies when the user has auto-apply on; otherwise " +
-        "queues for their approval. Returns immediately with an execution_id; fetch the result with " +
+        "automatically on the user's account). Returns immediately with an execution_id; fetch the result with " +
         "run_code_output(execution_id). Requires an AI compute image set in Settings.",
         """{"type":"object","properties":{"code":{"type":"string","minLength":1,"description":"The snippet to run"},"language":{"type":"string","enum":["python","bash"],"description":"Default python"},"timeoutSeconds":{"type":"integer","minimum":1,"maximum":900,"description":"Per-run timeout (default 60)"}},"required":["code"],"additionalProperties":false}""");
 
@@ -116,7 +115,7 @@ public sealed class StartComputeTool : JsonWriteTool<StartComputeTool.Args>
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "start_compute",
         "Pre-warm the remote compute session (at the size configured in Settings ▸ AI compute) so the next " +
-        "run_code starts faster. Auto-applies when the user has auto-apply on; otherwise queues for approval. " +
+        "run_code starts faster. " +
         "Reusing an already-running session is a no-op. Requires an AI compute image set in Settings.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
@@ -144,7 +143,7 @@ public sealed class StopComputeTool : JsonWriteTool<StopComputeTool.Args>
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "stop_compute",
-        "Propose stopping the warm remote compute session to free its cores. Queues for the user's approval. " +
+        "Propose stopping the warm remote compute session to free its cores. " +
         "Idempotent — a no-op if nothing is running. NOTE: this is not a cancel; a request already submitted " +
         "may re-run when compute is next started.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
@@ -156,9 +155,43 @@ public sealed class StopComputeTool : JsonWriteTool<StopComputeTool.Args>
 }
 
 /// <summary>What <c>get_compute_state</c> answers: the compute as the Remote Compute screen shows it.</summary>
+/// <param name="Image">The image the session launches from, as configured.</param>
+/// <param name="Cores">The cores it launches with, as configured.</param>
+/// <param name="SessionImage">The image the session on the account runs, when there is one.</param>
+/// <param name="SessionCores">The cores it has, as list_sessions reports them (cpuAllocated) — the platform can grant fewer than asked.</param>
+/// <param name="SessionRam">The memory it has, as list_sessions reports it (memoryAllocated).</param>
 public sealed record ComputeStateView(
     string State, bool Configured, string? Image, int Cores, int Ram,
-    string? SessionId, string? SessionStatus, string? StartedAt, int? UptimeMinutes, string? Note);
+    string? SessionId, string? SessionStatus, string? StartedAt, int? UptimeMinutes, string? Note,
+    string? SessionImage = null, string? SessionCores = null, string? SessionRam = null)
+{
+    /// <summary>The snapshot as get_compute_state reports it: state names in camelCase, as on the wire.</summary>
+    public static ComputeStateView From(ComputeSnapshot s, DateTimeOffset now)
+    {
+        var up = ComputeStatus.Uptime(s.Session?.StartedTime, now);
+        return new ComputeStateView(
+            ComputeStatus.Name(s.State), s.Configured, s.Configured ? s.Image : null, s.Cores, s.Ram,
+            s.Session?.Id, s.Session?.Status, s.Session?.StartedTime,
+            up is { } u ? (int)u.TotalMinutes : null,
+            NoteFor(s),
+            // What the session has, beside what it is set to launch with: the two disagreed, and only
+            // one was said, as if it were the other (QA D6).
+            Given(s.Session?.ContainerImage), Given(s.Session?.CpuAllocated), Given(s.Session?.MemoryAllocated));
+    }
+
+    private static string? Given(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string? NoteFor(ComputeSnapshot s) => (s.Configured, s.Session) switch
+    {
+        (true, _) => null,
+        (false, null) => "Not set up: the Remote Compute screen (navigate_to remoteCompute) explains how.",
+        (false, _) =>
+            "Not set up in this app, but a compute session is on the person's account — left from another " +
+            "install or from before a reinstall, and still holding their cores. They can stop it on the Remote " +
+            "Compute screen, or you can propose stop_compute. Running code needs a compute image in Settings " +
+            "▸ AI compute first.",
+    };
+}
 
 /// <summary>
 /// <c>get_compute_state</c> — whether remote compute is set up, and whether its session is running.
@@ -174,8 +207,10 @@ public sealed class GetComputeStateTool : JsonReadTool<GetComputeStateTool.Args,
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "get_compute_state",
         "Whether remote compute (run_code) is set up, and the state of its session on the user's CANFAR " +
-        "account: notSetUp, stopped, starting, running, stopping or failed — with the image, the size it " +
-        "launches at, and how long it has been up. The same status the Remote Compute screen shows.",
+        "account: notSetUp, stopped, starting, running, stopping or failed — with the image and size it " +
+        "launches at (image, cores, ram), and, while there is a session, what it actually runs and has " +
+        "(sessionImage, sessionCores, sessionRam, as list_sessions reports them; the platform can grant " +
+        "less than asked) and how long it has been up. The same status the Remote Compute screen shows.",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<ComputeStateView> HandleAsync(Args args, McpToolContext context, CancellationToken ct)

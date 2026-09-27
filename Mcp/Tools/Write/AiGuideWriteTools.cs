@@ -155,8 +155,7 @@ public sealed class DeleteGuideToolTool : JsonWriteTool<DeleteGuideToolTool.Args
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "delete_guide_tool",
-        "Delete a guide tool by id (from list_guide_tools). Destructive — queues for the user to apply " +
-        "unless auto-apply is on.",
+        "Delete a guide tool by id (from list_guide_tools).",
         """{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)

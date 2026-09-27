@@ -61,7 +61,7 @@ public sealed class UpdateObservationNoteTool : JsonWriteTool<NoteUpdateArgs>
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "update_observation_note",
         "Propose updating the research note for a downloaded observation (by publisher id): set the note " +
-        "text, a 0–5 rating, and/or tags. Omitted fields keep their current value. Queues for the user to apply.",
+        "text, a 0–5 rating, and/or tags. Omitted fields keep their current value.",
         """{"type":"object","properties":{"publisherId":{"type":"string"},"text":{"type":"string"},"rating":{"type":"integer","minimum":0,"maximum":5},"tags":{"type":"array","items":{"type":"string"}}},"required":["publisherId"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(NoteUpdateArgs args, McpToolContext context, CancellationToken ct)
@@ -82,7 +82,7 @@ public sealed class BulkUpdateObservationNotesTool : JsonWriteTool<BulkUpdateObs
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "bulk_update_observation_notes",
         "Propose updating multiple observation notes at once (1–50 items, applied all-or-nothing). Each item " +
-        "is the same shape as update_observation_note. Queues for the user to apply.",
+        "is the same shape as update_observation_note.",
         """{"type":"object","properties":{"items":{"type":"array","minItems":1,"maxItems":50,"items":{"type":"object","properties":{"publisherId":{"type":"string"},"text":{"type":"string"},"rating":{"type":"integer","minimum":0,"maximum":5},"tags":{"type":"array","items":{"type":"string"}}},"required":["publisherId"],"additionalProperties":false}}},"required":["items"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)

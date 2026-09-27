@@ -24,31 +24,70 @@ public static class StreamToFile
     /// "zero bytes is not a download" — a policy that belongs to the caller, because a zero-byte file
     /// in VOSpace is a legitimate thing to fetch and a zero-byte archive response is not.</para>
     /// </summary>
+    /// <param name="stallTimeout">
+    /// Give up when no bytes arrive for this long, with a <see cref="TimeoutException"/>. A limit on
+    /// silence rather than on the whole transfer: a 1.6 GB MegaPipe tile legitimately takes minutes, so
+    /// any total that allows it also lets a dead connection hold on for just as long.
+    /// </param>
     public static async Task<long> WriteAsync(
         Stream source,
         string path,
         long? expectedTotal = null,
         IProgress<(long Downloaded, long? Total)>? progress = null,
         Func<long, Exception?>? validateTotal = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        TimeSpan? stallTimeout = null)
     {
         long total = 0;
-
-        await AtomicFile.WriteStreamAsync(path, async destination =>
+        var silence = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        try
         {
-            var buffer = new byte[BufferSize];
-            int read;
-            while ((read = await source.ReadAsync(buffer, ct)) > 0)
+            await AtomicFile.WriteStreamAsync(path, async destination =>
             {
-                await destination.WriteAsync(buffer.AsMemory(0, read), ct);
-                total += read;
-                progress?.Report((total, expectedTotal));
-            }
+                var buffer = new byte[BufferSize];
+                int read;
+                while ((read = await ReadAsync(buffer)) > 0)
+                {
+                    await destination.WriteAsync(buffer.AsMemory(0, read), ct);
+                    total += read;
+                    progress?.Report((total, expectedTotal));
+                }
 
-            // Thrown from INSIDE the write so the temp file is cleaned up and the target never changes.
-            if (validateTotal?.Invoke(total) is { } refusal) throw refusal;
-        }, ct);
+                // Thrown from INSIDE the write so the temp file is cleaned up and the target never changes.
+                if (validateTotal?.Invoke(total) is { } refusal) throw refusal;
+            }, ct);
+        }
+        finally
+        {
+            silence.Dispose();
+        }
 
         return total;
+
+        async Task<int> ReadAsync(byte[] buffer)
+        {
+            if (stallTimeout is not { } limit) return await source.ReadAsync(buffer, ct);
+
+            silence.CancelAfter(limit); // the clock runs while waiting for bytes, and only then
+            try
+            {
+                return await source.ReadAsync(buffer, silence.Token);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                throw new TimeoutException(
+                    $"the transfer stalled: nothing arrived for {limit.TotalSeconds:0} s after {total:N0} bytes");
+            }
+            finally
+            {
+                // Stopped as soon as bytes arrive: writing them to a slow disk is not silence on the wire.
+                // A clock that went off just as they arrived cannot be reset, so it is replaced.
+                if (!silence.TryReset())
+                {
+                    silence.Dispose();
+                    silence = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                }
+            }
+        }
     }
 }

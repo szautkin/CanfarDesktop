@@ -30,8 +30,11 @@ public sealed class StartBackgroundApplyTool : JsonReadTool<StartBackgroundApply
     public StartBackgroundApplyTool(Func<string, Task<BackgroundApplyOutcome>> start) => _start = start;
 
     /// <summary>
-    /// ViewState rather than a write of its own: the WRITE was the proposal, which is already queued and
-    /// already went through the gate. This only decides not to wait for it.
+    /// ViewState rather than a write of its own: the write was the proposal. But a proposal waiting in
+    /// the queue is waiting for the PERSON — this may start only what auto-apply would have applied
+    /// without them (<see cref="BackgroundApplyRunner"/>), never a destructive change, and nothing at all
+    /// while auto-apply is off. It used to start anything pending: a file removal waiting for approval
+    /// went ahead the moment an agent asked.
     /// </summary>
     public override McpVerbClass VerbClass => McpVerbClass.ViewState;
 
@@ -41,7 +44,10 @@ public sealed class StartBackgroundApplyTool : JsonReadTool<StartBackgroundApply
         "takes longer than a tool call should be held open — a large VOSpace upload or download, or a " +
         "whole-observation download — where waiting inline risks the client timing out on work that is " +
         "actually still running. Answers at once with a job id (the proposal's own id); follow it with " +
-        "get_job_status. For quick applies, apply normally: a job is more to keep track of.",
+        "get_job_status. For quick applies, apply normally: a job is more to keep track of. Only for what " +
+        "auto-apply would apply without the person: never a destructive change (a delete, a stop), and " +
+        "nothing while auto-apply is off — those wait for the person to approve them in Verbinal, and " +
+        "this says so.",
         """
         {"type":"object","properties":{
           "proposalId":{"type":"string","description":"A pending proposal's id (from list_pending_proposals)."}
@@ -70,12 +76,19 @@ public sealed class BackgroundApplyRunner
     private readonly IProposalStore _proposals;
     private readonly ProposalApplierRegistry _appliers;
     private readonly JobRegistry _jobs;
+    private readonly Func<string, McpVerbClass> _verbOf;
+    private readonly Func<bool> _autoApplyEnabled;
 
-    public BackgroundApplyRunner(IProposalStore proposals, ProposalApplierRegistry appliers, JobRegistry jobs)
+    /// <param name="verbOf">What kind of write a proposal kind is — its tool's verb class; Destructive for a kind no tool claims.</param>
+    /// <param name="autoApplyEnabled">The person's auto-apply setting, as it is now.</param>
+    public BackgroundApplyRunner(IProposalStore proposals, ProposalApplierRegistry appliers, JobRegistry jobs,
+                                 Func<string, McpVerbClass> verbOf, Func<bool> autoApplyEnabled)
     {
         _proposals = proposals;
         _appliers = appliers;
         _jobs = jobs;
+        _verbOf = verbOf;
+        _autoApplyEnabled = autoApplyEnabled;
     }
 
     public Task<BackgroundApplyOutcome> StartAsync(string proposalId)
@@ -93,6 +106,14 @@ public sealed class BackgroundApplyRunner
         if (applier is null)
             return Task.FromResult(BackgroundApplyOutcome.Refused(
                 $"'{proposal.Kind}' has no applier, so it cannot be applied at all — in the background or otherwise"));
+
+        // The person's approval is not the agent's to give: only what auto-apply would have applied without
+        // them — the same rule, AutoApplyPolicy — may be started here.
+        var verb = _verbOf(proposal.Kind);
+        if (!AutoApplyPolicy.ShouldAutoApply(_autoApplyEnabled(), verb))
+            return Task.FromResult(BackgroundApplyOutcome.Refused(verb == McpVerbClass.Destructive
+                ? $"'{proposal.Kind}' is a destructive change, so only the person can apply it: it waits for their approval in Verbinal's pending changes"
+                : $"auto-apply is off, so the person applies each change: '{proposal.Kind}' waits for their approval in Verbinal's pending changes"));
 
         var job = _jobs.Start(proposal.Id.ToString(), proposal.Kind, proposal.Summary);
 

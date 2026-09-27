@@ -33,6 +33,8 @@
     <EmbeddedResource Include="..\Resources\ImageDiscovery\probe.sh" Link="ImageDiscovery\probe.sh" />
     <EmbeddedResource Include="..\Resources\ImageDiscovery\inspector.sh" Link="ImageDiscovery\inspector.sh" />
     <!-- Workflow templates: the linked WorkflowStore loads from its own (test) assembly. -->
+    <!-- The kernel loads its harness by this name; without it, a kernel started here would quietly run the fallback. -->
+    <EmbeddedResource Include="..\Resources\Notebook\kernel_harness.py" LogicalName="CanfarDesktop.Resources.Notebook.kernel_harness.py" />
     <EmbeddedResource Include="..\Resources\Workflows\*.workflow.md" Link="Resources\Workflows\%(Filename)%(Extension)" />
   </ItemGroup>
 
@@ -68,6 +70,8 @@
          real installed layout rather than a fixture that could drift from it. -->
     <Content Include="..\Assets\Sounds\*.wav" Link="Assets\Sounds\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest" />
+    <!-- Real service answers, saved as they came, so parsing is tested against CADC and not a guess. -->
+    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
     <!-- Image discovery backend (M4b) -->
     <Compile Include="..\Models\ImageDiscovery\ImageManifest.cs" Link="Linked\ImageDiscovery\ImageManifest.cs" />
     <Compile Include="..\Models\ImageDiscovery\PackageQuery.cs" Link="Linked\ImageDiscovery\PackageQuery.cs" />
@@ -86,6 +90,9 @@
     <Compile Include="..\Helpers\ImageDiscovery\DiscoveryFormatting.cs" Link="Linked\ImageDiscovery\DiscoveryFormatting.cs" />
     <Compile Include="..\Helpers\ImageDiscovery\ManifestDetailBuilder.cs" Link="Linked\ImageDiscovery\ManifestDetailBuilder.cs" />
     <Compile Include="..\Models\ContainerImage.cs" Link="Linked\ImageDiscovery\ContainerImage.cs" />
+    <Compile Include="..\Models\SessionTypes.cs" Link="Linked\ImageDiscovery\SessionTypes.cs" />
+    <Compile Include="..\Models\ImageDiscovery\ImageDiscoveryStatus.cs" Link="Linked\ImageDiscovery\ImageDiscoveryStatus.cs" />
+    <Compile Include="..\Helpers\ImageDiscovery\ImageCatalogue.cs" Link="Linked\ImageDiscovery\ImageCatalogue.cs" />
     <Compile Include="..\ViewModels\ImageDiscovery\FacetViewModels.cs" Link="Linked\ImageDiscovery\FacetViewModels.cs" />
     <Compile Include="..\ViewModels\ImageDiscovery\ImageRowViewModel.cs" Link="Linked\ImageDiscovery\ImageRowViewModel.cs" />
     <Compile Include="..\ViewModels\ImageDiscovery\ActiveFilterChip.cs" Link="Linked\ImageDiscovery\ActiveFilterChip.cs" />
@@ -121,6 +128,41 @@
     <Compile Include="..\Helpers\ApiEndpointDefaults.cs" Link="Linked\ApiEndpointDefaults.cs" />
     <Compile Include="..\Models\SearchModels.cs" Link="Linked\SearchModels.cs" />
     <Compile Include="..\Models\DataLinkResult.cs" Link="Linked\DataLinkResult.cs" />
+    <!-- SODA cutouts: the model, its geometry, the descriptor parser, the one validator. -->
+    <Compile Include="..\Helpers\SkyGeometry.cs" Link="Linked\Cutouts\SkyGeometry.cs" />
+    <Compile Include="..\Helpers\SkyCanvasProjection.cs" Link="Linked\Cutouts\SkyCanvasProjection.cs" />
+    <Compile Include="..\Models\Cutouts\SkyRegion.cs" Link="Linked\Cutouts\SkyRegion.cs" />
+    <Compile Include="..\Models\Cutouts\CutoutSpec.cs" Link="Linked\Cutouts\CutoutSpec.cs" />
+    <Compile Include="..\Models\Cutouts\SodaDescriptor.cs" Link="Linked\Cutouts\SodaDescriptor.cs" />
+    <Compile Include="..\Services\Cutouts\SodaDescriptorParser.cs" Link="Linked\Cutouts\SodaDescriptorParser.cs" />
+    <Compile Include="..\Services\Cutouts\SodaRequest.cs" Link="Linked\Cutouts\SodaRequest.cs" />
+    <Compile Include="..\Services\Cutouts\CutoutPrefill.cs" Link="Linked\Cutouts\CutoutPrefill.cs" />
+    <Compile Include="..\Services\Cutouts\CutoutCandidates.cs" Link="Linked\Cutouts\CutoutCandidates.cs" />
+    <Compile Include="..\Models\Cutouts\CutoutMethod.cs" Link="Linked\Cutouts\CutoutMethod.cs" />
+    <Compile Include="..\Models\Cutouts\ICutoutFile.cs" Link="Linked\Cutouts\ICutoutFile.cs" />
+    <Compile Include="..\Models\Cutouts\CutoutCompanion.cs" Link="Linked\Cutouts\CutoutCompanion.cs" />
+    <Compile Include="..\Services\Cutouts\CutoutRules.cs" Link="Linked\Cutouts\CutoutRules.cs" />
+    <Compile Include="..\Services\Cutouts\ICutoutSource.cs" Link="Linked\Cutouts\ICutoutSource.cs" />
+    <Compile Include="..\Services\Cutouts\ICutoutMaker.cs" Link="Linked\Cutouts\ICutoutMaker.cs" />
+    <Compile Include="..\Services\Cutouts\CutoutSources.cs" Link="Linked\Cutouts\CutoutSources.cs" />
+    <Compile Include="..\Services\Fits\FitsLayout.cs" Link="Linked\Cutouts\FitsLayout.cs" />
+    <Compile Include="..\Services\Fits\FitsHeaderCards.cs" Link="Linked\Cutouts\FitsHeaderCards.cs" />
+    <Compile Include="..\Services\Fits\FitsChecksum.cs" Link="Linked\Cutouts\FitsChecksum.cs" />
+    <Compile Include="..\Services\Fits\FitsImageEncoding.cs" Link="Linked\Cutouts\FitsImageEncoding.cs" />
+    <Compile Include="..\Services\Cutouts\Local\PixelBox.cs" Link="Linked\Cutouts\PixelBox.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalFitsFile.cs" Link="Linked\Cutouts\LocalFitsFile.cs" />
+    <Compile Include="..\Services\Cutouts\Local\CutoutHeader.cs" Link="Linked\Cutouts\CutoutHeader.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalCutPlan.cs" Link="Linked\Cutouts\LocalCutPlan.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalCompanions.cs" Link="Linked\Cutouts\LocalCompanions.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalSourceCache.cs" Link="Linked\Cutouts\LocalSourceCache.cs" />
+    <Compile Include="..\Services\Cutouts\Local\FitsCutter.cs" Link="Linked\Cutouts\FitsCutter.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalCutoutSource.cs" Link="Linked\Cutouts\LocalCutoutSource.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalCopies.cs" Link="Linked\Cutouts\LocalCopies.cs" />
+    <Compile Include="..\Services\Cutouts\Local\LocalCutoutMaker.cs" Link="Linked\Cutouts\LocalCutoutMaker.cs" />
+    <Compile Include="..\Services\ResearchRecords.cs" Link="Linked\ResearchRecords.cs" />
+    <Compile Include="..\Services\ObservationSummary.cs" Link="Linked\ObservationSummary.cs" />
+    <Compile Include="..\Helpers\TabularText.cs" Link="Linked\TabularText.cs" />
+    <Compile Include="..\Helpers\HttpFailure.cs" Link="Linked\HttpFailure.cs" />
     <Compile Include="..\Helpers\DataLinkArtifactSelector.cs" Link="Linked\DataLinkArtifactSelector.cs" />
     <Compile Include="..\Helpers\CellFormatter.cs" Link="Linked\CellFormatter.cs" />
     <Compile Include="..\Helpers\RegistryImageResolver.cs" Link="Linked\RegistryImageResolver.cs" />
@@ -134,6 +176,9 @@
     <Compile Include="..\Helpers\VoSpaceParser.cs" Link="Linked\VoSpaceParser.cs" />
     <Compile Include="..\Models\VoSpaceNode.cs" Link="Linked\VoSpaceNode.cs" />
     <Compile Include="..\Services\TAPService.cs" Link="Linked\TAPService.cs" />
+    <Compile Include="..\ViewModels\SearchViewModel.cs" Link="Linked\SearchViewModel.cs" />
+    <Compile Include="..\Services\SearchStoreService.cs" Link="Linked\SearchStoreService.cs" />
+    <Compile Include="..\Services\SearchContext.cs" Link="Linked\SearchContext.cs" />
     <!-- The service's own schema, and the ADQL pre-flight that reads it. -->
     <Compile Include="..\Models\TapSchema.cs" Link="Linked\TapSchema.cs" />
     <Compile Include="..\Services\TapSchemaService.cs" Link="Linked\TapSchemaService.cs" />
@@ -163,6 +208,7 @@
     <Compile Include="..\Services\CAOM2Service.cs" Link="Linked\CAOM2Service.cs" />
     <Compile Include="..\Models\DownloadedObservation.cs" Link="Linked\DownloadedObservation.cs" />
     <Compile Include="..\Services\ObservationStore.cs" Link="Linked\ObservationStore.cs" />
+    <Compile Include="..\Services\ObservationDownloader.cs" Link="Linked\ObservationDownloader.cs" />
     <Compile Include="..\Services\IStorageService.cs" Link="Linked\IStorageService.cs" />
     <Compile Include="..\Services\Export\IExportableModule.cs" Link="Linked\Export\IExportableModule.cs" />
     <Compile Include="..\Models\Export\ExportManifest.cs" Link="Linked\Export\ExportManifest.cs" />
@@ -201,6 +247,12 @@
     <Compile Include="..\Helpers\ComputeStatus.cs" Link="Linked\ComputeStatus.cs" />
     <Compile Include="..\Helpers\StorageFolder.cs" Link="Linked\StorageFolder.cs" />
     <Compile Include="..\Helpers\AccountScreens.cs" Link="Linked\AccountScreens.cs" />
+    <Compile Include="..\Helpers\LineEndings.cs" Link="Linked\LineEndings.cs" />
+    <Compile Include="..\Helpers\SettingsSections.cs" Link="Linked\SettingsSections.cs" />
+    <Compile Include="..\Mcp\Tools\Write\SettingsViewTools.cs" Link="Linked\Mcp\SettingsViewTools.cs" />
+    <Compile Include="..\Services\Fits\FitsGoto.cs" Link="Linked\Fits\FitsGoto.cs" />
+    <Compile Include="..\Services\Fits\MarkExportFiles.cs" Link="Linked\Fits\MarkExportFiles.cs" />
+    <Compile Include="..\Services\AICompute\ComputeSnapshot.cs" Link="Linked\AICompute\ComputeSnapshot.cs" />
     <Compile Include="..\Mcp\AgentScreens.cs" Link="Linked\Mcp\AgentScreens.cs" />
     <Compile Include="..\Mcp\Tools\Write\RemoteComputeViewTools.cs" Link="Linked\Mcp\RemoteComputeViewTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\AIComputeTools.cs" Link="Linked\Mcp\AIComputeTools.cs" />
@@ -211,6 +263,8 @@
     <!-- Search page steering: contracts first — AppViewStateService forwards to ISearchUiBridge. -->
     <Compile Include="..\Mcp\Tools\Write\SearchUiContracts.cs" Link="Linked\Mcp\SearchUiContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\SearchUiTools.cs" Link="Linked\Mcp\SearchUiTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\ResearchUiTools.cs" Link="Linked\Mcp\ResearchUiTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\PortalUiTools.cs" Link="Linked\Mcp\PortalUiTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\SavedQueryWriteTools.cs" Link="Linked\Mcp\SavedQueryWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\RecentSearchWriteTools.cs" Link="Linked\Mcp\RecentSearchWriteTools.cs" />
     <Compile Include="..\Mcp\Agents\AgentActivity.cs" Link="Linked\Mcp\AgentActivity.cs" />
@@ -219,6 +273,7 @@
     <Compile Include="..\Mcp\Tools\Write\ObservationNoteWriteTools.cs" Link="Linked\Mcp\ObservationNoteWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\SessionWriteTools.cs" Link="Linked\Mcp\SessionWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ObservationWriteTools.cs" Link="Linked\Mcp\ObservationWriteTools.cs" />
+    <Compile Include="..\Mcp\Tools\Write\CutoutTools.cs" Link="Linked\Mcp\CutoutTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\VoSpaceWriteTools.cs" Link="Linked\Mcp\VoSpaceWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\ImageDiscoveryWriteTools.cs" Link="Linked\Mcp\ImageDiscoveryWriteTools.cs" />
     <Compile Include="..\Mcp\Tools\Write\AiGuideWriteTools.cs" Link="Linked\Mcp\AiGuideWriteTools.cs" />
@@ -253,6 +308,8 @@
     <Compile Include="..\Mcp\McpPipeName.cs" Link="Linked\Mcp\McpPipeName.cs" />
     <Compile Include="..\Mcp\Listener\McpSidecar.cs" Link="Linked\Mcp\McpSidecar.cs" />
     <Compile Include="..\Mcp\Bridge\BridgeRelay.cs" Link="Linked\Mcp\BridgeRelay.cs" />
+    <Compile Include="..\Mcp\Bridge\BridgeStandIn.cs" Link="Linked\Mcp\BridgeStandIn.cs" />
+    <Compile Include="..\Mcp\Bridge\AppSnapshot.cs" Link="Linked\Mcp\AppSnapshot.cs" />
     <Compile Include="..\Mcp\Transport\StreamTransport.cs" Link="Linked\Mcp\StreamTransport.cs" />
     <Compile Include="..\Mcp\Listener\McpPipeSddl.cs" Link="Linked\Mcp\McpPipeSddl.cs" />
     <Compile Include="..\Mcp\McpServerService.cs" Link="Linked\Mcp\McpServerService.cs" />
@@ -332,6 +389,7 @@
     <Compile Include="..\Helpers\UiPointer.cs" Link="Linked\UiPointer.cs" />
     <Compile Include="..\Helpers\ToolbarOverflow.cs" Link="Linked\ToolbarOverflow.cs" />
     <Compile Include="..\Helpers\MarkTarget.cs" Link="Linked\MarkTarget.cs" />
+    <Compile Include="..\Helpers\PortalLayout.cs" Link="Linked\PortalLayout.cs" />
     <Compile Include="..\Services\Fits\AnnotationStore.cs" Link="Linked\Fits\AnnotationStore.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationContracts.cs" Link="Linked\Mcp\AnnotationContracts.cs" />
     <Compile Include="..\Mcp\Tools\Write\AnnotationTools.cs" Link="Linked\Mcp\AnnotationTools.cs" />
@@ -350,6 +408,7 @@
     <Compile Include="..\Models\Fits\FitsCard.cs" Link="Linked\Fits\FitsCard.cs" />
     <Compile Include="..\Models\Fits\FitsHeader.cs" Link="Linked\Fits\FitsHeader.cs" />
     <Compile Include="..\Models\Fits\WcsInfo.cs" Link="Linked\Fits\WcsInfo.cs" />
+    <Compile Include="..\Models\Fits\SpectralAxis.cs" Link="Linked\Fits\SpectralAxis.cs" />
     <Compile Include="..\Models\Fits\PixelConvention.cs" Link="Linked\Fits\PixelConvention.cs" />
     <Compile Include="..\Models\Fits\FitsImageData.cs" Link="Linked\Fits\FitsImageData.cs" />
     <Compile Include="..\Models\Fits\FitsHdu.cs" Link="Linked\Fits\FitsHdu.cs" />
@@ -359,6 +418,8 @@
     <Compile Include="..\Services\Fits\ImageStretcher.cs" Link="Linked\Fits\ImageStretcher.cs" />
     <Compile Include="..\Services\Fits\ColormapProvider.cs" Link="Linked\Fits\ColormapProvider.cs" />
     <Compile Include="..\Services\Fits\FitsRenderer.cs" Link="Linked\Fits\FitsRenderer.cs" />
+    <Compile Include="..\Services\Fits\FitsDisplayRaster.cs" Link="Linked\Fits\FitsDisplayRaster.cs" />
+    <Compile Include="..\Services\Fits\FitsMemoryBudget.cs" Link="Linked\Fits\FitsMemoryBudget.cs" />
     <!-- Notebook execution services (Milestone 4) -->
     <Compile Include="..\Services\Notebook\KernelState.cs" Link="Linked\Notebook\KernelState.cs" />
     <Compile Include="..\Services\Notebook\IKernelService.cs" Link="Linked\Notebook\IKernelService.cs" />

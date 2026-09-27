@@ -27,6 +27,18 @@ public class ObservationStore
     public IReadOnlyList<DownloadedObservation> Observations { get { lock (_lock) return _observations.ToList(); } }
     public int Count { get { lock (_lock) return _observations.Count; } }
 
+    /// <summary>
+    /// Raised after every change, on whatever thread made it — often a download finishing in the
+    /// background, long after the screen that started it moved on. Subscribers marshal for themselves.
+    /// </summary>
+    public event Action? Changed;
+
+    private void RaiseChanged()
+    {
+        try { Changed?.Invoke(); }
+        catch { /* a broken subscriber must not undo the save it is being told about */ }
+    }
+
     public ObservationStore()
     {
         try
@@ -44,14 +56,44 @@ public class ObservationStore
         }
     }
 
+    /// <summary>
+    /// Save, replacing the record for the same PRODUCT — the same observation, and the same cutout of it
+    /// or likewise none. It used to replace by publisher id alone, which would have let a cutout
+    /// overwrite the complete download it was cut from.
+    /// </summary>
     public void Save(DownloadedObservation observation)
     {
         lock (_lock)
         {
-            _observations.RemoveAll(o => o.PublisherID == observation.PublisherID);
+            _observations.RemoveAll(o => o.PublisherID == observation.PublisherID && o.ProductKey == observation.ProductKey);
             _observations.Insert(0, observation);
             WriteToDisk();
         }
+        RaiseChanged();
+    }
+
+    /// <summary>
+    /// Save this product only if Research does not have it yet — for keeping an observation without
+    /// downloading it. Never over a record that exists: that one may hold a downloaded file, and a
+    /// record saved without one would forget it. True when it was saved.
+    /// </summary>
+    public bool SaveIfAbsent(DownloadedObservation observation)
+    {
+        lock (_lock)
+        {
+            if (_observations.Any(o => o.PublisherID == observation.PublisherID && o.ProductKey == observation.ProductKey))
+                return false;
+            _observations.Insert(0, observation);
+            WriteToDisk();
+        }
+        RaiseChanged();
+        return true;
+    }
+
+    /// <summary>Whether Research holds this product of an observation — the complete one when <paramref name="productKey"/> is null.</summary>
+    public bool Has(string publisherId, string? productKey = null)
+    {
+        lock (_lock) return _observations.Any(o => o.PublisherID == publisherId && o.ProductKey == productKey);
     }
 
     public void Remove(DownloadedObservation observation)
@@ -61,6 +103,7 @@ public class ObservationStore
             _observations.RemoveAll(o => o.Id == observation.Id);
             WriteToDisk();
         }
+        RaiseChanged();
     }
 
     public void Clear()
@@ -70,6 +113,7 @@ public class ObservationStore
             _observations.Clear();
             WriteToDisk();
         }
+        RaiseChanged();
     }
 
     /// <summary>A downloaded observation by any of the ids a caller is likely to hold.</summary>
@@ -88,8 +132,12 @@ public class ObservationStore
         if (string.IsNullOrWhiteSpace(id)) return null;
         id = id.Trim();
 
-        var exact = all.FirstOrDefault(o => o.Id == id || o.PublisherID == id);
-        if (exact is not null) return exact;
+        if (all.FirstOrDefault(o => o.Id == id) is { } byId) return byId;
+
+        // A publisher id can hold the complete observation and cutouts of it; asked for the
+        // observation, the complete one is the answer. A local id names a cutout exactly.
+        var byPublisher = all.Where(o => o.PublisherID == id).ToList();
+        if (byPublisher.Count > 0) return byPublisher.FirstOrDefault(o => !o.IsCutout) ?? byPublisher[0];
 
         var byArchiveId = all.Where(o => string.Equals(o.ObservationID, id, StringComparison.OrdinalIgnoreCase))
                              .Take(2).ToList();

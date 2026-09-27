@@ -1,5 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using CanfarDesktop.Helpers;
+using CanfarDesktop.Mcp.Tools.Write;
 using CanfarDesktop.Models;
 using CanfarDesktop.Services;
 using CanfarDesktop.Services.ImageDiscovery;
@@ -20,6 +22,12 @@ public sealed partial class DashboardPage : Page
     private readonly CanfarImagesControl _canfarImages;
     private readonly SessionListViewModel _sessionListVm;
     private readonly SessionLaunchViewModel _sessionLaunchVm;
+
+    /// <summary>The launch form's dialog, made the first time it opens and kept, with what was typed in it.</summary>
+    private LaunchFormDialog? _launchDialog;
+
+    /// <summary>The arrangement the cards are in now.</summary>
+    private IReadOnlyDictionary<PortalCard, PortalCell>? _layout;
 
     public DashboardPage(
         SessionListViewModel sessionListVm,
@@ -47,12 +55,12 @@ public sealed partial class DashboardPage : Page
         _canfarImages = new CanfarImagesControl(imageService, imageDiscoveryCoordinator, imageDiscoverySettings, userImages);
 
         SessionListContainer.Child = _sessionList;
-        LaunchFormContainer.Child = _launchForm;
         PlatformLoadContainer.Child = _platformLoad;
         StorageContainer.Child = _storageQuota;
         BatchJobsContainer.Child = _batchJobs;
         RecentLaunchesContainer.Child = _recentLaunches;
         CanfarImagesContainer.Child = _canfarImages;
+        Arrange(PortalLayout.Wide);
 
         // Wire up session counter for name generation
         sessionLaunchVm.SetSessionCounter(type =>
@@ -66,6 +74,7 @@ public sealed partial class DashboardPage : Page
         _sessionList.SessionDeleteRequested += OnSessionDelete;
         _sessionList.SessionRenewRequested += OnSessionRenew;
         _sessionList.SessionEventsRequested += OnSessionEvents;
+        _sessionList.LaunchSessionRequested += (_, _) => ShowLaunchForm(null);
         _launchForm.LaunchRequested += OnLaunchRequested;
         _launchForm.HeadlessLaunchRequested += OnHeadlessLaunchRequested;
         _recentLaunches.RelaunchRequested += OnRelaunchRequested;
@@ -77,6 +86,81 @@ public sealed partial class DashboardPage : Page
             _sessionLaunchVm.UpdateSessionLimit();
             _recentLaunches.UpdateSessionLimit(_sessionLaunchVm.IsAtSessionLimit);
         };
+    }
+
+    // ── Where the cards go ──────────────────────────────────────────────────────────────────────
+
+    private void OnPortalSizeChanged(object sender, SizeChangedEventArgs e) => Arrange(PortalLayout.For(e.NewSize.Width));
+
+    /// <summary>Put each card in its cell — only when the arrangement changes, not on every resize.</summary>
+    private void Arrange(IReadOnlyDictionary<PortalCard, PortalCell> layout)
+    {
+        if (ReferenceEquals(layout, _layout)) return;
+        _layout = layout;
+
+        // As many rows as the arrangement uses: an empty row still takes the grid's spacing.
+        PortalGrid.RowDefinitions.Clear();
+        for (var row = 0; row < PortalLayout.Rows(layout); row++)
+            PortalGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        foreach (var (card, cell) in layout)
+        {
+            var container = ContainerOf(card);
+            Grid.SetColumn(container, cell.Column);
+            Grid.SetRow(container, cell.Row);
+            Grid.SetColumnSpan(container, cell.ColumnSpan);
+        }
+    }
+
+    private Border ContainerOf(PortalCard card) => card switch
+    {
+        PortalCard.PlatformLoad => PlatformLoadContainer,
+        PortalCard.Storage => StorageContainer,
+        PortalCard.BatchJobs => BatchJobsContainer,
+        PortalCard.Sessions => SessionListContainer,
+        PortalCard.Images => CanfarImagesContainer,
+        _ => RecentLaunchesContainer,
+    };
+
+    // ── The launch form ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Open the launch form, on <paramref name="tab"/> when one is named. Not while another dialog is up:
+    /// WinUI shows one at a time, and the one open is the person's business.
+    /// </summary>
+    private LaunchFormShown ShowLaunchForm(string? tab)
+    {
+        _launchDialog ??= new LaunchFormDialog(_launchForm);
+        if (tab is not null) _launchForm.ShowTab(tab);
+        if (_launchDialog.IsOpen) return new LaunchFormShown(true, _launchForm.Tab);
+
+        if (AgentPointer.OpenDialog(XamlRoot) is { } other)
+            return new LaunchFormShown(false, _launchForm.Tab,
+                $"another dialog is open (\"{other.Title as string ?? "a dialog"}\") — only one can be open at a time, " +
+                "so the person needs to close it first");
+
+        _launchDialog.Open(XamlRoot);
+        return new LaunchFormShown(true, _launchForm.Tab);
+    }
+
+    /// <summary>
+    /// For show_launch_form: the form on a tab, an image chosen in it, or the form closed. An image the
+    /// catalogue offers goes on the Standard tab; any other, typed in as the Advanced tab's own image.
+    /// </summary>
+    public async Task<LaunchFormShown> ShowLaunchFormForAgentAsync(LaunchFormRequest request)
+    {
+        if (request.Close)
+        {
+            var wasOpen = _launchDialog is not null && await _launchDialog.CloseAsync();
+            return new LaunchFormShown(false, _launchForm.Tab, wasOpen ? null : "the launch form was not open");
+        }
+
+        var tab = request.Tab;
+        if (string.IsNullOrWhiteSpace(request.Image)) return ShowLaunchForm(tab);
+
+        var image = request.Image.Trim();
+        var catalogued = _sessionLaunchVm.SelectImageById(image);
+        return ShowLaunchForm(tab ?? (catalogued ? LaunchFormTabs.Standard : LaunchFormTabs.Advanced)) with { Image = image };
     }
 
     public async Task LoadDataAsync(string? username)
@@ -142,7 +226,20 @@ public sealed partial class DashboardPage : Page
         await loadTask;
     }
 
+    /// <summary>
+    /// Close the form to show a launch's progress — one dialog at a time — and bring it back when the
+    /// launch fails, with what was typed and the reason, to put right.
+    /// </summary>
+    private async Task LaunchFromFormAsync(Func<Task<bool>> launch)
+    {
+        var fromForm = _launchDialog is not null && await _launchDialog.CloseAsync();
+        if (!await launch() && fromForm) ShowLaunchForm(null);
+    }
+
     private async void OnLaunchRequested(object? sender, EventArgs e)
+        => await LaunchFromFormAsync(LaunchInteractiveAsync);
+
+    private Task<bool> LaunchInteractiveAsync()
     {
         var name = _sessionLaunchVm.SessionName;
         var imageLabel = _sessionLaunchVm.UseCustomImage
@@ -153,7 +250,7 @@ public sealed partial class DashboardPage : Page
         var ram = _sessionLaunchVm.Ram;
         var gpus = _sessionLaunchVm.Gpus;
 
-        await ShowLaunchDialogAsync(
+        return ShowLaunchDialogAsync(
             title: Helpers.Loc.T("Launch_DialogTitle"),
             name: name,
             imageLabel: imageLabel,
@@ -169,9 +266,12 @@ public sealed partial class DashboardPage : Page
     }
 
     private async void OnHeadlessLaunchRequested(object? sender, EventArgs e)
+        => await LaunchFromFormAsync(LaunchHeadlessAsync);
+
+    private async Task<bool> LaunchHeadlessAsync()
     {
         var replicas = Math.Clamp(_sessionLaunchVm.HeadlessReplicas, 1, 20);
-        await ShowLaunchDialogAsync(
+        var launched = await ShowLaunchDialogAsync(
             title: replicas > 1 ? Helpers.Loc.F("Launch_LaunchReplicas", replicas) : Helpers.Loc.T("Launch_DialogTitleBatch"),
             name: _sessionLaunchVm.HeadlessSessionName,
             imageLabel: _sessionLaunchVm.HeadlessSelectedImage?.Label ?? "",
@@ -185,13 +285,12 @@ public sealed partial class DashboardPage : Page
                 return _sessionLaunchVm.LaunchSuccess;
             });
         await _batchJobs.LoadAsync(); // headless jobs surface in the Batch Jobs panel, not Active Sessions
+        return launched;
     }
 
-    private void OnUseImageRequested(object? sender, string imageId)
-    {
-        _sessionLaunchVm.SelectImageById(imageId);
-        _launchForm.StartBringIntoView(); // scroll the launch form into view so the change is visible
-    }
+    /// <summary>"Use this image": the launch form, opened with it chosen.</summary>
+    private async void OnUseImageRequested(object? sender, string imageId)
+        => await ShowLaunchFormForAgentAsync(new LaunchFormRequest(null, imageId, false));
 
     private async void OnRelaunchRequested(object? sender, RecentLaunch launch)
     {
@@ -206,7 +305,8 @@ public sealed partial class DashboardPage : Page
             launchFunc: () => _sessionLaunchVm.RelaunchAsync(launch));
     }
 
-    private async Task ShowLaunchDialogAsync(
+    /// <summary>A launch, with its progress and outcome in a dialog. True when it launched; a failure waits for the dialog to close.</summary>
+    private async Task<bool> ShowLaunchDialogAsync(
         string title, string name, string imageLabel,
         string resourceType, int cores, int ram, int gpus,
         Func<Task<bool>> launchFunc)
@@ -277,15 +377,16 @@ public sealed partial class DashboardPage : Page
 
             await Task.Delay(1000);
             await _sessionList.LoadAsync();
+            return true;
         }
-        else
-        {
-            statusText.Text = Helpers.Loc.T("Launch_Failed");
-            resultBar.Severity = InfoBarSeverity.Error;
-            resultBar.Title = Helpers.Loc.T("Portal_Error");
-            resultBar.Message = _sessionLaunchVm.ErrorMessage;
-            resultBar.IsOpen = true;
-        }
+
+        statusText.Text = Helpers.Loc.T("Launch_Failed");
+        resultBar.Severity = InfoBarSeverity.Error;
+        resultBar.Title = Helpers.Loc.T("Portal_Error");
+        resultBar.Message = _sessionLaunchVm.ErrorMessage;
+        resultBar.IsOpen = true;
+        await dialogTask;
+        return false;
     }
 
     private async Task ShowRenewDialogAsync(string sessionName, string sessionId)

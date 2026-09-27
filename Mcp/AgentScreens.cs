@@ -22,14 +22,17 @@ public static class AgentScreens
             or "reset_search_form" or "run_search" or "set_adql_query" or "execute_adql_query"
             or "get_search_results" or "set_search_results_view" or "export_search_results"
             or "load_recent_search" or "run_saved_query"
-            or "remove_recent_search" or "clear_recent_searches" => "search",
+            or "remove_recent_search" or "clear_recent_searches" or "cancel_search" => "search",
         "list_downloaded_observations" or "get_downloaded_observation" or "get_observation_notes"
             or "get_observation_caom2" or "get_data_links" or "update_observation_note"
-            or "bulk_update_observation_notes" or "download_observation" or "delete_downloaded_observation" => "research",
+            or "bulk_update_observation_notes" or "download_observation" or "delete_downloaded_observation"
+            or "get_cutout_options" or "download_cutout"
+            or "save_observation_to_research" or "remove_downloaded_file" => "research",
         "list_sessions" or "get_session" or "list_session_types" or "list_headless_jobs"
             or "get_headless_job_logs" or "get_headless_job_events" or "list_session_images"
             or "list_recent_launches" or "find_images_with_packages" or "get_platform_load"
-            or "launch_session" or "launch_headless_job" or "delete_session" or "renew_session" => "portal",
+            or "launch_session" or "launch_headless_job" or "delete_session" or "renew_session"
+            or "show_launch_form" => "portal",
         "get_storage_quota" or "list_vospace_path" or "read_vospace_file"
             or "upload_text_to_vospace" or "create_vospace_folder" or "delete_vospace_node" => "storage",
         // Workflow tools double as proposal kinds — one mapping covers the "Agent is working in

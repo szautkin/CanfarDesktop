@@ -27,8 +27,8 @@ public sealed class DiscoverImagePackagesTool : JsonWriteTool<DiscoverImagePacka
         "in-target probe; all other types launch a known-good headless host that introspects the target via a " +
         "static registry scan (the target image is never executed). A cache-miss runs one small Skaha job " +
         "(visible in list_headless_jobs; delete_session to cancel). Pass force=true to bypass the cache for a " +
-        "known-fresh manifest (e.g. after an image rebuild). Queues for the user to apply; after it applies, " +
-        "the image is matchable via find_images_with_packages.",
+        "known-fresh manifest (e.g. after an image rebuild). Once it has applied, the image is matchable via " +
+        "find_images_with_packages.",
         """
         {"type":"object","required":["image"],"properties":{
           "image":{"type":"string","minLength":1},

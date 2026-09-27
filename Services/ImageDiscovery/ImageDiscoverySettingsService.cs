@@ -56,7 +56,7 @@ public class ImageDiscoverySettingsService
 
     public void SetInspectorImage(string value)
     {
-        var final = string.IsNullOrWhiteSpace(value) ? ImageDiscoverySettings.DefaultInspectorImage : value.Trim();
+        var final = string.IsNullOrWhiteSpace(value) ? ImageDiscoverySettings.DefaultInspectorImage : CanfarDesktop.Helpers.RegistryImageResolver.Normalize(value);
         WriteSetting(KeyInspectorImage, final);
         Settings = Settings with { InspectorImage = final };
     }

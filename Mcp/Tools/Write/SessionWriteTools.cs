@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CanfarDesktop.Mcp.Tools.Proposals;
+using CanfarDesktop.Models;
 
 namespace CanfarDesktop.Mcp.Tools.Write;
 
@@ -18,7 +19,7 @@ public sealed record RenewSessionPayload(string Id);
 
 internal static class SessionWriteHelpers
 {
-    public static readonly string[] InteractiveTypes = { "notebook", "desktop", "carta", "contributed", "firefly" };
+    public static IReadOnlyList<string> InteractiveTypes => SessionTypes.Interactive;
 
     public static void RequireResources(int? cores, int? ram, int? gpus)
     {
@@ -37,8 +38,7 @@ public sealed class LaunchSessionTool : JsonWriteTool<LaunchSessionTool.Args>
         "launch_session",
         "Propose launching an interactive Skaha session (notebook/desktop/carta/contributed/firefly) from " +
         "a container image (use an id from list_session_images — hand-typed image strings can be rejected), " +
-        "with optional name + CPU/RAM(GB)/GPU. Queues for the user to apply; after it applies, find the new " +
-        "session via list_sessions.",
+        "with optional name + CPU/RAM(GB)/GPU. Once it has applied, find the new session via list_sessions.",
         """{"type":"object","properties":{"type":{"type":"string","enum":["notebook","desktop","carta","contributed","firefly"]},"image":{"type":"string"},"name":{"type":"string"},"cores":{"type":"integer","minimum":1},"ram":{"type":"integer","minimum":1},"gpus":{"type":"integer","minimum":0}},"required":["type","image"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -77,7 +77,7 @@ public sealed class LaunchHeadlessJobTool : JsonWriteTool<LaunchHeadlessJobTool.
         "Propose launching a headless (batch) Skaha job from a container image (use an id from " +
         "list_session_images — hand-typed image strings can be rejected), with an optional command " +
         "(`cmd`, the executable the container runs), args string, resources, and replica count (1-50). " +
-        "Queues for the user to apply; track it via list_headless_jobs.",
+        "Once it has applied, track it via list_headless_jobs.",
         """{"type":"object","properties":{"image":{"type":"string"},"name":{"type":"string"},"cmd":{"type":"string"},"args":{"type":"string"},"cores":{"type":"integer","minimum":1},"ram":{"type":"integer","minimum":1},"gpus":{"type":"integer","minimum":0},"replicas":{"type":"integer","minimum":1,"maximum":50}},"required":["image"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -115,8 +115,8 @@ public sealed class DeleteSessionTool : JsonWriteTool<DeleteSessionTool.Args>
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "delete_session",
-        "Propose terminating a running Skaha session (or headless job) by its id. Queues for the user to " +
-        "apply (a destructive change). Get ids from list_sessions / list_headless_jobs.",
+        "Propose terminating a running Skaha session (or headless job) by its id. Get ids from " +
+        "list_sessions / list_headless_jobs.",
         """{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -146,7 +146,7 @@ public sealed class DeleteSessionsBulkTool : JsonWriteTool<DeleteSessionsBulkToo
         "Terminate up to 50 Skaha sessions (interactive OR headless) as one proposal envelope. " +
         "Partial-success: every id is attempted, so a single zombie that's already gone doesn't block " +
         "the rest. Use this for zombie-cleanup after a launch-storm or to free quota slots after a " +
-        "stress test. Queues for the user to apply (a destructive change).",
+        "stress test.",
         """{"type":"object","required":["ids"],"properties":{"ids":{"type":"array","items":{"type":"string","minLength":1},"minItems":1,"maxItems":50}},"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -177,7 +177,7 @@ public sealed class RenewSessionTool : JsonWriteTool<RenewSessionTool.Args>
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "renew_session",
-        "Propose renewing (extending the expiry of) a running Skaha session by its id. Queues for the user to apply.",
+        "Propose renewing (extending the expiry of) a running Skaha session by its id.",
         """{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)

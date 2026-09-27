@@ -7,8 +7,13 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using CanfarDesktop.Helpers;
+using CanfarDesktop.Models;
 using CanfarDesktop.Models.Caom2;
+using CanfarDesktop.Models.Cutouts;
 using CanfarDesktop.Services;
+using CanfarDesktop.Services.Cutouts;
+using CanfarDesktop.Services.Cutouts.Local;
+using CanfarDesktop.Views.Controls;
 using Windows.Storage.Pickers;
 
 namespace CanfarDesktop.Views;
@@ -22,27 +27,114 @@ public sealed partial class ObservationDetailPage : UserControl
 {
     private readonly ICAOM2Service _caom2;
     private readonly DataLinkService _dataLink;
+    private readonly ObservationDownloader _downloader;
+    private readonly SearchContext _search;
+    private readonly ObservationStore _store;
 
     private string _publisherID = string.Empty;
     private CAOM2Observation? _current;
     private string _collection = string.Empty;
     private string _observationID = string.Empty;
 
+    /// <summary>This observation's DataLink answer, once fetched: which of its files can be cut out.</summary>
+    private DataLinkResult? _links;
+
+    /// <summary>The cutout editor open in the Files tab, if one is.</summary>
+    private CutoutEditor? _cutoutEditor;
+
+    /// <summary>
+    /// The observation's file on this computer as a way of cutting it, once its headers are read; null
+    /// when Research has none of it here.
+    /// </summary>
+    private LocalCutoutSource? _localSource;
+
+    /// <summary>Each observation's file on this computer, read again only when it or the files beside it change.</summary>
+    private readonly LocalSourceCache _localCache = new();
+
     /// <summary>Raised when the user presses "Sign in" on the auth-required state.</summary>
     public event Action? SignInRequested;
 
-    public ObservationDetailPage(ICAOM2Service caom2, DataLinkService dataLink)
+    public ObservationDetailPage(ICAOM2Service caom2, DataLinkService dataLink,
+                                 ObservationDownloader downloader, SearchContext search, ObservationStore store)
     {
         InitializeComponent();
         _caom2 = caom2;
         _dataLink = dataLink;
+        _downloader = downloader;
+        _search = search;
+        _store = store;
+
+        SaveToResearchButton.Content = Loc.T("ObsDetail_SaveToResearch");
+        UpdateSaveToResearch();
+        AddCopyDetailsButton();
+        // A cached page for the app's life, so it may listen for the app's life: a download landing
+        // elsewhere puts this observation in Research, and the button should say so.
+        _store.Changed += () => DispatcherQueue.TryEnqueue(() =>
+        {
+            UpdateSaveToResearch();
+            // A download landing, or a file removed, changes whether the observation can be cut here.
+            if (_current is { } shown) _ = RefreshLocalSourceAsync(shown);
+        });
+    }
+
+    /// <summary>
+    /// "Save to Research" — keep the observation, its details and notes, without downloading a file.
+    /// Live once the observation has loaded and Research does not have it; greyed, saying why, otherwise.
+    /// </summary>
+    private void UpdateSaveToResearch()
+    {
+        var loaded = _current is not null && !string.IsNullOrEmpty(_publisherID);
+        var inResearch = loaded && _store.Has(_publisherID);
+        UIFactory.Enable(SaveToResearchButton, loaded && !inResearch,
+            inResearch ? Loc.T("ObsDetail_AlreadyInResearch") : Loc.T("ObsDetail_SaveToResearchLoading"));
+        if (loaded && !inResearch) ToolTipService.SetToolTip(SaveToResearchButton, Loc.T("ObsDetail_SaveToResearchTip"));
+    }
+
+    /// <summary>
+    /// "Copy details", beside Save to Research: the observation as the same summary Search and Research
+    /// copy — built from the same Research record this page would save.
+    /// </summary>
+    private void AddCopyDetailsButton()
+    {
+        // The button sits in a wrapper that carries its greyed reason; the copy goes after the wrapper.
+        if (SaveToResearchButton.Parent is not FrameworkElement { Parent: Panel row } wrapper) return;
+        var copy = new Button { Name = "ObsDetailCopyDetailsButton", Content = Loc.T("Research_CopyDetails") };
+        ToolTipService.SetToolTip(copy, Loc.T("Research_CopyDetailsTip"));
+        AutomationProperties.SetName(copy, Loc.T("Research_CopyDetails"));
+        copy.Click += (_, _) =>
+        {
+            if (_current is null || string.IsNullOrEmpty(_publisherID)) return;
+            var ctx = new DownloadContext(_publisherID, _collection, _observationID, _current, _links, IsScience: true);
+            ClipboardText.Copy(ObservationSummary.Text(ResearchRecordFor(ctx)), Loc.T("Search_ObservationCopied"));
+        };
+        row.Children.Insert(row.Children.IndexOf(wrapper) + 1, copy);
+    }
+
+    private void OnSaveToResearch(object sender, RoutedEventArgs e)
+    {
+        if (_current is null || string.IsNullOrEmpty(_publisherID)) return;
+
+        var ctx = new DownloadContext(_publisherID, _collection, _observationID, _current, _links, IsScience: true);
+        if (_store.SaveIfAbsent(ResearchRecordFor(ctx)))
+        {
+            DownloadBar.IsOpen = true;
+            DownloadBar.ActionButton = null;
+            DownloadBar.Severity = InfoBarSeverity.Success;
+            DownloadBar.Title = Loc.T("ObsDetail_SavedToResearch");
+            DownloadBar.Message = string.Empty;
+            DownloadText.Text = string.Empty;
+            DownloadResearchText.Text = Loc.T("ObsDetail_SavedToResearchNote");
+            DownloadResearchLink.Content = Loc.T("ObsDetail_ViewInResearch");
+            DownloadResearchRow.Visibility = Visibility.Visible;
+        }
+        UpdateSaveToResearch();
     }
 
     /// <summary>Load (or reload) the detail view for a search-result publisher ID.</summary>
     public async Task LoadAsync(string publisherID)
     {
         _publisherID = publisherID;
-        (_collection, _observationID) = SplitUri(Caom2Uri.ToObservationUri(publisherID));
+        (_collection, _observationID) = Caom2Uri.Split(publisherID);
         HeaderObsId.Text = string.IsNullOrEmpty(_observationID) ? Loc.T("ObsDetail_ObservationFallback") : _observationID;
         HeaderCollection.Text = _collection;
         HeaderChips.Children.Clear();
@@ -65,9 +157,14 @@ public sealed partial class ObservationDetailPage : UserControl
         DownloadBar.IsOpen = false;
         DownloadBar.ActionButton = null;
         DownloadResearchRow.Visibility = Visibility.Collapsed;
-        DownloadProgress.Visibility = Visibility.Visible; // restored for the next download's progress
-        DownloadProgress.IsIndeterminate = true;
         DownloadText.Text = string.Empty;
+
+        // The previous observation's files and cutout editor go with it.
+        _links = null;
+        _cutoutEditor = null;
+        _localSource = null;
+        _current = null;
+        UpdateSaveToResearch();
     }
 
     private async Task ReloadAsync()
@@ -79,6 +176,7 @@ public sealed partial class ObservationDetailPage : UserControl
             case Caom2Status.Success when result.Observation is not null:
                 Populate(result.Observation);
                 SetState(success: true);
+                await LoadCutoutSourcesAsync(result.Observation);
                 break;
             case Caom2Status.AuthRequired:
                 SetState(auth: true);
@@ -102,14 +200,6 @@ public sealed partial class ObservationDetailPage : UserControl
         NotFoundPanel.Visibility = notFound ? Visibility.Visible : Visibility.Collapsed;
         DetailPivot.Visibility = success ? Visibility.Visible : Visibility.Collapsed;
         ErrorBar.IsOpen = error;
-    }
-
-    private static (string Collection, string ObservationID) SplitUri(string? caomUri)
-    {
-        if (string.IsNullOrEmpty(caomUri) || !caomUri.StartsWith("caom:", StringComparison.OrdinalIgnoreCase))
-            return (string.Empty, string.Empty);
-        var parts = caomUri["caom:".Length..].Split('/', 2);
-        return parts.Length == 2 ? (parts[0], parts[1]) : (string.Empty, string.Empty);
     }
 
     #region Populate
@@ -136,6 +226,7 @@ public sealed partial class ObservationDetailPage : UserControl
         BuildFiles(obs);
         BuildProvenance(obs);
         BuildRaw(obs);
+        UpdateSaveToResearch();
     }
 
     private void BuildOverview(CAOM2Observation obs)
@@ -238,6 +329,9 @@ public sealed partial class ObservationDetailPage : UserControl
         var link = new HyperlinkButton { Content = Loc.T("ObsDetail_ViewAllFilesCadc"), Margin = new Thickness(0, 4, 0, 0) };
         link.Click += OnViewOnCadc;
         FilesPanel.Children.Add(link);
+
+        // Rebuilt under an open editor — a download landing while it is open — the editor stays.
+        if (_cutoutEditor is { } open) FilesPanel.Children.Insert(0, open);
     }
 
     private void BuildProvenance(CAOM2Observation obs)
@@ -365,6 +459,7 @@ public sealed partial class ObservationDetailPage : UserControl
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var (bg, fg) = ArtifactBadge(art.ProductType);
         var badge = Chip(string.IsNullOrWhiteSpace(art.ProductType) ? Loc.T("ObsDetail_FileBadge") : art.ProductType!, bg, fg);
@@ -397,8 +492,33 @@ public sealed partial class ObservationDetailPage : UserControl
         ToolTipService.SetToolTip(dl, Loc.T("ObsDetail_DownloadTooltip"));
         AutomationProperties.SetName(dl, Loc.F("ObsDetail_DownloadFileName", Caom2Format.ArtifactFileName(art.Uri)));
         dl.Click += (_, _) => _ = OnDownloadArtifactAsync(art);
-        Grid.SetColumn(dl, 3);
+        Grid.SetColumn(dl, 4);
         grid.Children.Add(dl);
+
+        // On every FITS file — the only kind that can be cut; never on a preview, catalogue or package.
+        // Live where it can be cut one way or another — CADC's (its DataLink answer has a service for
+        // it) or this computer's (its copy is here, with sky coordinates) — greyed with the reason where
+        // it cannot.
+        if (CutoutCandidates.IsFitsFile(art.ContentType, art.Uri, art.ProductType))
+        {
+            var ways = CutoutSources.For(CutoutSourcesOfObservation, art.Uri, _current);
+            var usable = ways.Where(w => w.Unavailable is null).Select(w => w.Method).ToHashSet();
+            var cut = new Button { Name = $"FileCutoutButton[{Caom2Format.ArtifactFileName(art.Uri)}]", Content = Loc.T("Cutout_Button") };
+            AutomationProperties.SetName(cut, Loc.F("Cutout_ButtonName", Caom2Format.ArtifactFileName(art.Uri)));
+            if (usable.Count > 0)
+            {
+                ToolTipService.SetToolTip(cut, Loc.T(usable.Count > 1 ? "Cutout_ButtonTooltipBoth"
+                    : usable.Contains(CutoutMethod.Local) ? "Cutout_ButtonTooltipLocal" : "Cutout_ButtonTooltip"));
+                cut.Click += (_, _) => ShowCutoutEditor(ways, spec: null);
+            }
+            var cutWrapper = UIFactory.Explained(cut);
+            UIFactory.Enable(cut, usable.Count > 0,
+                _links is null ? Loc.T("Cutout_Checking")
+                : ways.FirstOrDefault(w => w.Method == CutoutMethod.Local)?.Unavailable is { } why ? Loc.F("Cutout_NoneForFileLocal", why)
+                : Loc.T("Cutout_NoneForFile"));
+            Grid.SetColumn(cutWrapper, 3);
+            grid.Children.Add(cutWrapper);
+        }
 
         return new Border
         {
@@ -411,44 +531,26 @@ public sealed partial class ObservationDetailPage : UserControl
         };
     }
 
+    /// <summary>
+    /// The footprint as a sky chart — the cutout editor's canvas, read-only. It used to scale RA and
+    /// Dec to fill a box separately, drawing every field the wrong shape, and broke across RA 0°.
+    /// </summary>
     private FrameworkElement? BuildFootprint(IReadOnlyList<Caom2SkyVertex> poly)
     {
         if (poly.Count < 3) return null;
-        double minRa = poly.Min(p => p.Ra), maxRa = poly.Max(p => p.Ra);
-        double minDec = poly.Min(p => p.Dec), maxDec = poly.Max(p => p.Dec);
-        var rangeRa = Math.Max(maxRa - minRa, 1e-9);
-        var rangeDec = Math.Max(maxDec - minDec, 1e-9);
-        const double w = 200, h = 120, pad = 0.1;
-
-        var points = new Microsoft.UI.Xaml.Media.PointCollection();
-        foreach (var v in poly)
+        var sketch = new FootprintCanvas
         {
-            var nx = (maxRa - v.Ra) / rangeRa;   // mirror RA (increases left on screen)
-            var ny = (maxDec - v.Dec) / rangeDec; // Dec increases upward
-            var x = pad * w + nx * (1 - 2 * pad) * w;
-            var y = pad * h + ny * (1 - 2 * pad) * h;
-            points.Add(new Windows.Foundation.Point(x, y));
-        }
-        points.Add(points[0]); // close the loop
-
-        var poly2 = new Polyline
-        {
-            Points = points,
-            Stroke = Res("AccentFillColorDefaultBrush"),
-            StrokeThickness = 1.5,
-            Fill = Res("SubtleFillColorSecondaryBrush"),
-        };
-        var canvas = new Canvas { Width = w, Height = h, IsTabStop = false };
-        canvas.Children.Add(poly2);
-
-        var border = new Border
-        {
-            Child = new Viewbox { Child = canvas, Stretch = Stretch.Uniform, MaxWidth = w, MaxHeight = h, HorizontalAlignment = HorizontalAlignment.Left },
+            Footprint = poly.Select(v => new SkyPoint(v.Ra, v.Dec)).ToList(),
+            Width = 200,
+            Height = 140,
+            HorizontalAlignment = HorizontalAlignment.Left,
             Margin = new Thickness(0, 0, 0, 4),
+            IsTabStop = false,
         };
-        AutomationProperties.SetName(border,
-            Loc.F("ObsDetail_FootprintName", poly.Count, minRa, maxRa, minDec, maxDec));
-        return border;
+        AutomationProperties.SetName(sketch,
+            Loc.F("ObsDetail_FootprintName", poly.Count, poly.Min(p => p.Ra), poly.Max(p => p.Ra),
+                  poly.Min(p => p.Dec), poly.Max(p => p.Dec)));
+        return sketch;
     }
 
     private Border Card(string title, params (string Label, string Value)[] rows)
@@ -560,8 +662,6 @@ public sealed partial class ObservationDetailPage : UserControl
             DownloadBar.Title = Loc.F("ObsDetail_Resolving", Caom2Format.ArtifactFileName(art.Uri));
             DownloadBar.Message = string.Empty;                     // stale error text from a prior run
             DownloadResearchRow.Visibility = Visibility.Collapsed;  // stale "Added to Research" claim
-            DownloadProgress.Visibility = Visibility.Visible;
-            DownloadProgress.IsIndeterminate = true;
             DownloadText.Text = string.Empty;
 
             var links = await _dataLink.GetLinksAsync(_publisherID);
@@ -588,7 +688,6 @@ public sealed partial class ObservationDetailPage : UserControl
                 DownloadBar.Severity = InfoBarSeverity.Error;
                 DownloadBar.Title = Loc.T("ObsDetail_DownloadFailed");
                 DownloadBar.Message = Loc.F("ObsDetail_NoLinkForArtifact", fileName);
-                DownloadProgress.Visibility = Visibility.Collapsed;
                 return;
             }
 
@@ -597,24 +696,31 @@ public sealed partial class ObservationDetailPage : UserControl
             // fields at completion would stamp observation B's record with A's file.
             var ctx = new DownloadContext(
                 _publisherID, _collection, _observationID, _current, links,
-                IsScience: !isPreviewType && productType is null or "" or "science");
+                IsScience: !isPreviewType && productType is null or "" or "science", ArtifactId: art.Uri);
 
             await DownloadUrlToFileAsync(url, fileName, ctx);
         }
         catch (Exception ex)
         {
-            DownloadBar.Severity = InfoBarSeverity.Error;
-            DownloadBar.Title = Loc.T("ObsDetail_DownloadFailed");
-            DownloadBar.Message = ex.Message;
-            DownloadProgress.Visibility = Visibility.Collapsed;
+            ShowDownloadFailed(ex.Message);
         }
+    }
+
+    private void ShowDownloadFailed(string why)
+    {
+        DownloadBar.IsOpen = true;
+        DownloadBar.Severity = InfoBarSeverity.Error;
+        DownloadBar.Title = Loc.T("ObsDetail_DownloadFailed");
+        DownloadBar.Message = why;
+        DownloadText.Text = string.Empty;
     }
 
     /// <summary>Download state captured at START (the page is a cached singleton — live fields may
     /// describe a different observation by the time a long download completes).</summary>
+    /// <param name="ArtifactId">The archive file downloaded, when it is one particular file — what the record keeps, so Download fetches that one again.</param>
     private sealed record DownloadContext(
         string PublisherID, string Collection, string ObservationID,
-        CAOM2Observation? Observation, Models.DataLinkResult? Links, bool IsScience);
+        CAOM2Observation? Observation, Models.DataLinkResult? Links, bool IsScience, string? ArtifactId = null);
 
     /// <summary>Find a URL whose file name matches, tolerating URL-encoding ('+' → %2B) and
     /// query-embedded file IDs.</summary>
@@ -636,10 +742,23 @@ public sealed partial class ObservationDetailPage : UserControl
 
     private async Task DownloadUrlToFileAsync(string url, string suggestedName, DownloadContext ctx)
     {
+        var file = await PickSaveFileAsync(suggestedName);
+        if (file is null) { DownloadBar.IsOpen = false; return; }
+
+        // Only the SCIENCE file lands in the Research archive: a calibration/aux FITS would clobber
+        // the science record. Built now, from what this page knows at the start.
+        var record = ctx.IsScience ? ResearchRecordFor(ctx) : null;
+        await DownloadAndOfferAsync(new ObservationDownloadRequest(ctx.PublisherID, file.Path, record, Url: url),
+            file.Name, ctx.PublisherID, addedToResearch: record is not null);
+    }
+
+    /// <summary>Where to save a file, asked with the file's own extension first; null when the person cancels.</summary>
+    private static async Task<Windows.Storage.StorageFile?> PickSaveFileAsync(string suggestedName)
+    {
         var hWnd = WindowHelper.ActiveWindows.Count > 0
             ? WinRT.Interop.WindowNative.GetWindowHandle(WindowHelper.ActiveWindows[0])
             : nint.Zero;
-        if (hWnd == nint.Zero) return;
+        if (hWnd == nint.Zero) return null;
 
         var picker = new FileSavePicker();
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
@@ -655,47 +774,46 @@ public sealed partial class ObservationDetailPage : UserControl
         picker.FileTypeChoices.Add(Loc.T("ObsDetail_FileTypeFits"), new List<string> { ".fits" });
         picker.FileTypeChoices.Add(Loc.T("ObsDetail_FileTypeAll"), new List<string> { "." });
 
-        var file = await picker.PickSaveFileAsync();
-        if (file is null) { DownloadBar.IsOpen = false; return; }
+        return await picker.PickSaveFileAsync();
+    }
 
-        DownloadBar.Title = Loc.F("ObsDetail_Downloading", file.Name);
-        var tempPath = file.Path + ".tmp";
+    /// <summary>
+    /// Hand a download to the app — it runs and reports in the status bar whatever this page does next
+    /// — then, if the page still shows the same observation when it lands, offer what to do with it.
+    /// The one path for a whole file and for a cutout.
+    /// </summary>
+    private async Task DownloadAndOfferAsync(ObservationDownloadRequest request, string displayName,
+                                             string publisherId, bool addedToResearch)
+    {
+        DownloadBar.IsOpen = true;
+        DownloadBar.ActionButton = null;
+        DownloadBar.Severity = InfoBarSeverity.Informational;
+        DownloadBar.Title = Loc.F("ObsDetail_Downloading", displayName);
+        DownloadBar.Message = string.Empty;
+        DownloadText.Text = Loc.T("Download_InStatusBar");
+        DownloadResearchRow.Visibility = Visibility.Collapsed;
 
-        using (var response = await _dataLink.DownloadAsync(url))
+        try
         {
-            var totalBytes = response.Content.Headers.ContentLength;
-            using var stream = await response.Content.ReadAsStreamAsync();
-            using var fileStream = new FileStream(tempPath, FileMode.Create);
-            if (totalBytes.HasValue) { DownloadProgress.IsIndeterminate = false; DownloadProgress.Maximum = totalBytes.Value; }
-
-            var buffer = new byte[81920];
-            long downloaded = 0;
-            int read;
-            while ((read = await stream.ReadAsync(buffer)) > 0)
-            {
-                await fileStream.WriteAsync(buffer.AsMemory(0, read));
-                downloaded += read;
-                if (totalBytes.HasValue)
-                {
-                    DownloadProgress.Value = downloaded;
-                    DownloadText.Text = $"{Caom2Format.Bytes(downloaded)} / {Caom2Format.Bytes(totalBytes.Value)}";
-                }
-                else
-                {
-                    DownloadText.Text = Caom2Format.Bytes(downloaded);
-                }
-            }
-            await fileStream.FlushAsync();
+            await _downloader.Start(request);
+        }
+        catch (Exception ex)
+        {
+            if (_publisherID == publisherId) ShowDownloadFailed(ex.Message);
+            return;
         }
 
-        if (File.Exists(file.Path)) File.Delete(file.Path);
-        File.Move(tempPath, file.Path);
+        // The page is a cached singleton: the person may be looking at another observation by now.
+        if (_publisherID != publisherId) return;
 
         DownloadBar.Severity = InfoBarSeverity.Success;
-        DownloadBar.Title = Loc.F("ObsDetail_Downloaded", file.Name);
-        DownloadProgress.Visibility = Visibility.Collapsed;
+        DownloadBar.Title = Loc.F("ObsDetail_Downloaded", displayName);
+        DownloadText.Text = string.Empty;
+        await OfferDownloadedAsync(request.TargetPath, addedToResearch);
+    }
 
-        var savedPath = file.Path;
+    private async Task OfferDownloadedAsync(string savedPath, bool addedToResearch)
+    {
 
         // Classify by CONTENT, not extension — a mis-served download can put FITS bytes in a
         // ".png" (and vice versa), and that is exactly the case the suggestion must survive.
@@ -709,11 +827,8 @@ public sealed partial class ObservationDetailPage : UserControl
             // the user can pick the other from the dropdown.
             DownloadBar.ActionButton = BuildViewerButton(savedPath, shape);
 
-            // Only the SCIENCE file lands in the Research archive: a calibration/aux FITS would
-            // clobber the science record (the store replaces by PublisherID).
-            if (ctx.IsScience)
+            if (addedToResearch)
             {
-                RegisterInResearch(ctx, savedPath);
                 DownloadResearchText.Text = Loc.T("ObsDetail_AddedToResearch");
                 DownloadResearchLink.Content = Loc.T("ObsDetail_ViewInResearch");
                 DownloadResearchRow.Visibility = Visibility.Visible;
@@ -766,38 +881,107 @@ public sealed partial class ObservationDetailPage : UserControl
         };
     }
 
-    /// <summary>Track the downloaded file in the Research archive (updates the existing record when
-    /// this observation was downloaded before). Uses the context captured at download START.</summary>
-    private static void RegisterInResearch(DownloadContext ctx, string localPath)
+    /// <summary>
+    /// The Research record for something downloaded from this page — the shared builder, with the
+    /// collection and id this page read from the publisher id in case CAOM2 had nothing to say.
+    /// </summary>
+    private static DownloadedObservation ResearchRecordFor(DownloadContext ctx, CutoutSpec? cutout = null)
     {
-        try
-        {
-            var store = App.Services.GetRequiredService<Services.ObservationStore>();
-            var existing = store.Observations.FirstOrDefault(o => o.PublisherID == ctx.PublisherID);
-            long? size = null;
-            try { size = new FileInfo(localPath).Length; } catch { }
-            store.Save(new Models.DownloadedObservation
-            {
-                PublisherID = ctx.PublisherID,
-                Collection = ctx.Collection,
-                ObservationID = ctx.ObservationID,
-                TargetName = ctx.Observation?.Target?.Name ?? string.Empty,
-                Instrument = ctx.Observation?.Instrument?.Name ?? string.Empty,
-                ProposalId = ctx.Observation?.Proposal?.Id ?? string.Empty,
-                ProposalPi = ctx.Observation?.Proposal?.Pi ?? string.Empty,
-                ProposalTitle = ctx.Observation?.Proposal?.Title ?? string.Empty,
-                LocalPath = localPath,
-                FileSize = size,
-                // Preview URLs so Research can show the image by default (falls back to the
-                // record this one replaces — the store swaps by PublisherID).
-                ThumbnailURL = ctx.Links?.Thumbnails.FirstOrDefault() ?? existing?.ThumbnailURL,
-                PreviewURL = ctx.Links?.Previews.FirstOrDefault() ?? existing?.PreviewURL,
-            });
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Research registration failed: {ex.Message}");
-        }
+        var record = ResearchRecords.ForObservation(ctx.PublisherID, ctx.Observation, ctx.Links, cutout);
+        if (cutout is null) record.ArtifactId = ctx.ArtifactId;
+        if (string.IsNullOrEmpty(record.Collection)) record.Collection = ctx.Collection;
+        if (string.IsNullOrEmpty(record.ObservationID)) record.ObservationID = ctx.ObservationID;
+        return record;
+    }
+
+    // ── Cutouts ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Learn which files can be cut out, and how — DataLink describes CADC's service for each, and the
+    /// observation's file on this computer describes itself — then rebuild the Files tab with a Cutout
+    /// button where there is a way. After the observation shows, not before: it is a second request, and
+    /// the observation is worth seeing without waiting for it.
+    /// </summary>
+    private async Task LoadCutoutSourcesAsync(CAOM2Observation obs)
+    {
+        var publisherId = _publisherID;
+        var local = RefreshLocalSourceAsync(obs, rebuild: false);
+        DataLinkResult links;
+        try { links = await _dataLink.GetLinksAsync(publisherId); }
+        catch { links = new DataLinkResult(); } // the observation still shows; its files say CADC cannot cut them
+        await local;
+
+        if (_publisherID != publisherId || !ReferenceEquals(_current, obs)) return;
+        _links = links;
+        BuildFiles(obs); // either way: the buttons go from "checking" to what the answers said
+    }
+
+    /// <summary>
+    /// Read the observation's file on this computer again when it is not the one read last — downloaded,
+    /// removed or replaced since — off the UI, since a packaged .fits.gz is unpacked to be read.
+    /// </summary>
+    private async Task RefreshLocalSourceAsync(CAOM2Observation obs, bool rebuild = true)
+    {
+        var publisherId = _publisherID;
+        var artifacts = CutoutSources.ArtifactIds(obs).ToList();
+        var local = await Task.Run(() => _localCache.Get(_store.Observations, publisherId, artifacts));
+
+        if (_publisherID != publisherId || !ReferenceEquals(_current, obs)) return;
+        if (ReferenceEquals(local, _localSource)) return; // the same file, as it was: nothing to rebuild
+        _localSource = local;
+        if (rebuild && _links is not null) BuildFiles(obs);
+    }
+
+    /// <summary>The ways the open observation's files can be cut: CADC's, and the one on this computer.</summary>
+    public IReadOnlyList<ICutoutSource> CutoutSourcesOfObservation
+        => _links is null ? [] : [.. CutoutSources.Soda(_links, _current), .. _localSource is { } local ? [local] : Array.Empty<ICutoutSource>()];
+
+    /// <summary>
+    /// Open the cutout editor for one file at the top of the Files tab — on each way it can be cut, the
+    /// one named by <paramref name="cutBy"/> first, else the best — starting from the last search (its
+    /// target and wavelengths) or, when given, from <paramref name="spec"/>: an agent's proposal.
+    /// </summary>
+    public CutoutEditor ShowCutoutEditor(IReadOnlyList<ICutoutSource> ways, CutoutSpec? spec, CutoutMethod? cutBy = null)
+    {
+        CloseCutoutEditor();
+
+        var hints = _search.CutoutHints;
+        var target = hints is { Ra: { } ra, Dec: { } dec } ? new SkyPoint(ra, dec) : (SkyPoint?)null;
+        var editor = new CutoutEditor(CutoutSources.Preferred(ways, cutBy ?? spec?.CutBy), hints, target);
+        if (spec is not null) editor.Load(spec);
+        editor.DownloadRequested += (way, chosen) => _ = OnDownloadCutoutAsync(way, chosen);
+        editor.CloseRequested += CloseCutoutEditor;
+
+        FilesPanel.Children.Insert(0, editor);
+        _cutoutEditor = editor;
+        DetailPivot.SelectedItem = FilesPanel.Parent is ScrollViewer { Parent: PivotItem tab } ? tab : DetailPivot.SelectedItem;
+        editor.StartBringIntoView();
+        return editor;
+    }
+
+    private void CloseCutoutEditor()
+    {
+        if (_cutoutEditor is { } open) FilesPanel.Children.Remove(open);
+        _cutoutEditor = null;
+    }
+
+    /// <summary>
+    /// Make a cutout the editor has approved: checked once more, saved where the person says, and handed
+    /// to the app like any download — which makes it the way its method says — recorded in Research as a
+    /// cutout of this observation.
+    /// </summary>
+    private async Task OnDownloadCutoutAsync(ICutoutSource source, CutoutSpec spec)
+    {
+        spec = source.Bind(spec);
+        if (source.Check(spec) is { IsValid: false } refused) { ShowDownloadFailed(refused.Errors[0]); return; }
+
+        var saveAs = await PickSaveFileAsync(spec.FileNameFor(source.File.FileName));
+        if (saveAs is null) return;
+
+        var ctx = new DownloadContext(_publisherID, _collection, _observationID, _current, _links, IsScience: true);
+        await DownloadAndOfferAsync(
+            new ObservationDownloadRequest(ctx.PublisherID, saveAs.Path, ResearchRecordFor(ctx, spec)),
+            saveAs.Name, ctx.PublisherID, addedToResearch: true);
     }
 
     private async void OnViewOnCadc(object sender, RoutedEventArgs e)

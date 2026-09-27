@@ -17,6 +17,9 @@ public enum TaskKind
 
     /// <summary>Background reconciliation.</summary>
     Sync,
+
+    /// <summary>Fetching an observation's file from the archive.</summary>
+    Download,
 }
 
 /// <summary>Where a task got to.</summary>

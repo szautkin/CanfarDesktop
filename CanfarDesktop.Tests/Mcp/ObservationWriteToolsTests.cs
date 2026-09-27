@@ -223,6 +223,59 @@ public class ObservationWriteToolsTests
         Assert.Equal(new[] { "ivo://A", "ivo://B" }, removed); // records still cleared
     }
 
+    /// <summary>Keeping an observation without its file is an ordinary write; removing a file always asks.</summary>
+    [Fact]
+    public async Task SaveWithoutFile_AndRemoveFile_AreProposedWithTheirWeight()
+    {
+        var (ctx, _) = Context();
+
+        var save = Assert.IsType<ProposedResult>(await new SaveObservationTool().InvokeAsync(
+            Args("""{"publisherId":"ivo://cadc/X"}"""), ctx, default)).Proposal;
+        Assert.Equal("save_observation_to_research", save.Kind);
+        Assert.Equal("ivo://cadc/X", JsonSerializer.Deserialize<SaveObservationPayload>(save.Payload, McpJson.Options)!.PublisherId);
+
+        var remove = Assert.IsType<ProposedResult>(await new RemoveDownloadedFileTool().InvokeAsync(
+            Args("""{"id":"ivo://cadc/X"}"""), ctx, default)).Proposal;
+        Assert.Equal("remove_downloaded_file", remove.Kind);
+
+        Assert.Equal(McpVerbClass.SemanticWrite, new SaveObservationTool().VerbClass);
+        Assert.Equal(McpVerbClass.Destructive, new RemoveDownloadedFileTool().VerbClass);
+    }
+
+    [Fact]
+    public async Task TheirAppliers_HandOnWhatWasProposed()
+    {
+        string? saved = null, removed = null;
+        await new SaveObservationApplier((p, _) => { saved = p.PublisherId; return Task.CompletedTask; })
+            .ApplyAsync(Proposal("save_observation_to_research", new SaveObservationPayload("ivo://cadc/X")));
+        await new RemoveDownloadedFileApplier(p => { removed = p.Id; return Task.CompletedTask; })
+            .ApplyAsync(Proposal("remove_downloaded_file", new RemoveDownloadedFilePayload("local-1")));
+
+        Assert.Equal(("ivo://cadc/X", "local-1"), (saved, removed));
+    }
+
     private static PendingProposal Proposal<T>(string kind, T payload)
         => PendingProposal.Create("t", kind, "s", JsonSerializer.SerializeToUtf8Bytes(payload, McpJson.Options), OperationOrigin.External("c1"));
+
+    /// <summary>A local cutout taken with its weight map takes the weight map's cutout with it: no file is left behind with no record.</summary>
+    [Fact]
+    public async Task ClearArchiveApplier_DeletesACutoutsCompanionFilesToo()
+    {
+        var spec = new CanfarDesktop.Models.Cutouts.CutoutSpec
+        {
+            ArtifactId = "cadc:CFHTSG/t.I.fits",
+            Region = CanfarDesktop.Models.Cutouts.SkyRegion.Circle(10.68, 41.27, 0.01),
+            CutBy = CanfarDesktop.Models.Cutouts.CutoutMethod.Local,
+            Companions = ["cadc:CFHTSG/t.I.weight.fits"],
+        };
+        var cutout = Path.Combine("d", "m31.fits");
+        var deleted = new List<string>();
+        var ap = new ClearResearchArchiveApplier(
+            () => [new CanfarDesktop.Models.DownloadedObservation { PublisherID = "ivo://A", LocalPath = cutout, Cutout = spec }],
+            _ => { }, _ => { }, deleted.Add);
+
+        await ap.ApplyAsync(Proposal("clear_research_archive", new ClearResearchArchivePayload()));
+
+        Assert.Equal(new[] { cutout, spec.CompanionPath(cutout, "cadc:CFHTSG/t.I.weight.fits") }, deleted);
+    }
 }

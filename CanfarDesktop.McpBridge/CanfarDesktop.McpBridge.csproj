@@ -21,6 +21,7 @@
   <ItemGroup>
     <Compile Include="..\Mcp\Wire\JsonValue.cs" Link="Linked\JsonValue.cs" />
     <Compile Include="..\Mcp\Wire\JsonRpc.cs" Link="Linked\JsonRpc.cs" />
+    <Compile Include="..\Mcp\Wire\McpMessages.cs" Link="Linked\McpMessages.cs" />
     <Compile Include="..\Mcp\Transport\IMcpTransport.cs" Link="Linked\IMcpTransport.cs" />
     <Compile Include="..\Mcp\Transport\FrameCodec.cs" Link="Linked\FrameCodec.cs" />
     <Compile Include="..\Mcp\Transport\StreamTransport.cs" Link="Linked\StreamTransport.cs" />
@@ -32,6 +33,8 @@
     <!-- McpSidecar.Write goes through AtomicFile; without this link the bridge does not compile. -->
     <Compile Include="..\Helpers\AtomicFile.cs" Link="Linked\AtomicFile.cs" />
     <Compile Include="..\Mcp\Bridge\BridgeRelay.cs" Link="Linked\BridgeRelay.cs" />
+    <Compile Include="..\Mcp\Bridge\BridgeStandIn.cs" Link="Linked\BridgeStandIn.cs" />
+    <Compile Include="..\Mcp\Bridge\AppSnapshot.cs" Link="Linked\AppSnapshot.cs" />
   </ItemGroup>
 
 </Project>

@@ -87,6 +87,8 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         InitViewStateTracking();
         InitProposalsEntryPoint();
         InitNetworkMonitor();
+        // Every copy, from any screen, says so here — and one the clipboard refused is not claimed.
+        ClipboardText.Copied += what => DispatcherQueue.TryEnqueue(() => SetStatus(Loc.F("Clipboard_Copied", what)));
 
         ShowTermsGateIfNeeded();
         _ = ShowWelcomeIfNeededAsync(); // no-op while the terms gate is up (re-fired by OnTermsAccept)
@@ -182,10 +184,15 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _viewState.SetTabActions(CloseTabActionAsync, ListOpenTabsActionAsync);
         _viewState.SetTabNavigationActions(CloseTabByIndexActionAsync);
         _viewState.SetSearchHost(ResolveSearchBridgeAsync);
+        _viewState.SetCutoutEditorHost(ShowCutoutEditorForAgentAsync);
+        _viewState.SetResearchHost(ShowResearchObservationForAgentAsync);
+        _viewState.SetClipboardHost((text, what) => UiDispatch.OnUi(DispatcherQueue, () => ClipboardText.Copy(text, what), false));
         _viewState.SetAnnotationHost(this);
         _viewState.SetFitsFigureAction(ExportFitsFigureActionAsync);
         _viewState.SetAnnotationExportAction(ExportAnnotationsActionAsync);
         _viewState.SetUiPointerActions(PointAtUiActionAsync, ListUiTargetsActionAsync);
+        _viewState.SetSettingsActions(OpenSettingsActionAsync, CloseSettingsActionAsync);
+        _viewState.SetLaunchFormAction(ShowLaunchFormActionAsync);
         _viewState.SetRemoteComputeActions(ShowComputeRunActionAsync, SetComputeSnippetActionAsync, GetComputeViewActionAsync);
         _viewState.SetStorageFolderAction(ShowStorageFolderActionAsync);
         Views.Controls.AgentPointer.AllClosed += _viewState.NotifyHintsDismissed;
@@ -1050,9 +1057,12 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         _searchPage.LoadAsync();
     }
 
-    public void OpenObservationDetail(string publisherID)
+    public void OpenObservationDetail(string publisherID) => _ = OpenObservationDetailAsync(publisherID);
+
+    /// <summary>Show one observation's detail; the task ends once it — and which files can be cut — has loaded.</summary>
+    private Task OpenObservationDetailAsync(string publisherID)
     {
-        if (string.IsNullOrEmpty(publisherID)) return;
+        if (string.IsNullOrEmpty(publisherID)) return Task.CompletedTask;
         if (_obsDetailPage is null)
         {
             _obsDetailPage = App.Services.GetRequiredService<ObservationDetailPage>();
@@ -1064,8 +1074,93 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             ObsDetailContainer.Child = _obsDetailPage;
         }
         NavigateTo(AppMode.ObservationDetail);
-        _ = _obsDetailPage.LoadAsync(publisherID);
+        return _obsDetailPage.LoadAsync(publisherID);
     }
+
+    /// <summary>
+    /// A mark's "Cut out…": the same route as show_cutout_editor, with the mark's
+    /// region. When the editor cannot choose the file itself — several can be cut and the mark's file
+    /// is not one of them — the observation opens on its Files tab so the person can.
+    /// </summary>
+    private async void OnFitsCutoutRequested(string publisherId, string? artifactId, Models.Cutouts.SkyRegion region)
+    {
+        var args = new CutoutArgs
+        {
+            PublisherId = publisherId,
+            ArtifactId = artifactId,
+            Circle = region.Shape == Models.Cutouts.SkyShape.Circle
+                ? new CutoutArgs.CircleArg { Ra = region.Ra, Dec = region.Dec, Radius = region.Radius } : null,
+            Box = region.Shape == Models.Cutouts.SkyShape.Box
+                ? new CutoutArgs.BoxArg { Ra = region.Ra, Dec = region.Dec, Width = region.Width, Height = region.Height } : null,
+        };
+
+        await OpenCutoutEditorAsync(args);
+    }
+
+    /// <summary>
+    /// A person's request for a cutout — from a mark, or from Research: the editor when it can choose
+    /// the file; otherwise the observation, whose Files tab says which files can be cut.
+    /// </summary>
+    private async Task OpenCutoutEditorAsync(CutoutArgs args)
+    {
+        var shown = await ShowCutoutEditorForAgentAsync(args);
+        if (!shown.Shown) await OpenObservationDetailAsync(args.PublisherId!);
+    }
+
+    /// <summary>
+    /// show_research_observation: a record in Research, as a click shows it — or, for a cutout asked for
+    /// its original, what its Original observation button does: the complete record in Research when it
+    /// is kept, otherwise Search finding it.
+    /// </summary>
+    private Task<CanfarDesktop.Mcp.Tools.Write.ResearchShown> ShowResearchObservationForAgentAsync(string id, bool original)
+        => UiDispatch.OnUi(DispatcherQueue, () =>
+        {
+            var store = App.Services.GetRequiredService<ObservationStore>();
+            if (store.Find(id) is not { } record)
+                return CanfarDesktop.Mcp.Tools.Write.ResearchShown.Refused($"'{id}' is not in Research — list_downloaded_observations shows what is");
+
+            EnsureResearchPage();
+            NavigateTo(AppMode.Research);
+            if (!original || !record.IsCutout)
+            {
+                _researchPage!.Select(record);
+                return new CanfarDesktop.Mcp.Tools.Write.ResearchShown(true, "research", record.Id,
+                    Message: original ? "it is the complete observation already" : null);
+            }
+
+            return _researchPage!.ShowOriginal(record) is { } whole
+                ? new CanfarDesktop.Mcp.Tools.Write.ResearchShown(true, "research", whole.Id)
+                : new CanfarDesktop.Mcp.Tools.Write.ResearchShown(true, "search", null, ResearchRecords.ObservationIdOf(record),
+                    "Research does not keep it; Search is finding it, and highlights the cutout's row when the results come — get_search_results reads them");
+        }, CanfarDesktop.Mcp.Tools.Write.ResearchShown.Refused("Research could not be reached"));
+
+    /// <summary>
+    /// show_cutout_editor: the observation's detail, its Files tab, and the editor for the file the agent
+    /// means — on the region it proposes, or the editor's own suggestion. The same editor, the same
+    /// check, as when the person opens it.
+    /// </summary>
+    private Task<CutoutEditorShown> ShowCutoutEditorForAgentAsync(CutoutArgs args)
+        => UiDispatch.OnUiAsync(DispatcherQueue, async () =>
+        {
+            var publisherId = args.PublisherId!.Trim();
+            await OpenObservationDetailAsync(publisherId);
+            if (_obsDetailPage is not { } page) return CutoutEditorShown.Refused("the observation view could not be opened");
+
+            try
+            {
+                var sources = page.CutoutSourcesOfObservation;
+                var source = args.PickSource(sources);
+                var proposed = args.AsksAnything ? args.ToSpec(source) : null;
+                var editor = page.ShowCutoutEditor(
+                    CanfarDesktop.Services.Cutouts.CutoutSources.For(sources, source.File.ArtifactId), proposed, source.Method);
+                var check = editor.Source.Check(editor.Spec);
+                return new CutoutEditorShown(true, source.File.ArtifactId, editor.Spec.Summary, check.Errors, check.Warnings);
+            }
+            catch (CanfarDesktop.Mcp.Tools.McpToolException ex)
+            {
+                return CutoutEditorShown.Refused(ex.Message);
+            }
+        }, CutoutEditorShown.Refused("the observation view could not be reached"));
 
     private async void OnObsDetailSignIn()
     {
@@ -1305,6 +1400,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             var hostVm = App.Services.GetRequiredService<FitsTabHostViewModel>();
             _fitsTabHost = new Views.FitsViewer.FitsTabHost(hostVm);
             _fitsTabHost.SearchAtPositionRequested += OnSearchAtFitsPosition;
+            _fitsTabHost.CutoutRequested += OnFitsCutoutRequested;
             // GoHome (not NavigateTo) so the empty host doesn't stay on the back stack.
             _fitsTabHost.AllTabsClosed += GoHome;
             FitsViewerContainer.Child = _fitsTabHost;
@@ -1349,6 +1445,14 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             _researchPage = App.Services.GetRequiredService<ResearchPage>();
             _researchPage.ViewModel.ViewInFitsRequested += path => OpenFitsViewer(path);
             _researchPage.ViewModel.ViewInCubeRequested += path => OpenCubeViewer(path);
+            _researchPage.CutoutRequested += (publisherId, artifactId) =>
+                _ = OpenCutoutEditorAsync(new CutoutArgs { PublisherId = publisherId, ArtifactId = artifactId });
+            _researchPage.FindInSearchRequested += (observationId, publisherId) =>
+            {
+                EnsureSearchPage();
+                NavigateTo(AppMode.Search);
+                _ = _searchPage!.FindObservationAsync(observationId, publisherId);
+            };
             ResearchContainer.Child = _researchPage;
         }
         else
@@ -1792,15 +1896,19 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             var store = App.Services.GetRequiredService<CanfarDesktop.Services.Fits.IAnnotationStore>();
             var marks = store.LoadFor(target);
 
-            // The image the marks are on. A cube has no WCS of the flat kind, so it exports its marks
-            // with positions and without a sky — which is what a voxel is.
+            // The image the marks are on: the viewer's, when it shows the file, otherwise read from the
+            // file's header. A cube has no WCS of the flat kind, so it exports its marks with positions
+            // and without a sky — which is what a voxel is.
             var source = cube
                 ? new Helpers.MarkExport.Source(target, System.IO.Path.GetFileName(target), 0, null, 0, 0, null)
                 : _fitsTabHost?.MarkExportSource(target);
+            string? unreadable = null;
+            if (source is null)
+                (source, unreadable) = await Task.Run(() => CanfarDesktop.Services.Fits.MarkExportFiles.Read(target));
 
             if (source is null)
                 return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
-                    false, request.Path, null, 0, "that file is not the one on screen, so its image is not loaded");
+                    false, request.Path, null, marks.Count, unreadable);
 
             var document = Helpers.MarkExport.Build(
                 marks, source, ProvenanceFor(Helpers.MarkTarget.PathOf(target)), App.AppVersion(), DateTime.UtcNow);
@@ -1817,7 +1925,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
             catch (Exception ex)
             {
                 return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
-                    false, request.Path, extension.TrimStart('.'), 0, ex.Message);
+                    false, request.Path, extension.TrimStart('.'), marks.Count, ex.Message);
             }
 
             return new CanfarDesktop.Mcp.Tools.Write.AnnotationExportOutcome(
@@ -1838,23 +1946,24 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         CanfarDesktop.Mcp.Tools.Write.UiPointRequest request)
         => OnUi(() =>
         {
-            var targets = Views.Controls.AgentPointer.Targets(Content);
+            var (root, host, _) = PointerScope();
+            var targets = Views.Controls.AgentPointer.Targets(root);
 
             if (targets.Count == 0)
                 return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
                     false, request.Target, "nothing is on screen to point at yet");
 
             var id = Helpers.UiPointer.Best(targets, request.Target);
-            var element = id is null ? null : Views.Controls.AgentPointer.Find(Content, id);
+            var element = id is null ? null : Views.Controls.AgentPointer.Find(root, id);
 
             // Not among what is showing — but it may be on this page, folded inside a closed section.
             // Those are opened to look, and closed again if the name still lands on nothing.
-            element ??= Views.Controls.AgentPointer.WithCollapsedOpen(Content, () =>
+            element ??= Views.Controls.AgentPointer.WithCollapsedOpen(root, () =>
             {
-                var widened = Views.Controls.AgentPointer.Targets(Content);
+                var widened = Views.Controls.AgentPointer.Targets(root);
                 if (Helpers.UiPointer.Best(widened, request.Target) is not { } hidden) return null;
                 id = hidden;
-                return Views.Controls.AgentPointer.Find(Content, hidden);
+                return Views.Controls.AgentPointer.Find(root, hidden);
             });
 
             // Nothing, or two things equally: either way the caller gets the list rather than a guess.
@@ -1865,7 +1974,7 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                     Describe(Helpers.UiPointer.Suggest(targets, request.Target)));
 
             var showing = Views.Controls.AgentPointer.Show(
-                AgentPointerHost, element, request.Title, request.Message,
+                host, element, request.Title, request.Message,
                 request.UntilClosed ? null : Helpers.UiPointer.Seconds(request.Seconds));
 
             return new CanfarDesktop.Mcp.Tools.Write.UiPointOutcome(
@@ -1876,12 +1985,14 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
         string? contains, bool includeCollapsed)
         => OnUi(() =>
         {
+            var (root, _, dialog) = PointerScope();
+
             // Read before anything is opened, so the listing reports the page as the person sees it.
-            var collapsed = Views.Controls.AgentPointer.CollapsedSections(Content);
+            var collapsed = Views.Controls.AgentPointer.CollapsedSections(root);
 
             var targets = includeCollapsed
-                ? Views.Controls.AgentPointer.TargetsIncludingCollapsed(Content)
-                : Views.Controls.AgentPointer.Targets(Content);
+                ? Views.Controls.AgentPointer.TargetsIncludingCollapsed(root)
+                : Views.Controls.AgentPointer.Targets(root);
 
             if (!string.IsNullOrWhiteSpace(contains))
             {
@@ -1892,8 +2003,64 @@ public sealed partial class MainWindow : Window, CanfarDesktop.Mcp.Tools.Write.I
                     .ToList();
             }
 
-            return new CanfarDesktop.Mcp.Tools.Write.UiTargetListing(Describe(targets), Describe(collapsed));
+            return new CanfarDesktop.Mcp.Tools.Write.UiTargetListing(Describe(targets), Describe(collapsed), dialog);
         }, new CanfarDesktop.Mcp.Tools.Write.UiTargetListing([], []));
+
+    /// <summary>
+    /// Where the person can look and click right now: an open dialog when there is one — the window
+    /// behind it is under its smoke layer — otherwise the window. A hint about a control in a dialog is
+    /// hosted in the dialog when it has a host, so it sits above it and closes with it.
+    /// </summary>
+    private (DependencyObject Root, Panel Host, string? Dialog) PointerScope()
+        => Views.Controls.AgentPointer.OpenDialog(Content.XamlRoot) is { } dialog
+            ? (dialog, dialog.FindName("AgentPointerHost") as Panel ?? AgentPointerHost, dialog.Title as string ?? "a dialog")
+            : (Content, AgentPointerHost, null);
+
+    // ── The launch form, for an agent to show the person ──
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.LaunchFormShown> ShowLaunchFormActionAsync(
+        CanfarDesktop.Mcp.Tools.Write.LaunchFormRequest request)
+        => OnUiAsync(async () =>
+        {
+            // The Portal is built when the person signs in; before that there is no form to show.
+            if (_dashboardPage is null)
+                return CanfarDesktop.Mcp.Tools.Write.LaunchFormShown.Unavailable(
+                    "the Portal is not open: the person signs in to CANFAR first (navigate_to portal asks them)");
+
+            if (!request.Close) NavigateTo(AppMode.Portal);
+            return await _dashboardPage.ShowLaunchFormForAgentAsync(request);
+        }, CanfarDesktop.Mcp.Tools.Write.LaunchFormShown.Unavailable("could not dispatch to UI"));
+
+    // ── Settings, for an agent to show the person ──
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.SettingsShown> OpenSettingsActionAsync(string? section)
+        => OnUiAsync(async () =>
+        {
+            if (Views.Dialogs.SettingsDialog.Current is { } open)
+            {
+                if (section is not null) open.ShowSection(section);
+                return new CanfarDesktop.Mcp.Tools.Write.SettingsShown(true, open.Section);
+            }
+
+            // One dialog at a time is WinUI's rule, and the one open is the person's business.
+            if (Views.Controls.AgentPointer.OpenDialog(Content.XamlRoot) is { } other)
+                return new CanfarDesktop.Mcp.Tools.Write.SettingsShown(false, null,
+                    $"another dialog is open (\"{other.Title as string ?? "a dialog"}\") — only one can be open " +
+                    "at a time, so the person needs to close it first");
+
+            var dialog = await Views.Dialogs.SettingsDialog.OpenAsync(Content.XamlRoot, ShowTermsViewerAsync, section ?? "general");
+            return new CanfarDesktop.Mcp.Tools.Write.SettingsShown(true, dialog.Section);
+        }, new CanfarDesktop.Mcp.Tools.Write.SettingsShown(false, section, "could not dispatch to UI"));
+
+    private Task<CanfarDesktop.Mcp.Tools.Write.SettingsShown> CloseSettingsActionAsync()
+        => OnUi(() =>
+        {
+            if (Views.Dialogs.SettingsDialog.Current is not { } open)
+                return new CanfarDesktop.Mcp.Tools.Write.SettingsShown(false, null, "Settings was not open");
+
+            open.Hide();
+            return new CanfarDesktop.Mcp.Tools.Write.SettingsShown(false, null);
+        }, new CanfarDesktop.Mcp.Tools.Write.SettingsShown(false, null, "could not dispatch to UI"));
 
     private static IReadOnlyList<CanfarDesktop.Mcp.Tools.Write.UiTarget> Describe(
         IReadOnlyList<Helpers.UiPointer.Target> targets)

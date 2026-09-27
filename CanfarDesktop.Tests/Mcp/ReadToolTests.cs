@@ -90,4 +90,19 @@ public class ReadToolTests
         Assert.Equal(3, Count(Data(await tool.InvokeAsync(JsonValue.Null, Ctx, default))));
         Assert.Equal(2, Count(Data(await tool.InvokeAsync(JsonValue.Parse("""{"limit":2}"""), Ctx, default))));
     }
+
+    [Fact]
+    public async Task ListRecentSearches_SaysWhichWereWrittenInTheEditor()
+    {
+        var tool = new ListRecentSearchesTool(() => new List<RecentSearch>
+        {
+            RecentSearch.FromEditor("SELECT TOP 1 obsID FROM caom2.Observation", 1, DateTime.UtcNow),
+            new() { Summary = "M31", ResultCount = 2 },
+        });
+
+        var searches = ((JsonArray)Data(await tool.InvokeAsync(JsonValue.Null, Ctx, default))["searches"]!).Items;
+
+        Assert.Equal(new JsonBool(true), searches[0]["fromEditor"]);
+        Assert.Equal(new JsonBool(false), searches[1]["fromEditor"]);
+    }
 }

@@ -32,7 +32,7 @@ public sealed class UploadTextToVoSpaceTool : JsonWriteTool<UploadTextToVoSpaceT
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "upload_text_to_vospace",
         "Propose writing a text blob (e.g. a script or config) to a VOSpace/ARC file path (overwrites if it " +
-        "exists; up to 1 MB). Queues for the user to apply.",
+        "exists; up to 1 MB).",
         """{"type":"object","properties":{"path":{"type":"string","description":"Destination VOSpace/ARC file path"},"content":{"type":"string"},"contentType":{"type":"string","description":"MIME type (default text/plain)"}},"required":["path","content"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -63,7 +63,7 @@ public sealed class CreateVoSpaceFolderTool : JsonWriteTool<CreateVoSpaceFolderT
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "create_vospace_folder",
-        "Propose creating a new folder with the given name under a VOSpace/ARC parent path. Queues for the user to apply.",
+        "Propose creating a new folder with the given name under a VOSpace/ARC parent path.",
         """{"type":"object","properties":{"path":{"type":"string","description":"Parent VOSpace/ARC path: \"<username>/sub\" for your home, or \"projects/<group>/sub\" for a shared project"},"name":{"type":"string","description":"New folder name"}},"required":["path","name"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -94,8 +94,7 @@ public sealed class SetVoSpaceAclTool : JsonWriteTool<SetVoSpaceAclTool.Args>
         "REPLACES the whole list: OMIT a field to leave it unchanged, pass [] to revoke all groups in that " +
         "dimension, or pass full GMS group URIs (ivo://cadc.nrc.ca/gms?Group) to set them. isPublic toggles " +
         "world-readability. To ADD or REMOVE one group you must re-send the full desired list (read the " +
-        "current groups from list_vospace_path first). Queues a proposal showing the exact resulting ACL for " +
-        "the user to apply.",
+        "current groups from list_vospace_path first). The proposal shows the exact resulting ACL.",
         """{"type":"object","properties":{"path":{"type":"string","description":"VOSpace/ARC node path: \"<username>/sub\" (home) or \"projects/<group>/sub\" (shared project)"},"groupRead":{"type":"array","items":{"type":"string"},"description":"Full GMS group URIs granted READ. OMIT = unchanged; [] = revoke all read groups. REPLACES the whole read list."},"groupWrite":{"type":"array","items":{"type":"string"},"description":"Full GMS group URIs granted WRITE. OMIT = unchanged; [] = revoke all write groups. REPLACES the whole write list."},"isPublic":{"type":"boolean","description":"true = world-readable, false = not public. OMIT to leave unchanged."}},"required":["path"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -134,7 +133,7 @@ public sealed class DeleteVoSpaceNodeTool : JsonWriteTool<DeleteVoSpaceNodeTool.
 
     public override ToolDescriptor Descriptor { get; } = ToolDescriptor.WithStaticSchema(
         "delete_vospace_node",
-        "Propose deleting a VOSpace/ARC file or folder by its path. Queues for the user to apply (a destructive change).",
+        "Propose deleting a VOSpace/ARC file or folder by its path.",
         """{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)
@@ -166,8 +165,7 @@ public sealed class ClearUserSiteTool : JsonWriteTool<EmptyArgs>
         "`pip install --user` has poisoned subsequent jobs with incompatible package versions (typical " +
         "symptom: `numpy` got upgraded across a major version boundary and pandas/erfa/scipy now error " +
         "out). Doesn't touch ~/.local/bin or ~/.local/share. Doesn't touch system-site or conda envs " +
-        "(those live inside the container image, not in VOSpace). Queues for the user to apply (a " +
-        "destructive change).",
+        "(those live inside the container image, not in VOSpace).",
         """{"type":"object","properties":{},"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(EmptyArgs args, McpToolContext context, CancellationToken ct)
@@ -186,7 +184,7 @@ public sealed class UploadFileToVoSpaceTool : JsonWriteTool<UploadFileToVoSpaceT
         "upload_file_to_vospace",
         "Propose uploading a LOCAL file (any type, including binary) to a VOSpace/ARC destination path " +
         "(overwrites if it exists). Use this for real files; upload_text_to_vospace is only for small text " +
-        "blobs. Queues for the user to apply.",
+        "blobs.",
         """{"type":"object","properties":{"localPath":{"type":"string","description":"Local filesystem path of the file to upload"},"vospacePath":{"type":"string","description":"Destination VOSpace/ARC file path: \"<username>/…\" for your home, or \"projects/<group>/…\" for a shared project"},"contentType":{"type":"string","description":"MIME type (optional)"}},"required":["localPath","vospacePath"],"additionalProperties":false}""");
 
     protected override Task<ProposalPlan> PlanAsync(Args args, McpToolContext context, CancellationToken ct)

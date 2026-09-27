@@ -20,6 +20,7 @@ public sealed class AliasedTool : IMcpTool
 
     public McpVerbClass VerbClass => _inner.VerbClass;
     public bool AgentSafe => _inner.AgentSafe;
+    public bool Proposes => _inner.Proposes;
     public ToolDescriptor Descriptor { get; }
 
     public Task<ToolResult> InvokeAsync(JsonValue arguments, McpToolContext context, CancellationToken cancellationToken)

@@ -14,8 +14,7 @@ public sealed partial class SearchPage : Page
 {
     public SearchViewModel ViewModel { get; }
     private readonly DataLinkService _dataLinkService;
-    private readonly ObservationStore _observationStore;
-    private readonly ObservationDownloadService _downloads;
+    private readonly ObservationDownloader _downloader;
     private readonly DataTrainManager _dataTrainMgr = new();
     private bool _dataTrainLoaded;
 
@@ -26,13 +25,12 @@ public sealed partial class SearchPage : Page
     /// <summary>Raised when the user opens a result row's full CAOM2 detail (publisher ID).</summary>
     public event Action<string>? ObservationDetailRequested;
 
-    public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService, ObservationStore observationStore,
-                      ObservationDownloadService downloads, ITapSchemaService tapSchema)
+    public SearchPage(SearchViewModel viewModel, DataLinkService dataLinkService,
+                      ObservationDownloader downloader, ITapSchemaService tapSchema)
     {
         ViewModel = viewModel;
         _dataLinkService = dataLinkService;
-        _observationStore = observationStore;
-        _downloads = downloads;
+        _downloader = downloader;
         _tapSchema = tapSchema;
         InitializeComponent();
 
@@ -44,6 +42,20 @@ public sealed partial class SearchPage : Page
         };
         accelerator.Invoked += (_, e) => { OnSearchClick(this, new RoutedEventArgs()); e.Handled = true; };
         KeyboardAccelerators.Add(accelerator);
+
+        // Ctrl+C copies the chosen result rows — unless the person is typing, when it is the field's.
+        var copy = new KeyboardAccelerator
+        {
+            Key = Windows.System.VirtualKey.C,
+            Modifiers = Windows.System.VirtualKeyModifiers.Control,
+        };
+        copy.Invoked += (_, e) =>
+        {
+            if (_selection.Count == 0 || Controls.TypingFocus.IsTyping(XamlRoot)) return;
+            CopyRows(_selection.Selected);
+            e.Handled = true;
+        };
+        KeyboardAccelerators.Add(copy);
 
         // The facet lists' XAML MaxHeight (180) is a floor for small windows; on tall displays
         // (1440p/4K full screen) they grow with the viewport so Additional Constraints uses the
@@ -121,7 +133,9 @@ public sealed partial class SearchPage : Page
         {
             SyncDataTrainToViewModel();
             await ViewModel.SearchCommand.ExecuteAsync(null);
-            if (ViewModel.Results is not null)
+            // Only new results take the page to them: a failed search stays on the form, where its error
+            // shows, and a cancelled one where it was.
+            if (ViewModel.Results is not null && !ViewModel.HasError && !ViewModel.SearchCancelled)
             {
                 RowsPerPageCombo.SelectedItem = ViewModel.RowsPerPage;
                 RenderResultsPage(resetScroll: true);
@@ -157,7 +171,7 @@ public sealed partial class SearchPage : Page
         try
         {
             await ViewModel.ExecuteAdqlCommand.ExecuteAsync(null);
-            if (ViewModel.Results is not null)
+            if (ViewModel.Results is not null && !ViewModel.SearchCancelled)
             {
                 RowsPerPageCombo.SelectedItem = ViewModel.RowsPerPage;
                 RenderResultsPage(resetScroll: true);
@@ -273,6 +287,40 @@ public sealed partial class SearchPage : Page
     /// </summary>
     public void ShowSearchForm() => MainPivot.SelectedIndex = 0;
 
+    /// <summary>
+    /// Find one observation by the archive's id — the form cleared first, so nothing left from the last
+    /// search (a target, dates, a cutout box) narrows it away — and highlight the row that is this very
+    /// plane (<paramref name="publisherId"/>) when the results hold it. What Research's "Original
+    /// observation" does for a cutout whose complete observation Research does not have.
+    /// </summary>
+    public async Task FindObservationAsync(string observationId, string publisherId)
+    {
+        if (string.IsNullOrWhiteSpace(observationId)) { ShowLoadedFeedback(Loc.T("Search_FindObservationUnknown")); return; }
+        if (ViewModel.IsSearching) { ShowLoadedFeedback(Loc.T("Search_FindObservationBusy")); return; }
+
+        ViewModel.ClearForm();
+        _dataTrainMgr.ClearAll();
+        if (_dataTrainUIBuilt) SyncAllTrainLists();
+        ViewModel.ObservationId = observationId;
+        ShowSearchForm();
+        ShowLoadedFeedback(Loc.F("Search_FindingObservation", observationId));
+
+        try
+        {
+            var outcome = await RunSearchOnUi(); // as the Search button runs it: the Results tab, fresh
+            if (!outcome.Ran) return;             // a failed query says why on the page itself
+            if (outcome.TotalRows == 0) { ShowLoadedFeedback(Loc.F("Search_ObservationNotFound", observationId)); return; }
+
+            var header = ViewModel.GetColumnHeader("publisherid");
+            var row = ViewModel.GetCurrentPageRows().FindIndex(r => r.Get(header) == publisherId);
+            if (row >= 0) SelectRow(row);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Find observation error: {ex}");
+        }
+    }
+
     #region Recent searches + saved queries
 
     private void OnLoadRecentSearch(object sender, RoutedEventArgs e)
@@ -285,6 +333,13 @@ public sealed partial class SearchPage : Page
     private void LoadRecentSearchCore(RecentSearch search)
     {
         ViewModel.LoadFromRecentSearch(search);
+        if (search.WrittenInEditor)
+        {
+            // No form to go back to: the query goes back where it was written.
+            ShowAdqlEditor();
+            ShowLoadedFeedback(Loc.F("Search_LoadedRecent", search.Summary));
+            return;
+        }
         // Sync data train UI if loaded
         if (_dataTrainUIBuilt)
         {
@@ -317,13 +372,9 @@ public sealed partial class SearchPage : Page
     /// <summary>Transient "we loaded your pick" confirmation in the shared info bar.</summary>
     private void ShowLoadedFeedback(string title)
     {
-        // Skipped while a download is streaming: bumping the shared sequence would hijack and
-        // auto-close the download's progress bar, eating its completion message.
-        if (DownloadInfoBar.IsOpen && DownloadProgressBar.Visibility == Visibility.Visible) return;
         var seq = ++_downloadOpSeq;
         DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
         DownloadInfoBar.Title = title;
-        DownloadProgressBar.Visibility = Visibility.Collapsed;
         DownloadProgressText.Text = string.Empty;
         DownloadInfoBar.IsOpen = true;
         ScheduleDownloadBarReset(seq, 4000);
@@ -445,9 +496,7 @@ public sealed partial class SearchPage : Page
         var keys = ViewModel.GetVisibleColumnKeys();
         if (keys.Length == 0) return;
 
-        var altBg = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
         var hoverBg = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
-        var selectedBg = ThemeBrush("AccentFillColorSelectedTextBackgroundBrush", hoverBg);
 
         // Rows are rebuilt on every render, so the selection cannot live on the Border. It is held by
         // page-relative index and re-applied here; a selection past the end of a shorter page (fewer
@@ -462,10 +511,8 @@ public sealed partial class SearchPage : Page
             var rowBorder = BuildRow(keys, isHeader: false, row: row, rowIndex: i);
             var capturedRow = row;
             var capturedIndex = i;
-            var stripeBg = capturedIndex % 2 == 1 ? altBg : null;
-            Microsoft.UI.Xaml.Media.Brush? RestingBg() => _selection.Contains(capturedIndex) ? selectedBg : stripeBg;
 
-            rowBorder.Background = RestingBg();
+            rowBorder.Background = RowBackground(capturedIndex);
 
             rowBorder.Tapped += (s, e) =>
             {
@@ -497,7 +544,7 @@ public sealed partial class SearchPage : Page
                 ShowRowDetail(capturedRow);
             };
             rowBorder.PointerEntered += (s, _) => ((Border)s).Background = hoverBg;
-            rowBorder.PointerExited += (s, _) => ((Border)s).Background = RestingBg();
+            rowBorder.PointerExited += (s, _) => ((Border)s).Background = RowBackground(capturedIndex);
             ResultsPanel.Children.Add(rowBorder);
             _rowBorders.Add(rowBorder);
         }
@@ -739,23 +786,24 @@ public sealed partial class SearchPage : Page
                     VerticalAlignment = VerticalAlignment.Center
                 };
 
-                // Identity columns become "narrow to this value" links (client-side filter + Apply-to-ADQL).
-                if (IsNarrowable(key) && !string.IsNullOrEmpty(rawValue))
+                // Every cell copies — what it shows, its observation, the rows chosen — from its right-click
+                // menu. Identity columns can also narrow the results to their value (client-side filter +
+                // Apply-to-ADQL) there. A left click opens the observation, as it does anywhere else on
+                // the row: these five were silent filter links, so clicking a row's target name, the
+                // likeliest place to click, narrowed the table instead.
+                var shown = tb.Text;
+                var narrowTo = IsNarrowable(key) && !string.IsNullOrEmpty(rawValue) ? rawValue : null;
+                if (narrowTo is not null) ToolTipService.SetToolTip(tb, Loc.F("Search_NarrowHint", narrowTo));
+                var (cellRow, cellRowIndex, cellKey) = (row, rowIndex, key);
+                // Built when it is asked for, not with the cell: a page of results is thousands of cells,
+                // and almost none of their menus is ever opened. The Menu key and Shift+F10 ask too.
+                tb.ContextRequested += (_, e) =>
                 {
-                    var ck = key;
-                    var cv = rawValue;
-                    tb.Tag = "action"; // suppress row-detail open
-                    ToolTipService.SetToolTip(tb, Loc.F("Search_NarrowToValue", cv));
-                    tb.Tapped += (_, _) =>
-                    {
-                        ViewModel.SetColumnFilter(ck, cv);
-                        ViewModel.UpdatePagination();
-                        RenderResultsPage(rebuildHeader: false);
-                        UpdateApplyFiltersButton();
-                    };
-                    tb.PointerEntered += (s, _) => ((TextBlock)s).Opacity = 0.55;
-                    tb.PointerExited += (s, _) => ((TextBlock)s).Opacity = 1.0;
-                }
+                    var menu = CellMenu(shown, cellRow, cellRowIndex, cellKey, narrowTo);
+                    if (e.TryGetPosition(tb, out var at)) menu.ShowAt(tb, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions { Position = at });
+                    else menu.ShowAt(tb);
+                    e.Handled = true;
+                };
 
                 sp.Children.Add(tb);
             }
@@ -769,6 +817,61 @@ public sealed partial class SearchPage : Page
             border.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
 
         return border;
+    }
+
+    // ── Copying results ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A result cell's copy menu: what the cell shows; the observation, as the same summary Research and
+    /// the observation view copy; and the row — or every chosen row, when this one is among them — as
+    /// tab-separated text with the visible columns' names, ready for a spreadsheet.
+    /// </summary>
+    private MenuFlyout CellMenu(string shown, SearchResultRow? row, int rowIndex, string key, string? narrowTo)
+    {
+        var menu = new MenuFlyout();
+        if (shown.Length > 0) menu.Items.Add(CopyItem(Loc.T("Search_CopyValue"), () => ClipboardText.Copy(shown)));
+        if (row is not null)
+        {
+            var captured = row;
+            menu.Items.Add(CopyItem(Loc.T("Search_CopyObservation"), () => ClipboardText.Copy(
+                ObservationSummary.Text(DownloadedObservation.FromSearchResult(captured, null, null, k => ViewModel.GetColumnHeader(k))),
+                Loc.T("Search_ObservationCopied"))));
+        }
+        menu.Items.Add(CopyItem(Loc.T("Search_CopyRows"), () =>
+            CopyRows(_selection.Contains(rowIndex) && _selection.Count > 1 ? _selection.Selected : [rowIndex])));
+
+        if (narrowTo is not null)
+        {
+            var narrow = new MenuFlyoutItem { Text = Loc.F("Search_NarrowToValue", narrowTo), Icon = new FontIcon { Glyph = "\uE71C" } };
+            narrow.Click += (_, _) =>
+            {
+                ViewModel.SetColumnFilter(key, narrowTo);
+                ViewModel.UpdatePagination();
+                RenderResultsPage(rebuildHeader: false);
+                UpdateApplyFiltersButton();
+            };
+            menu.Items.Add(new MenuFlyoutSeparator());
+            menu.Items.Add(narrow);
+        }
+        return menu;
+    }
+
+    private static MenuFlyoutItem CopyItem(string text, Action copy)
+    {
+        var item = new MenuFlyoutItem { Text = text, Icon = new FontIcon { Glyph = "\uE8C8" } };
+        item.Click += (_, _) => copy();
+        return item;
+    }
+
+    /// <summary>These rows of the page, as the table shows them: its visible columns, their names first.</summary>
+    private void CopyRows(IReadOnlyList<int> indices)
+    {
+        var page = ViewModel.GetCurrentPageRows();
+        var keys = ViewModel.GetVisibleColumnKeys();
+        var rows = indices.Where(i => i >= 0 && i < page.Count).Select(i =>
+            (IReadOnlyList<string>)keys.Select(k => ViewModel.FormatCell(k, page[i].Get(ViewModel.GetColumnHeader(k)) ?? "")).ToList()).ToList();
+        if (rows.Count == 0) return;
+        ClipboardText.Copy(TabularText.Of(keys.Select(ViewModel.GetColumnLabel).ToList(), rows), Loc.F("Search_RowsCopied", rows.Count));
     }
 
     // Identity columns whose cell values can be clicked to "narrow to this value".
@@ -920,20 +1023,38 @@ public sealed partial class SearchPage : Page
     private void ToggleRowSelection(int index)
     {
         _selection.Toggle(index);
-        RenderResultsPage(rebuildHeader: false);
+        RefreshRowHighlights();
     }
 
     private void SelectRowRange(int index)
     {
         _selection.SelectRange(index);
-        RenderResultsPage(rebuildHeader: false);
+        RefreshRowHighlights();
     }
 
     /// <summary>Make one row the only selected row (a plain click, or an agent's selectRow).</summary>
     private void SetPrimaryRow(int index)
     {
         _selection.SetPrimary(index);
-        RenderResultsPage(rebuildHeader: false);
+        RefreshRowHighlights();
+    }
+
+    /// <summary>
+    /// Repaint which rows are highlighted — on the rows already on screen. A selection change used to
+    /// rebuild the whole page of rows, every cell of every one, before a click could open anything;
+    /// the rows have not changed, only which of them are chosen.
+    /// </summary>
+    private void RefreshRowHighlights()
+    {
+        for (var i = 0; i < _rowBorders.Count; i++) _rowBorders[i].Background = RowBackground(i);
+    }
+
+    /// <summary>A row's resting background: the selection's colour when chosen, else the stripe.</summary>
+    private Microsoft.UI.Xaml.Media.Brush? RowBackground(int index)
+    {
+        var hover = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+        if (_selection.Contains(index)) return ThemeBrush("AccentFillColorSelectedTextBackgroundBrush", hover);
+        return index % 2 == 1 ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"] : null;
     }
 
     /// <summary>Highlight a row and scroll it into view. False when the page has no such row.</summary>
@@ -963,7 +1084,6 @@ public sealed partial class SearchPage : Page
         {
             if (seq != _downloadOpSeq) return;
             DownloadInfoBar.IsOpen = false;
-            DownloadProgressBar.Visibility = Visibility.Visible;
         }));
     }
 
@@ -972,7 +1092,6 @@ public sealed partial class SearchPage : Page
         var seq = ++_downloadOpSeq;
         DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Error;
         DownloadInfoBar.Title = title;
-        DownloadProgressBar.Visibility = Visibility.Collapsed;
         DownloadProgressText.Text = message;
         DownloadInfoBar.IsOpen = true;
         ScheduleDownloadBarReset(seq, 8000);
@@ -993,29 +1112,20 @@ public sealed partial class SearchPage : Page
         return bitmap;
     }
 
-    private async Task SaveToResearchAsync(string publisherID, SearchResultRow? sourceRow)
+    /// <summary>
+    /// The cutout this search's cutout boxes ask of the chosen file, when there is one to be had: the
+    /// file must have a SODA service, and the search a circle or wavelengths that fall on it.
+    /// </summary>
+    private (Models.Cutouts.SodaDescriptor File, Models.Cutouts.CutoutSpec Spec)? CutoutFor(
+        DataLinkResult dataLink, string selectedFilename)
     {
-        if (sourceRow is null) return;
-        try
-        {
-            var dataLink = await _dataLinkService.GetLinksAsync(publisherID);
-            var obs = DownloadedObservation.FromSearchResult(sourceRow, null,
-                dataLink, k => ViewModel.GetColumnHeader(k));
-            _observationStore.Save(obs);
+        if (!ViewModel.SpatialCutout && !ViewModel.SpectralCutout) return null;
 
-            var seq = ++_downloadOpSeq;
-            DownloadInfoBar.IsOpen = true;
-            DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
-            DownloadInfoBar.Title = Loc.T("Search_SavedToResearch");
-            DownloadProgressBar.Visibility = Visibility.Collapsed;
-            DownloadProgressText.Text = obs.TargetName ?? publisherID;
-            ScheduleDownloadBarReset(seq);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Save to research error: {ex.Message}");
-            ShowDownloadError(Loc.T("Search_SaveToResearchFailed"), ex.Message);
-        }
+        if (Services.Cutouts.CutoutCandidates.CutFor(dataLink.Cutouts, selectedFilename) is not { } file) return null;
+
+        var hints = Services.Cutouts.CutoutHints.From(ViewModel.BuildFormState());
+        var spec = Services.Cutouts.CutoutPrefill.FromSearchFlags(file, hints, ViewModel.SpatialCutout, ViewModel.SpectralCutout);
+        return spec is not null && Services.Cutouts.CutoutRules.Check(file, spec).IsValid ? (file, spec) : null;
     }
 
     private async Task DownloadFileAsync(string publisherID, SearchResultRow? sourceRow = null)
@@ -1051,6 +1161,16 @@ public sealed partial class SearchPage : Page
                 ? selectedFilename
                 : ExtractFilenameFromPublisherID(publisherID);
 
+            // "Spatial cutout" / "Spectral cutout", as on CADC's own search page: this row's file cut to
+            // the search's circle and wavelengths — when CADC can cut this file and the search gives it
+            // something to cut. Otherwise the whole file, as before.
+            var cutout = CutoutFor(dataLink, selectedFilename);
+            if (cutout is { } cut)
+            {
+                url = Services.Cutouts.SodaRequest.Url(cut.File, cut.Spec);
+                suggestedName = cut.Spec.FileNameFor(cut.File.FileName);
+            }
+
             // The picker appends the SELECTED file-type extension to SuggestedFileName. Handing it a
             // complete name AND offering only ".fits" therefore doubled the extension on everything
             // that is not literally a .fits — an fpack artifact came back as `x.fits.fz.fits`. Offer
@@ -1069,75 +1189,23 @@ public sealed partial class SearchPage : Page
             var file = await picker.PickSaveFileAsync();
             if (file is null) return;
 
-            // Download with progress tracking (the atomic .tmp-swap stream lives in ObservationDownloadService).
+            // Handed to the app rather than run here: it outlives this page and whatever the person
+            // does next, shows its progress — and any failure — in the status bar, and records itself
+            // in Research when it lands. The record is made NOW, from the row and the DataLink answer
+            // already in hand, so finishing needs nothing from this page.
+            var record = sourceRow is null
+                ? null
+                : DownloadedObservation.FromSearchResult(sourceRow, null, dataLink, k => ViewModel.GetColumnHeader(k));
+            if (record is not null) record.Cutout = cutout?.Spec;
+            _ = _downloader.Start(new ObservationDownloadRequest(publisherID, file.Path, record, Url: url));
+
             var seq = ++_downloadOpSeq;
-            try
-            {
-                DownloadInfoBar.IsOpen = true;
-                DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
-                DownloadInfoBar.Title = Loc.F("Search_DownloadingFile", Path.GetFileName(file.Path));
-                DownloadProgressBar.Visibility = Visibility.Visible;
-                DownloadProgressBar.IsIndeterminate = true;
-                DownloadProgressText.Text = "";
-
-                // Reported once per 80 KB chunk, which for a 46 MB artifact is ~575 posts to the UI
-                // thread. Throttled to ~10/s so the bar animates without the readout flickering through
-                // numbers nobody can read.
-                var lastReport = 0L;
-                var progress = new Progress<(long Downloaded, long? Total)>(p =>
-                {
-                    var now = Environment.TickCount64;
-                    var complete = p.Total is { } t && p.Downloaded >= t;
-                    if (!complete && now - lastReport < 100) return;
-                    lastReport = now;
-
-                    if (p.Total is { } total && total > 0)
-                    {
-                        DownloadProgressBar.IsIndeterminate = false;
-                        DownloadProgressBar.Maximum = total;
-                        DownloadProgressBar.Value = p.Downloaded;
-                        DownloadProgressText.Text = $"{FormatBytes(p.Downloaded)} / {FormatBytes(total)} ({(double)p.Downloaded / total * 100:F0}%)";
-                    }
-                    else
-                    {
-                        // CADC does not send Content-Length for a package it builds on the fly, so there
-                        // is no total to show a percentage against. Say so, rather than leaving a bare
-                        // number beside a bar that looks stuck.
-                        DownloadProgressBar.IsIndeterminate = true;
-                        DownloadProgressText.Text = Loc.F("Search_DownloadedSoFar", FormatBytes(p.Downloaded));
-                    }
-                });
-                await _downloads.DownloadToPathAsync(url, file.Path, progress: progress);
-
-                DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
-                DownloadInfoBar.Title = Loc.F("Search_DownloadedFile", Path.GetFileName(file.Path));
-                DownloadProgressBar.Visibility = Visibility.Collapsed;
-                ScheduleDownloadBarReset(seq);
-            }
-            catch
-            {
-                if (seq == _downloadOpSeq) DownloadInfoBar.IsOpen = false;
-                throw; // ObservationDownloadService already removed the partial .tmp
-            }
-
-            // Track in Research module
-            var row = sourceRow;
-            if (row is not null)
-            {
-                try
-                {
-                    var dlForObs = await _dataLinkService.GetLinksAsync(publisherID);
-                    var obs = DownloadedObservation.FromSearchResult(row, file.Path,
-                        dlForObs, k => ViewModel.GetColumnHeader(k));
-                    var fi = new System.IO.FileInfo(file.Path);
-                    if (fi.Exists) obs.FileSize = fi.Length;
-                    _observationStore.Save(obs);
-                }
-                catch (Exception trackEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Download tracking error: {trackEx.Message}");
-                }
-            }
+            DownloadInfoBar.Severity = Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
+            DownloadInfoBar.Title = Loc.F(cutout is null ? "Search_DownloadingFile" : "Search_DownloadingCutout",
+                Path.GetFileName(file.Path));
+            DownloadProgressText.Text = Loc.T("Download_InStatusBar");
+            DownloadInfoBar.IsOpen = true;
+            ScheduleDownloadBarReset(seq, 5000);
         }
         catch (Exception ex)
         {
@@ -1210,14 +1278,6 @@ public sealed partial class SearchPage : Page
             return publisherID[(lastQuestion + 1)..];
         return "observation";
     }
-
-    private static string FormatBytes(long bytes) => bytes switch
-    {
-        < 1024 => Loc.F("Search_SizeB", bytes),
-        < 1024 * 1024 => Loc.F("Search_SizeKB", bytes / 1024.0),
-        < 1024 * 1024 * 1024 => Loc.F("Search_SizeMB", bytes / (1024.0 * 1024)),
-        _ => Loc.F("Search_SizeGB", bytes / (1024.0 * 1024 * 1024))
-    };
 
     private async Task LoadPreviewFlyout(Flyout flyout, string publisherID)
     {

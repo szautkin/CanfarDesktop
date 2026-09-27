@@ -54,6 +54,7 @@
                                         <TextBlock Text="{Binding TargetName}" FontSize="13"
                                                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         <controls:AgentBadge Attribution="{Binding AgentAttribution}" />
+                                        <controls:CutoutBadge Cutout="{Binding Cutout}" />
                                     </StackPanel>
                                     <TextBlock FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis">
                                         <Run Text="{Binding Collection}" /> —
