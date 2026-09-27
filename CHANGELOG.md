@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.4.1] - Unreleased
+## [1.4.1] - 2026-09-26
 
 Cutouts — cut by CADC, or on your computer from a file already downloaded — observations you can copy and keep without their files, the Portal laid out as on Linux, an assistant that can walk you through Settings, and fixes found by testing the published 1.4.0 from the Microsoft Store.
 
