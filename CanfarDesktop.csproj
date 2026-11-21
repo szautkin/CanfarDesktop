@@ -123,14 +123,14 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <!-- 10.0.12, not earlier: it is the first to bring SQLitePCLRaw 2.1.12, and every 2.1.x before it
          bundles a SQLite older than 3.50.2 (CVE-2025-6965, GHSA-2m69-gcr7-jv3q, high). -->
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
-    <PackageReference Include="Vortice.D3DCompiler" Version="1.8.59" />
-    <PackageReference Include="Vortice.Direct3D11" Version="1.8.59" />
-    <PackageReference Include="Vortice.DXGI" Version="1.8.59" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.15" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.15" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.7.0" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="1.9.143" />
+    <PackageReference Include="Vortice.Direct3D11" Version="1.9.143" />
+    <PackageReference Include="Vortice.DXGI" Version="1.9.143" />
   </ItemGroup>
 
   <!--
